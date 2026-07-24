@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["@mermaid-js/mermaid-cli"],
+  "ignoreWorkspaces": ["dapp/daml"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.mjs!"]
+    },
+    "canton-connect-kit": {
+      "entry": ["test/**/*.test.{ts,tsx}"]
+    },
+    "dapp/frontend": {
+      "ignoreDependencies": [
+        "@fontsource-variable/jetbrains-mono",
+        "@fontsource-variable/manrope"
+      ]
+    }
+  }
+}
