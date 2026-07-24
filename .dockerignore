@@ -12,8 +12,6 @@
 **/.env.*.local
 **/*.log
 **/.DS_Store
-dapp/e2e/test-results
-dapp/e2e/playwright-report
 dapp/frontend/public
 canton-barebones/dars
 canton-barebones/wallet-service/test

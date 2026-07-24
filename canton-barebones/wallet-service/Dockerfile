@@ -9,11 +9,9 @@ ENV HUSKY=0
 # present to reconstruct the workspace tree from the single root lockfile.
 COPY package.json package-lock.json ./
 COPY canton-connect-kit/package.json canton-connect-kit/
-COPY carpincho-wallet/package.json carpincho-wallet/
 COPY canton-barebones/package.json canton-barebones/
 COPY canton-barebones/wallet-service/package.json canton-barebones/wallet-service/
 COPY dapp/daml/package.json dapp/daml/
-COPY dapp/e2e/package.json dapp/e2e/
 COPY dapp/frontend/package.json dapp/frontend/
 # --ignore-scripts skips the root husky prepare hook (no .git in the image) and
 # unrelated workspace postinstalls; the wallet-service build needs none of them.
@@ -28,11 +26,9 @@ ENV NODE_ENV=production
 ENV HUSKY=0
 COPY package.json package-lock.json ./
 COPY canton-connect-kit/package.json canton-connect-kit/
-COPY carpincho-wallet/package.json carpincho-wallet/
 COPY canton-barebones/package.json canton-barebones/
 COPY canton-barebones/wallet-service/package.json canton-barebones/wallet-service/
 COPY dapp/daml/package.json dapp/daml/
-COPY dapp/e2e/package.json dapp/e2e/
 COPY dapp/frontend/package.json dapp/frontend/
 RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/canton-barebones/wallet-service/dist canton-barebones/wallet-service/dist
