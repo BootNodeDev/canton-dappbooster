@@ -1,0 +1,19 @@
+name: add-to-project
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  add-to-project:
+    name: add to project
+    runs-on: ubuntu-latest
+    steps:
+      # No label filter: every new issue and PR is added, then triaged on the board.
+      # ADD_TO_PROJECT_PAT is used because the built-in GITHUB_TOKEN cannot write org Projects.
+      - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd # v2
+        with:
+          project-url: https://github.com/orgs/BootNodeDev/projects/26
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
