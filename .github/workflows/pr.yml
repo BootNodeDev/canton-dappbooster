@@ -1,0 +1,118 @@
+# PR gate - the mechanical checks every pull request must pass.
+#
+# Ported from cn-dappbooster-v1 and adapted to this repo's layout. v1's
+# packages/*/examples/* jobs (publint + attw, the "use client" grep, examples
+# build) are dropped: this repo publishes nothing and has no examples workspace.
+# The DAML package (dapp/daml) is excluded from the build because its `dpm build`
+# needs the Daml toolchain, which the runner does not have; DAML is exercised by
+# the local build-dar/deploy flow instead.
+name: pr
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+# Newer pushes to the same PR supersede in-flight runs.
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only by default; this gate never writes to the repo.
+permissions:
+  contents: read
+
+env:
+  # Skip husky's `prepare` hook install during CI `pnpm install`.
+  HUSKY: 0
+
+jobs:
+  # 1 - biome. Same command as the local hook/script, so lint is identical
+  # local and in CI (single source of truth).
+  biome:
+    name: 1 - biome
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: corepack enable
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  # 2 - typecheck + build + knip. Build excludes dapp/daml (needs the Daml
+  # toolchain the runner lacks). knip is the dead-code / dead-dependency gate.
+  typecheck-build:
+    name: 2 - typecheck + build + knip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: corepack enable
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm -r --filter '!./dapp/daml' run --if-present build
+      - run: pnpm knip
+
+  # 3 - test. Node 24, the repo's pinned version (.nvmrc).
+  test:
+    name: 3 - test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: corepack enable
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  # 4 - commitlint. Hooks alone are bypassable, so re-check the PR commit range
+  # in CI. Also lints the PR title: it becomes the squash-merge subject, so it
+  # must be a conventional commit.
+  commitlint:
+    name: 4 - commitlint
+    runs-on: ubuntu-latest
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - run: corepack enable
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint PR commit range
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          pnpm exec commitlint --verbose
+          --from "$BASE_SHA"
+          --to "$HEAD_SHA"
+      - name: Lint PR title
+        run: printf '%s' "$PR_TITLE" | pnpm exec commitlint --verbose
+
+  # 5 - Gitleaks secret scanning. Runs the MIT-licensed gitleaks CLI directly
+  # (pinned + checksum-verified via .gitleaks-version, the same install the local
+  # hooks use), NOT gitleaks-action, which requires a paid license for org repos.
+  gitleaks:
+    name: 5 - gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Scan git history for secrets
+        run: |
+          set -euo pipefail
+          ./scripts/install-gitleaks.sh
+          ./bin/gitleaks git --redact --verbose --exit-code 1 .
