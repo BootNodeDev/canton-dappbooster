@@ -1,12 +1,12 @@
 set -e
 
 echo "TypeScript checks: dapp/frontend"
-( cd dapp/frontend && npx tsc -b --noEmit --pretty )
+pnpm -C dapp/frontend exec tsc -b --noEmit --pretty
 
 echo "TypeScript checks: canton-barebones/wallet-service"
-( cd canton-barebones/wallet-service && npx tsc --noEmit --pretty )
+pnpm -C canton-barebones/wallet-service exec tsc --noEmit --pretty
 
 echo "TypeScript checks: canton-connect-kit"
-( cd canton-connect-kit && npx tsc -b --noEmit --pretty )
+pnpm -C canton-connect-kit exec tsc -b --noEmit --pretty
 
 echo "All TypeScript checks passed. Proceeding with push."

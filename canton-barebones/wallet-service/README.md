@@ -10,17 +10,17 @@ wallet-internal party onboarding.
 
 ## Run
 
-`npm run canton:up` (the root [quick start](../../README.md#quick-start)) brings
+`pnpm run canton:up` (the root [quick start](../../README.md#quick-start)) brings
 this service up alongside Postgres and Canton. Verify it from the repo root:
 
 ```bash
-npm run wallet-service:health
+pnpm run wallet-service:health
 ```
 
 For host-side iteration with no Docker, run it standalone in [mock mode](#mock-mode):
 
 ```bash
-WALLET_SERVICE_MOCK=1 npm run wallet-service:dev
+WALLET_SERVICE_MOCK=1 pnpm run wallet-service:dev
 ```
 
 ## Token
@@ -32,7 +32,7 @@ wallet-service does not mint this token at boot. It requires
 Generate one from the repo root:
 
 ```bash
-npm run canton:token -- ledger-api-user
+pnpm run canton:token -- ledger-api-user
 ```
 
 Paste the printed `CANTON_BACKEND_TOKEN=...` line into

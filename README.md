@@ -36,14 +36,14 @@ the Carpincho user.
 Prerequisites:
 
 - Node.js 24
-- npm `>=7`
+- pnpm (via Corepack: `corepack enable`; the repo pins pnpm 11 through `packageManager`)
 - Docker with about 8 GB memory available
 - `dpm` on `PATH` (DAML SDK 3.4.11), required for building DARs
 
 Install workspace dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 Create the local env file:
@@ -56,7 +56,7 @@ Generate the backend token and paste the printed `CANTON_BACKEND_TOKEN=...`
 line into `canton-barebones/.env`:
 
 ```bash
-npm run canton:token -- ledger-api-user
+pnpm run canton:token -- ledger-api-user
 ```
 
 Token configuration:
@@ -86,27 +86,27 @@ WalletConnect env is configured in its repo.
 Start the stack:
 
 ```bash
-npm run canton:up
-npm run canton:health
+pnpm run canton:up
+pnpm run canton:health
 ```
 
 Build and deploy the sample DAR:
 
 ```bash
-npm run build-dar -- dapp/daml
-npm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
+pnpm run build-dar -- dapp/daml
+pnpm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
 ```
 
 Verify wallet-service:
 
 ```bash
-npm run wallet-service:health
+pnpm run wallet-service:health
 ```
 
 Start the dApp:
 
 ```bash
-npm run app:dev
+pnpm run app:dev
 ```
 
 Run the Carpincho wallet from its own repo

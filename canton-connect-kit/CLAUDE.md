@@ -21,13 +21,13 @@ See [`architecture.md`](architecture.md) for the provider, connector, hook, and 
 
 ## Testing
 
-- Run tests with `npm test` from this package, or `npm --prefix canton-connect-kit test` from the repo root.
+- Run tests with `pnpm test` from this package, or `pnpm -C canton-connect-kit test` from the repo root.
 - Use the configured `node:test` + `tsx` setup.
 - Prefer connector factories and test doubles over importing wallet or dApp source.
 - Cover context state transitions, connector selection, event subscriptions, and hook return values.
 
 ## Validation Checklist
 
-- `npm run lint`
-- `npm test`
-- `npm run typecheck`
+- `pnpm run lint`
+- `pnpm test`
+- `pnpm run typecheck`

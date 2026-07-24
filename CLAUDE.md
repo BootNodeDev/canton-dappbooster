@@ -44,7 +44,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | Category | Technology | Notes |
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash for canton-barebones scripts |
-| Package manager | npm workspaces | Single root `package-lock.json`; one root `npm install` links every workspace. Root `package.json` orchestrates scripts via `npm --prefix <dir>` |
+| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Pinned via root `.nvmrc`; inherits to every Node subproject |
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
@@ -58,7 +58,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 |------|---------|-------|------|
 | [`canton-barebones/`](canton-barebones/) | Local Canton participant + Postgres via docker-compose; deploy + health + token scripts | Docker, Bash, Node scripts | 3013/3014/3015/3016/3017/3018 |
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
-| [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `npm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
+| [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | dApp UI | Vite + React + Tailwind v4 + Radix UI + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
 
@@ -72,15 +72,16 @@ Subproject docs must not restate root rules. They should describe only their loc
 
 ## Working Rules
 
-- Use **npm** only (never pnpm or yarn).
-- This is an npm workspaces monorepo: one `npm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `npm --prefix <subproject> run <script>`. The root `package.json` exposes orchestration shortcuts:
-  - `npm run canton:up` / `canton:down` / `canton:health` / `canton:token`
-  - `npm run build-dar -- <daml-project>` / `npm run deploy-dar -- <dar>`
-  - `npm run app:dev`
+- Use **pnpm** only (never npm or yarn).
+- This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` exposes orchestration shortcuts:
+  - `pnpm run canton:up` / `canton:down` / `canton:health` / `canton:token`
+  - `pnpm run build-dar -- <daml-project>` / `pnpm run deploy-dar -- <dar>`
+  - `pnpm run app:dev`
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
-- Treat the single root `package-lock.json` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
-- The root `package.json` pins `@canton-network/dapp-sdk` to `1.1.0` via `overrides`: consumers declare `^1.1.0`, but `1.2.0` is intentionally held back. npm 11 does not persist `overrides` into `package-lock.json`, so the pin is enforced by the override on every relock and by the resolved `1.1.0` entry in the lock on every plain install. Do not bump it without testing the dApp flow against the newer SDK.
+- Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
+- `pnpm-workspace.yaml` pins the whole `@canton-network/*` family via `overrides`: `dapp-sdk` at `1.1.0` and the `core-*` packages at the exact versions the stack was verified against. The SDK ships breaking changes inside its `^1.x` range (e.g. `core-provider-dapp` 1.8 drops an export `dapp-sdk` 1.1 imports), so without the pins pnpm resolves an incompatible set. `1.2.0` of `dapp-sdk` is intentionally held back. Do not bump these without testing the dApp flow against the newer SDK.
+- Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
 ## Architecture
@@ -89,10 +90,10 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
 
 ## Testing
 
-- Each subproject owns its own test runner. Run from the subproject directory or via `npm --prefix`:
-  - `dapp/frontend`: `npm test` (Node `node:test` with `--experimental-strip-types`)
-  - `canton-connect-kit`: `npm test` (Node `node:test` + `tsx`)
-  - `canton-barebones`: `npm test` (Node `node:test` against the scripts)
+- Each subproject owns its own test runner. Run from the subproject directory or via `pnpm -C`:
+  - `dapp/frontend`: `pnpm test` (Node `node:test` with `--experimental-strip-types`)
+  - `canton-connect-kit`: `pnpm test` (Node `node:test` + `tsx`)
+  - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
 ## Commit Standards
@@ -172,7 +173,7 @@ The `issue` skill at `.claude/skills/issue/` applies these labels automatically 
 
 Before declaring monorepo-touching work done:
 
-- Subproject-level: `npm run lint` and `npm test` inside any subproject you touched.
+- Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
 - Root-level: `git push --dry-run` exercises the pre-push tsc sweep across all Node subprojects.
 - For the full end-to-end loop (Canton up → DAR built → DAR deployed → wallet-service → wallet → dApp), follow [`README.md`](README.md) §1–6.
 

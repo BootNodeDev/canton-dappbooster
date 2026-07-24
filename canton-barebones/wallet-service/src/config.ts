@@ -53,7 +53,7 @@ const resolveToken = (): { token?: string; source: TokenSource } => {
     return { token: explicit, source: 'env' }
   }
   throw new Error(
-    'CANTON_BACKEND_TOKEN is required. Generate one with: npm run canton:token -- ledger-api-user',
+    'CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run canton:token -- ledger-api-user',
   )
 }
 

@@ -14,7 +14,7 @@
 # Usage:
 #   ./scripts/dev-stack.sh             # interactive arrow-key menu (default)
 #   ./scripts/dev-stack.sh menu        # same as above
-#   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (npm install)
+#   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (pnpm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
 #   ./scripts/dev-stack.sh up          # start the stack (containers, DAR, dApp dev server)
 #   ./scripts/dev-stack.sh down        # stop the dApp dev server and tear down containers
@@ -24,7 +24,7 @@
 #   ./scripts/dev-stack.sh mock-down   # stop the mocked wallet-service only
 #
 # What `up` starts (in order; Docker must already be running):
-#   1. Splice LocalNet bundle + wallet-service containers (npm run canton:up)
+#   1. Splice LocalNet bundle + wallet-service containers (pnpm run canton:up)
 #   2. Health checks (canton + wallet-service)
 #   3. Builds and deploys the Daml DAR (name derived from daml.yaml)
 #   4. dApp frontend dev server     -> http://localhost:3012  (background)
@@ -69,9 +69,9 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   return 1
 }
 
-install_deps() { # one root npm install links every workspace
-  log "Installing workspace dependencies (root npm install)..."
-  npm install
+install_deps() { # one root pnpm install links every workspace
+  log "Installing workspace dependencies (root pnpm install)..."
+  pnpm install
   log "Workspaces installed and linked."
 }
 
@@ -136,11 +136,11 @@ up() {
     local token_line tmp_env
     # mint-token.mjs prints a full 'CANTON_BACKEND_TOKEN=<jwt>' line; capture it
     # without echoing the secret to the terminal.
-    token_line="$(npm run --silent canton:token -- ledger-api-user 2>/dev/null \
+    token_line="$(pnpm run canton:token -- ledger-api-user 2>/dev/null \
       | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
       | sed -E 's/^[[:space:]]*//')" || true
     [ -n "$token_line" ] \
-      || die "Failed to mint CANTON_BACKEND_TOKEN (npm run canton:token -- ledger-api-user). Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in canton-barebones/.env."
+      || die "Failed to mint CANTON_BACKEND_TOKEN (pnpm run canton:token -- ledger-api-user). Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in canton-barebones/.env."
     # Replace any existing (empty) entry, else append — never print the token.
     tmp_env="$(mktemp)"
     grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' canton-barebones/.env >"$tmp_env" || true
@@ -151,26 +151,26 @@ up() {
 
   # 1. Containers
   log "Bringing up the Splice LocalNet bundle + wallet-service containers..."
-  npm run canton:up
+  pnpm run canton:up
 
   # 2. Health
   log "Checking Canton health..."
-  npm run canton:health
+  pnpm run canton:health
   log "Checking wallet-service health..."
-  npm run wallet-service:health && echo
+  pnpm run wallet-service:health && echo
 
   # 3. Build + deploy DAR
   log "Building the $DAR_NAME DAR..."
-  npm run build-dar -- "$DAML_DIR"
+  pnpm run build-dar -- "$DAML_DIR"
   log "Deploying the DAR to Canton..."
-  npm run deploy-dar -- "$DAR_PATH"
+  pnpm run deploy-dar -- "$DAR_PATH"
 
   # 4. dApp frontend dev server (3012)
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3012 already in use; skipping dApp dev server."
   else
     log "Starting dApp frontend dev server -> http://localhost:3012"
-    nohup npm run app:dev >"$DAPP_LOG" 2>&1 &
+    nohup pnpm run app:dev >"$DAPP_LOG" 2>&1 &
     echo $! >"$DAPP_PID"
     wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
   fi
@@ -197,7 +197,7 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
     pid="$(cat "$pidfile" 2>/dev/null || true)"
     if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
       log "Stopping $label (pid $pid)"
-      # kill the npm process group so child vite dies too
+      # kill the dev-server process group so child vite dies too
       kill "$pid" 2>/dev/null || true
       pkill -P "$pid" 2>/dev/null || true
     fi
@@ -215,7 +215,7 @@ down() {
   # running — quit it separately with 'docker-down', the app, or your CLI.
   if docker info >/dev/null 2>&1; then
     log "Tearing down Canton containers..."
-    npm run canton:down || warn "canton:down reported an error"
+    pnpm run canton:down || warn "canton:down reported an error"
   else
     warn "Docker daemon not reachable; skipping canton:down"
   fi
@@ -257,7 +257,7 @@ mock_up() {
     warn "Port 3010 already in use; skipping mocked wallet-service."
   else
     log "Starting mocked wallet-service (MOCK MODE) -> http://localhost:3010"
-    WALLET_SERVICE_MOCK=1 nohup npm run wallet-service:dev >"$MOCK_WS_LOG" 2>&1 &
+    WALLET_SERVICE_MOCK=1 nohup pnpm run wallet-service:dev >"$MOCK_WS_LOG" 2>&1 &
     echo $! >"$MOCK_WS_PID"
     wait_http 60 "http://localhost:3010/health" "mocked wallet-service" || true
   fi
@@ -377,7 +377,7 @@ status() {
   else
     echo "   (none)"
   fi
-  echo "   Backend health: run 'npm run canton:health'"
+  echo "   Backend health: run 'pnpm run canton:health'"
 }
 
 case "${1:-menu}" in

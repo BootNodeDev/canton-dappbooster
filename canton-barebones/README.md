@@ -31,21 +31,21 @@ user and not a product user.
 
 ```bash
 cp .env.example .env
-npm run token -- ledger-api-user
+pnpm run token -- ledger-api-user
 ```
 
 Paste the printed `CANTON_BACKEND_TOKEN=...` line into `.env`, then run:
 
 ```bash
-npm run up
-npm run health
+pnpm run up
+pnpm run health
 ```
 
 From the repo root, use:
 
 ```bash
-npm run canton:up
-npm run canton:health
+pnpm run canton:up
+pnpm run canton:health
 ```
 
 ## Auth
@@ -65,7 +65,7 @@ the token.
 
 ## Wallet Service
 
-`npm run up` starts `wallet-service` after app-user is ready.
+`pnpm run up` starts `wallet-service` after app-user is ready.
 
 wallet-service points to app-user:
 
@@ -111,15 +111,15 @@ Compile a Daml project outside this base, then upload the DAR. From the repo
 root, build and deploy any project and DAR with the same two commands:
 
 ```bash
-npm run build-dar -- <path/to/daml/project>
-npm run deploy-dar -- <path/to/file.dar>
+pnpm run build-dar -- <path/to/daml/project>
+pnpm run deploy-dar -- <path/to/file.dar>
 ```
 
 For the in-repo Tally package that means:
 
 ```bash
-npm run build-dar -- dapp/daml
-npm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
+pnpm run build-dar -- dapp/daml
+pnpm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
 ```
 
 Or call the upload script directly:
@@ -134,4 +134,4 @@ The script uploads to app-user:
 http://localhost:2975/v2/packages
 ```
 
-`npm run canton:health` must return OK before deploying; otherwise the DAR upload can fail.
+`pnpm run canton:health` must return OK before deploying; otherwise the DAR upload can fail.

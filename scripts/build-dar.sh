@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
-  echo "Usage: npm run build-dar -- path/to/daml/project" >&2
+  echo "Usage: pnpm run build-dar -- path/to/daml/project" >&2
   exit 1
 fi
 

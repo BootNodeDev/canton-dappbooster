@@ -2,10 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(set -e)",
-      "Bash(npm run *)",
-      "Bash(npm install *)",
-      "Bash(npm --prefix counter/* *)",
-      "Bash(npm --prefix canton-barebones *)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm install)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm -C * *)",
       "Bash(sh .husky/pre-push)",
       "Bash(docker info *)",
       "Bash(curl -sf -o /dev/null --max-time 1 http://localhost:__TRACKED_VAR__/)",

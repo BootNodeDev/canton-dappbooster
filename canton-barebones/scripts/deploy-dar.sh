@@ -23,7 +23,7 @@ if [ ! -f "$DAR_PATH" ]; then
 fi
 
 if [ -z "${CANTON_BACKEND_TOKEN:-}" ]; then
-  echo "CANTON_BACKEND_TOKEN is required. Generate one with: npm run canton:token -- ledger-api-user" >&2
+  echo "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run canton:token -- ledger-api-user" >&2
   exit 1
 fi
 

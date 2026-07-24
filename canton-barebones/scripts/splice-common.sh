@@ -137,5 +137,5 @@ require_backend_token() {
   if [ "${WALLET_SERVICE_MOCK:-}" = "1" ]; then
     return 0
   fi
-  [ -n "${CANTON_BACKEND_TOKEN:-}" ] || die "CANTON_BACKEND_TOKEN is required. Generate one with: npm run canton:token -- ledger-api-user"
+  [ -n "${CANTON_BACKEND_TOKEN:-}" ] || die "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run canton:token -- ledger-api-user"
 }

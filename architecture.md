@@ -71,7 +71,7 @@ State boundaries:
 
 | Variable | Owner | Purpose |
 | --- | --- | --- |
-| `CANTON_AUTH_AUDIENCE` | `canton-barebones/.env` | JWT audience recipe used by `npm run canton:token` |
+| `CANTON_AUTH_AUDIENCE` | `canton-barebones/.env` | JWT audience recipe used by `pnpm run canton:token` |
 | `CANTON_AUTH_SECRET` | `canton-barebones/.env` | unsafe local signing secret used only by the token script |
 | `CANTON_BACKEND_TOKEN` | `canton-barebones/.env` | generated JWT consumed by wallet-service |
 
@@ -84,11 +84,11 @@ with the same script, configured manually in its LocalNet settings.
 
 | Command | What it does |
 | --- | --- |
-| `npm run canton:up` | download/cache Splice bundle, start `sv + app-user` UI profiles, then wallet-service |
-| `npm run canton:down` | stop wallet-service and Splice LocalNet, preserving volumes |
-| `npm run canton:health` | check app-user, sv, Scan, wallet UI, and wallet-service |
-| `npm run canton:token -- ledger-api-user` | generate a LocalNet dev JWT |
-| `npm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `npm run app:dev` | start the dApp frontend |
+| `pnpm run canton:up` | download/cache Splice bundle, start `sv + app-user` UI profiles, then wallet-service |
+| `pnpm run canton:down` | stop wallet-service and Splice LocalNet, preserving volumes |
+| `pnpm run canton:health` | check app-user, sv, Scan, wallet UI, and wallet-service |
+| `pnpm run canton:token -- ledger-api-user` | generate a LocalNet dev JWT |
+| `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
+| `pnpm run app:dev` | start the dApp frontend |
 
 For the bring-up sequence, follow [`README.md`](README.md).

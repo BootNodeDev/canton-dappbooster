@@ -3,30 +3,21 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": [
-    "canton-connect-kit",
-    "canton-barebones",
-    "canton-barebones/wallet-service",
-    "dapp/daml",
-    "dapp/frontend"
-  ],
+  "packageManager": "pnpm@11.15.1",
   "scripts": {
-    "canton:up": "npm --prefix canton-barebones run up",
-    "canton:down": "npm --prefix canton-barebones run down",
-    "canton:health": "npm --prefix canton-barebones run health",
-    "canton:token": "npm --prefix canton-barebones run token",
+    "canton:up": "pnpm -C canton-barebones run up",
+    "canton:down": "pnpm -C canton-barebones run down",
+    "canton:health": "pnpm -C canton-barebones run health",
+    "canton:token": "pnpm -C canton-barebones run token",
     "build-dar": "bash scripts/build-dar.sh",
     "deploy-dar": "bash canton-barebones/scripts/deploy-dar.sh",
-    "wallet-service:dev": "npm --prefix canton-barebones/wallet-service run dev",
+    "wallet-service:dev": "pnpm -C canton-barebones/wallet-service run dev",
     "wallet-service:health": "curl -fsS http://localhost:3010/health",
-    "app:dev": "npm --prefix dapp/frontend run dev -- --host localhost --port 3012 --strictPort",
+    "app:dev": "pnpm -C dapp/frontend run dev -- --host localhost --port 3012 --strictPort",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
     "prepare": "husky"
-  },
-  "overrides": {
-    "@canton-network/dapp-sdk": "1.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",

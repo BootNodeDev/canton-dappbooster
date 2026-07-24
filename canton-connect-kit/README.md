@@ -95,7 +95,7 @@ any other Canton-wallet-kit) would keep the dApp's `App.tsx` unchanged.
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
 `node:test` with `tsx` as the loader; happy-dom + React Testing Library for

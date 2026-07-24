@@ -17,12 +17,12 @@ The wallet-service is a consumer-dApp-agnostic Express JSON-RPC bridge between C
 
 ## Testing
 
-- Run tests with `npm test` from this package, or `npm --prefix canton-barebones/wallet-service test` from the repo root.
+- Run tests with `pnpm test` from this package, or `pnpm -C canton-barebones/wallet-service test` from the repo root.
 - Use `node:test` with `--experimental-strip-types`, matching `package.json`.
 - Cover RPC method shape, mock mode, pending approvals, CIP-56 token reads/transfers, Amulet preapproval, party onboarding, and HTTP status behavior.
 
 ## Validation Checklist
 
-- `npm run lint`
-- `npm test`
-- `npm run build`
+- `pnpm run lint`
+- `pnpm test`
+- `pnpm run build`

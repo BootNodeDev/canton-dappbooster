@@ -45,7 +45,7 @@ describe('config loader', () => {
     // paste it into CANTON_BACKEND_TOKEN so every runtime token is visible.
     assert.throws(
       () => loadConfig(),
-      /CANTON_BACKEND_TOKEN is required\. Generate one with: npm run canton:token -- ledger-api-user/,
+      /CANTON_BACKEND_TOKEN is required\. Generate one with: pnpm run canton:token -- ledger-api-user/,
     )
   })
 
@@ -57,7 +57,7 @@ describe('config loader', () => {
 
     assert.throws(
       () => loadConfig(),
-      /CANTON_BACKEND_TOKEN is required\. Generate one with: npm run canton:token -- ledger-api-user/,
+      /CANTON_BACKEND_TOKEN is required\. Generate one with: pnpm run canton:token -- ledger-api-user/,
     )
   })
 
