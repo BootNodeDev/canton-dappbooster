@@ -1,4 +1,5 @@
 import { ConnectKitProvider } from 'canton-connect-kit'
+import type { JSX } from 'react'
 import { useState } from 'react'
 import { ToastProvider } from '@/components/ui/ToastProvider'
 import { TooltipProvider } from '@/components/ui/Tooltip'

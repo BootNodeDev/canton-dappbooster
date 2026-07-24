@@ -1,4 +1,5 @@
 import * as RadixToast from '@radix-ui/react-toast'
+import type { JSX } from 'react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ICON_BUTTON_CLASS } from '@/components/ui/Button'

@@ -12,6 +12,7 @@ import type { RpcTypes as DappRpcTypes } from '@canton-network/core-wallet-dapp-
 import type { DappClient } from '@canton-network/dapp-sdk'
 import {
   createContext,
+  type JSX,
   type ReactNode,
   useCallback,
   useContext,

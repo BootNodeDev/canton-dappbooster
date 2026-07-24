@@ -1,4 +1,5 @@
 import { useSignMessage } from 'canton-connect-kit'
+import type { JSX } from 'react'
 import { useState } from 'react'
 import { SecondaryButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'

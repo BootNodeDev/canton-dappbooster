@@ -1,4 +1,5 @@
 import { useExecute, useLedger, useParty } from 'canton-connect-kit'
+import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { ICON_BUTTON_CLASS, SecondaryButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'

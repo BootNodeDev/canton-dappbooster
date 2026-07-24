@@ -1,5 +1,5 @@
 import { useConnect, useParty, useWalletStatus } from 'canton-connect-kit'
-import type { ReactNode } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import {
   CHEVRON_DOWN_ICON,
