@@ -14,7 +14,7 @@
     "wallet-service:dev": "pnpm -C canton-barebones/wallet-service run dev",
     "wallet-service:health": "curl -fsS http://localhost:3010/health",
     "app:dev": "pnpm -C dapp/frontend run dev -- --host localhost --port 3012 --strictPort",
-    "lint": "biome check",
+    "lint": "biome check --error-on-warnings",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
     "typecheck": "pnpm -r run --if-present typecheck",
