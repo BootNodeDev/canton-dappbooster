@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc -b --noEmit",
     "build": "tsc -b --noEmit && vite build",
     "lint": "biome check",
     "lint:fix": "biome check --write",

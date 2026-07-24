@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p .",
+    "typecheck": "tsc --noEmit",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "lint": "biome check",
