@@ -99,4 +99,4 @@ pnpm test
 ```
 
 `node:test` with `tsx` as the loader; happy-dom + React Testing Library for
-component tests. Mirrors `carpincho-wallet`'s setup.
+component tests.
