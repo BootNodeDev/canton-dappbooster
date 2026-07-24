@@ -2,6 +2,7 @@ import './setup-dom'
 import { strict as assert } from 'node:assert'
 import { describe, it } from 'node:test'
 import { render, screen } from '@testing-library/react'
+import type { JSX } from 'react'
 import { ConnectKitProvider, useConnectKitContext } from '../src/ConnectKitProvider'
 
 const config = { appName: 'Test dApp' }

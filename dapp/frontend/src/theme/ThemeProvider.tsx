@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { ThemeContext, type ThemeMode } from '@/theme/ThemeContext'
 
