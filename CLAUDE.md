@@ -52,7 +52,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config |
 | Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect-kit/`, `dapp/frontend/`, and `canton-barebones/` |
-| Pre-push | tsc | Root `.husky/pre-push` runs `tsc --noEmit` per Node subproject |
+| Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 
 ## Subprojects
 
@@ -176,7 +176,7 @@ The `issue` skill at `.claude/skills/issue/` applies these labels automatically 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: `git push --dry-run` exercises the pre-push tsc sweep across all Node subprojects.
+- Root-level: `git push --dry-run` exercises the pre-push `pnpm typecheck` sweep across all Node subprojects.
 - For the full end-to-end loop (Canton up → DAR built → DAR deployed → wallet-service → wallet → dApp), follow [`README.md`](README.md) §1–6.
 
 ## References
