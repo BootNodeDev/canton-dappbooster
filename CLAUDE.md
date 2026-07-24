@@ -1,3 +1,5 @@
+<!-- starter-kit: v2026.07 -->
+
 # Agent Configuration — Canton dApp Booster
 
 This file is the canonical monorepo-wide agent configuration. `AGENTS.md`
