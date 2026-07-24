@@ -82,11 +82,6 @@ export type JsPrepareSubmissionRequest = {
   packageIdSelectionPreference?: string[]
 }
 
-export type JsPrepareSubmissionResponse = {
-  preparedTransaction?: string
-  preparedTransactionHash?: string
-}
-
 export type LedgerApiRequest = {
   requestMethod: 'get' | 'post' | 'patch' | 'put' | 'delete'
   resource: string
@@ -94,11 +89,6 @@ export type LedgerApiRequest = {
   query?: Record<string, unknown>
   path?: Record<string, unknown>
 }
-
-export type LedgerApiResult = Record<string, unknown>
-
-export type SignMessageRequest = { message: string }
-export type SignMessageResult = { signature: string }
 
 export type Wallet = {
   primary: boolean

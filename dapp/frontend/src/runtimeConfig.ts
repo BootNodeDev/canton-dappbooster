@@ -41,9 +41,3 @@ export const loadRuntimeConfig = (): RuntimeConfig => {
     return defaultRuntimeConfig()
   }
 }
-
-export const saveRuntimeConfig = (config: RuntimeConfig): RuntimeConfig => {
-  const sanitized = sanitizeRuntimeConfig(config)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
-  return sanitized
-}
