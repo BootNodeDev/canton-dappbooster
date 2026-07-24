@@ -84,6 +84,7 @@ describe('extension dApp connection helpers', () => {
     assert.deepEqual(result, {
       kind: 'detected',
       label: 'localhost:3012',
+      host: 'localhost:3012',
       subtitle: 'Not connected',
       origin: 'http://localhost:3012',
     })
@@ -103,6 +104,7 @@ describe('extension dApp connection helpers', () => {
     assert.deepEqual(result, {
       kind: 'connected',
       label: 'Counter dApp',
+      host: 'localhost:3012',
       subtitle: 'Connected',
       origin: 'http://localhost:3012',
     })
@@ -125,6 +127,7 @@ describe('extension dApp connection helpers', () => {
     assert.deepEqual(result, {
       kind: 'connected',
       label: 'localhost:3012',
+      host: 'localhost:3012',
       subtitle: 'Connected',
       origin: 'http://localhost:3012',
     })
@@ -148,6 +151,7 @@ describe('extension dApp connection helpers', () => {
     assert.deepEqual(result, {
       kind: 'connected',
       label: 'localhost:3012',
+      host: 'localhost:3012',
       subtitle: 'Connected',
       origin: 'http://localhost:3012',
     })
@@ -164,5 +168,30 @@ describe('extension dApp connection helpers', () => {
 
     // The footer should show the active tab host instead of the empty state.
     await waitFor(() => assert.ok(screen.getByText('github.com Not connected')))
+  })
+
+  it('passes the active tab favicon through as the dApp icon', () => {
+    // Scenario: the browser exposes a favicon for the active tab.
+    const result = dappConnectionFromSources({
+      extensionMode: true,
+      sessions: [],
+      activeTab: {
+        url: 'http://localhost:3012/counter',
+        favIconUrl: 'http://localhost:3012/favicon.ico',
+      },
+    })
+
+    assert.equal(result.kind, 'detected')
+    assert.equal((result as { icon?: string }).icon, 'http://localhost:3012/favicon.ico')
+  })
+
+  it('passes the connected session icon through on web', () => {
+    // Scenario: the WalletConnect peer advertised an icon in its metadata.
+    const result = dappConnectionFromSources({
+      extensionMode: false,
+      sessions: [{ ...session, icon: 'http://localhost:3012/logo.png' }],
+    })
+
+    assert.equal((result as { icon?: string }).icon, 'http://localhost:3012/logo.png')
   })
 })

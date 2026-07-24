@@ -105,6 +105,7 @@ type ActiveJsContractReader = {
 
 type Cip56TokenSdk = {
   amulet?: {
+    tap?: (receiver: string, amount: string) => Promise<[unknown, unknown[]]>
     preapproval: {
       ctx?: {
         validatorParty?: string
@@ -256,6 +257,7 @@ const TRANSFER_PREAPPROVAL_PROPOSAL_TEMPLATE_ID =
   '#splice-wallet:Splice.Wallet.TransferPreapproval:TransferPreapprovalProposal'
 const TRANSFER_PREAPPROVAL_PROPOSAL_MAX_ATTEMPTS = 31
 const TRANSFER_PREAPPROVAL_PROPOSAL_RETRY_MS = 1_000
+const AMULET_TAP_AMOUNT = '100'
 
 export const rpcResult = (id: JsonRpcId, result: unknown): JsonRpcSuccess => ({
   jsonrpc: '2.0',
@@ -571,7 +573,7 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
       amulet: {
         validatorUrl: config.splice.validatorUrl,
         scanApiUrl: config.splice.scanApiUrl,
-        registryUrl: config.splice.registryApiUrl,
+        registryUrl: new URL(config.splice.registryApiUrl),
         auth,
       },
     })
@@ -880,6 +882,20 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
     }
   }
 
+  // Prepares the fixed DevNet tap command so Carpincho can sign as the receiver.
+  const amuletTap = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.tap')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    if (sdk.amulet?.tap === undefined) {
+      throw new Error('Amulet tap is unavailable')
+    }
+    const [commands, disclosedContracts] = await sdk.amulet.tap(receiver, AMULET_TAP_AMOUNT)
+    return { commands, disclosedContracts }
+  }
+
   // Prepares the receiver-signed proposal that asks the validator provider to enable auto-accept.
   const amuletPreapprovalCreate = async (
     params: unknown,
@@ -1082,6 +1098,8 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
           return rpcResult(id, await cip56CreateTransfer(request.params))
         case 'amulet.preapproval.status':
           return rpcResult(id, await amuletPreapprovalStatus(request.params))
+        case 'amulet.tap':
+          return rpcResult(id, await amuletTap(request.params))
         case 'amulet.preapproval.create':
           return rpcResult(id, await amuletPreapprovalCreate(request.params))
         case 'amulet.preapproval.acceptProposal':
@@ -1137,6 +1155,7 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
       'cip56.acceptTransfer',
       'cip56.createTransfer',
       'amulet.preapproval.status',
+      'amulet.tap',
       'amulet.preapproval.create',
       'amulet.preapproval.acceptProposal',
       'amulet.preapproval.cancel',

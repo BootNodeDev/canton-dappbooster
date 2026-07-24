@@ -159,6 +159,11 @@ export const createMockRpc = (
           return rpcResult(id, { commands: [], disclosedContracts: [] })
         case 'amulet.preapproval.status':
           return rpcResult(id, { active: false, expired: false })
+        case 'amulet.tap':
+          return rpcResult(id, {
+            commands: { ExerciseCommand: { choice: 'AmuletRules_DevNet_Tap' } },
+            disclosedContracts: [],
+          })
         case 'amulet.preapproval.create':
         case 'amulet.preapproval.cancel':
           return rpcResult(id, { commands: [], disclosedContracts: [] })
@@ -218,6 +223,7 @@ export const createMockRpc = (
       'cip56.listHoldings',
       'cip56.createTransfer',
       'amulet.preapproval.status',
+      'amulet.tap',
       'amulet.preapproval.create',
       'amulet.preapproval.acceptProposal',
       'amulet.preapproval.cancel',

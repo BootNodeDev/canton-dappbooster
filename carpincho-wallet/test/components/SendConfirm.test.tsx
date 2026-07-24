@@ -89,7 +89,7 @@ describe('SendConfirm', () => {
     }
     renderConfirm(sendApi, () => (sentCount += 1))
 
-    assert.ok(screen.getByText('lunch'))
+    assert.ok(screen.getAllByText('lunch').length >= 1)
     assert.ok(screen.getByText(/7\.50/))
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
@@ -102,8 +102,12 @@ describe('SendConfirm', () => {
   })
 
   it('exposes the request JSON behind a View data expander', () => {
+    // The payload is now a JsonView tree; the key "recipient" and the party value are
+    // rendered as separate text nodes — confirm the key is visible in the tree.
     renderConfirm({ createTokenTransfer: async () => ({ updateId: 'u1' }) }, () => undefined)
-    assert.ok(screen.getByText(/"recipient": "bob::party"/))
+    // JsonView renders the key "recipient" and the party value as separate nodes.
+    assert.ok(screen.getAllByText('recipient').length >= 1)
+    assert.ok(screen.getAllByText('bob::party').length >= 1)
   })
 
   it('cancels back without submitting', async () => {

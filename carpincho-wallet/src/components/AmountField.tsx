@@ -8,6 +8,7 @@ export interface AmountFieldProps {
   balance: string
   tokenLabel: string
   error?: boolean
+  testId?: string
 }
 
 const FIELD_CLASS =
@@ -21,6 +22,7 @@ export const AmountField = ({
   balance,
   tokenLabel,
   error,
+  testId,
 }: AmountFieldProps): JSX.Element => (
   <div className="grid gap-1">
     <span className="text-[0.78rem] font-semibold text-muted-foreground">Amount</span>
@@ -34,6 +36,7 @@ export const AmountField = ({
     >
       <input
         aria-label="Amount"
+        data-testid={testId}
         aria-invalid={error ? true : undefined}
         inputMode="decimal"
         autoComplete="off"
@@ -44,6 +47,7 @@ export const AmountField = ({
       />
       <button
         type="button"
+        data-testid={testId === undefined ? undefined : `${testId}-max`}
         onClick={onMax}
         className="shrink-0 rounded-sm px-2 py-1 text-[0.72rem] font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary-soft focus-visible:outline-none focus-visible:shadow-focus"
       >

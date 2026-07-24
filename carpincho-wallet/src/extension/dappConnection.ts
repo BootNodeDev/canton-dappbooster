@@ -8,6 +8,7 @@ import type { ConnectedDappSession } from '@/wc/client'
 interface ChromeTab {
   url?: string
   title?: string
+  favIconUrl?: string
 }
 
 interface ChromeApi {
@@ -24,8 +25,10 @@ export type DappConnectionStatus =
   | {
       kind: 'detected' | 'connected'
       label: string
+      host: string
       subtitle: string
       origin: string
+      icon?: string
     }
 
 interface DappConnectionSources {
@@ -106,24 +109,27 @@ export const dappConnectionFromSources = ({
     const connected =
       directConnectedOrigins.some((origin) => sameOrigin(origin, tab.url as string)) ||
       sessions.some((session) => sameOrigin(session.url, tab.url as string))
+    const host = labelFromUrl(tab.url)
     return {
       kind: connected ? 'connected' : 'detected',
-      label: labelFromUrl(tab.url),
+      label: host,
+      host,
       subtitle: connected ? 'Connected' : 'Not connected',
       origin: originFromUrl(tab.url),
+      ...(tab.favIconUrl === undefined ? {} : { icon: tab.favIconUrl }),
     }
   }
 
   const connectedSession = sessions[0]
   if (connectedSession !== undefined) {
+    const host = labelFromUrl(connectedSession.url)
     return {
       kind: 'connected',
-      label:
-        connectedSession.name.trim() === ''
-          ? labelFromUrl(connectedSession.url)
-          : connectedSession.name,
+      label: connectedSession.name.trim() === '' ? host : connectedSession.name,
+      host,
       subtitle: 'Connected',
       origin: originFromUrl(connectedSession.url),
+      ...(connectedSession.icon === undefined ? {} : { icon: connectedSession.icon }),
     }
   }
 

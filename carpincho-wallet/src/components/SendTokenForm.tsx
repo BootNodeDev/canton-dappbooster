@@ -103,6 +103,7 @@ export const SendTokenForm = ({
           </label>
           <button
             type="button"
+            data-testid="send-contacts"
             aria-label="Contacts"
             onClick={onOpenContacts}
             className="inline-flex items-center justify-center rounded-sm text-primary transition-colors hover:text-primary-hover focus-visible:outline-none focus-visible:shadow-focus"
@@ -114,6 +115,7 @@ export const SendTokenForm = ({
           aria-label="Recipient"
           autoComplete="off"
           id="send-recipient"
+          data-testid="send-recipient"
           value={recipient}
           onChange={(event) => onRecipientChange(event.target.value)}
         />
@@ -126,6 +128,7 @@ export const SendTokenForm = ({
         balance={spendableBalance}
         tokenLabel={summary.tokenLabel}
         error={overBalance}
+        testId="send-amount"
       />
 
       <div className="grid gap-1">
@@ -137,6 +140,7 @@ export const SendTokenForm = ({
         </label>
         <Select
           id="send-deadline"
+          testId="send-deadline"
           ariaLabel="Deadline"
           value={deadline}
           onValueChange={(value) => onDeadlineChange(value as TransferDeadline)}
@@ -155,6 +159,7 @@ export const SendTokenForm = ({
         <TextInput
           aria-label="Memo"
           id="send-memo"
+          data-testid="send-memo"
           value={memo}
           onChange={(event) => onMemoChange(event.target.value)}
         />
@@ -162,6 +167,7 @@ export const SendTokenForm = ({
 
       <PrimaryButton
         className="mt-1"
+        data-testid="send-review"
         disabled={!canReview}
         onClick={onReview}
       >

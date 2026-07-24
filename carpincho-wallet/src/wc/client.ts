@@ -177,6 +177,7 @@ export interface ConnectedDappSession {
   description: string
   // Party IDs the session was approved with (decoded from the CAIP account strings).
   accounts: string[]
+  icon?: string
 }
 
 // CAIP account is `<chain>:<encodeURIComponent(partyId)>`; party id is the last segment.
@@ -204,6 +205,7 @@ const toConnectedDappSession = (
   url: session.peer.metadata.url,
   description: session.peer.metadata.description,
   accounts: partyIdsFromNamespaces(session.namespaces),
+  icon: session.peer.metadata.icons?.[0],
 })
 
 export const getConnectedDappSessions = async (): Promise<ConnectedDappSession[]> => {

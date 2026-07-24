@@ -4,6 +4,7 @@ import {
   cancelAmuletPreapproval,
   createAmuletPreapproval,
   getAmuletPreapprovalStatus,
+  tapAmulet,
 } from '@/cip56/amuletPreapproval'
 import type { AccountPublic } from '@/vault/types'
 
@@ -125,6 +126,65 @@ describe('Amulet preapproval helpers', () => {
       (recorded[0] as { method?: string } | undefined)?.method,
       'amulet.preapproval.create',
     )
+  })
+
+  it('taps a fixed 100 AMT amount using Carpincho local signing', async () => {
+    // Scenario: the Assets tab faucet button should request one fixed 100 AMT
+    // tap for the selected party, then sign and execute the prepared command.
+    const calls: Array<{ method: string; params: Record<string, unknown> }> = []
+    globalThis.fetch = (async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        method: string
+        params: Record<string, unknown>
+      }
+      calls.push({ method: body.method, params: body.params })
+      if (body.method === 'amulet.tap') {
+        return new Response(
+          JSON.stringify({
+            result: {
+              commands: { ExerciseCommand: { choice: 'AmuletRules_DevNet_Tap' } },
+              disclosedContracts: [{ contractId: 'tap-context-cid' }],
+            },
+          }),
+          { status: 200 },
+        )
+      }
+      if (body.method === 'prepareTransaction') {
+        return new Response(
+          JSON.stringify({
+            result: {
+              preparedTransaction: 'prepared-tap-tx',
+              preparedTransactionHash: 'prepared-tap-hash',
+              hashingSchemeVersion: 'HASHING_SCHEME_VERSION_V2',
+            },
+          }),
+          { status: 200 },
+        )
+      }
+      if (body.method === 'executePrepared') {
+        return new Response(JSON.stringify({ result: { updateId: 'update-tap-1' } }), {
+          status: 200,
+        })
+      }
+      throw new Error(`unexpected method ${body.method}`)
+    }) as typeof globalThis.fetch
+
+    const result = await tapAmulet({
+      account: ACCOUNT,
+      signMessage: async (accountId, messageBase64) => {
+        assert.equal(accountId, 'account-1')
+        assert.equal(messageBase64, 'prepared-tap-hash')
+        return 'signature-base64'
+      },
+    })
+
+    assert.deepEqual(result, { updateId: 'update-tap-1' })
+    assert.deepEqual(
+      calls.map((call) => call.method),
+      ['amulet.tap', 'prepareTransaction', 'executePrepared'],
+    )
+    assert.deepEqual(calls[0]?.params, { receiver: 'alice::party' })
+    assert.deepEqual(calls[1]?.params.disclosedContracts, [{ contractId: 'tap-context-cid' }])
   })
 
   it('cancels an Amulet preapproval using Carpincho local signing', async () => {

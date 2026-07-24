@@ -246,7 +246,7 @@ describe('CIP-56 token helpers', () => {
     assert.deepEqual(seen.amuletConfig, {
       validatorUrl: 'http://localhost:2000/api/validator',
       scanApiUrl: 'http://scan.localhost:4000/api/scan',
-      registryUrl: 'http://localhost:2000/api/validator/v0/scan-proxy',
+      registryUrl: new URL('http://localhost:2000/api/validator/v0/scan-proxy'),
       auth: { method: 'static', token: 'backend.jwt' },
     })
   })
@@ -463,6 +463,39 @@ describe('CIP-56 token helpers', () => {
       ],
       disclosedContracts: [],
     })
+  })
+
+  it('prepares a fixed DevNet Amulet tap command for the receiver party', async () => {
+    // Scenario: Carpincho needs a test-only faucet button that requests a fixed
+    // 100 AMT for the selected external party while preserving local signing.
+    const disclosedContracts = [{ contractId: 'tap-context-cid', createdEventBlob: 'blob' }]
+    const seen: { receiver?: string; amount?: string } = {}
+    const rpc = createRpc(withToken(), {
+      sdkFactory: async () => ({
+        amulet: {
+          tap: async (receiver: string, amount: string) => {
+            seen.receiver = receiver
+            seen.amount = amount
+            return [{ ExerciseCommand: { choice: 'AmuletRules_DevNet_Tap' } }, disclosedContracts]
+          },
+        },
+      }),
+    })
+
+    const res = (await rpc.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'amulet.tap',
+      params: { receiver: 'receiver::party' },
+    })) as JsonRpcResponse
+
+    assert.ok('result' in res)
+    assert.deepEqual(res.result, {
+      commands: { ExerciseCommand: { choice: 'AmuletRules_DevNet_Tap' } },
+      disclosedContracts,
+    })
+    assert.equal(seen.receiver, 'receiver::party')
+    assert.equal(seen.amount, '100')
   })
 
   it('accepts an Amulet transfer preapproval proposal as the validator provider', async () => {

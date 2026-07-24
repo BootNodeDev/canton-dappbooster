@@ -8,11 +8,15 @@ import { toast } from '@/components/ui/toast'
 import { useExtensionDappConnection } from '@/extension/dappConnection'
 import { forgetConnectedOrigin, isExtensionRuntime } from '@/extension/runtimeClient'
 import { useWalletServiceStatus } from '@/hooks/useWalletServiceStatus'
-import { shortMiddle, sortAccounts } from '@/utils/account'
+import { sortAccounts } from '@/utils/account'
 import { useVault } from '@/vault/useVault'
 import { ConnectionSettingsView } from '@/views/ConnectionSettingsView'
 import { PendingActionsSection } from '@/views/home/PendingActionsSection'
-import type { PendingExecuteRequest, PendingSignRequest } from '@/views/home/types'
+import type {
+  PendingConnectRequest,
+  PendingExecuteRequest,
+  PendingSignRequest,
+} from '@/views/home/types'
 import { useExtensionRequests } from '@/views/home/useExtensionRequests'
 import { usePendingActions } from '@/views/home/usePendingActions'
 import { useProviderRequestHandler } from '@/views/home/useProviderRequestHandler'
@@ -31,6 +35,7 @@ export const HomeView = (): JSX.Element => {
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false)
   const [sessions, setSessions] = useState<ConnectedDappSession[]>([])
   const [proposal, setProposal] = useState<ProposalEvent | undefined>(undefined)
+  const [pendingConnect, setPendingConnect] = useState<PendingConnectRequest | undefined>(undefined)
   const [pendingSign, setPendingSign] = useState<PendingSignRequest | undefined>(undefined)
   const [pendingExecute, setPendingExecute] = useState<PendingExecuteRequest | undefined>(undefined)
   const [busy, setBusy] = useState(false)
@@ -67,6 +72,7 @@ export const HomeView = (): JSX.Element => {
 
   const handleProviderRequest = useProviderRequestHandler(
     resolveAccounts,
+    setPendingConnect,
     setPendingSign,
     setPendingExecute,
   )
@@ -78,9 +84,11 @@ export const HomeView = (): JSX.Element => {
     vault: v,
     proposal,
     proposalAccount,
+    pendingConnect,
     pendingSign,
     pendingExecute,
     setProposal,
+    setPendingConnect,
     setPendingSign,
     setPendingExecute,
     setBusy,
@@ -104,25 +112,15 @@ export const HomeView = (): JSX.Element => {
   // HomeView only renders when an account exists, so a primary is always available.
   const primary = v.primary ?? accountsSorted[0]
   const hasPending =
-    proposal !== undefined || pendingSign !== undefined || pendingExecute !== undefined
+    proposal !== undefined ||
+    pendingConnect !== undefined ||
+    pendingSign !== undefined ||
+    pendingExecute !== undefined
   const dapp = useExtensionDappConnection({
     extensionMode,
     sessions,
   })
   const connectedSession = sessions[0]
-  // Connected account address: the WC session's account on web, the active account in extension mode.
-  const footerDappAccountAddress = ((): string | undefined => {
-    if (extensionMode) {
-      return primary === undefined ? undefined : shortMiddle(primary.partyId, 12, 7)
-    }
-    if (connectedSession === undefined) {
-      return undefined
-    }
-    const partyId =
-      v.accounts.find((a) => connectedSession.accounts.includes(a.partyId))?.partyId ??
-      connectedSession.accounts[0]
-    return partyId === undefined ? undefined : shortMiddle(partyId, 12, 7)
-  })()
   // Disconnect, run only after the confirmation dialog is accepted.
   const performDisconnect = ((): (() => void) | undefined => {
     if (extensionMode) {
@@ -160,6 +158,7 @@ export const HomeView = (): JSX.Element => {
       <Sheet
         open={hasPending}
         onOpenChange={() => undefined}
+        testId="approval-sheet"
         side="center"
         title="Awaiting approval"
         description="Review and approve or reject this dApp request."
@@ -167,6 +166,7 @@ export const HomeView = (): JSX.Element => {
       >
         <PendingActionsSection
           proposal={proposal}
+          pendingConnect={pendingConnect}
           pendingSign={pendingSign}
           pendingExecute={pendingExecute}
           proposalAccount={proposalAccount}
@@ -179,6 +179,7 @@ export const HomeView = (): JSX.Element => {
       <Sheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        testId="connection-settings-sheet"
         title="Connection"
         description="Configure wallet-service URL and network."
       >
@@ -188,6 +189,7 @@ export const HomeView = (): JSX.Element => {
       <Sheet
         open={disconnectConfirmOpen}
         onOpenChange={setDisconnectConfirmOpen}
+        testId="disconnect-confirm-sheet"
         side="center"
         title={`Disconnect ${connectedLabel}?`}
         description="Disconnect this dApp from the wallet."
@@ -212,7 +214,6 @@ export const HomeView = (): JSX.Element => {
       <ConnectionFooter
         walletService={walletService}
         dapp={dapp}
-        dappAccountAddress={footerDappAccountAddress}
         onDisconnectDapp={
           performDisconnect === undefined ? undefined : () => setDisconnectConfirmOpen(true)
         }

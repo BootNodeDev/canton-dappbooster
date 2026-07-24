@@ -7,8 +7,10 @@ import { SendConfirm } from '@/components/SendConfirm'
 import { type Cip56SendApi, SendTokenForm, type TransferDeadline } from '@/components/SendTokenForm'
 import { TokenHoldingDetail } from '@/components/TokenHoldingDetail'
 import { TokenReceive } from '@/components/TokenReceive'
+import { Badge } from '@/components/ui/Badge'
 import { SecondaryButton } from '@/components/ui/Button'
 import { CHEVRON_RIGHT_ICON, RECEIVE_ICON, SEND_ICON } from '@/components/ui/icons'
+import { SectionLabel } from '@/components/ui/SectionLabel'
 import { Sheet } from '@/components/ui/Sheet'
 import { useTokenHoldingDetails } from '@/hooks/useTokenHoldingDetails'
 import type { Cip56HoldingsApi } from '@/hooks/useTokenHoldings'
@@ -51,6 +53,7 @@ const HoldingListRow = ({
   return (
     <button
       type="button"
+      data-testid="holding-row"
       onClick={onOpen}
       className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left outline-none transition-colors hover:bg-primary-soft/40 focus-visible:bg-primary-soft/60"
     >
@@ -62,11 +65,7 @@ const HoldingListRow = ({
           <span className="min-w-0 truncate text-[0.9rem] font-medium text-foreground">
             {formatTokenAmount(view?.amount ?? 'unknown')}
           </span>
-          {view?.lock == null ? null : (
-            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase text-muted-foreground">
-              Locked
-            </span>
-          )}
+          {view?.lock == null ? null : <Badge tone="neutral">Locked</Badge>}
         </span>
       </span>
       <span
@@ -107,37 +106,43 @@ const DetailScreen = ({
     </div>
 
     <div className="grid grid-cols-2 gap-3">
-      <SecondaryButton onClick={onSend}>
+      <SecondaryButton
+        data-testid="token-send"
+        onClick={onSend}
+      >
         {SEND_ICON}
         Send
       </SecondaryButton>
-      <SecondaryButton onClick={onReceive}>
+      <SecondaryButton
+        data-testid="token-receive"
+        onClick={onReceive}
+      >
         {RECEIVE_ICON}
         Receive
       </SecondaryButton>
     </div>
 
-    <div className="flex flex-col gap-2">
-      <div className="px-1 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Holdings
+    <div className="flex min-h-0 flex-col gap-2">
+      <SectionLabel>Holdings</SectionLabel>
+      <div className="-mx-1 flex h-60 flex-col gap-2 overflow-y-auto px-1">
+        {loading && holdings.length === 0 ? (
+          <p className="m-0 px-1 text-[0.82rem] text-muted-foreground">Loading UTXOs</p>
+        ) : error !== undefined ? (
+          <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[0.82rem] text-danger">
+            {error}
+          </div>
+        ) : holdings.length === 0 ? (
+          <p className="m-0 px-1 text-[0.82rem] text-muted-foreground">No UTXO details</p>
+        ) : (
+          holdings.map((holding) => (
+            <HoldingListRow
+              key={holding.contractId}
+              holding={holding}
+              onOpen={() => onOpenHolding(holding)}
+            />
+          ))
+        )}
       </div>
-      {loading && holdings.length === 0 ? (
-        <p className="m-0 px-1 text-[0.82rem] text-muted-foreground">Loading UTXOs</p>
-      ) : error !== undefined ? (
-        <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[0.82rem] text-danger">
-          {error}
-        </div>
-      ) : holdings.length === 0 ? (
-        <p className="m-0 px-1 text-[0.82rem] text-muted-foreground">No UTXO details</p>
-      ) : (
-        holdings.map((holding) => (
-          <HoldingListRow
-            key={holding.contractId}
-            holding={holding}
-            onOpen={() => onOpenHolding(holding)}
-          />
-        ))
-      )}
     </div>
   </div>
 )
@@ -260,6 +265,7 @@ export const TokenDetailSheet = ({
     <Sheet
       open={open}
       onOpenChange={handleOpenChange}
+      testId="token-detail-sheet"
       title={title}
       description={`${summary.tokenLabel} token details`}
       hideTitle={screen === 'detail'}

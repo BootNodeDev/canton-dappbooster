@@ -22,8 +22,8 @@ export const AccountListRow = ({
 }: AccountListRowProps): JSX.Element => (
   <div
     className={cn(
-      'group/row relative flex w-full items-center gap-1 rounded-sm transition-colors',
-      account.isPrimary && 'bg-primary-soft/40',
+      'group/row relative flex w-full items-center gap-1 rounded-md border border-border bg-surface transition-colors',
+      account.isPrimary && 'border-primary/60 bg-primary-soft/40',
     )}
   >
     <button
@@ -33,9 +33,9 @@ export const AccountListRow = ({
       aria-current={account.isPrimary ? true : undefined}
       aria-label={account.name}
       onClick={onSelect}
-      className="absolute inset-0 z-0 rounded-sm outline-none transition-colors group-hover/row:bg-primary-soft focus-visible:shadow-focus"
+      className="absolute inset-0 z-0 rounded-md outline-none transition-colors group-hover/row:bg-primary-soft focus-visible:shadow-focus"
     />
-    <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2 p-2">
+    <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5">
       <AccountRow
         account={account}
         withName

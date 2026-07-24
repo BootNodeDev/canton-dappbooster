@@ -40,6 +40,7 @@ interface SheetProps {
   onOpenChange: (open: boolean) => void
   title: string
   description: string
+  testId?: string
   onBack?: () => void
   hideClose?: boolean
   // Visually hide the title (kept for screen readers) while leaving the back chevron in place.
@@ -57,6 +58,7 @@ export const Sheet = ({
   onOpenChange,
   title,
   description,
+  testId,
   onBack,
   hideClose = false,
   hideTitle = false,
@@ -71,7 +73,10 @@ export const Sheet = ({
   >
     <Dialog.Portal>
       <Dialog.Overlay className={OVERLAY_CLASS} />
-      <Dialog.Content className={CONTENT_CLASS_BY_SIDE[side]}>
+      <Dialog.Content
+        data-testid={testId}
+        className={CONTENT_CLASS_BY_SIDE[side]}
+      >
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2 min-w-0">
             {onBack !== undefined && (

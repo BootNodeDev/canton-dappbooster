@@ -21,6 +21,10 @@ export interface AmuletPreapprovalActionParams {
   recordTransaction?: VaultContextValue['recordTransaction']
 }
 
+export interface AmuletTapApi {
+  tapAmulet: (params: AmuletPreapprovalActionParams) => Promise<ExecutePreparedResponse>
+}
+
 // Detects whether wallet-service returned a real command that needs signing.
 const hasCommands = (commands: unknown): boolean =>
   Array.isArray(commands) ? commands.length > 0 : commands !== undefined && commands !== null
@@ -36,6 +40,27 @@ export const getAmuletPreapprovalStatus = async (
   receiver: string,
 ): Promise<AmuletPreapprovalStatus> =>
   await walletServiceRequest<AmuletPreapprovalStatus>('amulet.preapproval.status', { receiver })
+
+// Requests the fixed 100 AMT DevNet faucet command while Carpincho keeps the receiver key local.
+export const tapAmulet = async ({
+  account,
+  signMessage,
+  recordTransaction,
+}: AmuletPreapprovalActionParams): Promise<ExecutePreparedResponse> => {
+  const { commands, disclosedContracts } = await walletServiceRequest<WalletServiceCommands>(
+    'amulet.tap',
+    { receiver: account.partyId },
+  )
+  return await executePreparedCommands({
+    account,
+    commands,
+    disclosedContracts,
+    method: 'amulet.tap',
+    summary: 'Tap 100 AMT',
+    signMessage,
+    recordTransaction,
+  })
+}
 
 // Enables Amulet auto-accept while keeping the receiver signature inside Carpincho.
 export const createAmuletPreapproval = async ({

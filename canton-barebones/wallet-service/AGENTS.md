@@ -4,7 +4,7 @@ This file applies only to `canton-barebones/wallet-service/`. For monorepo-wide 
 
 ## Scope
 
-The wallet-service is a consumer-dApp-agnostic Express JSON-RPC bridge between Carpincho and the local Canton participant. It holds the Canton bearer token boundary, prepares and executes transactions, proxies participant reads, exposes CIP-56 token-standard reads/transfers and Amulet (Canton Coin) preapproval management, and handles wallet-internal party onboarding.
+The wallet-service is a consumer-dApp-agnostic Express JSON-RPC bridge between Carpincho and the local Canton participant. It holds the Canton bearer token boundary, prepares and executes transactions, proxies participant reads, exposes CIP-56 token-standard reads/transfers and Amulet (Canton Coin) preapproval management and DevNet faucet tap, and handles wallet-internal party onboarding.
 
 ## Working Rules
 

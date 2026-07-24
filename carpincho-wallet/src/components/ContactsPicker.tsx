@@ -24,6 +24,8 @@ export const ContactsPicker = ({ contacts, onSelect }: ContactsPickerProps): JSX
         <button
           key={account.id}
           type="button"
+          data-testid="contact-row"
+          data-party-id={account.partyId}
           aria-label={account.name}
           onClick={() => onSelect(account.partyId)}
           className="flex h-14 shrink-0 items-center rounded-sm px-2 text-left outline-none transition-colors hover:bg-primary-soft focus-visible:shadow-focus"

@@ -1,43 +1,32 @@
 import { formatTokenAmount } from '@/cip56/amount'
 import type { TokenHolding } from '@/cip56/holdings'
 import { transferTimeLabel } from '@/cip56/transfers'
-
-interface HoldingDetailRowProps {
-  label: string
-  value: string
-}
-
-// Keeps raw holding values readable in the per-UTXO detail view.
-const HoldingDetailRow = ({ label, value }: HoldingDetailRowProps): JSX.Element => (
-  <div className="grid gap-1">
-    <dt className="text-[0.7rem] font-semibold uppercase text-muted-foreground">{label}</dt>
-    <dd className="m-0 break-all font-mono text-[0.74rem] leading-5 text-foreground">{value}</dd>
-  </div>
-)
+import { DetailRow } from '@/components/ui/DetailRow'
 
 // Full detail for a single token holding UTXO.
 export const TokenHoldingDetail = ({ holding }: { holding: TokenHolding }): JSX.Element => {
   const view = holding.interfaceViewValue
   const lock = view?.lock
   return (
-    <dl className="grid gap-3 rounded-md border border-border bg-surface px-3 py-3">
-      <HoldingDetailRow
+    <dl className="grid gap-3">
+      <DetailRow
         label="amount"
         value={view?.amount === undefined ? 'unknown' : formatTokenAmount(view.amount)}
       />
-      <HoldingDetailRow
+      <DetailRow
         label="lock"
         value={lock == null ? 'unlocked' : 'locked'}
       />
       {lock?.expiresAt === undefined ? null : (
-        <HoldingDetailRow
+        <DetailRow
           label="expires"
           value={transferTimeLabel(lock.expiresAt)}
         />
       )}
-      <HoldingDetailRow
+      <DetailRow
         label="contract id"
         value={holding.contractId}
+        copyLabel="contract ID"
       />
     </dl>
   )

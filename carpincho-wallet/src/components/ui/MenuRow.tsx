@@ -11,12 +11,20 @@ interface MenuRowProps {
   tone?: 'default' | 'danger'
   // Optional trailing icon rendered at the right edge of the row.
   icon?: ReactNode
+  testId?: string
 }
 
-export const MenuRow = ({ label, onClick, tone = 'default', icon }: MenuRowProps): JSX.Element => (
+export const MenuRow = ({
+  label,
+  onClick,
+  tone = 'default',
+  icon,
+  testId,
+}: MenuRowProps): JSX.Element => (
   <li>
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       className={cn(
         MENU_ROW_BASE_CLASS,

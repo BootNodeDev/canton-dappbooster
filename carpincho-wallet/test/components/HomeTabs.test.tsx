@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { afterEach, describe, it } from 'node:test'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { HomeTabs } from '@/components/HomeTabs'
@@ -89,9 +89,8 @@ describe('HomeTabs navigation', () => {
     cleanup()
   })
 
-  it('renders Assets, Transfers, and Activity tabs', () => {
-    // Scenario: token balances, incoming transfers, and history each own a top-level
-    // tab. Sending now lives inside the token detail modal, so there is no Send tab.
+  it('renders Assets, Activity, and Utils tabs without Transfers or Send', () => {
+    // Scenario: the Transfers tab is gone; pending transfers live in Activity now.
     renderHome(
       baseVault(),
       <HomeTabs
@@ -101,8 +100,9 @@ describe('HomeTabs navigation', () => {
     )
 
     assert.equal(screen.getByRole('tab', { name: 'Assets' }).getAttribute('data-state'), 'active')
-    assert.ok(screen.getByRole('tab', { name: 'Transfers' }))
     assert.ok(screen.getByRole('tab', { name: 'Activity' }))
+    assert.ok(screen.getByRole('tab', { name: 'Utils' }))
+    assert.equal(screen.queryByRole('tab', { name: 'Transfers' }), null)
     assert.equal(screen.queryByRole('tab', { name: 'Send' }), null)
   })
 
@@ -137,10 +137,9 @@ describe('HomeTabs navigation', () => {
     await screen.findByText('Amulet')
   })
 
-  it('badges the Transfers tab when hidden incoming transfers require action', async () => {
-    // Scenario: incoming transfer polling lives in the Transfers tab, which stays
-    // mounted while Activity is selected so pending receiver-acceptance work can
-    // still badge the tab.
+  it('badges the Activity tab when hidden incoming transfers require action', async () => {
+    // Scenario: the Activity content is force-mounted, so its incoming-transfer polling
+    // badges the tab even while Assets is selected.
     const transfersApi: Cip56TransferApi = {
       listPendingIncomingTransfers: async () => [
         {
@@ -172,7 +171,36 @@ describe('HomeTabs navigation', () => {
     )
 
     assert.equal(screen.getByRole('tab', { name: 'Assets' }).getAttribute('data-state'), 'active')
-    await screen.findByRole('tab', { name: 'Transfers 1' })
+    await screen.findByRole('tab', { name: 'Activity 1' })
+  })
+
+  it('keeps the optimistic auto-accept toggle on across tab switches', async () => {
+    // Scenario: enabling auto-accept flips the toggle on optimistically while the ledger
+    // catches up. Switching tabs must not unmount the Assets panel and lose that state.
+    const holdingsApi: Cip56HoldingsApi = {
+      listTokenHoldingSummaries: async () => [],
+    }
+
+    renderHome(
+      baseVault(),
+      <HomeTabs
+        transactions={[]}
+        tokensApi={holdingsApi}
+        preapprovalApi={inactivePreapprovalApi}
+      />,
+    )
+
+    const toggle = await screen.findByRole('switch', { name: 'Auto-accept incoming' })
+    await waitFor(() => assert.equal(toggle.hasAttribute('disabled'), false))
+    await userEvent.click(toggle)
+    await waitFor(() => assert.equal(toggle.getAttribute('aria-checked'), 'true'))
+
+    // Leave the Assets tab and come back.
+    await userEvent.click(screen.getByRole('tab', { name: 'Activity' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+
+    const toggleAfter = await screen.findByRole('switch', { name: 'Auto-accept incoming' })
+    assert.equal(toggleAfter.getAttribute('aria-checked'), 'true')
   })
 
   it('shows Activity only for the selected account', async () => {

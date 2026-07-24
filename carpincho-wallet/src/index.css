@@ -168,6 +168,7 @@
   --animate-soft-pulse: soft-pulse 2600ms ease-in-out infinite;
   --animate-drift: drift 3.2s ease-in-out infinite;
   --animate-logo-shadow: logo-shadow 3.2s ease-in-out infinite;
+  --animate-spin-fast: spin-fast 500ms linear infinite;
 }
 
 @utility w-popup {
@@ -188,6 +189,12 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes spin-fast {
+  to {
+    rotate: 360deg;
   }
 }
 

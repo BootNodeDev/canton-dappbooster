@@ -3,8 +3,11 @@ import { afterEach, describe, it } from 'node:test'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AssetsPanel } from '@/components/AssetsPanel'
+import { TooltipProvider } from '@/components/ui/Tooltip'
 import { toast } from '@/components/ui/toast'
+import type { AmuletPreapprovalApi } from '@/hooks/useAmuletPreapproval'
 import type { Cip56HoldingsApi } from '@/hooks/useTokenHoldings'
+import { inactivePreapprovalApi } from '@/test-utils/preapproval'
 import { TestQueryClientProvider } from '@/test-utils/queryClient'
 import type { AccountPublic } from '@/vault/types'
 import { VaultContext, type VaultContextValue } from '@/vault/VaultContext'
@@ -44,15 +47,31 @@ const baseVault = (): VaultContextValue =>
     setAutoLockOption: () => undefined,
   }) as VaultContextValue
 
-// Mounts the panel under vault context so it can resolve the active account.
-const renderAssets = (api: Cip56HoldingsApi): void => {
+// Mounts the panel under vault + tooltip context so it can resolve the account and toggle.
+const renderAssets = (
+  api: Cip56HoldingsApi,
+  preapprovalApi: AmuletPreapprovalApi = inactivePreapprovalApi,
+): void => {
   render(
     <TestQueryClientProvider>
-      <VaultContext.Provider value={baseVault()}>
-        <AssetsPanel api={api} />
-      </VaultContext.Provider>
+      <TooltipProvider>
+        <VaultContext.Provider value={baseVault()}>
+          <AssetsPanel
+            api={api}
+            preapprovalApi={preapprovalApi}
+          />
+        </VaultContext.Provider>
+      </TooltipProvider>
     </TestQueryClientProvider>,
   )
+}
+
+// Clicks the token row by its visible label so the faucet button is not selected by accident.
+const clickTokenRow = async (label: string): Promise<void> => {
+  const tokenLabel = await screen.findByText(label)
+  const row = tokenLabel.closest('button')
+  assert.ok(row)
+  await userEvent.click(row)
 }
 
 describe('AssetsPanel', () => {
@@ -92,7 +111,8 @@ describe('AssetsPanel', () => {
     renderAssets(api)
 
     await screen.findByText('Amulet')
-    assert.equal(screen.getByText('2 UTXOs').textContent, '2 UTXOs')
+    assert.equal(screen.getByText('15.75').textContent, '15.75')
+    assert.equal(screen.queryByText(/UTXO/i), null)
     assert.equal(screen.queryByRole('button', { name: /show holdings/i }), null)
   })
 
@@ -130,9 +150,9 @@ describe('AssetsPanel', () => {
     renderAssets(api)
 
     assert.equal(detailsCalls, 0)
-    await userEvent.click(await screen.findByRole('button', { name: /Amulet/ }))
+    await clickTokenRow('Amulet')
 
-    await screen.findByText('15.75')
+    await screen.findAllByText('15.75')
     await screen.findByText('12.50')
     assert.equal(detailsCalls, 1)
   })
@@ -173,7 +193,7 @@ describe('AssetsPanel', () => {
 
     renderAssets(api)
 
-    await userEvent.click(await screen.findByRole('button', { name: /Amulet/ }))
+    await clickTokenRow('Amulet')
 
     // Both the balance and the lone cached holding format to 15.75; two matches with
     // no detail fetch proves the cached UTXO rendered without a round trip.
@@ -205,5 +225,29 @@ describe('AssetsPanel', () => {
     renderAssets(api)
 
     await screen.findByText('No token holdings')
+  })
+
+  it('shows the auto-accept setting above the holdings list', async () => {
+    // Scenario: the auto-accept toggle now lives on the Assets tab as a setting row,
+    // with the holdings grouped beneath a label.
+    const api: Cip56HoldingsApi = {
+      listTokenHoldingSummaries: async () => [
+        {
+          key: 'dso::party:Amulet',
+          tokenLabel: 'Amulet',
+          instrumentId: { admin: 'dso::party', id: 'Amulet' },
+          totalAmount: '15.75',
+          utxoCount: 2,
+          lockedCount: 0,
+          unlockedCount: 2,
+          source: 'utxos',
+        },
+      ],
+    }
+
+    renderAssets(api)
+
+    assert.ok(await screen.findByRole('switch', { name: 'Auto-accept incoming' }))
+    assert.equal(screen.getByText('Holdings').textContent, 'Holdings')
   })
 })

@@ -18,8 +18,8 @@ const queryClient = createQueryClient()
 
 export type ShellView = 'loading' | 'unlock' | 'onboarding' | 'home'
 
-// First-run routing; order matters. OnboardingFlow picks step 1 (no vault) vs step 2
-// (unlocked vault, no account), so both onboarding cases collapse to one branch.
+// First-run routing; order matters. Both onboarding cases (no vault, or unlocked vault
+// with no account) collapse to one branch; OnboardingFlow runs the vault/RPC/account steps.
 export const selectShellView = (
   v: Pick<VaultContextValue, 'isLoading' | 'hasVault' | 'isLocked' | 'accounts'>,
 ): ShellView => {

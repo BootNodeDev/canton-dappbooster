@@ -14,10 +14,10 @@
 | Wallet protocol | Injected CIP-0103 provider + optional WalletConnect Sign Client 2.x | Browser extension provider events by default; Reown relay only for WalletConnect fallback |
 | Cryptography | @noble/ed25519 3.x, @noble/hashes 1.x | Ed25519 signing; PBKDF2 + AES-GCM vault |
 | Data fetching | @tanstack/react-query 5.x | Polls CIP-56 token holdings, pending transfers, and Amulet preapproval status (5 s); imperative refetch after sends. Single `QueryClient` mounted in `App.tsx` |
-| UI primitives | React 18 + Radix UI | `@radix-ui/react-{dialog,tabs,toast,tooltip}` for modals/tabs/toasts/tooltips; local wrappers (Button family, TextInput, PasswordInput, Alert, Card, AccountAvatar, PendingActionCard, Sheet, Tabs, OptionList, Stepper, DangerConfirm, MenuRow, ToastProvider, Tooltip) for static visuals and Radix re-skins; shared icon SVG literals live in `src/components/ui/icons.tsx`; `Sheet` is the shared Radix Dialog scaffold for sheet-style flows (overlay, title, close button) and takes `side: 'bottom' | 'right' | 'center'` (default `'bottom'`; right opens as a 400px-wide top-aligned drawer clamped by `100vw`; center renders a centered modal dialog); `ToastProvider` and `TooltipProvider` are both mounted once in `App.tsx`; `TextInput` and `PasswordInput` accept `error?: boolean` which applies a danger border, a persistent focus ring, and `aria-invalid`; `Button.tsx` exports `GHOST_BUTTON_CLASS` / `ICON_BUTTON_CLASS` for ad-hoc buttons (e.g. `PasswordInput`'s show/hide button) |
+| UI primitives | React 18 + Radix UI | `@radix-ui/react-{collapsible,dialog,tabs,toast,tooltip}` for modals/tabs/toasts/tooltips; local wrappers (Button family, TextInput, PasswordInput, Alert, Card, AccountAvatar, PendingActionCard, Sheet, Tabs, OptionList, Stepper, DangerConfirm, MenuRow, DetailRow, FileDropInput, Collapsible, Copyable, CopyableLabel, JsonView, ToastProvider, Tooltip) for static visuals and Radix re-skins; shared icon SVG literals live in `src/components/ui/icons.tsx`; `Sheet` is the shared Radix Dialog scaffold for sheet-style flows (overlay, title, close button) and takes `side: 'bottom' | 'right' | 'center'` (default `'bottom'`; right opens as a 400px-wide top-aligned drawer clamped by `100vw`; center renders a centered modal dialog); `ToastProvider` and `TooltipProvider` are both mounted once in `App.tsx`; `TextInput` and `PasswordInput` accept `error?: boolean` which applies a danger border, a persistent focus ring, and `aria-invalid`; `Button.tsx` exports `GHOST_BUTTON_CLASS` / `ICON_BUTTON_CLASS` for ad-hoc buttons (e.g. `PasswordInput`'s show/hide button) |
 | Styling | Tailwind CSS v4 (`@tailwindcss/vite`) | Utility classes inline in JSX; `src/index.css` declares CSS-variable tokens on `:root` / `[data-theme="dark"]` and exposes them to Tailwind through `@theme inline`; `@layer base` holds global resets; Radix `data-[state=...]` and `data-[highlighted]` attrs drive interactive variants |
 | Fonts | `@fontsource-variable/manrope`, `@fontsource-variable/jetbrains-mono` | Self-hosted variable fonts so the extension popup works offline. Manrope is the whole UI: `font-sans` (UI chrome, body, labels, buttons) and `font-display` (hero wordmarks, view headings, section markers — heavier weight for hierarchy). JetBrains Mono is `font-mono` (party IDs, hashes, RPC URLs, JSON payloads) |
-| Theming | Light / dark / system selector in the drawer menu | `src/theme/ThemeProvider.tsx` owns a persisted `mode` (`light` \| `dark` \| `system`, default `system`), resolves `system` against `prefers-color-scheme` (re-resolving on media changes while in `system`), and writes the resolved `data-theme` on `<html>` after mount; the selector lives at Settings → Theme (`src/components/menu/ThemeMenu.tsx`) with no header toggle; the Tailwind `dark:` variant is rebound to `[data-theme='dark']` via `@custom-variant` |
+| Theming | Light / dark / system selector in the drawer menu | `src/theme/ThemeProvider.tsx` owns a persisted `mode` (`light` \| `dark` \| `system`, default `system`), resolves `system` against `prefers-color-scheme` (re-resolving on media changes while in `system`), and writes the resolved `data-theme` on `<html>` after mount; the selector lives in the drawer under Theme (`src/components/menu/ThemeMenu.tsx`) with no header toggle; the Tailwind `dark:` variant is rebound to `[data-theme='dark']` via `@custom-variant` |
 | Testing | Node built-in `node:test` + `tsx` loader | React Testing Library + happy-dom for `.tsx` interaction tests; bootstrapped via `test/setup-dom.ts` |
 | Runtime | Browser (Chrome extension popup or standalone web tab) | |
 
@@ -30,18 +30,23 @@ src/
   assets/           SVG brand assets (carpincho-logo.svg)
   components/       Shared UI components (Logo, Header, WelcomeHero, AccountCard,
                     AccountRow, AccountListRow, AccountsDialog, CopyPartyIdButton,
-                    ActivityList, HomeTabs, AssetsPanel, TransfersPanel,
+                    ActivityList, HomeTabs, AssetsPanel, ActivityPanel,
+                    AutoAcceptSetting, TransferCard, TransferDetailsSheet,
                     TokenRow, TokenDetailSheet, TokenReceive, TokenHoldingDetail,
                     SendTokenForm, SendConfirm, ContactsPicker, AmountField,
                     ConnectionFooter,
                     NewPasswordFields, CreateAccountForm, PasswordStrengthIndicator,
-                    SecurityPanel, menu/* drawer, ui/* primitives).
+                    VaultPanel, VaultBackupPanel, UtilsPanel, utils/* (UtilsList, CreateContractUtil,
+                    ExerciseChoiceUtil, ActiveContractsUtil, DarUploadPanel, JsonField,
+                    UpdateIdResult), menu/* drawer, ui/* primitives).
                     ui/* wraps Radix headless primitives (Tabs on top of
                     @radix-ui/react-tabs; Sheet on top of @radix-ui/react-dialog;
-                    Select on top of @radix-ui/react-select)
+                    Select on top of @radix-ui/react-select;
+                    Collapsible on top of @radix-ui/react-collapsible)
                     and provides static visuals (Button, TextInput, PasswordInput,
                     Alert, Card, OptionList, Stepper, DangerConfirm, AccountAvatar,
-                    PendingActionCard, Select).
+                    PendingActionCard, Select, DetailRow, FileDropInput, Collapsible,
+                    Copyable, CopyableLabel, JsonView).
   theme/            ThemeProvider + ThemeContext + useTheme hook driving the
                     [data-theme] attribute on <html>
   cip56/            Token-standard domain logic: holdings/UTXO summaries, transfers, amount formatting,
@@ -52,8 +57,8 @@ src/
   extension/        Chrome extension scripts: background, content script, provider injection
   provider/         CIP-0103 wallet provider — request dispatcher and method handlers
   vault/            Encrypted local vault: PBKDF2 key derivation, AES-GCM storage, React context
-  utils/            Pure helpers (account formatting, clipboard, classnames cn, JSON pretty-print)
-  views/            Top-level UI views (onboarding/* two-step wizard, Unlock, Home,
+  utils/            Pure helpers (account formatting, clipboard, classnames cn, JSON pretty-print, file download, network-id display)
+  views/            Top-level UI views (onboarding/* three-step wizard (vault → RPC → first account), Unlock, Home,
                     ConnectionSettings) plus home/* — the extracted HomeView logic
                     (pending-actions state, extension/provider request handling,
                     WalletConnect lifecycle, transaction summarising)
@@ -79,20 +84,21 @@ Transient system feedback — action results, async errors, network failures, co
 
 The vault is the security core of the wallet. It holds encrypted account secrets in `localStorage` and exposes a React context so views can read and mutate wallet state without ever touching the raw ciphertext.
 
-- **`VaultContext.tsx`** — React context that owns all in-memory plaintext. Module-scope closures hide the decrypted vault and session password from browser DevTools.
+- **`VaultContext.tsx`** — React context that owns all in-memory plaintext. Module-scope closures hide the decrypted vault and session password from browser DevTools. Exposes `exportEncryptedVault(password)` / `importEncryptedVault(file, password)`: export returns a `CarpinchoBackup` — an encrypted container (`encryptVault(JSON.stringify(envelope))`), never plaintext — and import decrypts the file with its own password before merging. The plaintext `VaultEnvelope` (`{ v: 1, accounts: [{ name, partyId, publicKeyBase64, privateKeyHex, network }] }`) is now built and merged internally via the `buildEnvelope` / `mergeEnvelope` helpers; only the encrypted container crosses the public API. Import still validates each entry's Ed25519 derivation and partyId shape and skips duplicates, but inserts accounts in-memory through a shared `insertAccount` helper and re-encrypts the whole batch once (a single persist) rather than persisting per account. Both export and import refuse when the vault is locked.
 - **`crypto.ts`** — Stateless encryption helpers: PBKDF2-HMAC-SHA256 (600 000 iterations) for key derivation; AES-256-GCM via `SubtleCrypto` for encryption/decryption.
+- **`backup.ts`** — Owns the domain-marked `CarpinchoBackup` container: `wrapBackup` wraps an `EncryptedVault` with `kind: 'carpincho-backup'` + `version`, and `parseBackupContainer` is the type-confusion guard that rejects a raw on-disk `EncryptedVault` (which has no `kind`) or any unrelated JSON before it reaches decryption.
 - **`storage.ts`** — Two-step localStorage write (`KEY_VAULT_NEXT` then `KEY_VAULT`) for crash-safe rotation. On load, checks for an interrupted rotation and recovers automatically.
 - **`keypair.ts`** — Ed25519 sign/verify wrappers around `@noble/ed25519`.
 - **`sessionUnlock.ts`** — Caches the session password and the absolute auto-lock deadline (`lockAt`) in `sessionStorage` (or `chrome.storage.session` when running as an extension) so the vault can survive page reloads while still honouring the configured idle timeout.
 - **`useVault.ts`** — The only way components should access vault state. Never read `localStorage` directly.
-- **`passwordStrength.ts`** — Owns the `zxcvbn-ts` setup and exports `scorePassword(pw)`, `isPasswordAcceptable(pw)`, `isConfirmMismatch(pw, c)`, `isNewPasswordPairValid(pw, c)`, `usePasswordStrengthReady()`, `MIN_PASSWORD_LENGTH`, and `MIN_PASSWORD_SCORE`. The EN + common dictionaries load lazily via dynamic `import()` so the Unlock / Home bundles never pay for them; `usePasswordStrengthReady()` kicks off the load on mount and triggers a re-render once `scorePassword` is real. A small in-module cache deduplicates scoring across the indicator and the submit-gate. Every callsite that gates on password quality (Setup, Change Password, the live strength meter) must import from here so the gate is defined in one place.
+- **`passwordStrength.ts`** — Owns the `zxcvbn-ts` setup and exports `scorePassword(pw)`, `isPasswordAcceptable(pw)`, `isConfirmMismatch(pw, c)`, `isNewPasswordPairValid(pw, c)`, `usePasswordStrengthReady()`, `ensurePasswordStrengthReady()`, and `MIN_PASSWORD_SCORE`. The EN + common dictionaries load lazily via dynamic `import()` so the Unlock / Home bundles never pay for them; `usePasswordStrengthReady()` kicks off the load on mount and triggers a re-render once `scorePassword` is real. A small in-module cache deduplicates scoring across the indicator and the submit-gate. The password-quality gate is now enforced at the vault boundary too: `VaultContext.setup()` and `changePassword()` call `isPasswordAcceptable` via `ensurePasswordStrengthReady()`, not only the UI (Setup, Change Password, the live strength meter); every callsite that gates on password quality must import from here so the gate is defined in one place.
 
 ### CIP-0103 Provider (`src/provider/`)
 
 Implements the Canton wallet provider standard. Any dApp request (from WalletConnect or direct injection) is routed here.
 
 - **`dispatch.ts`** — Central request router. Maps method names to handlers and returns a `DispatchResult` with status `handled`, `pending-approval`, or `error`.
-- **`methods.ts`** — Canonical method name constants plus legacy `canton_*` aliases for backwards compatibility.
+- **`methods.ts`** — Canonical method name constants plus legacy `canton_*` aliases for backwards compatibility. Also defines the per-method access tier (`ACCESS_TIER` / `accessTier(method)`) that the injected-provider gate consults, with unknown methods defaulting to the most restrictive tier (fail safe).
 - **`walletService.ts`** — Forwards ledger-read methods (`ledgerApi`, `prepareExecute`, etc.) to the external wallet-service JSON-RPC endpoint.
 - **`accounts.ts`** — Adapts internal `AccountPublic` records to the CIP-0103 wire format.
 
@@ -108,12 +114,12 @@ Manages the WalletConnect sign client lifecycle and session event handling.
 
 Connects the extension popup UI to web pages and the extension background.
 
-- **`background.ts`** — Persistent service worker. Maintains a queue of pending dApp requests, updates the action badge with the count, and caches a wallet snapshot for the popup. Also records the set of direct (injected-provider) dApp origins that have connected to `chrome.storage.session`, which the popup reads and watches via `storage.session.onChanged` to drive the footer's connection state.
+- **`background.ts`** — Persistent service worker. Maintains a queue of pending dApp requests, updates the action badge with the count, and caches a wallet snapshot for the popup. Also records the set of direct (injected-provider) dApp origins that have connected to `chrome.storage.session`, which the popup reads and watches via `storage.session.onChanged` to drive the footer's connection state. That connected-origins set is also a security input: it decides whether a requesting origin is connected (gating account access), and wallet events are broadcast only to connected dApp tabs.
 - **`contentScript.ts`** — Injected into every matched page; announces Carpincho with `canton:announceProvider`, responds to `canton:requestProvider`, and bridges page `window.postMessage` requests to the extension runtime.
-- **`directProvider.ts`** — Handles direct injected-provider requests inside the background worker when the cached wallet snapshot can answer without opening the popup; approval-required methods are queued for the popup.
+- **`directProvider.ts`** — Per-origin permission gate for injected-provider requests inside the background worker. An origin the user has not approved via `connect` gets no account data — account queries answer from an empty snapshot, reporting a disconnected state — `connect` from an unapproved origin is queued for explicit popup approval, and signing is refused; a connected origin (and origin-agnostic methods like `getActiveNetwork` / `disconnect`) is dispatched normally.
 - **`messages.ts`** — Shared message-type constants and type guards used by all three extension scripts.
 - **`runtimeClient.ts`** — Popup-side client for sending requests to the background and receiving responses.
-- **`directConnections.ts`** — Persists the set of direct injected-provider dApp origins that have completed a connect (and removes them on disconnect) in `chrome.storage.session`, with an in-memory fallback when not running as an extension, so the popup footer can show connection state for non-WalletConnect dApps; `clearDirectConnectedOrigins` drops all remembered origins (used on vault reset).
+- **`directConnections.ts`** — Persists the set of direct injected-provider dApp origins that have completed a connect (and removes them on disconnect) in `chrome.storage.session`, with an in-memory fallback when not running as an extension. This set gates injected-provider account access in addition to driving the popup footer's connection state for non-WalletConnect dApps; `clearDirectConnectedOrigins` drops all remembered origins (used on vault reset).
 - **`directConnectionState.ts`** — Pure helper that normalizes page URLs to stable http(s) origins and derives a remember/forget/none update from a provider request/response pair: remembers on a successful `connect` whose result reports `isConnected: true`, forgets on `disconnect`.
 - **`walletSnapshot.ts`** — Serialises the current wallet state (accounts, network, lock status) into a plain object the background caches so the popup can render without unlocking the vault.
 
@@ -125,7 +131,7 @@ Token balances, transfers, and Amulet auto-accept are layered on top of the wall
 - **`cip56/transfers.ts`** — `listPendingIncomingTransfers` reads pending CIP-56 transfers (the ledger returns every instruction the party is a stakeholder on, so the list spans both directions) and `transferDirection` classifies each as incoming or outgoing relative to the active party; `acceptPendingTransfer` and `createTokenTransfer` run write flows through `executePreparedCommands`.
 - **`cip56/amuletPreapproval.ts`** — `getAmuletPreapprovalStatus` reads the Amulet auto-accept (preapproval) state; `createAmuletPreapproval` / `cancelAmuletPreapproval` toggle it via `executePreparedCommands`.
 - **`api/interactiveSubmission.ts`** — `executePreparedCommands` orchestrates the Canton interactive submission pattern: wallet-service `prepareTransaction`, then local signing through the Vault (`signMessage`), then wallet-service `executePrepared`, then an optional `recordTransaction`. It is the single write path for every token transfer and preapproval action, keeping command preparation and ledger submission on the wallet-service while signing stays local.
-- **`hooks/`** — Thin React Query wrappers: `useTokenHoldings` and `usePendingCip56Transfers` poll every 5 s; `useTokenHoldingDetails` lazy-loads a token's UTXOs when its detail modal opens; `useAmuletPreapproval` polls status and exposes `enable()` / `disable()`. `AssetsPanel`, `TokenDetailSheet`, and `TransfersPanel` consume these hooks.
+- **`hooks/`** — Thin React Query wrappers: `useTokenHoldings` and `usePendingCip56Transfers` poll every 5 s; `useTokenHoldingDetails` lazy-loads a token's UTXOs when its detail modal opens; `useAmuletPreapproval` polls status and exposes `enable()` / `disable()`. `AssetsPanel` / `AutoAcceptSetting`, `TokenDetailSheet`, and `ActivityPanel` consume these hooks.
 
 ### Data Access Layer
 
@@ -201,21 +207,21 @@ Three providers wrap the app. `ThemeProvider` is mounted outermost (in `src/main
           <Shell>           src/App.tsx — reads vault state to pick the active view
             <Header />      includes the Menu burger button
             <HomeView />    or <OnboardingFlow />, <UnlockView />, etc.
-            <MenuSheet />   drill-down drawer (Menu → Settings → Theme / Security & Password → Password / Auto-lock)
+            <MenuSheet />   drill-down drawer (Menu → Theme / Vault → Password / Auto Lock / Export Vault / Import Vault)
           </Shell>
         </ToastProvider>
       </TooltipProvider>
 ```
 
-There is no router. `Shell` picks one view from `useVault()` via the pure `selectShellView` helper in `src/App.tsx`, branching on `hasVault`, `isLocked`, and `accounts.length`: no vault → `OnboardingFlow` (step 1, create vault); unlocked vault with no account yet → `OnboardingFlow` (step 2, create first account); locked vault → `UnlockView`; unlocked vault with at least one account → `HomeView`. While `useVault()` reports `isLoading`, `Shell` renders a centred spinner instead of any view so the session-restore decision lands in one paint and the Unlock screen never flashes.
+There is no router. `Shell` picks one view from `useVault()` via the pure `selectShellView` helper in `src/App.tsx`, branching on `hasVault`, `isLocked`, and `accounts.length`: no vault → `OnboardingFlow` starting at the create-vault step; unlocked vault with no account yet → `OnboardingFlow` which runs the Configure RPC step (gated on a wallet-service probe) then the create-first-account step, which presents two tabs — "Create new account" and "Restore from backup", where the restore tab reuses the dashboard `ImportVaultForm` to merge a backup's accounts under the new local vault password and never creates a Canton party; locked vault → `UnlockView`; unlocked vault with at least one account → `HomeView`. While `useVault()` reports `isLoading`, `Shell` renders a centred spinner instead of any view so the session-restore decision lands in one paint and the Unlock screen never flashes.
 
-The Menu drawer lives in `src/components/menu/`: `MenuSheet.tsx` is the navigation orchestrator (wraps the shared `Sheet` primitive with `side="right"`, opening as a 400px-wide top-aligned panel clamped by `100vw` that slides in via `animate-sheet-slide-right`), `screens.ts` holds the `Screen` union plus the `SCREENS` metadata map and the `MENU_LISTS` row data for the navigation-list screens, `MenuList.tsx` renders those rows, and `ThemeMenu.tsx` is the Theme leaf. It manages internal screen state (`root` → `settings` → `theme` | `security`; `security` → `password` | `auto-lock`); each in-drawer transition uses `animate-slide-in-right` (forward) or `animate-slide-in-left` (back). Navigation-list screens are data-driven via `MENU_LISTS`; leaf screens (`theme`, `password`, `auto-lock`) render a component. Every new option must be added as another `Screen` with an entry in the `SCREENS` map (`title`, `description`, `parent`); accordion-style expansion inside a screen is disallowed.
+The Menu drawer lives in `src/components/menu/`: `MenuSheet.tsx` is the navigation orchestrator (wraps the shared `Sheet` primitive with `side="right"`, opening as a 400px-wide top-aligned panel clamped by `100vw` that slides in via `animate-sheet-slide-right`), `screens.ts` holds the `Screen` union plus the `SCREENS` metadata map and the `MENU_LISTS` row data for the navigation-list screens, `MenuList.tsx` renders those rows, and `ThemeMenu.tsx` is the Theme leaf. It manages internal screen state (`root` → `theme` | `vault`; `vault` → `password` | `auto-lock` | `export-vault` | `import-vault`); each in-drawer transition uses `animate-slide-in-right` (forward) or `animate-slide-in-left` (back). Navigation-list screens are data-driven via `MENU_LISTS`; leaf screens (`theme`, `password`, `auto-lock`, `export-vault`, `import-vault`) render a component. Every new option must be added as another `Screen` with an entry in the `SCREENS` map (`title`, `description`, `parent`); accordion-style expansion inside a screen is disallowed.
 
 ### Theming
 
 - **Tokens** — `src/index.css` defines colour, radius, font, shadow, animation, and sizing tokens. Colours live as CSS custom properties on `:root` (light) and `[data-theme="dark"]` (dark); `@theme inline` re-exposes them to Tailwind so utilities like `bg-surface` / `text-muted-foreground` / `bg-scrim` flip automatically with the data attribute. Radius (`rounded-sm/md/lg/xl`), shadows (`shadow-card`, `shadow-popover`, `shadow-focus`, `shadow-glow`), the font families (`font-display` / `font-sans` both Manrope, `font-mono` JetBrains Mono), and named keyframes (`fade-in`, `slide-down-and-fade`, `slide-up-and-fade`, `sheet-up`, `sheet-slide-right`, `slide-in-right`, `slide-in-left`, `soft-pulse`, `drift`) are also tokens. Custom sizing utilities are declared via `@utility`: `w-popup` (popup viewport width, `min(100%, 430px)`), `w-drawer` (right-anchored drawer width), and `max-h-sheet` (bottom-sheet max height). The palette follows the dappbooster brand: a cool navy dark theme (`#14152b`) matching `dappbooster-canton-landing` and a neutral-grey light theme (`#f7f7f7`, primary `#692581`) matching the `dAppBooster` boilerplate, with a shared purple→pink brand accent (`--bg-gradient-brand: linear-gradient(135deg, #c670e5, #e71d73)` plus `--shadow-glow`) applied on primary-button hover and the hero wordmark. Green (`--color-success`) is the positive accent (used for the connected-state indicator) and `--color-scrim` is the theme-aware modal/sheet backdrop tint. A brand-tinted radial top-glow (`--bg-radial`) sits behind the page; there is no paper-grain overlay.
 - **Theme provider** — `src/theme/ThemeProvider.tsx` owns a persisted `mode` (`light` | `dark` | `system`) stored in `localStorage.carpincho-theme`, defaulting to `system` when nothing is stored. It resolves `system` against `prefers-color-scheme`, re-resolves on media changes while in `system`, and writes the resolved `data-theme` on `<html>` after mount. Components consume it via the `useTheme()` hook (`src/theme/useTheme.ts`), which exposes `{ mode, setMode }`.
-- **Selector** — `src/components/menu/ThemeMenu.tsx` is the Theme leaf inside the Menu drawer (Settings → Theme). It lists `Light` / `Dark` / `System` (System default) and marks the active mode with a checkmark; there is no header toggle.
+- **Selector** — `src/components/menu/ThemeMenu.tsx` is the Theme leaf inside the Menu drawer (a top-level Theme item). It lists `Light` / `Dark` / `System` (System default) and marks the active mode with a checkmark; there is no header toggle.
 
 ### Auth / Session Management
 

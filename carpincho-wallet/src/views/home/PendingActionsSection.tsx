@@ -2,12 +2,17 @@ import { Alert } from '@/components/ui/Alert'
 import { PendingActionCard } from '@/components/ui/PendingActionCard'
 import { shortMiddle } from '@/utils/account'
 import type { AccountPublic } from '@/vault/types'
-import type { PendingExecuteRequest, PendingSignRequest } from '@/views/home/types'
+import type {
+  PendingConnectRequest,
+  PendingExecuteRequest,
+  PendingSignRequest,
+} from '@/views/home/types'
 import type { PendingActions } from '@/views/home/usePendingActions'
 import { CANTON_METHOD_CONNECT, CANTON_METHOD_SIGN_MESSAGE, type ProposalEvent } from '@/wc/client'
 
 interface PendingActionsSectionProps extends PendingActions {
   proposal: ProposalEvent | undefined
+  pendingConnect: PendingConnectRequest | undefined
   pendingSign: PendingSignRequest | undefined
   pendingExecute: PendingExecuteRequest | undefined
   proposalAccount: string | null
@@ -15,9 +20,18 @@ interface PendingActionsSectionProps extends PendingActions {
   busy: boolean
 }
 
-// Renders the single active pending request (connect proposal, message sign, or prepare-execute).
+// Shows the requesting dApp origin so the user knows who they are approving.
+const OriginNote = ({ origin }: { origin: string | undefined }): JSX.Element | null =>
+  origin === undefined || origin === '' ? null : (
+    <div className="min-w-0 break-all font-mono text-[0.84rem] font-medium text-muted-foreground">
+      origin: <span className="text-foreground">{origin}</span>
+    </div>
+  )
+
+// Renders the single active pending request (connect, message sign, or prepare-execute).
 export const PendingActionsSection = ({
   proposal,
+  pendingConnect,
   pendingSign,
   pendingExecute,
   proposalAccount,
@@ -25,6 +39,8 @@ export const PendingActionsSection = ({
   busy,
   onApproveProposal,
   onRejectProposal,
+  onApproveConnect,
+  onRejectConnect,
   onApproveSign,
   onRejectSign,
   onApproveExecute,
@@ -54,6 +70,26 @@ export const PendingActionsSection = ({
             </div>
           )}
         </PendingActionCard>
+      ) : pendingConnect !== undefined ? (
+        <PendingActionCard
+          method={CANTON_METHOD_CONNECT}
+          approveLabel="Connect"
+          approveDisabled={busy || accountsSorted.length === 0}
+          onApprove={onApproveConnect}
+          onReject={onRejectConnect}
+          busy={busy}
+        >
+          {accountsSorted.length === 0 ? (
+            <Alert variant="info">Add an account first before connecting.</Alert>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <OriginNote origin={pendingConnect.origin} />
+              <p className="text-[0.85rem] text-muted-foreground">
+                Allow this site to see your accounts and request signatures.
+              </p>
+            </div>
+          )}
+        </PendingActionCard>
       ) : pendingSign !== undefined ? (
         <PendingActionCard
           method={CANTON_METHOD_SIGN_MESSAGE}
@@ -62,7 +98,9 @@ export const PendingActionsSection = ({
           onReject={onRejectSign}
           busy={busy}
           payload={{ json: pendingSign.messageBase64 }}
-        />
+        >
+          <OriginNote origin={pendingSign.origin} />
+        </PendingActionCard>
       ) : pendingExecute !== undefined ? (
         <PendingActionCard
           method={pendingExecute.rawMethod}
@@ -71,7 +109,9 @@ export const PendingActionsSection = ({
           onReject={onRejectExecute}
           busy={busy}
           payload={{ json: pendingExecute.params }}
-        />
+        >
+          <OriginNote origin={pendingExecute.origin} />
+        </PendingActionCard>
       ) : null}
     </>
   )

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Button'
+import { JsonView } from '@/components/ui/JsonView'
 
 interface PendingActionCardProps {
   method: string
@@ -36,9 +37,10 @@ export const PendingActionCard = ({
     {payload !== undefined && (
       <div>
         <div className="font-mono text-[0.84rem] font-medium text-muted-foreground">payload:</div>
-        <pre className="mt-1.5 max-h-[40vh] overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background/60 p-3 font-mono text-[0.82rem] leading-relaxed text-soft">
-          {typeof payload.json === 'string' ? payload.json : JSON.stringify(payload.json, null, 2)}
-        </pre>
+        <JsonView
+          value={payload.json}
+          className="mt-1.5 max-h-[40vh]"
+        />
       </div>
     )}
     <div className="grid grid-cols-2 gap-3">

@@ -2,7 +2,8 @@ import type { Dispatch, SetStateAction } from 'react'
 import { walletServiceRequest } from '@/api/walletService'
 import { toast } from '@/components/ui/toast'
 import { broadcastWalletEvent } from '@/extension/eventBroadcast'
-import { CANTON_METHOD_PREPARE_EXECUTE } from '@/provider/methods'
+import { dispatchProviderRequest } from '@/provider/dispatch'
+import { CANTON_METHOD_CONNECT, CANTON_METHOD_PREPARE_EXECUTE } from '@/provider/methods'
 import type { VaultContextValue } from '@/vault/VaultContext'
 import {
   commandCount,
@@ -10,7 +11,11 @@ import {
   optionalString,
   transactionCommands,
 } from '@/views/home/transactionSummary'
-import type { PendingExecuteRequest, PendingSignRequest } from '@/views/home/types'
+import type {
+  PendingConnectRequest,
+  PendingExecuteRequest,
+  PendingSignRequest,
+} from '@/views/home/types'
 import { approveProposal, type ProposalEvent, rejectProposal } from '@/wc/client'
 
 interface PreparedTransactionResponse {
@@ -33,9 +38,11 @@ interface PendingActionsArgs {
   vault: VaultContextValue
   proposal: ProposalEvent | undefined
   proposalAccount: string | null
+  pendingConnect: PendingConnectRequest | undefined
   pendingSign: PendingSignRequest | undefined
   pendingExecute: PendingExecuteRequest | undefined
   setProposal: Dispatch<SetStateAction<ProposalEvent | undefined>>
+  setPendingConnect: Dispatch<SetStateAction<PendingConnectRequest | undefined>>
   setPendingSign: Dispatch<SetStateAction<PendingSignRequest | undefined>>
   setPendingExecute: Dispatch<SetStateAction<PendingExecuteRequest | undefined>>
   setBusy: Dispatch<SetStateAction<boolean>>
@@ -46,6 +53,8 @@ interface PendingActionsArgs {
 export interface PendingActions {
   onApproveProposal: () => Promise<void>
   onRejectProposal: () => Promise<void>
+  onApproveConnect: () => Promise<void>
+  onRejectConnect: () => Promise<void>
   onApproveSign: () => Promise<void>
   onRejectSign: () => Promise<void>
   onApproveExecute: () => Promise<void>
@@ -58,15 +67,52 @@ export const usePendingActions = ({
   vault,
   proposal,
   proposalAccount,
+  pendingConnect,
   pendingSign,
   pendingExecute,
   setProposal,
+  setPendingConnect,
   setPendingSign,
   setPendingExecute,
   setBusy,
   refreshSessions,
   closeExtensionPopup,
 }: PendingActionsArgs): PendingActions => {
+  // Approve a direct injected-provider connection: only now do accounts leave the wallet,
+  // and the background remembers the origin off the resulting isConnected:true response.
+  const onApproveConnect = async (): Promise<void> => {
+    if (pendingConnect === undefined) {
+      return
+    }
+    setBusy(true)
+    try {
+      await dispatchProviderRequest(
+        { method: CANTON_METHOD_CONNECT },
+        () => ({ accounts: vault.accounts, primary: vault.primary }),
+        pendingConnect.responder,
+      )
+      toast.success('Connected.')
+      setPendingConnect(undefined)
+    } catch (err) {
+      const msg = (err as Error).message
+      await pendingConnect.responder.error(-32000, msg).catch(() => undefined)
+      toast.error(`Connect failed: ${msg}`)
+      setPendingConnect(undefined)
+    } finally {
+      setBusy(false)
+      closeExtensionPopup()
+    }
+  }
+
+  const onRejectConnect = async (): Promise<void> => {
+    if (pendingConnect === undefined) {
+      return
+    }
+    await pendingConnect.responder.error(4001, 'user rejected').catch(() => undefined)
+    setPendingConnect(undefined)
+    closeExtensionPopup()
+  }
+
   const onApproveProposal = async (): Promise<void> => {
     if (proposal === undefined || proposalAccount === null) {
       return
@@ -230,6 +276,8 @@ export const usePendingActions = ({
   return {
     onApproveProposal,
     onRejectProposal,
+    onApproveConnect,
+    onRejectConnect,
     onApproveSign,
     onRejectSign,
     onApproveExecute,

@@ -76,8 +76,9 @@ These add Canton token-standard reads and transfers plus Amulet (Canton Coin) pr
 | `amulet.preapproval.create` | Prepares enabling Amulet auto-accept. |
 | `amulet.preapproval.cancel` | Prepares disabling Amulet auto-accept. |
 | `amulet.preapproval.acceptProposal` | Accepts a `TransferPreapprovalProposal` for the receiver. |
+| `amulet.tap` | Prepares the fixed 100 AMT Splice DevNet faucet tap for a receiver (DevNet only). |
 
-The write methods (`create*`, `acceptTransfer`, `amulet.preapproval.create/cancel/acceptProposal`) return prepared transactions; Carpincho signs locally and submits via `executePrepared`.
+The write methods (`create*`, `acceptTransfer`, `amulet.preapproval.create/cancel/acceptProposal`, `amulet.tap`) return prepared transactions; Carpincho signs locally and submits via `executePrepared`.
 
 `prepareExecute`, `prepareExecuteAndWait`, and `signMessage` stay in
 Carpincho because they require the user's key and approval UI.

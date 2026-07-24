@@ -13,6 +13,7 @@ export interface SelectProps {
   options: SelectOption[]
   ariaLabel: string
   id?: string
+  testId?: string
 }
 
 const TRIGGER_CLASS =
@@ -34,6 +35,7 @@ export const Select = ({
   options,
   ariaLabel,
   id,
+  testId,
 }: SelectProps): JSX.Element => (
   <RadixSelect.Root
     value={value}
@@ -41,6 +43,7 @@ export const Select = ({
   >
     <RadixSelect.Trigger
       id={id}
+      data-testid={testId}
       aria-label={ariaLabel}
       className={TRIGGER_CLASS}
     >

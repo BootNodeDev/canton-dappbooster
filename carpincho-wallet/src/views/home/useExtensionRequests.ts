@@ -34,7 +34,7 @@ export const useExtensionRequests = ({
             params: pending.request.params,
           },
           createRuntimeResponder(pending),
-          {},
+          { origin: pending.origin },
         )
       } catch (error) {
         console.error('[carpincho:extension] request handler failed', { pending, error })

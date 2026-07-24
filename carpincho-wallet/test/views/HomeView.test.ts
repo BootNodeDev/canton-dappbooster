@@ -64,17 +64,16 @@ describe('HomeView transaction activity recording', () => {
 
 describe('PendingActionCard approval layout', () => {
   // Scenario: pending Canton requests need a compact payload area with a label and one framed text box.
-  it('renders payload text directly under the payload label inside one text box', () => {
+  it('renders payload under the payload label in a scrollable tree view', () => {
     // The approval card source is inspected directly because this layout rule is component-local.
     const pendingActionCard = pendingActionCardSource()
 
     // Payload should not reuse JsonPreview because that primitive adds its own framed preview box.
     assert.doesNotMatch(pendingActionCard, /JsonPreview/)
 
-    // The payload label stays visually aligned with the method row while the JSON text itself scrolls.
+    // The payload label stays visually aligned with the method row; JsonView owns the scrollable frame.
     assert.match(pendingActionCard, /payload:/)
-    assert.match(pendingActionCard, /<pre/)
-    assert.match(pendingActionCard, /max-h-\[40vh\] overflow-auto/)
-    assert.match(pendingActionCard, /rounded-md border border-border bg-background\/60 p-3/)
+    assert.match(pendingActionCard, /JsonView/)
+    assert.match(pendingActionCard, /max-h-\[40vh\]/)
   })
 })

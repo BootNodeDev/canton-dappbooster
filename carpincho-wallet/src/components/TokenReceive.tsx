@@ -1,5 +1,5 @@
 import QRCode from 'react-qr-code'
-import { CopyPartyIdButton } from '@/components/CopyPartyIdButton'
+import { DetailRow } from '@/components/ui/DetailRow'
 
 interface TokenReceiveProps {
   partyId: string
@@ -21,16 +21,13 @@ export const TokenReceive = ({ partyId }: TokenReceiveProps): JSX.Element => (
         level="M"
       />
     </div>
-    <div className="w-full">
-      <div className="mb-1.5 px-1 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Your party ID
-      </div>
-      <div className="flex items-start gap-2 rounded-md border border-border bg-surface px-3 py-2.5">
-        <span className="min-w-0 flex-1 break-all font-mono text-[0.8rem] leading-5 text-foreground">
-          {partyId}
-        </span>
-        <CopyPartyIdButton partyId={partyId} />
-      </div>
-    </div>
+    <dl className="m-0 w-full">
+      <DetailRow
+        label="Your party ID"
+        value={partyId}
+        copyLabel="party ID"
+        copyTestId="receive-copy-party-id"
+      />
+    </dl>
   </div>
 )
