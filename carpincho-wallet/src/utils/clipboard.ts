@@ -1,8 +1,12 @@
 import { toast } from '@/components/ui/toast'
 
-export const copyPartyId = (partyId: string): void => {
+// Copies arbitrary wallet text while keeping success and failure feedback consistent.
+export const copyText = (value: string, successMessage: string, onSuccess?: () => void): void => {
   void navigator.clipboard
-    .writeText(partyId)
-    .then(() => toast.success('Party ID copied'))
+    .writeText(value)
+    .then(() => {
+      toast.success(successMessage)
+      onSuccess?.()
+    })
     .catch((err: Error) => toast.error(`Copy failed: ${err.message}`))
 }

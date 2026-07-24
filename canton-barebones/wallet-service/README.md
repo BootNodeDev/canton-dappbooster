@@ -1,6 +1,7 @@
 # Wallet Service
 
-Express JSON-RPC bridge between Carpincho and the local Canton participant.
+Express JSON-RPC bridge between Carpincho and the Splice LocalNet `app-user`
+participant.
 
 It is intentionally app-agnostic: app-specific Daml commands come from the
 consumer, Carpincho owns signing and approval UI, and this service only handles
@@ -24,11 +25,20 @@ WALLET_SERVICE_MOCK=1 npm run wallet-service:dev
 
 ## Token
 
-Real Canton calls require a bearer token accepted by the local participant.
-For this local stack, wallet-service self-mints that HS256 JWT at boot from
-`CANTON_AUTH_AUDIENCE`, `CANTON_AUTH_SECRET`, and `CANTON_ADMIN_USER_ID`, so
-there is no token copy-paste step. These values live in
-[`canton-barebones/.env`](../README.md#auth-config).
+Real Canton calls require a bearer token accepted by Splice LocalNet.
+wallet-service does not mint this token at boot. It requires
+`CANTON_BACKEND_TOKEN`.
+
+Generate one from the repo root:
+
+```bash
+npm run canton:token -- ledger-api-user
+```
+
+Paste the printed `CANTON_BACKEND_TOKEN=...` line into
+`canton-barebones/.env`, then start the stack.
+
+Mock mode does not require a token.
 
 ## API Boundary
 
@@ -49,7 +59,26 @@ Service-specific methods:
 | -------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `prepareTransaction` | Carpincho                       | Calls Canton interactive submission prepare and returns the prepared transaction payload/hash for local signing. |
 | `executePrepared`    | Carpincho                       | Submits Carpincho's signature over a prepared transaction to Canton.                                             |
-| `ledgerApi`          | Carpincho on behalf of the dApp | Proxies participant JSON API reads/writes and injects the Canton bearer token.                                   |
+| `ledgerApi`          | Carpincho on behalf of the dApp | Proxies app-user JSON API reads/writes and injects `CANTON_BACKEND_TOKEN`.                                       |
+
+### CIP-56 token methods
+
+These add Canton token-standard reads and transfers plus Amulet (Canton Coin) preapproval. They are token-standard / Amulet logic, not consumer-dApp logic.
+
+| Method | Purpose |
+| --- | --- |
+| `cip56.listHoldingSummary` | Per-instrument token balance summaries for a party (Amulet summaries via scan proxy; other tokens via holding UTXOs). |
+| `cip56.listHoldings` | Raw token holding UTXOs for a party. |
+| `cip56.listPendingTransfers` | Pending incoming CIP-56 transfer instructions for a party. |
+| `cip56.createTransfer` | Prepares a token transfer for the caller to sign and execute. |
+| `cip56.acceptTransfer` | Prepares acceptance of a pending incoming transfer. |
+| `amulet.preapproval.status` | Reads the Amulet transfer-preapproval (auto-accept) status for a receiver. |
+| `amulet.preapproval.create` | Prepares enabling Amulet auto-accept. |
+| `amulet.preapproval.cancel` | Prepares disabling Amulet auto-accept. |
+| `amulet.preapproval.acceptProposal` | Accepts a `TransferPreapprovalProposal` for the receiver. |
+| `amulet.tap` | Prepares the fixed 100 AMT Splice DevNet faucet tap for a receiver (DevNet only). |
+
+The write methods (`create*`, `acceptTransfer`, `amulet.preapproval.create/cancel/acceptProposal`, `amulet.tap`) return prepared transactions; Carpincho signs locally and submits via `executePrepared`.
 
 `prepareExecute`, `prepareExecuteAndWait`, and `signMessage` stay in
 Carpincho because they require the user's key and approval UI.

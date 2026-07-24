@@ -14,9 +14,10 @@ const connectedService: WalletServiceFooterStatus = {
   networkId: 'canton:local',
 }
 
-const disconnectedService: WalletServiceFooterStatus = {
+const offlineService: WalletServiceFooterStatus = {
   // Wallet-service fixture representing an unreachable service or disconnected Canton network.
   connected: false,
+  networkId: 'canton:local',
 }
 
 const noDapp: DappFooterStatus = {
@@ -27,8 +28,15 @@ const noDapp: DappFooterStatus = {
 const detectedDapp: DappFooterStatus = {
   // Detected dApp fixture matching a browser page that contacted the extension without connecting.
   kind: 'detected',
-  label: 'localhost:3012',
+  host: 'app.uniswap.org',
   subtitle: 'Not connected',
+}
+
+const connectedDapp: DappFooterStatus = {
+  // Connected dApp fixture representing an active session.
+  kind: 'connected',
+  host: 'localhost:5173',
+  subtitle: 'Connected',
 }
 
 describe('ConnectionFooter', () => {
@@ -36,8 +44,8 @@ describe('ConnectionFooter', () => {
     cleanup()
   })
 
-  it('shows wallet-service status and opens settings from a cog button', async () => {
-    // Scenario: Canton is connected, so the footer should show green service state and settings chrome.
+  it('opens settings from the network pill and shows the network name', async () => {
+    // Scenario: Canton is connected, so the pill shows the network and routes to settings.
     const user = userEvent.setup()
     let settingsCalls = 0
     render(
@@ -50,33 +58,26 @@ describe('ConnectionFooter', () => {
       />,
     )
 
-    // The service row should split Canton status color from the muted network label.
-    assert.ok(screen.getByText('canton'))
-    assert.ok(screen.getByText('network:local'))
-    assert.equal(screen.queryByText(/edit/i), null)
-
-    // The cog button is the only settings affordance and must remain keyboard/click accessible.
+    assert.ok(screen.getByText('local'))
     await user.click(screen.getByRole('button', { name: /connection settings/i }))
     assert.equal(settingsCalls, 1)
   })
 
-  it('shows a red not-connected service state', () => {
-    // Scenario: Canton is unavailable, so the footer should make the service problem explicit.
+  it('shows the offline pill when the wallet-service is unreachable', () => {
+    // Scenario: Canton is unavailable, so the pill makes the service problem explicit.
     render(
       <ConnectionFooter
-        walletService={{ ...disconnectedService, networkId: 'canton:local' }}
+        walletService={offlineService}
         dapp={noDapp}
         onOpenSettings={() => undefined}
       />,
     )
 
-    // The disconnected label must be visible, but the network is hidden because it is unknown.
-    assert.ok(screen.getByText('canton'))
-    assert.equal(screen.queryByText('canton - network:local'), null)
+    assert.ok(screen.getByText('Offline'))
   })
 
-  it('shows unknown when connected service omits the network id', () => {
-    // Scenario: wallet-service confirms Canton connectivity but does not include network metadata.
+  it('marks a connected service with a missing network id as unknown', () => {
+    // Scenario: wallet-service confirms connectivity but omits the network metadata.
     render(
       <ConnectionFooter
         walletService={{ connected: true }}
@@ -85,40 +86,45 @@ describe('ConnectionFooter', () => {
       />,
     )
 
-    // Connected state should still include network text and mark the missing id explicitly.
     assert.ok(screen.getByText('unknown'))
   })
 
-  it('hides the dApp row while no dApp is connected', () => {
-    // Scenario: neither an empty nor a merely-detected page should render a dApp row anymore.
-    const { rerender } = render(
+  it('shows a placeholder when no dApp is connected', () => {
+    // Scenario: nothing is connected and no site context exists.
+    render(
       <ConnectionFooter
         walletService={connectedService}
         dapp={noDapp}
         onOpenSettings={() => undefined}
       />,
     )
-    assert.equal(screen.queryByText(/no dapp found/i), null)
 
-    rerender(
+    assert.ok(screen.getByText('No dApp connected'))
+  })
+
+  it('shows a detected but unconnected site host with a not-connected status', () => {
+    // Scenario: a site is open but has not connected, so its host shows as not connected.
+    render(
       <ConnectionFooter
         walletService={connectedService}
         dapp={detectedDapp}
         onOpenSettings={() => undefined}
       />,
     )
-    assert.equal(screen.queryByText('localhost:3012'), null)
+
+    assert.ok(screen.getByText('app.uniswap.org'))
+    assert.ok(screen.getByText('Not connected'))
+    assert.equal(screen.queryByRole('button', { name: /disconnect/i }), null)
   })
 
-  it('shows the connected dApp with account address and a disconnect button', async () => {
-    // Scenario: a dApp is connected, so the footer shows the app, the connected account address, and disconnect.
+  it('shows the connected host with a disconnect control', async () => {
+    // Scenario: a dApp is connected, so the footer shows the host, status, and disconnect.
     const user = userEvent.setup()
     let disconnects = 0
     render(
       <ConnectionFooter
         walletService={connectedService}
-        dapp={{ kind: 'connected', label: 'Counter dApp', subtitle: 'Connected' }}
-        dappAccountAddress="bn-dev::mock...79f7ec4"
+        dapp={connectedDapp}
         onDisconnectDapp={() => {
           disconnects += 1
         }}
@@ -126,9 +132,36 @@ describe('ConnectionFooter', () => {
       />,
     )
 
-    assert.ok(screen.getByText('Counter dApp'))
-    assert.ok(screen.getByText('bn-dev::mock...79f7ec4'))
+    assert.ok(screen.getByText('localhost:5173'))
+    assert.ok(screen.getByText('Connected'))
     await user.click(screen.getByRole('button', { name: /disconnect/i }))
     assert.equal(disconnects, 1)
+  })
+
+  it('falls back to a host monogram when the dApp has no favicon', () => {
+    // Scenario: connected dApp without an icon, so the avatar shows the first host letter.
+    render(
+      <ConnectionFooter
+        walletService={connectedService}
+        dapp={connectedDapp}
+        onOpenSettings={() => undefined}
+      />,
+    )
+
+    assert.ok(screen.getByText('L'))
+  })
+
+  it('keeps dApp connection and wallet-service health independent', () => {
+    // Scenario: a connected dApp coexists with an unreachable wallet-service.
+    render(
+      <ConnectionFooter
+        walletService={offlineService}
+        dapp={connectedDapp}
+        onOpenSettings={() => undefined}
+      />,
+    )
+
+    assert.ok(screen.getByText('Connected'))
+    assert.ok(screen.getByText('Offline'))
   })
 })

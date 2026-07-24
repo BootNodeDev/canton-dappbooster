@@ -1,11 +1,13 @@
 import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, it } from 'node:test'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateAccountForm } from '@/components/CreateAccountForm'
 import { TooltipProvider } from '@/components/ui/Tooltip'
 import { VaultContext, type VaultContextValue } from '@/vault/VaultContext'
+
+const originalFetch = globalThis.fetch
 
 const baseVault = (overrides: Partial<VaultContextValue> = {}): VaultContextValue =>
   ({
@@ -55,6 +57,8 @@ const renderForm = (
 describe('CreateAccountForm', () => {
   afterEach(() => {
     cleanup()
+    globalThis.fetch = originalFetch
+    localStorage.clear()
   })
 
   it('rejects an invalid party hint without creating an account', async () => {
@@ -124,6 +128,74 @@ describe('CreateAccountForm', () => {
     assert.equal(submit.disabled, true)
     await user.type(screen.getByTestId('add-account-hint-input'), 'cde')
     assert.equal(submit.disabled, false)
+  })
+
+  it('stores the network discovered from wallet-service status after creating the party', async () => {
+    // Scenario: account creation talks to wallet-service for party onboarding, then uses
+    // wallet-service status as the canonical network source for the stored account.
+    const user = userEvent.setup()
+    const added: Array<{ network: string; partyId: string; name: string }> = []
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/admin/party/prepare')) {
+        // Setup: the prepare endpoint returns a valid base64 message for Carpincho to sign.
+        return new Response(
+          JSON.stringify({
+            onboardingId: 'onboarding-1',
+            partyId: 'alice::fingerprint',
+            multiHash: 'AQID',
+          }),
+          { status: 200 },
+        )
+      }
+      if (url.endsWith('/admin/party/complete')) {
+        // Setup: the complete endpoint returns the final external party id.
+        return new Response(JSON.stringify({ partyId: 'alice::fingerprint' }), { status: 200 })
+      }
+      if (url.endsWith('/rpc') && String(init?.body ?? '').includes('"method":"status"')) {
+        // Setup: status reports the network that must be persisted with the new account.
+        return new Response(
+          JSON.stringify({
+            result: {
+              connection: { isNetworkConnected: true },
+              network: { networkId: 'canton:from-status' },
+            },
+          }),
+          { status: 200 },
+        )
+      }
+      throw new Error(`unexpected request: ${url}`)
+    }) as typeof globalThis.fetch
+    renderForm(
+      {},
+      {
+        addAccount: async (args) => {
+          // Assertion fixture: capture the account args that would be persisted in the vault.
+          added.push({ network: args.network, partyId: args.partyId, name: args.name })
+          return {
+            id: 'acct-1',
+            name: args.name,
+            partyId: args.partyId,
+            publicKeyBase64: args.publicKeyBase64,
+            network: args.network,
+            isPrimary: true,
+            createdAt: 1,
+          }
+        },
+      },
+    )
+
+    // Action: create a valid account through the user-facing form.
+    await user.type(screen.getByTestId('add-account-hint-input'), 'alice')
+    await user.click(screen.getByTestId('add-account-submit'))
+
+    // Expected result: the stored account uses wallet-service's network id.
+    await waitFor(() => assert.equal(added.length, 1))
+    assert.deepEqual(added[0], {
+      network: 'canton:from-status',
+      partyId: 'alice::fingerprint',
+      name: 'alice',
+    })
   })
 })
 

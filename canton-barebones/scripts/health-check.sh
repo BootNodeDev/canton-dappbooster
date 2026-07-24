@@ -1,52 +1,55 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/splice-common.sh"
+
 cd "$ROOT"
 
-if [ -f "$ROOT/.env" ]; then
-  set -a
-  source "$ROOT/.env"
-  set +a
+status=0
+
+# Checks one HTTP endpoint and records a non-zero final exit if it is down.
+check_http() {
+  local label="$1"
+  local url="$2"
+  printf '%-32s' "$label"
+  if curl -fsS "$url" >/dev/null 2>&1; then
+    printf 'UP   %s\n' "$url"
+  else
+    printf 'DOWN %s\n' "$url"
+    status=1
+  fi
+}
+
+echo "Splice LocalNet"
+check_http "sv validator" "http://localhost:4903/api/validator/readyz"
+check_http "app-user validator" "http://localhost:2903/api/validator/readyz"
+check_http "app-user JSON API" "http://localhost:2975/readyz"
+check_http "app-user wallet UI" "http://wallet.localhost:2000"
+check_http "Scan UI" "http://scan.localhost:4000"
+check_http "SV UI" "http://sv.localhost:4000"
+
+echo ""
+echo "Carpincho bridge"
+check_http "wallet-service" "http://localhost:${WALLET_SERVICE_PORT:-3010}/health"
+
+echo ""
+if docker info >/dev/null 2>&1; then
+  if [ "$SPLICE_COMPOSE_PROJECT_NAME" = "$COMPOSE_PROJECT_NAME" ]; then
+    echo "Docker compose project: $COMPOSE_PROJECT_NAME"
+    COMPOSE_IGNORE_ORPHANS=true docker compose --project-directory "$ROOT" ps
+  else
+    echo "wallet-service compose:"
+    COMPOSE_IGNORE_ORPHANS=true docker compose --project-directory "$ROOT" ps
+    if [ -f "$LOCALNET_DIR/compose.yaml" ]; then
+      echo ""
+      echo "Splice compose:"
+      splice_compose ps
+    fi
+  fi
+else
+  warn "Docker is not running; skipping container status"
 fi
 
-timeout="${HEALTH_TIMEOUT_SECONDS:-120}"
-health_port="${CANTON_HTTP_HEALTH_PORT:-3016}"
-deadline=$((SECONDS + timeout))
-
-while true; do
-  health_status="$(
-    docker compose ps --format json canton 2>/dev/null \
-      | sed -n 's/.*"Health":"\([^"]*\)".*/\1/p'
-  )"
-  health_body="$(
-    curl -fsS "http://127.0.0.1:${health_port}/health" 2>/dev/null || true
-  )"
-
-  if [ "$health_status" = "healthy" ] && grep -q "connected-synchronizer : Ok()" <<<"$health_body"; then
-    docker compose ps
-    echo "canton health-check succeeded"
-
-    wallet_service_port="${WALLET_SERVICE_PORT:-3010}"
-    wallet_service_attempts="${WALLET_SERVICE_HEALTH_ATTEMPTS:-20}"
-    for attempt in $(seq 1 "$wallet_service_attempts"); do
-      if curl -fsS "http://localhost:${wallet_service_port}/health" >/dev/null 2>&1; then
-        echo "wallet-service health-check succeeded (port ${wallet_service_port}, attempt ${attempt})"
-        exit 0
-      fi
-      sleep 3
-    done
-    echo "wallet-service health-check failed on port ${wallet_service_port} after ${wallet_service_attempts} attempts" >&2
-    docker compose logs --tail=120 wallet-service >&2
-    exit 1
-  fi
-
-  if (( SECONDS >= deadline )); then
-    docker compose ps
-    docker compose logs --tail=120 canton >&2
-    echo "canton health-check failed after ${timeout}s" >&2
-    exit 1
-  fi
-
-  sleep 2
-done
+exit "$status"

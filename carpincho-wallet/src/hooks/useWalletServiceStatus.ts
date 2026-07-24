@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { walletServiceRequest } from '@/api/walletService'
+import { type WalletServiceStatusResponse, walletServiceStatus } from '@/api/walletService'
 import { useRuntimeConfig } from '@/config/useRuntimeConfig'
-
-interface WalletServiceStatusResponse {
-  connection?: {
-    isNetworkConnected?: boolean
-    networkReason?: string
-  }
-  network?: {
-    networkId?: string
-  }
-}
 
 export interface WalletServiceStatus {
   connected: boolean
@@ -44,13 +34,7 @@ export const useWalletServiceStatus = (
   // Probes the configured JSON-RPC endpoint and stores the current Canton connectivity result.
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      const response = await walletServiceRequest<WalletServiceStatusResponse>(
-        'status',
-        undefined,
-        {
-          rpcUrl: config.walletServiceRpcUrl,
-        },
-      )
+      const response = await walletServiceStatus({ rpcUrl: config.walletServiceRpcUrl })
       setStatus(statusFromResponse(response))
     } catch (error) {
       setStatus({ connected: false, reason: (error as Error).message })

@@ -1,5 +1,5 @@
 import * as RadixToast from '@radix-ui/react-toast'
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { FeedbackVariant } from '@/components/ui/Alert'
 import { ICON_BUTTON_CLASS } from '@/components/ui/Button'
@@ -7,10 +7,12 @@ import {
   ALERT_CIRCLE_ICON,
   ALERT_TRIANGLE_ICON,
   CHECK_ICON,
+  COPY_ICON,
   INFO_ICON,
   X_ICON,
 } from '@/components/ui/icons'
 import { resolveDurationMs, subscribeToasts, type ToastEntry, toast } from '@/components/ui/toast'
+import { copyText } from '@/utils/clipboard'
 import { cn } from '@/utils/cn'
 
 const CLOSE_ANIMATION_MS = 200
@@ -61,6 +63,12 @@ interface ToastItemProps {
 
 const ToastItem = ({ entry }: ToastItemProps): JSX.Element => {
   const accent = VARIANT_ACCENT[entry.variant]
+  // Copy the rendered text so both string and ReactNode messages copy cleanly.
+  const descriptionRef = useRef<HTMLDivElement>(null)
+  const copyMessage = (): void => {
+    const text = descriptionRef.current?.textContent?.trim() ?? ''
+    if (text) copyText(text, 'Message copied')
+  }
   return (
     <RadixToast.Root
       duration={resolveDurationMs(entry.durationMs)}
@@ -78,15 +86,30 @@ const ToastItem = ({ entry }: ToastItemProps): JSX.Element => {
       >
         {accent.icon}
       </span>
-      <RadixToast.Description className="min-w-0 grow break-words pt-1 text-[0.9rem] font-medium leading-snug">
+      <RadixToast.Description
+        ref={descriptionRef}
+        className="min-w-0 grow max-h-40 overflow-y-auto break-words pt-1 text-[0.9rem] font-medium leading-snug"
+      >
         {entry.message}
       </RadixToast.Description>
-      <RadixToast.Close
-        aria-label="Dismiss"
-        className={cn(ICON_BUTTON_CLASS, 'size-7 shrink-0 rounded-md bg-transparent')}
-      >
-        {X_ICON}
-      </RadixToast.Close>
+      <div className="flex shrink-0 items-start gap-0.5">
+        {entry.variant === 'error' && (
+          <button
+            type="button"
+            aria-label="Copy message"
+            onClick={copyMessage}
+            className={cn(ICON_BUTTON_CLASS, 'size-7 shrink-0 rounded-md bg-transparent')}
+          >
+            {COPY_ICON}
+          </button>
+        )}
+        <RadixToast.Close
+          aria-label="Dismiss"
+          className={cn(ICON_BUTTON_CLASS, 'size-7 shrink-0 rounded-md bg-transparent')}
+        >
+          {X_ICON}
+        </RadixToast.Close>
+      </div>
     </RadixToast.Root>
   )
 }

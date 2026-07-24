@@ -26,15 +26,15 @@ describe('ConnectionSettingsView', () => {
   })
 
   it('renders the current runtime config', () => {
+    // Scenario: runtime config should only expose the wallet-service endpoint for editing.
+    // The Canton network is discovered from wallet-service status, so no editable local value
+    // should be present in the settings form.
     render(<ConnectionSettingsView />)
     assert.equal(
       (screen.getByLabelText('Wallet-service RPC URL') as HTMLInputElement).value,
       'http://localhost:3010/rpc',
     )
-    assert.equal(
-      (screen.getByLabelText('Canton network') as HTMLInputElement).value,
-      'canton:local',
-    )
+    assert.equal(screen.queryByLabelText('Canton network'), null)
   })
 
   it('saves edited config and confirms with a success toast', async () => {

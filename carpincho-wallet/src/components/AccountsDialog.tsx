@@ -26,15 +26,15 @@ export const AccountsDialog = ({ open, onOpenChange }: AccountsDialogProps): JSX
   const [removeTarget, setRemoveTarget] = useState<AccountPublic | null>(null)
 
   const sorted = useMemo(() => sortAccounts(v.accounts), [v.accounts])
+  // The active account is omitted: switching to the account you are already on is a no-op.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (q === '') {
-      return sorted
-    }
     return sorted.filter(
-      (a) => a.name.toLowerCase().includes(q) || a.partyId.toLowerCase().includes(q),
+      (a) =>
+        a.id !== v.primary?.id &&
+        (q === '' || a.name.toLowerCase().includes(q) || a.partyId.toLowerCase().includes(q)),
     )
-  }, [sorted, query])
+  }, [sorted, query, v.primary?.id])
 
   const isAdd = screen === 'add' && removeTarget === null
 
@@ -71,6 +71,7 @@ export const AccountsDialog = ({ open, onOpenChange }: AccountsDialogProps): JSX
     <Sheet
       open={open}
       onOpenChange={handleOpenChange}
+      testId="accounts-sheet"
       side="center"
       title={
         removeTarget !== null ? `Remove ${removeTarget.name}?` : isAdd ? 'Add account' : 'Accounts'
@@ -142,11 +143,11 @@ export const AccountsDialog = ({ open, onOpenChange }: AccountsDialogProps): JSX
               </button>
             )}
           </div>
-          <div className="flex max-h-[300px] min-h-[300px] flex-col gap-1 overflow-y-auto">
+          <div className="flex max-h-[300px] min-h-[300px] flex-col gap-2 overflow-y-auto">
             {/* Fixed height hints there are more rows and avoids layout shift while filtering. */}
             {filtered.length === 0 ? (
               <p className="px-2 py-6 text-center text-[0.92rem] text-muted-foreground">
-                No accounts match
+                {query.trim() === '' ? 'No other accounts' : 'No accounts match'}
               </p>
             ) : (
               filtered.map((a) => (

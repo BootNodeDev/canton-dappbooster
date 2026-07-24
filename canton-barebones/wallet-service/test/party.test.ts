@@ -12,8 +12,8 @@ const stubConfig = {
     jsonApiUrl: '',
     ledgerApiUrl: '',
     adminApiUrl: '',
-    backendUserId: '',
     backendToken: undefined as string | undefined,
+    tokenSource: 'none' as const,
   },
 }
 

@@ -21,6 +21,7 @@ export const Header = ({ onOpenMenu }: HeaderProps): JSX.Element => {
       {!vault.isLocked && (
         <button
           type="button"
+          data-testid="menu-open"
           onClick={onOpenMenu}
           aria-label="Menu"
           title="Menu"

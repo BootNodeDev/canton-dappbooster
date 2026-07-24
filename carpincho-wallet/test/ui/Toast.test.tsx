@@ -34,8 +34,8 @@ describe('toast emitter', () => {
     toast.warning('careful')
     toast.error('boom')
     const [info, warning, error] = getToastEntries()
-    assert.equal(info?.durationMs, 3000)
-    assert.equal(warning?.durationMs, 3000)
+    assert.equal(info?.durationMs, 5000)
+    assert.equal(warning?.durationMs, 5000)
     assert.equal(error?.durationMs, Number.POSITIVE_INFINITY)
   })
 

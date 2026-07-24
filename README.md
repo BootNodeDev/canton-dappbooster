@@ -1,135 +1,166 @@
 # Canton dApp Booster
 
-Minimal local stack:
+Local Canton Network stack for wallet-first dApp experiments.
 
 ```mermaid
 flowchart TD
   fe["dapp/frontend<br/>dApp frontend<br/>http://localhost:3012"]
   wallet["carpincho-wallet<br/>Vault + signer<br/>http://localhost:3011"]
-  ws["canton-barebones/wallet-service<br/>Canton bridge<br/>http://localhost:3010"]
-  cb["canton-barebones<br/>Participant JSON API http://localhost:3013<br/>Ledger/Admin gRPC localhost:3014 / 3015"]
-  dar["dapp/daml<br/>quickstart-tally DAR<br/>.daml/dist/*.dar"]
+  ws["canton-barebones/wallet-service<br/>External-party bridge<br/>http://localhost:3010"]
+  au["Splice app-user<br/>primary local validator<br/>JSON API http://localhost:2975"]
+  sv["Splice sv<br/>SV / DSO / synchronizer side"]
+  scan["Scan<br/>Splice read model<br/>http://scan.localhost:4000"]
+  dar["dapp/daml<br/>quickstart-tally DAR"]
 
   fe <-->|"Injected CIP-0103 provider<br/>optional WalletConnect"| wallet
-  wallet -->|"JSON-RPC /rpc<br/>prepare, execute, read, onboard"| ws
-  ws -->|"Canton JSON API<br/>self-minted JWT"| cb
-  dar -->|"deploy DAR package"| cb
+  wallet -->|"external-party onboarding"| ws
+  wallet -->|"Scan API / token metadata"| scan
+  ws -->|"Bearer CANTON_BACKEND_TOKEN"| au
+  au <--> sv
+  sv -->|"indexed Splice read model"| scan
+  dar -->|"deploy package"| au
 ```
 
-The dApp frontend knows the Tally DAML signature and talks to Carpincho through the injected CIP-0103 browser provider. Carpincho owns the local signing key and uses the wallet service to prepare, read, and execute against the Canton participant. WalletConnect remains available as an optional fallback path.
+`canton:up` activates the official Splice LocalNet `sv` and `app-user` Docker
+profiles, then starts wallet-service. It does not start Keycloak or OIDC.
+The app-provider UI containers are not started; a local compose override
+disables their Nginx routes. The official shared Canton/Splice containers still
+expose app-provider backend ports because the bundle bakes that config in.
+Splice and wallet-service share the `canton-barebones` Docker Compose project,
+so Docker groups the full local stack together.
+`app-user` is Splice's technical name for the primary local validator; it is not
+the Carpincho user.
 
 ## Installation
 
 Prerequisites:
 
 - Node.js 24
-- npm
-- Docker
+- npm `>=7`
+- Docker with about 8 GB memory available
 - `dpm` on `PATH` (DAML SDK 3.4.11), required for building DARs
 
-### Recommended
-
-```bash
-npx dappbooster --canton
-```
-
-### Manual
+Install workspace dependencies:
 
 ```bash
 npm install
 ```
 
-### Environment files
-
-#### Mandatory
+Create the local env file:
 
 ```bash
 cp canton-barebones/.env.example canton-barebones/.env
 ```
 
-#### Optional
+Generate the backend token and paste the printed `CANTON_BACKEND_TOKEN=...`
+line into `canton-barebones/.env`:
 
-Only for the WalletConnect fallback. Copy each and set `VITE_WC_PROJECT_ID` (see the dApp frontend [WalletConnect setup](dapp/frontend/README.md#walletconnect-fallback)):
+```bash
+npm run canton:token -- ledger-api-user
+```
+
+Token configuration:
+
+| Name | What It Is | Who Uses It |
+| --- | --- | --- |
+| `CANTON_AUTH_AUDIENCE` | JWT audience recipe value | token script |
+| `CANTON_AUTH_SECRET` | local unsafe JWT signing secret | token script only |
+| `CANTON_BACKEND_TOKEN` | generated JWT pasted into `.env` | wallet-service |
+| Carpincho LocalNet token | generated JWT pasted into Carpincho settings | Carpincho |
+
+The token script uses `ledger-api-user` as the default JWT subject. Generate
+another token with the same script or reuse the backend token locally. Do not
+copy `CANTON_AUTH_SECRET` into Carpincho.
+
+Optional WalletConnect fallback:
 
 ```bash
 cp carpincho-wallet/.env.local.example carpincho-wallet/.env.local
 cp dapp/frontend/.env.local.example dapp/frontend/.env.local
 ```
 
-## Dev stack script
+Set `VITE_WC_PROJECT_ID` in both files only if you use WalletConnect.
 
-[`scripts/dev-stack.sh`](scripts/dev-stack.sh) automates the manual Quick Start below. Run it with no arguments for an interactive menu.
+## Quick Start
 
-```bash
-./scripts/dev-stack.sh
-```
-
-Or call an action directly:
+Start the stack:
 
 ```bash
-./scripts/dev-stack.sh <action>
+npm run canton:up
+npm run canton:health
 ```
 
-| Menu item | Action | What it does |
-|-----------|--------|--------------|
-| Install | `install` | Install and link every workspace from the repo root (`npm install`). |
-| Docker up | `docker-up` | Launch Docker Desktop (macOS only). |
-| Docker down | `docker-down` | Quit Docker Desktop (macOS only). |
-| Stack up | `up` | Bring up containers, build + deploy the DAR, start the wallet and dApp dev servers, build the extension. |
-| Stack down | `down` | Stop the dev servers and tear down the containers. |
-| Wallet up | `mock-up` | Start the mocked wallet-service + Carpincho web app with no Docker. |
-| Wallet down | `mock-down` | Stop the mocked wallet-service + Carpincho web app. |
-| Build extension | `extension` | Build the Chrome extension and copy it to your desktop. |
-| (CLI only) | `status` | Show running containers and listening ports. |
+Build and deploy the sample DAR:
 
-Notes:
+```bash
+npm run build-dar -- dapp/daml
+npm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
+```
 
-- Docker lifecycle is managed separately from the stack: `up` and `down` assume Docker is already running and never start or quit it. Start/quit Docker with `docker-up` / `docker-down`, the Docker app, or your own CLI.
-- `up` requires Docker running and `dpm` on `PATH` (for the DAR build).
+Verify wallet-service:
 
-## Quick Start (manual)
+```bash
+npm run wallet-service:health
+```
 
-1. **Start Canton + wallet-service** ([`canton-barebones`](canton-barebones/README.md)):
+Start Carpincho and the dApp:
 
-   ```bash
-   npm run canton:up
-   npm run canton:health
-   ```
+```bash
+npm run wallet:dev
+npm run app:dev
+```
 
-2. **Build and deploy the Tally DAR** ([`dapp/daml`](dapp/daml/README.md) builds, [`canton-barebones`](canton-barebones/README.md#deploy-a-dar) deploys):
+Open the dApp:
 
-   ```bash
-   npm run build-dar -- dapp/daml
-   npm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
-   ```
+```text
+http://localhost:3012
+```
 
-3. **Build and load the Carpincho extension** ([`carpincho-wallet`](carpincho-wallet/README.md#browser-extension)):
+In the frontend:
 
-   ```bash
-   npm run carpincho:build:extension
-   ```
+1. Keep `canton:localnet` in settings.
+2. Click `Connect with Carpincho`.
+3. Approve the request in Carpincho.
 
-4. **Start the dApp frontend** ([`dapp/frontend`](dapp/frontend/README.md)):
+## Extension
 
-   ```bash
-   npm run app:dev
-   ```
+Build the extension:
 
-For host-side iteration without Docker, see the wallet-service [mock mode](canton-barebones/wallet-service/README.md#mock-mode). For the WalletConnect fallback, see the dApp frontend [WalletConnect setup](dapp/frontend/README.md#walletconnect-fallback).
+```bash
+npm run carpincho:build:extension
+```
 
-## Ports
+Load `carpincho-wallet/dist-extension` from `chrome://extensions` with
+Developer mode enabled.
 
-| Component                   | URL / Port              |
-| --------------------------- | ----------------------- |
-| Wallet service              | `http://localhost:3010` |
-| Carpincho wallet            | `http://localhost:3011` |
-| dApp frontend               | `http://localhost:3012` |
-| Canton JSON API             | `http://localhost:3013` |
-| Canton Ledger API           | `grpc://localhost:3014` |
-| Canton Admin API            | `grpc://localhost:3015` |
-| Canton health               | `http://localhost:3016` |
-| Canton sequencer public API | `localhost:3017`        |
-| Canton Postgres             | `localhost:3018`        |
+## Services And Ports
+
+| Service | What It Is | URL / Port | Who Uses It |
+| --- | --- | --- | --- |
+| wallet-service | Carpincho bridge for external-party onboarding | `http://localhost:3010` | Carpincho |
+| Carpincho wallet | Browser wallet UI/provider | `http://localhost:3011` | user/dApp |
+| dApp frontend | Example dApp | `http://localhost:3012` | user |
+| app-user Wallet UI | Official Splice wallet UI for app-user | `http://wallet.localhost:2000` | optional/manual |
+| app-user Ledger API | gRPC Ledger API | `grpc://localhost:2901` | SDK/tools |
+| app-user Admin API | gRPC Admin API | `grpc://localhost:2902` | wallet-service/tools |
+| app-user Validator API | Splice validator readiness/API | `http://localhost:2903` | health/tools |
+| app-user JSON API | JSON Ledger API | `http://localhost:2975` | wallet-service/tools |
+| app-user Validator proxy | wallet-sdk validator route | `http://localhost:2000/api/validator` | Carpincho |
+| app-provider backend APIs | Official bundle backend wiring, unused here | `grpc://localhost:3901`, `grpc://localhost:3902`, `http://localhost:3903`, `http://localhost:3975` | not used |
+| app-provider UI port | Nginx port exposed by the bundle; routes disabled here | `http://localhost:3000` | not used |
+| Scan UI | Splice explorer/read model UI | `http://scan.localhost:4000` | optional/manual |
+| Scan API | Splice indexed API | `http://scan.localhost:4000/api/scan` | Carpincho/tools |
+| Amulet Registry | token metadata via scan proxy | `http://localhost:2000/api/validator/v0/scan-proxy` | Carpincho/tools |
+| SV UI | Super Validator operations UI | `http://sv.localhost:4000` | optional/manual |
+| sv Ledger/Admin/JSON APIs | Official SV participant APIs | `grpc://localhost:4901`, `grpc://localhost:4902`, `http://localhost:4975` | Splice internals/tools |
+| sv Validator API | SV readiness/admin surface | `http://localhost:4903` | health checks |
+| PostgreSQL | Splice LocalNet DB | `localhost:5432` | LocalNet containers/tools |
+
+If `wallet.localhost`, `scan.localhost`, or `sv.localhost` do not resolve, add:
+
+```text
+127.0.0.1 wallet.localhost scan.localhost sv.localhost
+```
 
 ## Releasing
 

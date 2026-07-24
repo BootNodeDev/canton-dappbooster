@@ -3,9 +3,9 @@ import { afterEach, describe, it } from 'node:test'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { AutoLockList, PasswordForm } from '@/components/SecurityPanel'
 import { TooltipProvider } from '@/components/ui/Tooltip'
 import { getToastEntries, toast } from '@/components/ui/toast'
+import { AutoLockList, PasswordForm } from '@/components/VaultPanel'
 import { VaultContext, type VaultContextValue } from '@/vault/VaultContext'
 
 const baseVault = (): VaultContextValue => ({
@@ -53,76 +53,31 @@ describe('PasswordForm', () => {
     cleanup()
   })
 
-  it('starts in verify phase with only a current-password field', () => {
+  it('shows all three fields at once', () => {
     renderWithVault({}, <PasswordForm />)
     assert.ok(screen.getByLabelText(/current password/i))
-    assert.equal(screen.queryByLabelText(/new password/i), null)
-  })
-
-  it('shows an error for the wrong current password and stays in verify phase', async () => {
-    const user = userEvent.setup()
-    renderWithVault({ verifyPassword: () => false }, <PasswordForm />)
-    await user.type(screen.getByLabelText(/current password/i), 'nope-nope-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
-    const input = screen.getByLabelText(/current password/i)
-    assert.equal(input.getAttribute('aria-invalid'), 'true')
-    assert.ok(screen.getByText(/incorrect password/i))
-  })
-
-  it('advances to change phase when the current password is correct', async () => {
-    const user = userEvent.setup()
-    renderWithVault({ verifyPassword: () => true }, <PasswordForm />)
-    await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
     assert.ok(screen.getByLabelText(/^new password$/i))
     assert.ok(screen.getByLabelText(/confirm new password/i))
   })
 
-  it('keeps the change button disabled when passwords do not match', async () => {
+  it('keeps the submit disabled until current is filled and the new pair is valid', async () => {
     const user = userEvent.setup()
-    renderWithVault({ verifyPassword: () => true }, <PasswordForm />)
-    await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
+    renderWithVault({}, <PasswordForm />)
+    const button = (): HTMLButtonElement =>
+      screen.getByRole('button', { name: /change password/i }) as HTMLButtonElement
+    assert.equal(button().disabled, true)
     await user.type(screen.getByLabelText(/^new password$/i), 'purple-monkey-dishwasher-42')
-    await user.type(screen.getByLabelText(/confirm new password/i), 'different-value')
-    assert.equal(
-      (screen.getByRole('button', { name: /change password/i }) as HTMLButtonElement).disabled,
-      true,
-    )
-  })
-
-  it('marks the confirm field aria-invalid when passwords do not match', async () => {
-    const user = userEvent.setup()
-    renderWithVault({ verifyPassword: () => true }, <PasswordForm />)
+    await user.type(screen.getByLabelText(/confirm new password/i), 'purple-monkey-dishwasher-42')
+    assert.equal(button().disabled, true)
     await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
-    await user.type(screen.getByLabelText(/^new password$/i), 'purple-monkey-dishwasher-42')
-    await user.type(screen.getByLabelText(/confirm new password/i), 'different-value')
-    assert.equal(
-      screen.getByLabelText(/confirm new password/i).getAttribute('aria-invalid'),
-      'true',
-    )
+    assert.equal(button().disabled, false)
   })
 
-  it('keeps the change button disabled for passwords under 9 characters', async () => {
-    const user = userEvent.setup()
-    renderWithVault({ verifyPassword: () => true }, <PasswordForm />)
-    await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
-    await user.type(screen.getByLabelText(/^new password$/i), 'short')
-    await user.type(screen.getByLabelText(/confirm new password/i), 'short')
-    assert.equal(
-      (screen.getByRole('button', { name: /change password/i }) as HTMLButtonElement).disabled,
-      true,
-    )
-  })
-
-  it('calls changePassword and returns to verify phase on success', async () => {
+  it('calls changePassword with current and new, then resets and toasts success', async () => {
     const user = userEvent.setup()
     const calls: Array<[string, string]> = []
     renderWithVault(
       {
-        verifyPassword: () => true,
         changePassword: async (a, b) => {
           calls.push([a, b])
         },
@@ -130,37 +85,31 @@ describe('PasswordForm', () => {
       <PasswordForm />,
     )
     await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
     await user.type(screen.getByLabelText(/^new password$/i), 'purple-monkey-dishwasher-42')
     await user.type(screen.getByLabelText(/confirm new password/i), 'purple-monkey-dishwasher-42')
     await user.click(screen.getByRole('button', { name: /change password/i }))
     assert.deepEqual(calls, [['right-right-1', 'purple-monkey-dishwasher-42']])
     const entries = getToastEntries()
-    assert.equal(entries.length, 1)
     assert.equal(entries[0]?.variant, 'success')
     assert.equal(entries[0]?.message, 'Password updated.')
-    assert.ok(screen.getByLabelText(/current password/i))
+    assert.equal((screen.getByLabelText(/current password/i) as HTMLInputElement).value, '')
   })
 
-  it('returns to verify phase and surfaces the error when changePassword rejects', async () => {
+  it('surfaces an inline error when changePassword rejects', async () => {
     const user = userEvent.setup()
     renderWithVault(
       {
-        verifyPassword: () => true,
         changePassword: async () => {
-          throw new Error('rotation failed')
+          throw new Error('invalid current password')
         },
       },
       <PasswordForm />,
     )
-    await user.type(screen.getByLabelText(/current password/i), 'right-right-1')
-    await user.click(screen.getByRole('button', { name: /continue/i }))
+    await user.type(screen.getByLabelText(/current password/i), 'wrong-wrong-1')
     await user.type(screen.getByLabelText(/^new password$/i), 'purple-monkey-dishwasher-42')
     await user.type(screen.getByLabelText(/confirm new password/i), 'purple-monkey-dishwasher-42')
     await user.click(screen.getByRole('button', { name: /change password/i }))
-    assert.ok(screen.getByText(/rotation failed/i))
-    assert.ok(screen.getByLabelText(/current password/i))
-    assert.equal(screen.queryByLabelText(/^new password$/i), null)
+    assert.ok(screen.getByText(/invalid current password/i))
   })
 })
 

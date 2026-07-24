@@ -85,6 +85,116 @@ export const createPendingStore = <T>(opts: PendingStoreOptions): PendingStore<T
 
 export type WalletSdk = Awaited<ReturnType<typeof SDK.create>>
 
+type SdkFactory = (options: unknown) => Promise<unknown>
+
+type RpcDependencies = {
+  sdkFactory?: SdkFactory
+  fetch?: typeof fetch
+  now?: () => Date
+  sleep?: (ms: number) => Promise<void>
+}
+
+type ActiveJsContractReader = {
+  readJsContracts: (options: {
+    parties: string[]
+    templateIds: string[]
+    filterByParty: boolean
+    continueUntilCompletion: boolean
+  }) => Promise<ActiveJsContract[]>
+}
+
+type Cip56TokenSdk = {
+  amulet?: {
+    tap?: (receiver: string, amount: string) => Promise<[unknown, unknown[]]>
+    preapproval: {
+      ctx?: {
+        validatorParty?: string
+        commonCtx?: {
+          defaultSynchronizerId?: string
+        }
+        amuletService?: {
+          scanProxyClient?: {
+            getAmuletRules: () => Promise<AmuletContextContract | null | undefined>
+            getActiveOpenMiningRound: () => Promise<AmuletContextContract | null | undefined>
+          }
+          tokenStandard?: {
+            getInputHoldingsCids: (
+              sender: string,
+              inputUtxos?: string[],
+              amount?: unknown,
+            ) => Promise<string[]>
+          }
+        }
+      }
+      command: {
+        create: (args: { parties: { receiver: string } }) => Promise<unknown>
+        cancel: (args: { parties: { receiver: string } }) => Promise<[unknown, unknown[]]>
+      }
+      fetchQuick: (receiver: string) => Promise<{
+        contract: {
+          contract_id: string
+          template_id: string
+          payload: {
+            expiresAt: Date | string
+          }
+        }
+      } | null>
+    }
+  }
+  ledger?: {
+    acsReader?: ActiveJsContractReader
+    internal?: {
+      submit: (params: {
+        commands: unknown[]
+        disclosedContracts?: unknown[]
+        synchronizerId?: string
+        actAs: string[]
+      }) => Promise<unknown>
+    }
+  }
+  token: {
+    transfer: {
+      pending: (partyId: string) => Promise<unknown>
+      accept: (params: {
+        transferInstructionCid: string
+        registryUrl: URL
+      }) => Promise<[unknown, unknown[]]>
+      create: (params: {
+        sender: string
+        recipient: string
+        amount: string
+        instrumentId: string
+        registryUrl: URL
+        memo?: string
+        expirationDate?: Date
+      }) => Promise<[unknown, unknown[]]>
+    }
+    utxos: {
+      list: (params: {
+        partyId: string
+        includeLocked: boolean
+        limit: number
+        continueUntilCompletion: boolean
+      }) => Promise<unknown>
+    }
+  }
+}
+
+type AmuletContextContract = {
+  template_id: string
+  contract_id: string
+  created_event_blob: string
+  payload?: {
+    dso?: string
+  }
+}
+
+type ActiveJsContract = {
+  contractId: string
+  templateId: string
+  createArgument?: unknown
+}
+
 type ExecutePreparedParams = {
   partyId?: string
   actAs?: string[]
@@ -99,6 +209,55 @@ type ExecutePreparedParams = {
   signatureBase64?: string
   submissionId?: string
 }
+
+type TokenInstrumentId = {
+  admin?: string
+  id?: string
+}
+
+type TokenHolding = {
+  contractId: string
+  interfaceViewValue?: {
+    amount?: string
+    instrumentId?: TokenInstrumentId
+    lock?: unknown
+  }
+}
+
+type TokenHoldingSummary = {
+  key: string
+  tokenLabel: string
+  instrumentId?: TokenInstrumentId
+  totalAmount: string
+  utxoCount?: number
+  lockedCount?: number
+  unlockedCount?: number
+  holdings?: TokenHolding[]
+  source: 'scan' | 'utxos'
+  scan?: {
+    totalUnlockedCoin: string
+    totalLockedCoin: string
+    totalCoinHoldings: string
+    accumulatedHoldingFeesUnlocked: string
+    accumulatedHoldingFeesLocked: string
+    accumulatedHoldingFeesTotal: string
+    totalAvailableCoin: string
+  }
+}
+
+type AmuletPreapprovalStatus = {
+  active: boolean
+  expired: boolean
+  contractId?: string
+  templateId?: string
+  expiresAt?: string
+}
+
+const TRANSFER_PREAPPROVAL_PROPOSAL_TEMPLATE_ID =
+  '#splice-wallet:Splice.Wallet.TransferPreapproval:TransferPreapprovalProposal'
+const TRANSFER_PREAPPROVAL_PROPOSAL_MAX_ATTEMPTS = 31
+const TRANSFER_PREAPPROVAL_PROPOSAL_RETRY_MS = 1_000
+const AMULET_TAP_AMOUNT = '100'
 
 export const rpcResult = (id: JsonRpcId, result: unknown): JsonRpcSuccess => ({
   jsonrpc: '2.0',
@@ -186,28 +345,244 @@ const firstParty = (params: { partyId?: string; actAs?: string[] }): string => {
   throw new InvalidParams('partyId or actAs[0] is required')
 }
 
+const requiredStringParam = (params: Record<string, unknown>, name: string): string => {
+  const value = params[name]
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new InvalidParams(`${name} is required`)
+  }
+  return value
+}
+
+// Converts an optional ISO timestamp into the Date shape expected by wallet-sdk transfer helpers.
+const optionalDateParam = (params: Record<string, unknown>, name: string): Date | undefined => {
+  const value = params[name]
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new InvalidParams(`${name} must be an ISO timestamp`)
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    throw new InvalidParams(`${name} must be an ISO timestamp`)
+  }
+  return date
+}
+
+// Reads the optional token instrument selector from JSON-RPC params.
+const optionalInstrumentParam = (p: Record<string, unknown>): TokenInstrumentId | undefined => {
+  const value = p.instrumentId
+  if (value === undefined) {
+    return undefined
+  }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new InvalidParams('instrumentId must be an object')
+  }
+  const record = value as Record<string, unknown>
+  const admin = record.admin
+  const id = record.id
+  if (admin !== undefined && typeof admin !== 'string') {
+    throw new InvalidParams('instrumentId.admin must be a string')
+  }
+  if (id !== undefined && typeof id !== 'string') {
+    throw new InvalidParams('instrumentId.id must be a string')
+  }
+  return {
+    ...(admin === undefined || admin.trim() === '' ? {} : { admin: admin.trim() }),
+    ...(id === undefined || id.trim() === '' ? {} : { id: id.trim() }),
+  }
+}
+
+// Identifies CC/Amulet requests, the only token family Scan can summarize.
+const isAmuletInstrument = (instrumentId?: TokenInstrumentId): boolean =>
+  instrumentId === undefined ||
+  instrumentId.id === undefined ||
+  ['amulet', 'amt', 'cantoncoin', 'canton coin', 'cc'].includes(
+    instrumentId.id.trim().toLowerCase(),
+  )
+
+// Creates the same grouping key Carpincho uses for token rows.
+const instrumentKey = (instrumentId?: TokenInstrumentId): string =>
+  `${instrumentId?.admin ?? 'unknown-admin'}:${instrumentId?.id ?? 'unknown-token'}`
+
+// Keeps token labels readable in summary rows.
+const instrumentLabel = (instrumentId?: TokenInstrumentId): string => {
+  const id = instrumentId?.id?.trim()
+  return id === undefined || id === '' ? 'unknown token' : id
+}
+
+// Interactive submission expects a command list, while some SDK helpers return one command object.
+const commandList = (commands: unknown): unknown[] =>
+  Array.isArray(commands) ? commands : commands == null ? [] : [commands]
+
+// Carries Scan context contracts into interactive submission's disclosed-contract format.
+const amuletDisclosedContract = (
+  contract: AmuletContextContract,
+  synchronizerId: string,
+): {
+  templateId: string
+  contractId: string
+  createdEventBlob: string
+  synchronizerId: string
+} => ({
+  templateId: contract.template_id,
+  contractId: contract.contract_id,
+  createdEventBlob: contract.created_event_blob,
+  synchronizerId,
+})
+
+// Parses positive decimal strings without floating point rounding.
+const parseDecimalAmount = (value: string): { scaled: bigint; scale: number } | undefined => {
+  const trimmed = value.trim()
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    return undefined
+  }
+  const [whole, fraction = ''] = trimmed.split('.')
+  return {
+    scaled: BigInt(`${whole}${fraction}`),
+    scale: fraction.length,
+  }
+}
+
+// Adds SDK decimal amount strings exactly enough for token balance display.
+const sumDecimalAmounts = (values: string[]): string => {
+  const parsed = values
+    .map(parseDecimalAmount)
+    .filter((value): value is { scaled: bigint; scale: number } => value !== undefined)
+  if (parsed.length === 0) {
+    return '0'
+  }
+  const scale = Math.max(...parsed.map((value) => value.scale))
+  const total = parsed.reduce((acc, value) => {
+    const multiplier = 10n ** BigInt(scale - value.scale)
+    return acc + value.scaled * multiplier
+  }, 0n)
+  const raw = total.toString().padStart(scale + 1, '0')
+  const whole = raw.slice(0, raw.length - scale)
+  const fraction = scale === 0 ? '' : raw.slice(raw.length - scale).replace(/0+$/, '')
+  return fraction === '' ? whole : `${whole}.${fraction}`
+}
+
+// Narrows SDK contracts to the requested instrument when a token selector is present.
+const filterHoldingsByInstrument = (
+  holdings: TokenHolding[],
+  instrumentId?: TokenInstrumentId,
+): TokenHolding[] => {
+  if (instrumentId === undefined) {
+    return holdings
+  }
+  return holdings.filter((holding) => {
+    const actual = holding.interfaceViewValue?.instrumentId
+    return (
+      (instrumentId.id === undefined || actual?.id === instrumentId.id) &&
+      (instrumentId.admin === undefined || actual?.admin === instrumentId.admin)
+    )
+  })
+}
+
+// Builds balance summaries from UTXOs for generic CIP-56 tokens or Scan fallback.
+const summarizeHoldingUtxos = (
+  holdings: TokenHolding[],
+  requestedInstrument?: TokenInstrumentId,
+): TokenHoldingSummary[] => {
+  const groups = new Map<string, TokenHolding[]>()
+  for (const holding of filterHoldingsByInstrument(holdings, requestedInstrument)) {
+    const key = instrumentKey(holding.interfaceViewValue?.instrumentId ?? requestedInstrument)
+    groups.set(key, [...(groups.get(key) ?? []), holding])
+  }
+  return [...groups.entries()]
+    .map(([key, tokenHoldings]) => {
+      const firstInstrument =
+        tokenHoldings[0]?.interfaceViewValue?.instrumentId ?? requestedInstrument
+      const lockedCount = tokenHoldings.filter(
+        (holding) => holding.interfaceViewValue?.lock != null,
+      ).length
+      return {
+        key,
+        tokenLabel: instrumentLabel(firstInstrument),
+        instrumentId: firstInstrument,
+        totalAmount: sumDecimalAmounts(
+          tokenHoldings
+            .map((holding) => holding.interfaceViewValue?.amount)
+            .filter((amount): amount is string => amount !== undefined),
+        ),
+        utxoCount: tokenHoldings.length,
+        lockedCount,
+        unlockedCount: tokenHoldings.length - lockedCount,
+        holdings: tokenHoldings,
+        source: 'utxos' as const,
+      }
+    })
+    .sort((a, b) => a.tokenLabel.localeCompare(b.tokenLabel))
+}
+
 export type Rpc = {
   handle: (request: JsonRpcRequest) => Promise<JsonRpcResponse | undefined>
   serviceInfo: () => Record<string, unknown>
   getSdk: () => Promise<WalletSdk>
 }
 
-export const createRpc = (config: WalletServiceConfig): Rpc => {
+export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {}): Rpc => {
+  const sdkFactory: SdkFactory =
+    deps.sdkFactory ??
+    (async (options: unknown) => {
+      return await SDK.create(options as never)
+    })
+  const fetchImpl = deps.fetch ?? fetch
+  const now = deps.now ?? (() => new Date())
+  const sleep =
+    deps.sleep ??
+    ((ms) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms)
+      }))
   let sdkPromise: Promise<WalletSdk> | undefined
+  let tokenSdkPromise: Promise<Cip56TokenSdk> | undefined
 
   const getSdk = async (): Promise<WalletSdk> => {
     if (config.canton.backendToken === undefined) {
       throw new Error('CANTON_BACKEND_TOKEN is required for Canton JSON API calls')
     }
-    sdkPromise ??= SDK.create({
+    sdkPromise ??= sdkFactory({
       auth: { method: 'static', token: config.canton.backendToken },
       ledgerClientUrl: config.canton.jsonApiUrl,
       logAdapter: 'console',
-    }).catch((cause: unknown) => {
-      sdkPromise = undefined
-      throw new Error('Canton wallet SDK failed to initialize', { cause })
     })
+      .then((sdk) => sdk as WalletSdk)
+      .catch((cause: unknown) => {
+        sdkPromise = undefined
+        throw new Error('Canton wallet SDK failed to initialize', { cause })
+      })
     return await sdkPromise
+  }
+
+  const getTokenSdk = async (): Promise<Cip56TokenSdk> => {
+    if (config.canton.backendToken === undefined) {
+      throw new Error('CANTON_BACKEND_TOKEN is required for CIP-56 token helper calls')
+    }
+    const auth = { method: 'static', token: config.canton.backendToken }
+    tokenSdkPromise ??= sdkFactory({
+      auth,
+      ledgerClientUrl: config.canton.jsonApiUrl,
+      logAdapter: 'console',
+      token: {
+        validatorUrl: config.splice.validatorUrl,
+        auth,
+        registries: [config.splice.registryApiUrl],
+      },
+      amulet: {
+        validatorUrl: config.splice.validatorUrl,
+        scanApiUrl: config.splice.scanApiUrl,
+        registryUrl: new URL(config.splice.registryApiUrl),
+        auth,
+      },
+    })
+      .then((sdk) => sdk as Cip56TokenSdk)
+      .catch((cause: unknown) => {
+        tokenSdkPromise = undefined
+        throw new Error('CIP-56 wallet SDK failed to initialize', { cause })
+      })
+    return await tokenSdkPromise
   }
 
   const ledgerJsonApiVersion = async (): Promise<{ connected: boolean; reason?: string }> => {
@@ -346,6 +721,341 @@ export const createRpc = (config: WalletServiceConfig): Rpc => {
     return parsed
   }
 
+  const cip56ListPendingTransfers = async (params: unknown): Promise<unknown> => {
+    const p = objectParam<Record<string, unknown>>(params, 'cip56.listPendingTransfers')
+    const partyId = requiredStringParam(p, 'partyId')
+    const sdk = await getTokenSdk()
+    return await sdk.token.transfer.pending(partyId)
+  }
+
+  const cip56ListHoldings = async (params: unknown): Promise<unknown> => {
+    const p = objectParam<Record<string, unknown>>(params, 'cip56.listHoldings')
+    const partyId = requiredStringParam(p, 'partyId')
+    const sdk = await getTokenSdk()
+    return await sdk.token.utxos.list({
+      partyId,
+      includeLocked: true,
+      limit: 100,
+      continueUntilCompletion: true,
+    })
+  }
+
+  // Keeps the generic SDK UTXO list behind one helper so Scan fallback cannot diverge.
+  const listHoldingUtxos = async (partyId: string): Promise<TokenHolding[]> => {
+    const sdk = await getTokenSdk()
+    return (await sdk.token.utxos.list({
+      partyId,
+      includeLocked: true,
+      limit: 100,
+      continueUntilCompletion: true,
+    })) as TokenHolding[]
+  }
+
+  // Uses Scan's Amulet aggregate endpoint for fast CC balances.
+  const scanAmuletHoldingSummary = async (
+    partyId: string,
+    instrumentId?: TokenInstrumentId,
+  ): Promise<TokenHoldingSummary[]> => {
+    const url = `${config.splice.scanApiUrl.replace(/\/$/, '')}/v0/holdings/summary`
+    const response = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(config.canton.backendToken === undefined
+          ? {}
+          : { authorization: `Bearer ${config.canton.backendToken}` }),
+      },
+      body: JSON.stringify({
+        migration_id: 0,
+        record_time: now().toISOString(),
+        record_time_match: 'at_or_before',
+        owner_party_ids: [partyId],
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`Scan holdings summary failed with HTTP ${response.status}`)
+    }
+    const parsed = (await response.json()) as {
+      summaries?: Array<{
+        party_id: string
+        total_unlocked_coin: string
+        total_locked_coin: string
+        total_coin_holdings: string
+        accumulated_holding_fees_unlocked: string
+        accumulated_holding_fees_locked: string
+        accumulated_holding_fees_total: string
+        total_available_coin: string
+      }>
+    }
+    const summary = parsed.summaries?.find((item) => item.party_id === partyId)
+    if (summary === undefined) {
+      return []
+    }
+    const normalizedInstrument = {
+      ...(instrumentId?.admin === undefined ? {} : { admin: instrumentId.admin }),
+      id: instrumentId?.id ?? 'Amulet',
+    }
+    return [
+      {
+        key: instrumentKey(normalizedInstrument),
+        tokenLabel: instrumentLabel(normalizedInstrument),
+        instrumentId: normalizedInstrument,
+        totalAmount: summary.total_available_coin,
+        source: 'scan',
+        scan: {
+          totalUnlockedCoin: summary.total_unlocked_coin,
+          totalLockedCoin: summary.total_locked_coin,
+          totalCoinHoldings: summary.total_coin_holdings,
+          accumulatedHoldingFeesUnlocked: summary.accumulated_holding_fees_unlocked,
+          accumulatedHoldingFeesLocked: summary.accumulated_holding_fees_locked,
+          accumulatedHoldingFeesTotal: summary.accumulated_holding_fees_total,
+          totalAvailableCoin: summary.total_available_coin,
+        },
+      },
+    ]
+  }
+
+  // Routes Amulet summaries through Scan and falls back to UTXOs when Scan is unavailable.
+  const cip56ListHoldingSummary = async (params: unknown): Promise<TokenHoldingSummary[]> => {
+    const p = objectParam<Record<string, unknown>>(params, 'cip56.listHoldingSummary')
+    const partyId = requiredStringParam(p, 'partyId')
+    const instrumentId = optionalInstrumentParam(p)
+    if (isAmuletInstrument(instrumentId)) {
+      try {
+        return await scanAmuletHoldingSummary(partyId, instrumentId)
+      } catch (error) {
+        console.warn('[wallet-service] scan holding summary fallback', errorData(error))
+      }
+    }
+    return summarizeHoldingUtxos(await listHoldingUtxos(partyId), instrumentId)
+  }
+
+  const cip56AcceptTransfer = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'cip56.acceptTransfer')
+    const transferInstructionCid = requiredStringParam(p, 'transferInstructionCid')
+    const sdk = await getTokenSdk()
+    const [commands, disclosedContracts] = await sdk.token.transfer.accept({
+      transferInstructionCid,
+      registryUrl: new URL(config.splice.registryApiUrl),
+    })
+    return { commands, disclosedContracts }
+  }
+
+  const cip56CreateTransfer = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'cip56.createTransfer')
+    const expirationDate = optionalDateParam(p, 'expirationDate')
+    const sdk = await getTokenSdk()
+    const [commands, disclosedContracts] = await sdk.token.transfer.create({
+      sender: requiredStringParam(p, 'sender'),
+      recipient: requiredStringParam(p, 'recipient'),
+      amount: requiredStringParam(p, 'amount'),
+      instrumentId: requiredStringParam(p, 'instrumentId'),
+      registryUrl: new URL(config.splice.registryApiUrl),
+      ...(typeof p.memo === 'string' && p.memo.trim() !== '' ? { memo: p.memo.trim() } : {}),
+      ...(expirationDate === undefined ? {} : { expirationDate }),
+    })
+    return { commands, disclosedContracts }
+  }
+
+  // Normalizes SDK preapproval status into a stable JSON-RPC shape for Carpincho.
+  const amuletPreapprovalStatus = async (params: unknown): Promise<AmuletPreapprovalStatus> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.preapproval.status')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    const status = await sdk.amulet?.preapproval.fetchQuick(receiver)
+    if (status?.contract == null) {
+      return { active: false, expired: false }
+    }
+    const expiresAt = new Date(status.contract.payload.expiresAt)
+    const expiresAtIso = expiresAt.toISOString()
+    const expired = expiresAt.getTime() <= now().getTime()
+    return {
+      contractId: status.contract.contract_id,
+      templateId: status.contract.template_id,
+      expiresAt: expiresAtIso,
+      active: !expired,
+      expired,
+    }
+  }
+
+  // Prepares the fixed DevNet tap command so Carpincho can sign as the receiver.
+  const amuletTap = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.tap')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    if (sdk.amulet?.tap === undefined) {
+      throw new Error('Amulet tap is unavailable')
+    }
+    const [commands, disclosedContracts] = await sdk.amulet.tap(receiver, AMULET_TAP_AMOUNT)
+    return { commands, disclosedContracts }
+  }
+
+  // Prepares the receiver-signed proposal that asks the validator provider to enable auto-accept.
+  const amuletPreapprovalCreate = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.preapproval.create')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    const ctx = sdk.amulet?.preapproval.ctx
+    const provider = ctx?.validatorParty
+    const scanProxyClient = ctx?.amuletService?.scanProxyClient
+    if (provider === undefined || provider.trim() === '') {
+      throw new Error('Amulet validator provider party is unavailable')
+    }
+    if (scanProxyClient === undefined) {
+      throw new Error('Amulet service context is unavailable')
+    }
+    const amuletRules = await scanProxyClient.getAmuletRules()
+    const expectedDso = amuletRules?.payload?.dso
+    if (expectedDso === undefined || expectedDso.trim() === '') {
+      throw new Error('Amulet DSO party is unavailable')
+    }
+    return {
+      commands: [
+        {
+          CreateCommand: {
+            templateId: TRANSFER_PREAPPROVAL_PROPOSAL_TEMPLATE_ID,
+            createArguments: { provider, receiver, expectedDso },
+          },
+        },
+      ],
+      disclosedContracts: [],
+    }
+  }
+
+  // Polls provider ACS until the receiver-signed proposal is assigned to this participant.
+  const findAmuletPreapprovalProposal = async (
+    acsReader: ActiveJsContractReader,
+    receiver: string,
+    provider: string,
+    expectedDso: string,
+  ): Promise<ActiveJsContract | undefined> => {
+    for (let attempt = 0; attempt < TRANSFER_PREAPPROVAL_PROPOSAL_MAX_ATTEMPTS; attempt += 1) {
+      const proposals = await acsReader.readJsContracts({
+        parties: [provider],
+        templateIds: [TRANSFER_PREAPPROVAL_PROPOSAL_TEMPLATE_ID],
+        filterByParty: true,
+        continueUntilCompletion: false,
+      })
+      const proposal = proposals.find((contract) => {
+        const createArgument = contract.createArgument
+        return (
+          isPlainObject(createArgument) &&
+          createArgument.receiver === receiver &&
+          createArgument.provider === provider &&
+          createArgument.expectedDso === expectedDso
+        )
+      })
+      if (proposal !== undefined) {
+        return proposal
+      }
+      if (attempt < TRANSFER_PREAPPROVAL_PROPOSAL_MAX_ATTEMPTS - 1) {
+        await sleep(TRANSFER_PREAPPROVAL_PROPOSAL_RETRY_MS)
+      }
+    }
+    return undefined
+  }
+
+  // Accepts the receiver-created proposal with the locally hosted validator provider party.
+  const amuletPreapprovalAcceptProposal = async (params: unknown): Promise<unknown> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.preapproval.acceptProposal')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    const ctx = sdk.amulet?.preapproval.ctx
+    const provider = ctx?.validatorParty
+    const synchronizerId = ctx?.commonCtx?.defaultSynchronizerId
+    const scanProxyClient = ctx?.amuletService?.scanProxyClient
+    const tokenStandard = ctx?.amuletService?.tokenStandard
+    const acsReader = sdk.ledger?.acsReader
+    const internalLedger = sdk.ledger?.internal
+    if (provider === undefined || provider.trim() === '') {
+      throw new Error('Amulet validator provider party is unavailable')
+    }
+    if (synchronizerId === undefined || synchronizerId.trim() === '') {
+      throw new Error('Amulet synchronizer id is unavailable')
+    }
+    if (scanProxyClient === undefined || tokenStandard === undefined) {
+      throw new Error('Amulet service context is unavailable')
+    }
+    if (acsReader === undefined || internalLedger === undefined) {
+      throw new Error('Canton ledger context is unavailable')
+    }
+    const amuletRules = await scanProxyClient.getAmuletRules()
+    if (amuletRules == null) {
+      throw new Error('AmuletRules contract not found')
+    }
+    const expectedDso = amuletRules.payload?.dso
+    if (expectedDso === undefined || expectedDso.trim() === '') {
+      throw new Error('Amulet DSO party is unavailable')
+    }
+    const proposal = await findAmuletPreapprovalProposal(acsReader, receiver, provider, expectedDso)
+    if (proposal === undefined) {
+      throw new Error(`TransferPreapprovalProposal not found for receiver ${receiver}`)
+    }
+    const activeRound = await scanProxyClient.getActiveOpenMiningRound()
+    if (activeRound == null) {
+      throw new Error('OpenMiningRound active at current moment not found')
+    }
+    const inputHoldings = await tokenStandard.getInputHoldingsCids(provider)
+    const expiresAt =
+      optionalDateParam(p, 'expiresAt') ?? new Date(now().getTime() + 90 * 24 * 60 * 60 * 1000)
+    const commands = [
+      {
+        ExerciseCommand: {
+          templateId: proposal.templateId,
+          contractId: proposal.contractId,
+          choice: 'TransferPreapprovalProposal_Accept',
+          choiceArgument: {
+            context: {
+              context: {
+                openMiningRound: activeRound.contract_id,
+                issuingMiningRounds: [],
+                validatorRights: [],
+                featuredAppRight: null,
+              },
+              amuletRules: amuletRules.contract_id,
+            },
+            inputs: inputHoldings.map((cid) => ({ tag: 'InputAmulet', value: cid })),
+            expiresAt: expiresAt.toISOString(),
+          },
+        },
+      },
+    ]
+    return await internalLedger.submit({
+      commands,
+      disclosedContracts: [
+        amuletDisclosedContract(amuletRules, synchronizerId),
+        amuletDisclosedContract(activeRound, synchronizerId),
+      ],
+      synchronizerId,
+      actAs: [provider],
+    })
+  }
+
+  // Prepares the receiver-signed command that disables automatic Amulet receipts.
+  const amuletPreapprovalCancel = async (
+    params: unknown,
+  ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
+    const p = objectParam<Record<string, unknown>>(params, 'amulet.preapproval.cancel')
+    const receiver = requiredStringParam(p, 'receiver')
+    const sdk = await getTokenSdk()
+    const status = await sdk.amulet?.preapproval.fetchQuick(receiver)
+    if (status?.contract == null) {
+      return { commands: [], disclosedContracts: [] }
+    }
+    const [commands, disclosedContracts] = (await sdk.amulet?.preapproval.command.cancel({
+      parties: { receiver },
+    })) ?? [null, []]
+    return { commands: commandList(commands), disclosedContracts }
+  }
+
   const dispatch = async (id: JsonRpcId, request: JsonRpcRequest): Promise<JsonRpcResponse> => {
     if (request.jsonrpc !== undefined && request.jsonrpc !== '2.0') {
       return rpcError(id, -32600, 'Invalid request', { reason: 'jsonrpc must be "2.0"' })
@@ -376,6 +1086,26 @@ export const createRpc = (config: WalletServiceConfig): Rpc => {
           return rpcResult(id, await executePrepared(request.params))
         case 'ledgerApi':
           return rpcResult(id, await ledgerApi(request.params))
+        case 'cip56.listPendingTransfers':
+          return rpcResult(id, await cip56ListPendingTransfers(request.params))
+        case 'cip56.listHoldings':
+          return rpcResult(id, await cip56ListHoldings(request.params))
+        case 'cip56.listHoldingSummary':
+          return rpcResult(id, await cip56ListHoldingSummary(request.params))
+        case 'cip56.acceptTransfer':
+          return rpcResult(id, await cip56AcceptTransfer(request.params))
+        case 'cip56.createTransfer':
+          return rpcResult(id, await cip56CreateTransfer(request.params))
+        case 'amulet.preapproval.status':
+          return rpcResult(id, await amuletPreapprovalStatus(request.params))
+        case 'amulet.tap':
+          return rpcResult(id, await amuletTap(request.params))
+        case 'amulet.preapproval.create':
+          return rpcResult(id, await amuletPreapprovalCreate(request.params))
+        case 'amulet.preapproval.acceptProposal':
+          return rpcResult(id, await amuletPreapprovalAcceptProposal(request.params))
+        case 'amulet.preapproval.cancel':
+          return rpcResult(id, await amuletPreapprovalCancel(request.params))
         case 'prepareExecute':
         case 'prepareExecuteAndWait':
         case 'signMessage':
@@ -419,6 +1149,16 @@ export const createRpc = (config: WalletServiceConfig): Rpc => {
       'ledgerApi',
       'prepareTransaction',
       'executePrepared',
+      'cip56.listPendingTransfers',
+      'cip56.listHoldings',
+      'cip56.listHoldingSummary',
+      'cip56.acceptTransfer',
+      'cip56.createTransfer',
+      'amulet.preapproval.status',
+      'amulet.tap',
+      'amulet.preapproval.create',
+      'amulet.preapproval.acceptProposal',
+      'amulet.preapproval.cancel',
     ],
     reservedMethods: ['prepareExecute', 'prepareExecuteAndWait', 'signMessage'],
     adminEndpoints: ['POST /admin/party/prepare', 'POST /admin/party/complete'],
@@ -428,7 +1168,6 @@ export const createRpc = (config: WalletServiceConfig): Rpc => {
       jsonApiUrl: config.canton.jsonApiUrl,
       ledgerApiUrl: config.canton.ledgerApiUrl,
       adminApiUrl: config.canton.adminApiUrl,
-      backendUserId: config.canton.backendUserId,
       hasBackendToken: config.canton.backendToken !== undefined,
     },
   })

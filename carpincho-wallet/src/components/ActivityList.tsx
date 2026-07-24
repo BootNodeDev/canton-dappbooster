@@ -1,8 +1,11 @@
-import { Fragment, useMemo, useState } from 'react'
-import { CHEVRON_RIGHT_ICON, RECEIPT_ICON } from '@/components/ui/icons'
+import { useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/Badge'
+import { CopyableLabel } from '@/components/ui/CopyableLabel'
+import { DetailRow } from '@/components/ui/DetailRow'
+import { EYE_ICON, RECEIPT_ICON } from '@/components/ui/icons'
+import { JsonView } from '@/components/ui/JsonView'
+import { SectionLabel } from '@/components/ui/SectionLabel'
 import { Sheet } from '@/components/ui/Sheet'
-import { cn } from '@/utils/cn'
-import { prettyJson } from '@/utils/json'
 import type { TransactionRecord } from '@/vault/types'
 import { CANTON_METHOD_PREPARE_EXECUTE_AND_WAIT } from '@/wc/client'
 
@@ -27,7 +30,6 @@ const txTitle = (tx: TransactionRecord): string => tx.summary ?? txMethodLabel(t
 interface TxDetailRow {
   label: string
   value: string | number
-  mono?: boolean
 }
 
 // Scalar metadata rows shown before the command payload block.
@@ -45,18 +47,18 @@ const txDetailRows = (tx: TransactionRecord): TxDetailRow[] => {
   }
   rows.push(
     { label: 'Network', value: tx.network },
-    { label: 'Party', value: tx.partyId, mono: true },
+    { label: 'Party', value: tx.partyId },
     { label: 'Method', value: txMethodLabel(tx.method) },
-    { label: 'Prepared hash', value: tx.preparedTransactionHash, mono: true },
+    { label: 'Prepared hash', value: tx.preparedTransactionHash },
   )
   if (tx.commandId !== undefined) {
-    rows.push({ label: 'Command ID', value: tx.commandId, mono: true })
+    rows.push({ label: 'Command ID', value: tx.commandId })
   }
   if (tx.submissionId !== undefined) {
-    rows.push({ label: 'Submission ID', value: tx.submissionId, mono: true })
+    rows.push({ label: 'Submission ID', value: tx.submissionId })
   }
   if (tx.updateId !== undefined) {
-    rows.push({ label: 'Update ID', value: tx.updateId, mono: true })
+    rows.push({ label: 'Update ID', value: tx.updateId })
   }
   if (tx.completionOffset !== undefined) {
     rows.push({ label: 'Completion offset', value: tx.completionOffset })
@@ -91,29 +93,24 @@ const groupByDate = (transactions: TransactionRecord[]): DateGroup[] => {
 // Detail body shown inside the popup opened from an activity row.
 const TransactionDetails = ({ tx }: { tx: TransactionRecord }): JSX.Element => (
   <div>
-    <dl className="m-0 grid grid-cols-[minmax(96px,auto)_1fr] gap-x-3 gap-y-2 text-[0.92rem]">
+    <dl className="m-0 grid gap-3">
       {txDetailRows(tx).map((row) => (
-        <Fragment key={row.label}>
-          <dt className="font-semibold tracking-tight text-muted-foreground">{row.label}</dt>
-          <dd
-            className={cn(
-              'm-0 min-w-0 font-medium text-soft [overflow-wrap:anywhere]',
-              row.mono && 'font-mono text-[0.88rem]',
-            )}
-          >
-            {row.value}
-          </dd>
-        </Fragment>
+        <DetailRow
+          key={row.label}
+          label={row.label}
+          value={String(row.value)}
+        />
       ))}
     </dl>
     {hasCommandPayload(tx) && (
       <div className="mt-3">
-        <div className="mb-1.5 text-[0.92rem] font-semibold tracking-tight text-muted-foreground">
-          Command payload
-        </div>
-        <pre className="m-0 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-background/60 p-3 font-mono text-[0.78rem] leading-relaxed text-soft">
-          {prettyJson(tx.commands)}
-        </pre>
+        <CopyableLabel
+          className="mb-1.5"
+          label="Command payload"
+          value={JSON.stringify(tx.commands, null, 2)}
+          copyLabel="command payload"
+        />
+        <JsonView value={tx.commands} />
       </div>
     )}
   </div>
@@ -139,42 +136,46 @@ export const ActivityList = ({ transactions }: ActivityListProps): JSX.Element =
   return (
     <div className="flex flex-col pb-2">
       {groups.map((group) => (
-        <div key={group.label}>
-          <div className="px-1 pb-1 pt-3 text-[0.8rem] font-semibold tracking-tight text-muted-foreground">
-            {group.label}
-          </div>
-          {group.items.map((tx) => (
-            <button
-              key={tx.id}
-              type="button"
-              onClick={() => setSelected(tx)}
-              className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-1 py-2.5 text-left outline-none transition-colors hover:bg-primary-soft/40 focus-visible:bg-primary-soft/60"
-            >
-              <span
-                aria-hidden="true"
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
+        <div
+          key={group.label}
+          className="flex flex-col gap-2 pt-3"
+        >
+          <SectionLabel>{group.label}</SectionLabel>
+          <div className="flex flex-col gap-2">
+            {group.items.map((tx) => (
+              <button
+                key={tx.id}
+                type="button"
+                data-testid="activity-row"
+                onClick={() => setSelected(tx)}
+                className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left outline-none transition-colors hover:border-primary/60 hover:bg-primary-soft/40 focus-visible:shadow-focus"
               >
-                {RECEIPT_ICON}
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-baseline gap-2">
-                  <span className="truncate text-[0.94rem] font-semibold text-foreground">
+                <span
+                  aria-hidden="true"
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
+                >
+                  {RECEIPT_ICON}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[0.94rem] font-semibold text-foreground">
                     {txTitle(tx)}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap text-[0.72rem] font-normal italic text-muted-foreground">
+                  <span className="mt-0.5 block text-[0.76rem] text-muted-foreground">
                     {TIME_FMT.format(tx.createdAt)}
                   </span>
                 </span>
-                <span className="block text-[0.84rem] font-medium text-success">Confirmed</span>
-              </span>
-              <span
-                aria-hidden="true"
-                className="justify-self-end text-muted-foreground"
-              >
-                {CHEVRON_RIGHT_ICON}
-              </span>
-            </button>
-          ))}
+                <span className="flex items-center gap-2 justify-self-end">
+                  <Badge tone="success">Confirmed</Badge>
+                  <span
+                    aria-hidden="true"
+                    className="grid size-8 place-items-center text-muted-foreground [&_svg]:size-4"
+                  >
+                    {EYE_ICON}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
@@ -183,6 +184,7 @@ export const ActivityList = ({ transactions }: ActivityListProps): JSX.Element =
         onOpenChange={(open) => {
           if (!open) setSelected(null)
         }}
+        testId="activity-detail-sheet"
         side="center"
         title={selected === null ? '' : txTitle(selected)}
         description="Transaction details."

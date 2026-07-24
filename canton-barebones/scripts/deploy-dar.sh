@@ -7,6 +7,14 @@ if [ "$#" -ne 1 ]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
 DAR_PATH="$1"
 
 if [ ! -f "$DAR_PATH" ]; then
@@ -14,18 +22,34 @@ if [ ! -f "$DAR_PATH" ]; then
   exit 1
 fi
 
-mkdir -p "$ROOT/dars"
-DAR_NAME="$(basename "$DAR_PATH")"
-cp "$DAR_PATH" "$ROOT/dars/$DAR_NAME"
+if [ -z "${CANTON_BACKEND_TOKEN:-}" ]; then
+  echo "CANTON_BACKEND_TOKEN is required. Generate one with: npm run canton:token -- ledger-api-user" >&2
+  exit 1
+fi
 
-docker compose --project-directory "$ROOT" exec -T canton /app/bin/canton \
-  run /dev/stdin \
-  --no-tty \
-  -C canton.remote-participants.participant1.ledger-api.address=127.0.0.1,canton.remote-participants.participant1.ledger-api.port=5011,canton.remote-participants.participant1.admin-api.address=127.0.0.1,canton.remote-participants.participant1.admin-api.port=5012 <<SCRIPT
-utils.retry_until_true {
-  participant1.synchronizers.active("local")
-}
-participant1.dars.upload("/dars/$DAR_NAME")
-SCRIPT
+json_api_url="${APP_USER_JSON_API_URL:-http://localhost:2975}"
+dar_name="$(basename "$DAR_PATH")"
 
-echo "deployed $DAR_NAME"
+echo "Uploading $dar_name to app-user JSON API at $json_api_url"
+
+http_code="$(
+  curl -sS -o /dev/null -w '%{http_code}' \
+    -X POST \
+    "$json_api_url/v2/packages" \
+    -H "Authorization: Bearer $CANTON_BACKEND_TOKEN" \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary "@$DAR_PATH"
+)"
+
+case "$http_code" in
+  200 | 204)
+    echo "deployed $dar_name to app-user"
+    ;;
+  409)
+    echo "$dar_name already deployed to app-user"
+    ;;
+  *)
+    echo "DAR upload failed with HTTP $http_code" >&2
+    exit 1
+    ;;
+esac

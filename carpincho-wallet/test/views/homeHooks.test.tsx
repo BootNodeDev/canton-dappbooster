@@ -46,28 +46,50 @@ describe('useProviderRequestHandler', () => {
   })
 
   const setup = (resolve: AccountResolver) => {
+    const connects: Array<unknown> = []
     const signs: Array<unknown> = []
     const executes: Array<unknown> = []
     const { result } = renderHook(() =>
       useProviderRequestHandler(
         resolve,
+        (v) => connects.push(v),
         (v) => signs.push(v),
         (v) => executes.push(v),
       ),
     )
-    return { handler: result.current, signs, executes }
+    return { handler: result.current, connects, signs, executes }
   }
 
-  it('bridges a sign-message approval into pending-sign state', async () => {
+  it('bridges a connect request into pending-connect state with the origin', async () => {
+    const { responder } = makeResponder()
+    const { handler, connects, signs, executes } = setup(() => ({
+      accounts: [account()],
+      primary: account(),
+    }))
+
+    await handler({ method: 'connect', params: undefined }, responder, {
+      origin: 'http://localhost:3012',
+    })
+
+    assert.equal(connects.length, 1)
+    assert.deepEqual(connects[0], { origin: 'http://localhost:3012', responder })
+    assert.equal(signs.length, 0)
+    assert.equal(executes.length, 0)
+  })
+
+  it('bridges a sign-message approval into pending-sign state with the origin', async () => {
     const { responder, errors } = makeResponder()
     const { handler, signs, executes } = setup(() => ({ accounts: [account()], primary: null }))
 
-    await handler({ method: 'signMessage', params: { message: 'bWVzc2FnZQ==' } }, responder, {})
+    await handler({ method: 'signMessage', params: { message: 'bWVzc2FnZQ==' } }, responder, {
+      origin: 'http://localhost:3012',
+    })
 
     assert.equal(signs.length, 1)
     assert.deepEqual(signs[0], {
       account: account(),
       messageBase64: 'bWVzc2FnZQ==',
+      origin: 'http://localhost:3012',
       responder,
     })
     assert.equal(executes.length, 0)

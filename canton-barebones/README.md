@@ -1,36 +1,109 @@
 # Canton Barebones
 
-Minimal local Canton barebones for wallet-first app experiments.
+Local Splice LocalNet wrapper for Canton dApp Booster.
+
+This package starts the official Splice LocalNet bundle with:
+
+```text
+sv
+app-user
+wallet-service
+```
+
+It does not start:
+
+```text
+Keycloak/OIDC
+```
+
+It also does not start the app-provider UI containers. A local compose override
+disables app-provider Nginx routes. The official shared Canton/Splice
+containers still expose app-provider backend ports because the bundle bakes
+that config in.
+
+Splice and wallet-service share the `canton-barebones` Docker Compose project,
+so Docker groups the full local stack together.
+
+`app-user` is Splice's primary local validator name. It is not the Carpincho
+user and not a product user.
 
 ## Start
 
-Run only the local Canton participant, Postgres, and wallet-service:
-
 ```bash
 cp .env.example .env
-docker compose up -d
-./scripts/health-check.sh
+npm run token -- ledger-api-user
 ```
 
-## Wallet service
+Paste the printed `CANTON_BACKEND_TOKEN=...` line into `.env`, then run:
 
-`docker compose up -d` (via `npm run canton:up`) brings up `wallet-service` alongside postgres + canton. Verify with `npm run wallet-service:health`.
+```bash
+npm run up
+npm run health
+```
 
-The wallet-service self-mints an HS256 JWT at boot from `CANTON_AUTH_AUDIENCE`, `CANTON_AUTH_SECRET`, and `CANTON_ADMIN_USER_ID`.
+From the repo root, use:
 
-Set `WALLET_SERVICE_MOCK=1` in `.env` to short-circuit Canton calls; the service still starts but every `/rpc` method returns canned mock data.
+```bash
+npm run canton:up
+npm run canton:health
+```
 
-Details:
+## Auth
 
-- [wallet-service token](wallet-service/README.md#token)
-- [wallet-service mock mode](wallet-service/README.md#mock-mode)
+The token script reads:
 
-## Auth Config
+```text
+CANTON_AUTH_AUDIENCE
+CANTON_AUTH_SECRET
+```
 
-The participant accepts local/dev HS256 JWTs configured by:
+It prints a JWT. It does not edit `.env`. Pass a subject as the first argument
+only if LocalNet expects something other than `ledger-api-user`.
 
-- `.env`: `CANTON_AUTH_AUDIENCE`, `CANTON_AUTH_SECRET`, `CANTON_ADMIN_USER_ID`
-- [`config/canton/app.conf`](config/canton/app.conf): Canton ledger API auth service
+Do not put `CANTON_AUTH_SECRET` in Carpincho. Generate a token and paste only
+the token.
+
+## Wallet Service
+
+`npm run up` starts `wallet-service` after app-user is ready.
+
+wallet-service points to app-user:
+
+```text
+JSON API   http://host.docker.internal:2975
+Ledger API grpc://host.docker.internal:2901
+Admin API  grpc://host.docker.internal:2902
+```
+
+Set `WALLET_SERVICE_MOCK=1` in `.env` to short-circuit Canton calls. Mock mode
+does not require `CANTON_BACKEND_TOKEN`.
+
+## Services And Ports
+
+| Service | What It Is | URL / Port |
+| --- | --- | --- |
+| wallet-service | Carpincho bridge | `http://localhost:3010` |
+| app-user Wallet UI | official Splice wallet UI | `http://wallet.localhost:2000` |
+| app-user Ledger API | gRPC Ledger API | `grpc://localhost:2901` |
+| app-user Admin API | gRPC Admin API | `grpc://localhost:2902` |
+| app-user Validator API | Splice validator API | `http://localhost:2903` |
+| app-user JSON API | JSON Ledger API | `http://localhost:2975` |
+| app-user Validator proxy | wallet-sdk validator route | `http://localhost:2000/api/validator` |
+| app-provider backend APIs | official bundle backend wiring, unused here | `grpc://localhost:3901`, `grpc://localhost:3902`, `http://localhost:3903`, `http://localhost:3975` |
+| app-provider UI port | Nginx port exposed by the bundle; routes disabled here | `http://localhost:3000` |
+| Scan UI | Splice explorer/read model | `http://scan.localhost:4000` |
+| Scan API | indexed Splice API | `http://scan.localhost:4000/api/scan` |
+| Amulet Registry | token metadata via scan proxy | `http://localhost:2000/api/validator/v0/scan-proxy` |
+| SV UI | Super Validator operations UI | `http://sv.localhost:4000` |
+| sv Ledger/Admin/JSON APIs | official SV participant APIs | `grpc://localhost:4901`, `grpc://localhost:4902`, `http://localhost:4975` |
+| sv Validator API | SV readiness surface | `http://localhost:4903` |
+| PostgreSQL | Splice LocalNet DB | `localhost:5432` |
+
+If hostnames do not resolve, add:
+
+```text
+127.0.0.1 wallet.localhost scan.localhost sv.localhost
+```
 
 ## Deploy a DAR
 
@@ -53,6 +126,12 @@ Or call the upload script directly:
 
 ```bash
 ./scripts/deploy-dar.sh /path/to/app.dar
+```
+
+The script uploads to app-user:
+
+```text
+http://localhost:2975/v2/packages
 ```
 
 `npm run canton:health` must return OK before deploying; otherwise the DAR upload can fail.

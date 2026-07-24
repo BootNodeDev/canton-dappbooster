@@ -1,22 +1,15 @@
-import { PLAIN_ICON_BUTTON_CLASS } from '@/components/ui/Button'
-import { COPY_ICON } from '@/components/ui/icons'
-import { copyPartyId } from '@/utils/clipboard'
-import { cn } from '@/utils/cn'
+import { Copyable } from '@/components/ui/Copyable'
 
 interface CopyPartyIdButtonProps {
   partyId: string
 }
 
-// Inline copy button used in the address row; pointer-events restored so it stays clickable
-// inside pointer-events-none row wrappers.
+// Address-row copy button; delegates to the shared Copyable while keeping its test id.
 export const CopyPartyIdButton = ({ partyId }: CopyPartyIdButtonProps): JSX.Element => (
-  <button
-    type="button"
-    data-testid="account-copy-party-id"
-    onClick={() => copyPartyId(partyId)}
-    aria-label="Copy party ID"
-    className={cn(PLAIN_ICON_BUTTON_CLASS, 'pointer-events-auto size-6 shrink-0')}
-  >
-    {COPY_ICON}
-  </button>
+  <Copyable
+    value={partyId}
+    label="party ID"
+    successMessage="Party ID copied"
+    testId="account-copy-party-id"
+  />
 )

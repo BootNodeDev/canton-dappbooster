@@ -14,8 +14,10 @@ import { clearDirectConnectedOrigins } from '@/extension/directConnections'
 import { broadcastWalletEvent } from '@/extension/eventBroadcast'
 import { persistWalletSnapshot } from '@/extension/walletSnapshot'
 import { accountToCip103Wallet } from '@/provider/accounts'
+import { parseBackupContainer, wrapBackup } from '@/vault/backup'
 import { assertSecureContext, decryptVault, encryptVault } from '@/vault/crypto'
-import { signMessageBase64 } from '@/vault/keypair'
+import { derivePublicKeyBase64, signMessageBase64 } from '@/vault/keypair'
+import { ensurePasswordStrengthReady, isPasswordAcceptable } from '@/vault/passwordStrength'
 import {
   clearLockAt,
   clearSessionPassword,
@@ -35,7 +37,15 @@ import {
   writeAutoLockOption,
   writeFreshVault,
 } from '@/vault/storage'
-import type { AccountPublic, AccountSecret, TransactionRecord, VaultPlaintext } from '@/vault/types'
+import type {
+  AccountPublic,
+  AccountSecret,
+  CarpinchoBackup,
+  ImportVaultResult,
+  TransactionRecord,
+  VaultEnvelope,
+  VaultPlaintext,
+} from '@/vault/types'
 import { wipeWalletConnectStorage } from '@/wc/storage'
 
 const AUTO_LOCK_MS: Record<AutoLockOption, number | null> = {
@@ -45,6 +55,14 @@ const AUTO_LOCK_MS: Record<AutoLockOption, number | null> = {
   '1h': 60 * 60_000,
 }
 const MAX_TRANSACTION_HISTORY = 50
+
+interface NewAccountArgs {
+  name: string
+  partyId: string
+  network: string
+  privateKeyHex: string
+  publicKeyBase64: string
+}
 
 let unlockedPlaintext: VaultPlaintext | null = null
 let cachedPassword: string | null = null
@@ -96,14 +114,10 @@ export interface VaultContextValue {
   primary: AccountPublic | null
   transactions: TransactionRecord[]
   setPrimary: (id: string) => Promise<void>
-  addAccount: (args: {
-    name: string
-    partyId: string
-    network: string
-    privateKeyHex: string
-    publicKeyBase64: string
-  }) => Promise<AccountPublic>
+  addAccount: (args: NewAccountArgs) => Promise<AccountPublic>
   removeAccount: (id: string) => Promise<void>
+  exportEncryptedVault: (password: string) => Promise<CarpinchoBackup>
+  importEncryptedVault: (file: unknown, password: string) => Promise<ImportVaultResult>
   signMessage: (accountId: string, messageBase64: string) => Promise<string>
   recordTransaction: (
     args: Omit<TransactionRecord, 'id' | 'createdAt'>,
@@ -166,6 +180,10 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
       }
       if (password.length < 8) {
         throw new Error('password must be at least 8 characters')
+      }
+      await ensurePasswordStrengthReady()
+      if (!isPasswordAcceptable(password)) {
+        throw new Error('password is too weak')
       }
       const plaintext: VaultPlaintext = {
         v: 1,
@@ -256,39 +274,40 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
     [persist, bump, accountsChangedPayload],
   )
 
+  // In-memory insert shared by addAccount and the import merge: pushes the secret
+  // and seeds primary if unset. Caller owns persist()/bump()/broadcast so a batch
+  // import re-encrypts once instead of once per account. Assumes an unlocked vault.
+  const insertAccount = useCallback((args: NewAccountArgs): AccountSecret => {
+    if (unlockedPlaintext === null) {
+      throw new Error('vault locked')
+    }
+    const secret: AccountSecret = {
+      id: generateId(),
+      name: args.name,
+      partyId: args.partyId,
+      privateKeyHex: args.privateKeyHex,
+      publicKeyBase64: args.publicKeyBase64,
+      network: args.network,
+      createdAt: Date.now(),
+    }
+    unlockedPlaintext.accounts.push(secret)
+    if (unlockedPlaintext.primaryAccountId === null) {
+      unlockedPlaintext.primaryAccountId = secret.id
+    }
+    return secret
+  }, [])
+
   // Caller supplies the keypair (already used to create the Canton party);
   // generating one here would desync the vault entry from the account.
   const addAccount = useCallback(
-    async (args: {
-      name: string
-      partyId: string
-      network: string
-      privateKeyHex: string
-      publicKeyBase64: string
-    }): Promise<AccountPublic> => {
-      if (unlockedPlaintext === null) {
-        throw new Error('vault locked')
-      }
-      const id = generateId()
-      const secret: AccountSecret = {
-        id,
-        name: args.name,
-        partyId: args.partyId,
-        privateKeyHex: args.privateKeyHex,
-        publicKeyBase64: args.publicKeyBase64,
-        network: args.network,
-        createdAt: Date.now(),
-      }
-      unlockedPlaintext.accounts.push(secret)
-      if (unlockedPlaintext.primaryAccountId === null) {
-        unlockedPlaintext.primaryAccountId = id
-      }
+    async (args: NewAccountArgs): Promise<AccountPublic> => {
+      const secret = insertAccount(args)
       await persist()
       bump()
       void broadcastWalletEvent('accountsChanged', accountsChangedPayload())
-      return toPublic(secret, unlockedPlaintext.primaryAccountId)
+      return toPublic(secret, unlockedPlaintext?.primaryAccountId ?? null)
     },
-    [persist, bump, accountsChangedPayload],
+    [insertAccount, persist, bump, accountsChangedPayload],
   )
 
   const recordTransaction = useCallback(
@@ -345,6 +364,118 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
     [],
   )
 
+  // Builds a portable backup of every account. Pure projection: omits id/createdAt,
+  // never logged or persisted. Internal: consumed only by exportEncryptedVault.
+  const buildEnvelope = useCallback((): VaultEnvelope => {
+    if (unlockedPlaintext === null) {
+      throw new Error('vault locked')
+    }
+    return {
+      v: 1,
+      accounts: unlockedPlaintext.accounts.map((a) => ({
+        name: a.name,
+        partyId: a.partyId,
+        publicKeyBase64: a.publicKeyBase64,
+        privateKeyHex: a.privateKeyHex,
+        network: a.network,
+      })),
+    }
+  }, [])
+
+  // Restores accounts from an envelope. Per entry: the private key must derive the
+  // stored public key and the partyId must be `hint::namespace`; duplicates are skipped.
+  // Internal: consumed only by importEncryptedVault.
+  const mergeEnvelope = useCallback(
+    async (envelope: VaultEnvelope): Promise<ImportVaultResult> => {
+      if (unlockedPlaintext === null) {
+        throw new Error('vault locked')
+      }
+      if (envelope?.v !== 1 || !Array.isArray(envelope.accounts)) {
+        throw new Error('unsupported vault envelope')
+      }
+      let imported = 0
+      let skipped = 0
+      let rejected = 0
+      for (const raw of envelope.accounts as unknown[]) {
+        const entry = raw as Record<string, unknown>
+        // Import is the only ungated, externally-supplied path, so reject any entry
+        // whose required fields are not strings before they reach the encrypted store.
+        if (
+          raw === null ||
+          typeof raw !== 'object' ||
+          typeof entry.name !== 'string' ||
+          typeof entry.partyId !== 'string' ||
+          typeof entry.publicKeyBase64 !== 'string' ||
+          typeof entry.privateKeyHex !== 'string' ||
+          typeof entry.network !== 'string'
+        ) {
+          rejected += 1
+          continue
+        }
+        const { name, partyId, publicKeyBase64, privateKeyHex, network } = entry
+        let derived: string
+        try {
+          derived = await derivePublicKeyBase64(privateKeyHex)
+        } catch {
+          rejected += 1
+          continue
+        }
+        if (derived !== publicKeyBase64 || !/^.+::.+$/.test(partyId)) {
+          rejected += 1
+          continue
+        }
+        if (unlockedPlaintext.accounts.some((a) => a.partyId === partyId)) {
+          skipped += 1
+          continue
+        }
+        insertAccount({ name, partyId, network, privateKeyHex, publicKeyBase64 })
+        imported += 1
+      }
+      // Re-encrypt once for the whole batch rather than per account.
+      if (imported > 0) {
+        await persist()
+        bump()
+        void broadcastWalletEvent('accountsChanged', accountsChangedPayload())
+      }
+      return { imported, skipped, rejected }
+    },
+    [insertAccount, persist, bump, accountsChangedPayload],
+  )
+
+  const exportEncryptedVault = useCallback(
+    async (password: string): Promise<CarpinchoBackup> => {
+      if (unlockedPlaintext === null) {
+        throw new Error('vault locked')
+      }
+      // Enforces file-password == vault-password and re-authenticates the user.
+      if (cachedPassword !== password) {
+        throw new Error('invalid password')
+      }
+      const envelope = buildEnvelope()
+      const vault = await encryptVault(password, JSON.stringify(envelope))
+      return wrapBackup(vault)
+    },
+    [buildEnvelope],
+  )
+
+  const importEncryptedVault = useCallback(
+    async (file: unknown, password: string): Promise<ImportVaultResult> => {
+      if (unlockedPlaintext === null) {
+        throw new Error('vault locked')
+      }
+      const encrypted = parseBackupContainer(file)
+      let plaintext: string
+      try {
+        plaintext = await decryptVault(password, encrypted)
+      } catch {
+        throw new Error('Wrong password for this file.')
+      }
+      const envelope = JSON.parse(plaintext) as VaultEnvelope
+      return await mergeEnvelope(envelope)
+    },
+    [mergeEnvelope],
+  )
+
   const verifyPassword = useCallback(
     (password: string): boolean => cachedPassword !== null && cachedPassword === password,
     [],
@@ -365,6 +496,10 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
       }
       if (newPassword.length < 8) {
         throw new Error('new password must be at least 8 characters')
+      }
+      await ensurePasswordStrengthReady()
+      if (!isPasswordAcceptable(newPassword)) {
+        throw new Error('new password is too weak')
       }
       const blob = await encryptVault(newPassword, JSON.stringify(unlockedPlaintext))
       rotateVault(blob)
@@ -489,6 +624,8 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
       setPrimary,
       addAccount,
       removeAccount,
+      exportEncryptedVault,
+      importEncryptedVault,
       signMessage,
       recordTransaction,
       changePassword,
@@ -508,6 +645,8 @@ export const VaultProvider = ({ children }: PropsWithChildren): JSX.Element => {
     setPrimary,
     addAccount,
     removeAccount,
+    exportEncryptedVault,
+    importEncryptedVault,
     signMessage,
     recordTransaction,
     changePassword,

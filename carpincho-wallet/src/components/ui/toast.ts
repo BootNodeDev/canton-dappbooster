@@ -18,11 +18,11 @@ type Listener = (entries: ReadonlyArray<ToastEntry>) => void
 
 const MAX_VISIBLE = 3
 
-// Only errors persist until dismissed; everything else clears after 3 s.
+// Only errors persist until dismissed; everything else clears after 5 s.
 const DEFAULT_DURATION_MS: Record<ToastVariant, number> = {
-  info: 3000,
-  success: 3000,
-  warning: 3000,
+  info: 5000,
+  success: 5000,
+  warning: 5000,
   error: Number.POSITIVE_INFINITY,
 }
 

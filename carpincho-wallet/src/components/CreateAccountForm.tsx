@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { completeCreateParty, prepareCreateParty } from '@/api/walletService'
+import {
+  completeCreateParty,
+  getWalletServiceNetworkId,
+  prepareCreateParty,
+} from '@/api/walletService'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/TextInput'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -7,7 +11,6 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/utils/cn'
 import { generateKeypair, signMessageBase64 } from '@/vault/keypair'
 import { useVault } from '@/vault/useVault'
-import { getCantonNetwork } from '@/wc/client'
 
 export interface CreateAccountFormProps {
   onSuccess?: () => void
@@ -49,10 +52,11 @@ export const CreateAccountForm = ({
         onboardingId: prepared.onboardingId,
         signatureBase64,
       })
+      const networkId = await getWalletServiceNetworkId()
       await v.addAccount({
         name: trimmed,
         partyId: completed.partyId,
-        network: getCantonNetwork(),
+        network: networkId,
         privateKeyHex: kp.privateKeyHex,
         publicKeyBase64: kp.publicKeyBase64,
       })

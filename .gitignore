@@ -8,6 +8,7 @@ dist-extension/
 # env
 .env
 .env.local
+.env.fivenorth
 
 # typescript
 *.tsbuildinfo

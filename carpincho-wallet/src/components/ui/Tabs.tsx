@@ -21,13 +21,16 @@ export const TabsList = ({
 
 export const TabTrigger = ({
   value,
+  testId,
   children,
 }: {
   value: string
+  testId?: string
   children: ReactNode
 }): JSX.Element => (
   <TabsPrimitive.Trigger
     value={value}
+    data-testid={testId}
     className={cn(
       '-mb-px border-b-2 border-transparent px-0.5 pb-2.5 pt-1.5 text-[0.95rem] font-semibold outline-none transition-colors',
       'text-muted-foreground hover:text-foreground focus-visible:text-foreground',
@@ -38,4 +41,13 @@ export const TabTrigger = ({
   </TabsPrimitive.Trigger>
 )
 
-export const TabContent = TabsPrimitive.Content
+// Keeps force-mounted panels in the DOM for polling while hiding inactive tab bodies.
+export const TabContent = ({
+  className,
+  ...props
+}: TabsPrimitive.TabsContentProps): JSX.Element => (
+  <TabsPrimitive.Content
+    className={cn('data-[state=inactive]:hidden', className)}
+    {...props}
+  />
+)

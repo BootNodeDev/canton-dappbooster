@@ -7,9 +7,11 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 
+// Encodes JWT segments in the URL-safe base64 variant required by bearer tokens.
 const b64url = (input) =>
   Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
 
+// Reads local .env values so token generation follows the same config as the stack.
 const parseEnvFile = (filePath) => {
   if (!fs.existsSync(filePath)) {
     return {}
@@ -55,18 +57,25 @@ export const createCantonToken = ({ subject, audience, secret }) => {
   return `${encoded}.${b64url(signature)}`
 }
 
+// Prints a LocalNet token and the two places it can be copied for development.
 const main = () => {
   const env = {
     ...parseEnvFile(path.join(root, '.env')),
     ...process.env,
   }
-  const subject = process.argv[2] ?? env.CANTON_ADMIN_USER_ID
+  const subject = process.argv[2] ?? 'ledger-api-user'
+  const token = createCantonToken({
+    subject,
+    audience: env.CANTON_AUTH_AUDIENCE,
+    secret: env.CANTON_AUTH_SECRET,
+  })
+  process.stdout.write(`${token}\n\n`)
+  process.stdout.write('For wallet-service:\n')
+  process.stdout.write(`  CANTON_BACKEND_TOKEN=${token}\n\n`)
+  process.stdout.write('For Carpincho LocalNet settings:\n')
+  process.stdout.write('  Use this token as the LocalNet bearer token.\n')
   process.stdout.write(
-    `${createCantonToken({
-      subject,
-      audience: env.CANTON_AUTH_AUDIENCE,
-      secret: env.CANTON_AUTH_SECRET,
-    })}\n`,
+    '  You may reuse it for local dev or generate another token with this script.\n',
   )
 }
 

@@ -80,12 +80,20 @@ describe('AccountsDialog', () => {
     cleanup()
   })
 
-  it('lists all accounts with name + address rows', async () => {
+  it('lists accounts other than the current one', async () => {
+    // Selecting the already-active account is a no-op, so it is left out of the switcher.
     renderDialog()
     const dialog = await screen.findByRole('dialog')
-    assert.ok((dialog.textContent ?? '').includes('alice'))
+    assert.equal((dialog.textContent ?? '').includes('alice'), false)
     assert.ok((dialog.textContent ?? '').includes('bob'))
-    assert.equal(within(dialog).getAllByTestId('account-item').length, 2)
+    assert.equal(within(dialog).getAllByTestId('account-item').length, 1)
+  })
+
+  it('shows an empty message when the current account is the only one', async () => {
+    renderDialog({ accounts: [ACCT_A], primary: ACCT_A })
+    await screen.findByRole('dialog')
+    assert.equal(screen.queryAllByTestId('account-item').length, 0)
+    assert.ok(screen.getByText(/no other accounts/i))
   })
 
   it('filters by the full party id substring, case-insensitively', async () => {
@@ -114,7 +122,7 @@ describe('AccountsDialog', () => {
       setPrimary: async (id) => void selected.push(id),
     })
     await screen.findByRole('dialog')
-    await user.click(screen.getAllByTestId('account-item')[1])
+    await user.click(screen.getAllByTestId('account-item')[0])
     assert.deepEqual(selected, ['b'])
     assert.ok(onOpenChange.includes(false))
   })
@@ -125,7 +133,7 @@ describe('AccountsDialog', () => {
     renderDialog({ removeAccount: async (id) => void removed.push(id) })
     await screen.findByRole('dialog')
 
-    const bobRow = screen.getAllByTestId('account-item')[1].parentElement as HTMLElement
+    const bobRow = screen.getAllByTestId('account-item')[0].parentElement as HTMLElement
     await user.click(within(bobRow).getByTestId('account-remove'))
 
     assert.ok(screen.getByText(/remove bob\?/i))
@@ -140,7 +148,7 @@ describe('AccountsDialog', () => {
     const { onOpenChange } = renderDialog({ removeAccount: async (id) => void removed.push(id) })
     await screen.findByRole('dialog')
 
-    const bobRow = screen.getAllByTestId('account-item')[1].parentElement as HTMLElement
+    const bobRow = screen.getAllByTestId('account-item')[0].parentElement as HTMLElement
     await user.click(within(bobRow).getByTestId('account-remove'))
     await user.click(screen.getByRole('button', { name: /close/i }))
 
@@ -170,7 +178,7 @@ describe('AccountsDialog', () => {
     const { onOpenChange } = renderDialog({ removeAccount: async () => undefined })
     await screen.findByRole('dialog')
 
-    const bobRow = screen.getAllByTestId('account-item')[1].parentElement as HTMLElement
+    const bobRow = screen.getAllByTestId('account-item')[0].parentElement as HTMLElement
     await user.click(within(bobRow).getByTestId('account-remove'))
     await user.click(screen.getByTestId('confirm-remove-action'))
 

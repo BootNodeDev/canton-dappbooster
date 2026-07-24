@@ -82,7 +82,6 @@ Subproject docs must not restate root rules. They should describe only their loc
   - `npm run build-dar -- <daml-project>` / `npm run deploy-dar -- <dar>`
   - `npm run carpincho:build:extension`
   - `npm run app:dev`
-- For local-stack convenience, [`scripts/dev-stack.sh`](scripts/dev-stack.sh) wraps the shortcuts above behind an interactive menu (run with no args) or direct subcommands (`install`, `docker-up`, `up`, `down`, `docker-down`, `mock-up`, `mock-down`, `extension`, `status`). The `npm` scripts remain canonical; the helper just orchestrates them. See [`README.md`](README.md).
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `package-lock.json` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - The root `package.json` pins `@canton-network/dapp-sdk` to `1.1.0` via `overrides`: consumers declare `^1.1.0`, but `1.2.0` is intentionally held back. npm 11 does not persist `overrides` into `package-lock.json`, so the pin is enforced by the override on every relock and by the resolved `1.1.0` entry in the lock on every plain install. Do not bump it without testing the dApp flow against the newer SDK.

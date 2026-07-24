@@ -1,11 +1,30 @@
 import { useEffect, useId, useRef } from 'react'
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator'
 import { PasswordInput } from '@/components/ui/PasswordInput'
+import { Tooltip } from '@/components/ui/Tooltip'
 import {
   isConfirmMismatch,
   isNewPasswordPairValid,
   usePasswordStrengthReady,
 } from '@/vault/passwordStrength'
+
+const PASSWORD_RECOMMENDATIONS = (
+  <div className="flex flex-col gap-2">
+    <p>
+      Aim for <strong>12+ characters</strong>. Length is the biggest factor.
+    </p>
+    <p>
+      A string of unrelated words (e.g.{' '}
+      <span className="font-mono">correctly-growing-a-horse-battery</span>) is easier to remember
+      and <strong>harder to crack</strong> than short complex passwords.
+    </p>
+    <p>Avoid names, dates, dictionary words, and common substitutions (pa$$word, p@ssw0rd).</p>
+    <p>
+      The vault is encrypted locally: a stolen vault file can be attacked offline without rate
+      limits. Password strength is important.
+    </p>
+  </div>
+)
 
 type Props = {
   password: string
@@ -50,7 +69,20 @@ export const NewPasswordFields = ({
     <>
       <div className="flex flex-col gap-1">
         <div>
-          {visible && <label htmlFor={passwordId}>{passwordLabel}</label>}
+          {visible && (
+            <div className="mb-[0.55rem] flex items-center gap-1.5">
+              <label
+                className="mb-0"
+                htmlFor={passwordId}
+              >
+                {passwordLabel}
+              </label>
+              <Tooltip
+                label="Password recommendations"
+                content={PASSWORD_RECOMMENDATIONS}
+              />
+            </div>
+          )}
           <PasswordInput
             aria-describedby={strengthId}
             aria-label={visible ? undefined : passwordLabel}

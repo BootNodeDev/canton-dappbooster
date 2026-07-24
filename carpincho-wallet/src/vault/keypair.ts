@@ -21,7 +21,11 @@ export const fromHex = (hex: string): Uint8Array => {
   }
   const out = new Uint8Array(hex.length / 2)
   for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16)
+    const byte = Number.parseInt(hex.substring(i * 2, i * 2 + 2), 16)
+    if (Number.isNaN(byte)) {
+      throw new Error('invalid hex')
+    }
+    out[i] = byte
   }
   return out
 }
@@ -54,6 +58,16 @@ export const generateKeypair = async (): Promise<GeneratedKeypair> => {
   return {
     privateKeyHex: toHex(privateKey),
     publicKeyBase64: toBase64(publicKey),
+  }
+}
+
+// Derives the public account key required by provider payloads from an imported secret key.
+export const derivePublicKeyBase64 = async (privateKeyHex: string): Promise<string> => {
+  try {
+    const publicKey = await ed.getPublicKeyAsync(fromHex(privateKeyHex.trim()))
+    return toBase64(publicKey)
+  } catch {
+    throw new Error('invalid private key')
   }
 }
 

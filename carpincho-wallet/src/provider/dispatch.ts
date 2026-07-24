@@ -13,7 +13,7 @@ import {
   normalizeMethod,
   pendingApprovalMethod,
 } from '@/provider/methods'
-import { buildStatus, getCantonNetwork } from '@/provider/status'
+import { buildStatus, getActiveNetwork } from '@/provider/status'
 import type {
   AccountResolver,
   DispatchResult,
@@ -31,6 +31,15 @@ export type {
   ProviderResponder,
 } from '@/provider/types'
 
+// Converts wallet-service discovery failures into JSON-RPC provider errors.
+const respondWalletServiceError = async (
+  responder: ProviderResponder,
+  error: unknown,
+): Promise<DispatchResult> => {
+  await responder.error(-32000, `wallet-service: ${(error as Error).message}`)
+  return { status: 'error' }
+}
+
 export const dispatchProviderRequest = async (
   request: ProviderRequest,
   resolve: AccountResolver,
@@ -41,9 +50,13 @@ export const dispatchProviderRequest = async (
   const { accounts, primary } = resolve()
 
   if (method === CANTON_METHOD_CONNECT || method === CANTON_METHOD_IS_CONNECTED) {
-    const status = await buildStatus()
-    await responder.result(accountConnection({ accounts, primary }, status.connection))
-    return { status: 'handled' }
+    try {
+      const status = await buildStatus()
+      await responder.result(accountConnection({ accounts, primary }, status.connection))
+      return { status: 'handled' }
+    } catch (error) {
+      return await respondWalletServiceError(responder, error)
+    }
   }
   if (method === CANTON_METHOD_DISCONNECT) {
     await responder.result(null)
@@ -62,16 +75,24 @@ export const dispatchProviderRequest = async (
     return { status: 'handled' }
   }
   if (method === CANTON_METHOD_STATUS) {
-    const status = await buildStatus()
-    await responder.result({
-      ...status,
-      connection: accountConnection({ accounts, primary }, status.connection),
-    })
-    return { status: 'handled' }
+    try {
+      const status = await buildStatus()
+      await responder.result({
+        ...status,
+        connection: accountConnection({ accounts, primary }, status.connection),
+      })
+      return { status: 'handled' }
+    } catch (error) {
+      return await respondWalletServiceError(responder, error)
+    }
   }
   if (method === CANTON_METHOD_GET_ACTIVE_NETWORK) {
-    await responder.result({ networkId: getCantonNetwork() })
-    return { status: 'handled' }
+    try {
+      await responder.result(await getActiveNetwork())
+      return { status: 'handled' }
+    } catch (error) {
+      return await respondWalletServiceError(responder, error)
+    }
   }
   if (method === CANTON_METHOD_SIGN_MESSAGE) {
     return { status: 'pending-approval', pendingMethod: CANTON_METHOD_SIGN_MESSAGE }

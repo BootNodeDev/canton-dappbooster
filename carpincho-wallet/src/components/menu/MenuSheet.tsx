@@ -3,8 +3,9 @@ import { MenuList } from '@/components/menu/MenuList'
 import { type Direction, MENU_LISTS, SCREENS, type Screen } from '@/components/menu/screens'
 import { ThemeMenu } from '@/components/menu/ThemeMenu'
 import { WalletConnectMenu } from '@/components/menu/WalletConnectMenu'
-import { AutoLockList, PasswordForm } from '@/components/SecurityPanel'
 import { Sheet } from '@/components/ui/Sheet'
+import { ExportVaultView, ImportVaultForm } from '@/components/VaultBackupPanel'
+import { AutoLockList, PasswordForm } from '@/components/VaultPanel'
 import { isExtensionRuntime } from '@/extension/runtimeClient'
 import { useVault } from '@/vault/useVault'
 
@@ -71,6 +72,7 @@ export const MenuSheet = ({ open, onOpenChange }: MenuSheetProps): JSX.Element =
     <Sheet
       open={open}
       onOpenChange={handleOpenChange}
+      testId="menu-sheet"
       title={config.title}
       description={config.description}
       onBack={goBack}
@@ -97,6 +99,12 @@ export const MenuSheet = ({ open, onOpenChange }: MenuSheetProps): JSX.Element =
         {screen === 'theme' && <ThemeMenu />}
         {screen === 'password' && <PasswordForm />}
         {screen === 'auto-lock' && <AutoLockList />}
+        {screen === 'export-vault' && (
+          <ExportVaultView onExported={() => handleOpenChange(false)} />
+        )}
+        {screen === 'import-vault' && (
+          <ImportVaultForm onImported={() => handleOpenChange(false)} />
+        )}
       </div>
     </Sheet>
   )

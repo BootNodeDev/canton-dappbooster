@@ -1,6 +1,5 @@
 export const CARPINCHO_PROVIDER_ID = 'carpincho-wallet'
 export const CARPINCHO_PROVIDER_NAME = 'Carpincho Wallet'
-export const CARPINCHO_PROVIDER_DESCRIPTION = 'Connect with the Carpincho browser extension wallet'
 
 export const WalletEvent = {
   SPLICE_WALLET_REQUEST: 'SPLICE_WALLET_REQUEST',
@@ -13,9 +12,6 @@ export const WalletEvent = {
 } as const
 
 type WalletEventValue<K extends keyof typeof WalletEvent> = (typeof WalletEvent)[K]
-
-export const CANTON_REQUEST_PROVIDER_EVENT = 'canton:requestProvider'
-export const CANTON_ANNOUNCE_PROVIDER_EVENT = 'canton:announceProvider'
 
 export interface JsonRpcRequest {
   jsonrpc: '2.0'
@@ -38,16 +34,6 @@ export interface JsonRpcResponse {
 export interface SpliceWalletRequestMessage {
   type: WalletEventValue<'SPLICE_WALLET_REQUEST'>
   request: JsonRpcRequest
-  target?: string
-}
-
-export interface SpliceWalletResponseMessage {
-  type: WalletEventValue<'SPLICE_WALLET_RESPONSE'>
-  response: JsonRpcResponse
-}
-
-export interface SpliceWalletReadyMessage {
-  type: WalletEventValue<'SPLICE_WALLET_EXT_READY'>
   target?: string
 }
 
@@ -112,9 +98,6 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const isForCarpincho = (message: { target?: unknown }): boolean =>
   message.target === undefined || message.target === CARPINCHO_PROVIDER_ID
-
-export const isSpliceWalletReady = (value: unknown): value is SpliceWalletReadyMessage =>
-  isRecord(value) && value.type === WalletEvent.SPLICE_WALLET_EXT_READY
 
 export const isSpliceWalletRequest = (value: unknown): value is SpliceWalletRequestMessage =>
   isRecord(value) &&

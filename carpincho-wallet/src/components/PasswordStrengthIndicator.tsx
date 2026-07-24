@@ -1,5 +1,4 @@
-import { Tooltip } from '@/components/ui/Tooltip'
-import { MIN_PASSWORD_LENGTH, scorePassword } from '@/vault/passwordStrength'
+import { scorePassword } from '@/vault/passwordStrength'
 
 type Tier = { segmentColor: string; labelColor: string; label: string }
 
@@ -45,32 +44,6 @@ export const PasswordStrengthIndicator = ({ password, id }: Props): JSX.Element 
           ))}
         </div>
       </div>
-
-      <p className="flex items-center gap-1 text-[0.8rem] text-soft">
-        {MIN_PASSWORD_LENGTH} characters minimum, <b>"Strong"</b> or better
-        <Tooltip
-          label="Password recommendations"
-          content={
-            <div className="flex flex-col gap-2">
-              <p>
-                Aim for <strong>12+ characters</strong>. Length is the biggest factor.
-              </p>
-              <p>
-                A string of unrelated words (e.g.{' '}
-                <span className="font-mono">correctly-growing-a-horse-battery</span>) is easier to
-                remember and <strong>harder to crack</strong> than short complex passwords.
-              </p>
-              <p>
-                Avoid names, dates, dictionary words, and common substitutions (pa$$word, p@ssw0rd).
-              </p>
-              <p>
-                The vault is encrypted locally: a stolen vault file can be attacked offline without
-                rate limits. Password strength is important.
-              </p>
-            </div>
-          }
-        />
-      </p>
     </div>
   )
 }

@@ -1,4 +1,7 @@
-import { directConnectionUpdateFromProviderResponse } from '@/extension/directConnectionState'
+import {
+  directConnectionUpdateFromProviderResponse,
+  normalizeDirectConnectionOrigin,
+} from '@/extension/directConnectionState'
 import {
   forgetDirectConnectedOrigin,
   readDirectConnectedOrigins,
@@ -70,16 +73,16 @@ const chromeApi = (
   }
 ).chrome
 
-// Keep in sync with public/manifest.json `content_scripts.matches`; drift means missed pages.
-const CONTENT_SCRIPT_MATCHES = [
-  'http://localhost/*',
-  'http://127.0.0.1/*',
-  'https://localhost/*',
-  'https://127.0.0.1/*',
-]
-
+// Wallet → page events go only to dApps the user has connected, never to every
+// injected tab, so unconnected origins cannot observe wallet activity.
 const relayBroadcastToTabs = async (message: RuntimeBroadcastEvent): Promise<void> => {
-  const tabs = await chromeApi?.tabs?.query({ url: CONTENT_SCRIPT_MATCHES }).catch(() => [])
+  const origins = await readDirectConnectedOrigins().catch((): string[] => [])
+  if (origins.length === 0) {
+    return
+  }
+  const tabs = await chromeApi?.tabs
+    ?.query({ url: origins.map((origin) => `${origin}/*`) })
+    .catch(() => [])
   if (tabs === undefined) {
     return
   }
@@ -175,14 +178,27 @@ const queueProviderRequest = async (
   await openWalletPopup().catch(() => undefined)
 }
 
+// Resolves whether the requesting origin has an approved direct connection.
+const isOriginConnected = async (origin: string): Promise<boolean> => {
+  const normalized = normalizeDirectConnectionOrigin(origin)
+  if (normalized === undefined) {
+    return false
+  }
+  const connected = await readDirectConnectedOrigins().catch((): string[] => [])
+  return connected.includes(normalized)
+}
+
 const handleProviderRequest = async (
   message: RuntimeProviderRequest,
   sendResponse: (response?: unknown) => void,
 ): Promise<void> => {
-  const directResponse = await createDirectProviderResponse(
-    message.request,
-    await readWalletSnapshot().catch(() => null),
-  )
+  const [snapshot, isConnected] = await Promise.all([
+    readWalletSnapshot().catch(() => null),
+    isOriginConnected(message.origin),
+  ])
+  const directResponse = await createDirectProviderResponse(message.request, snapshot, {
+    isConnected,
+  })
   if (directResponse !== undefined) {
     await applyDirectConnectionUpdate(
       { origin: message.origin, request: message.request },

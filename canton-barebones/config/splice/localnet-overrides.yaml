@@ -1,0 +1,4 @@
+services:
+  nginx:
+    volumes:
+      - ${CANTON_BAREBONES_DIR}/config/splice/nginx-app-provider-disabled.conf.template:/etc/nginx/templates/app-provider.conf.template:ro

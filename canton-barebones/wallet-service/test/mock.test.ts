@@ -17,9 +17,13 @@ const baseConfig = () => ({
     jsonApiUrl: 'http://localhost:3013',
     ledgerApiUrl: 'grpc://localhost:3014',
     adminApiUrl: 'grpc://localhost:3015',
-    backendUserId: 'wallet-service',
     backendToken: undefined as string | undefined,
     tokenSource: 'none' as const,
+  },
+  splice: {
+    validatorUrl: 'http://localhost:2000/api/validator',
+    scanApiUrl: 'http://scan.localhost:4000/api/scan',
+    registryApiUrl: 'http://localhost:2000/api/validator/v0/scan-proxy',
   },
 })
 
@@ -116,6 +120,56 @@ describe('createMockRpc', () => {
     })) as JsonRpcResponse
     assert.ok('error' in res)
     assert.equal(res.error.code, -32004)
+  })
+
+  it('cip56.listPendingTransfers returns no mock transfers', async () => {
+    // Scenario: Carpincho polls pending token transfers in the Assets tab.
+    // Mock mode should keep that UI quiet instead of surfacing a method-not-found
+    // error when no Canton or Splice services are running.
+    const rpc = createMockRpc(baseConfig())
+
+    const res = (await rpc.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'cip56.listPendingTransfers',
+      params: { partyId: 'alice::mock' },
+    })) as JsonRpcResponse
+
+    assert.ok('result' in res)
+    assert.deepEqual(res.result, [])
+  })
+
+  it('cip56.listHoldings returns no mock holdings', async () => {
+    // Scenario: the Tokens tab polls holdings through wallet-service. Mock mode
+    // has no ledger state, so it should render an empty token list without
+    // raising a method-not-found error.
+    const rpc = createMockRpc(baseConfig())
+
+    const res = (await rpc.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'cip56.listHoldings',
+      params: { partyId: 'alice::mock' },
+    })) as JsonRpcResponse
+
+    assert.ok('result' in res)
+    assert.deepEqual(res.result, [])
+  })
+
+  it('amulet.preapproval.status returns an empty mock status', async () => {
+    // Scenario: mock mode has no Scan or ledger contracts, but Carpincho should
+    // still render the preapproval controls without a method-not-found error.
+    const rpc = createMockRpc(baseConfig())
+
+    const res = (await rpc.handle({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'amulet.preapproval.status',
+      params: { receiver: 'alice::mock' },
+    })) as JsonRpcResponse
+
+    assert.ok('result' in res)
+    assert.deepEqual(res.result, { active: false, expired: false })
   })
 })
 

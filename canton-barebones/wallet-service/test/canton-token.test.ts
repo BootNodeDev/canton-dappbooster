@@ -9,22 +9,27 @@ const b64urlDecode = (value: string): Buffer => {
 
 describe('createCantonToken', () => {
   it('produces the same HS256 token as canton-barebones/scripts/mint-token.mjs for the pinned inputs', () => {
+    // Scenario: wallet-service and the top-level token script must agree on
+    // the exact LocalNet JWT shape so generated tokens work across app-user
+    // Ledger, Validator, Scan, and Registry endpoints.
     const token = createCantonToken({
-      subject: 'wallet-service',
-      audience: 'https://canton-barebones.local',
+      subject: 'ledger-api-user',
+      audience: 'https://canton.network.global',
       secret: 'unsafe',
     })
 
     assert.equal(
       token,
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ3YWxsZXQtc2VydmljZSIsImF1ZCI6Imh0dHBzOi8vY2FudG9uLWJhcmVib25lcy5sb2NhbCJ9.-3Xq4rrhJliXWkrqPNXid5_YuuTk3E6EDtQYux-ULiI',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsZWRnZXItYXBpLXVzZXIiLCJhdWQiOiJodHRwczovL2NhbnRvbi5uZXR3b3JrLmdsb2JhbCJ9.G9aLv-IF5X0WmIkbR10f48i-7it5LlgwpJEZ4Ce2Y-E',
     )
   })
 
   it('decodes to the canonical header and payload', () => {
+    // Scenario: the generated bearer token must remain a simple HS256 JWT
+    // with only the subject and audience claims expected by LocalNet dev auth.
     const token = createCantonToken({
-      subject: 'wallet-service',
-      audience: 'https://canton-barebones.local',
+      subject: 'ledger-api-user',
+      audience: 'https://canton.network.global',
       secret: 'unsafe',
     })
     const [header, payload, signature] = token.split('.')
@@ -34,8 +39,8 @@ describe('createCantonToken', () => {
       typ: 'JWT',
     })
     assert.deepEqual(JSON.parse(b64urlDecode(payload).toString('utf8')), {
-      sub: 'wallet-service',
-      aud: 'https://canton-barebones.local',
+      sub: 'ledger-api-user',
+      aud: 'https://canton.network.global',
     })
     assert.equal(signature.length, 43)
   })

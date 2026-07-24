@@ -15,19 +15,17 @@
 #   ./scripts/dev-stack.sh down        # stop dev servers and tear down containers
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status      # show what is currently running
-#   ./scripts/dev-stack.sh extension   # build the Chrome extension and copy it to ~/Desktop
+#   ./scripts/dev-stack.sh extension   # build the Chrome extension into carpincho-wallet/dist-extension
 #   ./scripts/dev-stack.sh mock-up     # mock-only: mocked wallet-service + carpincho web app (no Docker)
 #   ./scripts/dev-stack.sh mock-down   # stop the mocked wallet-service + carpincho web app only
 #
 # What `up` starts (in order; Docker must already be running):
-#   1. Canton + Postgres + wallet-service containers (npm run canton:up)
+#   1. Splice LocalNet bundle + wallet-service containers (npm run canton:up)
 #   2. Health checks (canton + wallet-service)
 #   3. Builds and deploys the Daml DAR (name derived from daml.yaml)
-#   4. Carpincho Wallet dev server  -> http://localhost:3011  (background)
+#   4. Carpincho wallet dev server  -> http://localhost:3011  (background)
 #   5. dApp frontend dev server     -> http://localhost:3012  (background)
-#   6. Builds the Chrome extension and copies it to ~/Desktop/dist-extension
-#
-# Steps 4 and 6 are skipped when the Carpincho Wallet workspace is absent.
+#   6. Builds the Chrome extension into carpincho-wallet/dist-extension
 #
 # `down` reverses 4/5 (kills the dev servers) and tears down the containers.
 
@@ -51,16 +49,10 @@ DAML_DIR="dapp/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 EXT_SRC="carpincho-wallet/dist-extension"
-EXT_DEST="$HOME/Desktop/$(basename "$EXT_SRC")"
 
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
-
-# Carpincho is an optional workspace; a custom scaffold can omit it. Guard the
-# wallet/extension steps on its presence so the rest of the stack still works.
-# Presence means installable (deps + npm scripts), not just that the dir exists.
-has_carpincho() { [ -d carpincho-wallet ]; }
 
 case "$DAR_NAME" in
   -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
@@ -79,11 +71,6 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
 }
 
 build_extension() {
-  if ! has_carpincho; then
-    log "Carpincho Wallet absent; skipping extension build."
-    return 0
-  fi
-
   # A fresh clone may have no deps yet; one root install links every workspace.
   if [ ! -d node_modules ]; then
     install_deps
@@ -91,10 +78,7 @@ build_extension() {
 
   log "Building the Carpincho Chrome extension..."
   npm run carpincho:build:extension
-  log "Copying extension to $EXT_DEST"
-  rm -rf "$EXT_DEST"
-  cp -R "$EXT_SRC" "$EXT_DEST"
-  log "Extension ready at $EXT_DEST"
+  log "Extension ready at $EXT_SRC"
   echo "   Load it via chrome://extensions -> Developer mode -> Load unpacked"
 }
 
@@ -153,8 +137,33 @@ up() {
     cp canton-barebones/.env.example canton-barebones/.env
   fi
 
+  # Splice LocalNet requires CANTON_BACKEND_TOKEN unless wallet-service runs in
+  # mock mode; splice-common.sh's require_backend_token hard-fails without it.
+  if [ "${WALLET_SERVICE_MOCK:-}" = "1" ] \
+    || grep -qE '^[[:space:]]*WALLET_SERVICE_MOCK=1' canton-barebones/.env; then
+    log "WALLET_SERVICE_MOCK=1 — skipping CANTON_BACKEND_TOKEN."
+  elif grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' canton-barebones/.env; then
+    log "CANTON_BACKEND_TOKEN already set in canton-barebones/.env."
+  else
+    log "Minting CANTON_BACKEND_TOKEN for the LocalNet wallet-service..."
+    local token_line tmp_env
+    # mint-token.mjs prints a full 'CANTON_BACKEND_TOKEN=<jwt>' line; capture it
+    # without echoing the secret to the terminal.
+    token_line="$(npm run --silent canton:token -- ledger-api-user 2>/dev/null \
+      | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
+      | sed -E 's/^[[:space:]]*//')" || true
+    [ -n "$token_line" ] \
+      || die "Failed to mint CANTON_BACKEND_TOKEN (npm run canton:token -- ledger-api-user). Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in canton-barebones/.env."
+    # Replace any existing (empty) entry, else append — never print the token.
+    tmp_env="$(mktemp)"
+    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' canton-barebones/.env >"$tmp_env" || true
+    printf '%s\n' "$token_line" >>"$tmp_env"
+    mv "$tmp_env" canton-barebones/.env
+    log "Wrote CANTON_BACKEND_TOKEN to canton-barebones/.env."
+  fi
+
   # 1. Containers
-  log "Bringing up Canton + Postgres + wallet-service containers..."
+  log "Bringing up the Splice LocalNet bundle + wallet-service containers..."
   npm run canton:up
 
   # 2. Health
@@ -170,9 +179,7 @@ up() {
   npm run deploy-dar -- "$DAR_PATH"
 
   # 4. Carpincho wallet dev server (3011)
-  if ! has_carpincho; then
-    log "Carpincho Wallet absent; skipping wallet dev server."
-  elif lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
+  if lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3011 already in use; skipping wallet dev server."
   else
     log "Starting Carpincho wallet dev server -> http://localhost:3011"
@@ -191,21 +198,25 @@ up() {
     wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
   fi
 
-  # 6. Build extension + copy to Desktop
+  # 6. Build extension (into carpincho-wallet/dist-extension)
   build_extension
 
   echo
   log "Stack is up:"
-  echo "   wallet-service   http://localhost:3010"
-  if has_carpincho; then
-    echo "   carpincho wallet http://localhost:3011   (log: $WALLET_LOG)"
-  fi
-  echo "   dApp frontend    http://localhost:3012   (log: $DAPP_LOG)"
-  echo "   Canton JSON API  http://localhost:3013"
-  if has_carpincho; then
-    echo "   extension folder $EXT_DEST"
-    echo "   Load the extension via chrome://extensions -> Developer mode -> Load unpacked"
-  fi
+  cat <<EOF
+   wallet-service          http://localhost:3010
+   carpincho wallet        http://localhost:3011   (log: $WALLET_LOG)
+   dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
+   app-user wallet UI      http://wallet.localhost:2000
+   app-user JSON API       http://localhost:2975
+   app-user Ledger API     grpc://localhost:2901
+   app-user Validator API  http://localhost:2903
+   Scan UI                 http://scan.localhost:4000
+   SV UI                   http://sv.localhost:4000
+   PostgreSQL              localhost:5432
+   extension folder        $EXT_SRC
+EOF
+  echo "   Load the extension via chrome://extensions -> Developer mode -> Load unpacked"
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>
@@ -226,11 +237,8 @@ down() {
   # 1. Dev servers
   stop_pidfile "$WALLET_PID" "wallet dev server"
   stop_pidfile "$DAPP_PID" "dApp dev server"
-  # Belt-and-suspenders: kill any stray vite on our ports. The guard is cosmetic
-  # (the pkill is already no-op-safe); the stop_pidfile above runs unconditionally.
-  if has_carpincho; then
-    pkill -f "carpincho-wallet run dev" 2>/dev/null || true
-  fi
+  # Belt-and-suspenders: kill any stray vite on our ports.
+  pkill -f "carpincho-wallet run dev" 2>/dev/null || true
   pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
 
   # 2. Containers (only if the daemon is reachable). Docker itself is left
@@ -243,12 +251,15 @@ down() {
   fi
 
   echo
-  log "Stack is down. Ports 3010-3018:"
-  if lsof -nP -iTCP:3010-3018 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010-3018 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3010-3012:"
+  if lsof -nP -iTCP:3010-3012 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3010-3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (all free)"
   fi
+  log "LocalNet containers:"
+  docker ps --filter "name=canton-barebones" --format '   {{.Names}}  {{.Status}}' 2>/dev/null \
+    || echo "   (docker daemon not running)"
 }
 
 wait_http() { # wait_http <seconds> <url> <label>
@@ -282,9 +293,7 @@ mock_up() {
   fi
 
   # Carpincho web app -> http://localhost:3011
-  if ! has_carpincho; then
-    log "Carpincho Wallet absent; skipping Carpincho web app."
-  elif lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
+  if lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3011 already in use; skipping carpincho web app."
   else
     log "Starting Carpincho web app -> http://localhost:3011"
@@ -295,10 +304,10 @@ mock_up() {
 
   echo
   log "Mock stack is up:"
-  echo "   mocked wallet-service  http://localhost:3010   (log: $MOCK_WS_LOG)"
-  if has_carpincho; then
-    echo "   carpincho web app      http://localhost:3011   (log: $WALLET_LOG)"
-  fi
+  cat <<EOF
+   mocked wallet-service  http://localhost:3010   (log: $MOCK_WS_LOG)
+   carpincho web app      http://localhost:3011   (log: $WALLET_LOG)
+EOF
   echo "   No Docker / Canton / dApp frontend in this mode. Stop with: $0 mock-down"
 }
 
@@ -308,10 +317,7 @@ mock_down() {
   # Belt-and-suspenders for stray processes on our ports.
   pkill -f "WALLET_SERVICE_MOCK" 2>/dev/null || true
   pkill -f "tsx watch src/server.ts" 2>/dev/null || true
-  # Guard is cosmetic; the pkill is already no-op-safe.
-  if has_carpincho; then
-    pkill -f "carpincho-wallet run dev" 2>/dev/null || true
-  fi
+  pkill -f "carpincho-wallet run dev" 2>/dev/null || true
 
   echo
   log "Mock stack is down. Ports 3010/3011:"
@@ -331,15 +337,15 @@ menu() {
   local keys=(install docker-up docker-down up down mock-up mock-down extension quit)
   local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Wallet up" "Wallet down" "Build extension" "Quit")
   local descs=(
-    "install + link every workspace (root npm install)"
-    "start Docker Desktop, wait for daemon (macOS)"
+    "install + link every workspace"
+    "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "containers, DAR, dev servers, extension"
+    "start containers, dev servers, build DAR and extension"
     "stop dev servers + tear down containers"
-    "mock wallet-service + carpincho web app (no Docker)"
-    "stop the mock server + web app only"
-    "build the extension + copy to ~/Desktop"
-    "exit this menu"
+    "start mock wallet-service + carpincho web app (no Docker)"
+    "stop the mock wallet-service + carpincho web app"
+    "build the extension (carpincho-wallet/dist-extension)"
+    "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
 
@@ -406,15 +412,16 @@ menu() {
 }
 
 status() {
-  log "Containers:"
+  log "LocalNet containers (canton-barebones compose project):"
   docker ps --filter "name=canton-barebones" --format '   {{.Names}}  {{.Status}}' 2>/dev/null \
     || echo "   (docker daemon not running)"
-  log "Listening ports 3010-3018:"
-  if lsof -nP -iTCP:3010-3018 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010-3018 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3010-3012:"
+  if lsof -nP -iTCP:3010-3012 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3010-3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (none)"
   fi
+  echo "   Backend health: run 'npm run canton:health'"
 }
 
 case "${1:-menu}" in

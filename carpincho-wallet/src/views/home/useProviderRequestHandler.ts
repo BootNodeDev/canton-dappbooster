@@ -5,17 +5,24 @@ import {
   type ProviderResponder,
 } from '@/provider/dispatch'
 import {
+  CANTON_METHOD_CONNECT,
   CANTON_METHOD_PREPARE_EXECUTE,
   CANTON_METHOD_PREPARE_EXECUTE_AND_WAIT,
   CANTON_METHOD_SIGN_MESSAGE,
+  normalizeMethod,
 } from '@/provider/methods'
 import type { AccountResolver } from '@/provider/types'
 import { executeParams } from '@/views/home/transactionSummary'
-import type { PendingExecuteRequest, PendingSignRequest } from '@/views/home/types'
+import type {
+  PendingConnectRequest,
+  PendingExecuteRequest,
+  PendingSignRequest,
+} from '@/views/home/types'
 import { selectedAccount } from '@/wc/accounts'
 
 export interface ProviderRequestContext {
   rawMethod?: string
+  origin?: string
 }
 
 export type ProviderRequestHandler = (
@@ -24,15 +31,22 @@ export type ProviderRequestHandler = (
   context: ProviderRequestContext,
 ) => Promise<void>
 
-// Bridges dispatch results needing approval into pending-sign / pending-execute state.
+// Bridges dispatch results needing approval into pending-connect / -sign / -execute state.
 // Shared by the WalletConnect and extension request paths.
 export const useProviderRequestHandler = (
   resolveAccounts: AccountResolver,
+  setPendingConnect: Dispatch<SetStateAction<PendingConnectRequest | undefined>>,
   setPendingSign: Dispatch<SetStateAction<PendingSignRequest | undefined>>,
   setPendingExecute: Dispatch<SetStateAction<PendingExecuteRequest | undefined>>,
 ): ProviderRequestHandler =>
   useCallback(
     async (request, responder, context) => {
+      // connect reaches this handler only after the gatekeeper queued it for an unapproved
+      // origin, so it must require explicit user approval rather than auto-resolving.
+      if (normalizeMethod(request.method) === CANTON_METHOD_CONNECT) {
+        setPendingConnect({ origin: context.origin, responder })
+        return
+      }
       const result = await dispatchProviderRequest(request, resolveAccounts, responder)
       if (
         result.status === 'pending-approval' &&
@@ -48,7 +62,7 @@ export const useProviderRequestHandler = (
           await responder.error(-32000, 'no account available')
           return
         }
-        setPendingSign({ account, messageBase64, responder })
+        setPendingSign({ account, messageBase64, origin: context.origin, responder })
         return
       }
       if (
@@ -66,9 +80,10 @@ export const useProviderRequestHandler = (
           method: result.pendingMethod,
           params: executeParams(request.params, account.partyId),
           rawMethod: context.rawMethod ?? request.method,
+          origin: context.origin,
           responder,
         })
       }
     },
-    [resolveAccounts, setPendingSign, setPendingExecute],
+    [resolveAccounts, setPendingConnect, setPendingSign, setPendingExecute],
   )

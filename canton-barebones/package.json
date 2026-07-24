@@ -3,10 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "up": "docker compose up -d --build",
-    "down": "docker compose down",
+    "up": "./scripts/up.sh",
+    "down": "./scripts/down.sh",
     "health": "./scripts/health-check.sh",
-    "token": "node ./scripts/mint-token.mjs wallet-service",
+    "token": "node ./scripts/mint-token.mjs",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",

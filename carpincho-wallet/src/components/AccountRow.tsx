@@ -21,7 +21,6 @@ export const AccountRow = ({
 }: AccountRowProps): JSX.Element => (
   <div className="flex min-w-0 flex-1 items-center gap-2">
     <AccountAvatar
-      name={account.name}
       partyId={account.partyId}
       size={avatarSize}
     />

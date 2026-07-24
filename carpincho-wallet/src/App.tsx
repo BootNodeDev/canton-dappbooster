@@ -1,9 +1,11 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/Header'
 import { MenuSheet } from '@/components/menu/MenuSheet'
 import { SPINNER_ICON } from '@/components/ui/icons'
 import { ToastProvider } from '@/components/ui/ToastProvider'
 import { TooltipProvider } from '@/components/ui/Tooltip'
+import { createQueryClient } from '@/config/queryClient'
 import { cn } from '@/utils/cn'
 import { useVault } from '@/vault/useVault'
 import type { VaultContextValue } from '@/vault/VaultContext'
@@ -12,10 +14,12 @@ import { HomeView } from '@/views/HomeView'
 import { OnboardingFlow } from '@/views/onboarding/OnboardingFlow'
 import { UnlockView } from '@/views/UnlockView'
 
+const queryClient = createQueryClient()
+
 export type ShellView = 'loading' | 'unlock' | 'onboarding' | 'home'
 
-// First-run routing; order matters. OnboardingFlow picks step 1 (no vault) vs step 2
-// (unlocked vault, no account), so both onboarding cases collapse to one branch.
+// First-run routing; order matters. Both onboarding cases (no vault, or unlocked vault
+// with no account) collapse to one branch; OnboardingFlow runs the vault/RPC/account steps.
 export const selectShellView = (
   v: Pick<VaultContextValue, 'isLoading' | 'hasVault' | 'isLocked' | 'accounts'>,
 ): ShellView => {
@@ -65,13 +69,15 @@ const Shell = (): JSX.Element => {
 }
 
 const App = (): JSX.Element => (
-  <VaultProvider>
-    <TooltipProvider>
-      <ToastProvider>
-        <Shell />
-      </ToastProvider>
-    </TooltipProvider>
-  </VaultProvider>
+  <QueryClientProvider client={queryClient}>
+    <VaultProvider>
+      <TooltipProvider>
+        <ToastProvider>
+          <Shell />
+        </ToastProvider>
+      </TooltipProvider>
+    </VaultProvider>
+  </QueryClientProvider>
 )
 
 export default App

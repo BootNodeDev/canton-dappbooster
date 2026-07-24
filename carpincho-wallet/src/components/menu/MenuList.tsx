@@ -17,6 +17,7 @@ export const MenuList = ({ rows, onNavigate, onLogout }: MenuListProps): JSX.Ele
         label={label}
         tone={tone}
         icon={icon}
+        testId={`menu-row-${to}`}
         onClick={to === 'logout' ? onLogout : () => onNavigate(to)}
       />
     ))}

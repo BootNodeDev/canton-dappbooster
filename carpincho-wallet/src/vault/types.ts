@@ -61,3 +61,31 @@ export interface TransactionRecord {
   commandCount?: number
   summary?: string
 }
+
+export interface VaultEnvelopeAccount {
+  name: string
+  partyId: string
+  publicKeyBase64: string
+  privateKeyHex: string
+  network: string
+}
+
+export interface VaultEnvelope {
+  v: 1
+  accounts: VaultEnvelopeAccount[]
+}
+
+export interface ImportVaultResult {
+  imported: number
+  skipped: number
+  rejected: number
+}
+
+// Self-describing encrypted backup file. `kind` + `version` are the type-confusion guard:
+// an on-disk EncryptedVault has no `kind`, so it can never be imported as a backup.
+// `vault` is encryptVault(JSON.stringify(VaultEnvelope)).
+export interface CarpinchoBackup {
+  kind: 'carpincho-backup'
+  version: 1
+  vault: EncryptedVault
+}

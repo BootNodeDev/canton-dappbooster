@@ -16,6 +16,9 @@ const readText = (path: string): string => readFileSync(path, 'utf8')
 
 describe('extension postMessage bridge', () => {
   it('declares content script and background worker entrypoints', () => {
+    // Scenario: the extension must inject its provider bridge on every dApp page, while the
+    // background worker owns popup request coordination. The manifest should therefore expose the
+    // content script bundle at document start for all URLs and the module background worker.
     const manifest = readJson<{
       background?: { service_worker?: string; type?: string }
       content_scripts?: Array<{ matches?: string[]; js?: string[]; run_at?: string }>
@@ -25,7 +28,7 @@ describe('extension postMessage bridge', () => {
     assert.deepEqual(manifest.background, { service_worker: 'background.js', type: 'module' })
     assert.deepEqual(manifest.content_scripts?.[0]?.js, ['contentScript.js'])
     assert.equal(manifest.content_scripts?.[0]?.run_at, 'document_start')
-    assert.ok(manifest.content_scripts?.[0]?.matches?.includes('http://localhost/*'))
+    assert.ok(manifest.content_scripts?.[0]?.matches?.includes('<all_urls>'))
     assert.match(
       viteConfig,
       /contentScript: resolve\(__dirname, 'src\/extension\/contentScript\.ts'\)/,

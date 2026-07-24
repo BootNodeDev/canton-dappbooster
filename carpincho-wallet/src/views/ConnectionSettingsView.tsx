@@ -57,6 +57,7 @@ export const ConnectionSettingsView = (): JSX.Element => {
           <label htmlFor="wallet-service-rpc">Wallet-service RPC URL</label>
           <GhostButton
             type="button"
+            data-testid="rpc-test"
             onClick={() => {
               void onTest()
             }}
@@ -68,6 +69,7 @@ export const ConnectionSettingsView = (): JSX.Element => {
         </div>
         <TextInput
           id="wallet-service-rpc"
+          data-testid="rpc-endpoint-input"
           type="url"
           className="font-mono"
           value={draft.walletServiceRpcUrl}
@@ -76,20 +78,9 @@ export const ConnectionSettingsView = (): JSX.Element => {
         />
       </div>
 
-      <div>
-        <label htmlFor="canton-network">Canton network</label>
-        <TextInput
-          id="canton-network"
-          type="text"
-          className="font-mono"
-          value={draft.cantonNetwork}
-          onChange={(e) => setDraft((prev) => ({ ...prev, cantonNetwork: e.target.value }))}
-          placeholder="canton:local"
-        />
-      </div>
-
       <PrimaryButton
         className="w-full mt-1"
+        data-testid="rpc-save"
         onClick={onSave}
       >
         Save

@@ -1,98 +1,26 @@
 services:
-  postgres:
-    image: "${POSTGRES_IMAGE}"
-    container_name: canton-barebones-postgres
-    environment:
-      POSTGRES_USER: "${POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
-    ports:
-      - "${POSTGRES_HOST_PORT}:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  canton:
-    image: "${CANTON_IMAGE}"
-    container_name: canton-barebones-canton
-    environment:
-      DB_SERVER: postgres
-      DB_USER: "${POSTGRES_USER}"
-      DB_PASSWORD: "${POSTGRES_PASSWORD}"
-      CANTON_AUTH_AUDIENCE: "${CANTON_AUTH_AUDIENCE}"
-      CANTON_AUTH_SECRET: "${CANTON_AUTH_SECRET}"
-      CANTON_ADMIN_USER_ID: "${CANTON_ADMIN_USER_ID}"
-      LOG_LEVEL_STDOUT: INFO
-      LOG_LEVEL_CANTON: INFO
-    ports:
-      - "${CANTON_LEDGER_API_PORT}:5011"
-      - "${CANTON_ADMIN_API_PORT}:5012"
-      - "${CANTON_JSON_API_PORT}:7575"
-      - "${CANTON_SEQUENCER_PUBLIC_PORT}:5001"
-      - "${CANTON_HTTP_HEALTH_PORT}:7000"
-    volumes:
-      - ./config/canton/app.conf:/app/app.conf:ro
-      - ./config/canton/bootstrap.canton:/app/bootstrap.canton:ro
-      - ./dars:/dars
-    entrypoint: ["/app/bin/canton"]
-    command:
-      - daemon
-      - --no-tty
-      - --log-encoder=json
-      - --log-level-stdout=INFO
-      - --log-level-canton=INFO
-      - --log-file-appender=off
-      - --config
-      - /app/app.conf
-      - --bootstrap
-      - /app/bootstrap.canton
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/7000'"]
-      interval: 5s
-      timeout: 3s
-      retries: 60
-      start_period: 20s
-
   wallet-service:
     build:
       context: ..
       dockerfile: canton-barebones/wallet-service/Dockerfile
     container_name: canton-barebones-wallet-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      CANTON_AUTH_AUDIENCE:   "${CANTON_AUTH_AUDIENCE}"
-      CANTON_AUTH_SECRET:     "${CANTON_AUTH_SECRET}"
-      CANTON_ADMIN_USER_ID:   "${CANTON_ADMIN_USER_ID:-wallet-service}"
-      CANTON_BACKEND_TOKEN:   "${CANTON_BACKEND_TOKEN:-}"
-      CANTON_JSON_API_URL:   "http://canton:7575"
-      CANTON_LEDGER_API_URL: "grpc://canton:5011"
-      CANTON_ADMIN_API_URL:  "grpc://canton:5012"
+      CANTON_BACKEND_TOKEN: "${CANTON_BACKEND_TOKEN}"
+      CANTON_JSON_API_URL: "http://host.docker.internal:2975"
+      CANTON_LEDGER_API_URL: "grpc://host.docker.internal:2901"
+      CANTON_ADMIN_API_URL: "grpc://host.docker.internal:2902"
+      SPLICE_VALIDATOR_URL: "${SPLICE_VALIDATOR_URL:-http://host.docker.internal:2000/api/validator}"
+      SPLICE_SCAN_API_URL: "${SPLICE_SCAN_API_URL:-http://host.docker.internal:4000/api/scan}"
+      SPLICE_REGISTRY_API_URL: "${SPLICE_REGISTRY_API_URL:-http://host.docker.internal:2000/api/validator/v0/scan-proxy}"
       WALLET_SERVICE_PORT: "3010"
       WALLET_SERVICE_CORS_ORIGINS: "${WALLET_SERVICE_CORS_ORIGINS:-http://localhost:3011}"
-      NETWORK: "${NETWORK:-canton:local}"
-      WALLET_PROVIDER_ID:       "${WALLET_PROVIDER_ID:-wallet-service}"
-      WALLET_PROVIDER_VERSION:  "${WALLET_PROVIDER_VERSION:-0.1.0}"
-      WALLET_PROVIDER_URL:      "${WALLET_PROVIDER_URL:-http://localhost:3010}"
+      NETWORK: "${NETWORK:-canton:localnet}"
+      WALLET_PROVIDER_ID: "${WALLET_PROVIDER_ID:-wallet-service}"
+      WALLET_PROVIDER_VERSION: "${WALLET_PROVIDER_VERSION:-0.1.0}"
+      WALLET_PROVIDER_URL: "${WALLET_PROVIDER_URL:-http://localhost:3010}"
       WALLET_PROVIDER_USER_URL: "${WALLET_PROVIDER_USER_URL:-http://localhost:3010}"
-      WALLET_SERVICE_MOCK:      "${WALLET_SERVICE_MOCK:-}"
+      WALLET_SERVICE_MOCK: "${WALLET_SERVICE_MOCK:-}"
     ports:
       - "${WALLET_SERVICE_PORT:-3010}:3010"
-    depends_on:
-      canton:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3010/health >/dev/null || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-
-volumes:
-  postgres-data:

@@ -49,6 +49,7 @@
   --shadow-focus: 0 0 0 3px rgba(105, 37, 129, 0.32);
   --shadow-focus-danger: 0 0 0 3px rgba(163, 38, 38, 0.32);
   --shadow-glow: 0 10px 26px rgba(198, 112, 229, 0.4);
+  --shadow-toggle-on: 0 0 10px rgba(105, 37, 129, 0.35);
 
   --bg-gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
 
@@ -102,6 +103,7 @@
   --shadow-focus: 0 0 0 3px rgba(198, 112, 229, 0.4);
   --shadow-focus-danger: 0 0 0 3px rgba(229, 115, 115, 0.4);
   --shadow-glow: 0 10px 26px rgba(198, 112, 229, 0.4);
+  --shadow-toggle-on: 0 0 10px rgba(157, 84, 184, 0.55);
 
   --bg-gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
 
@@ -166,6 +168,7 @@
   --animate-soft-pulse: soft-pulse 2600ms ease-in-out infinite;
   --animate-drift: drift 3.2s ease-in-out infinite;
   --animate-logo-shadow: logo-shadow 3.2s ease-in-out infinite;
+  --animate-spin-fast: spin-fast 500ms linear infinite;
 }
 
 @utility w-popup {
@@ -186,6 +189,12 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes spin-fast {
+  to {
+    rotate: 360deg;
   }
 }
 
