@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", ":semanticCommits"],
+  "description": [
+    "Supply-chain rails: updates batched weekly, no auto-merge, 3-day release cooldown. Inert until the Mend/Renovate GitHub App is installed on the repo."
+  ],
+  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Batch non-major updates into one weekly PR.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "weekly non-major"
+    },
+    {
+      "description": "The @canton-network/* SDK family is intentionally pinned in pnpm-workspace.yaml overrides (dapp-sdk held at 1.1.0); see CLAUDE.md. Surface updates on the dashboard but require manual approval before any PR is opened.",
+      "matchPackageNames": ["@canton-network/**"],
+      "groupName": "canton-network sdk",
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
