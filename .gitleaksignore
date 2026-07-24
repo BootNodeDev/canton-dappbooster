@@ -1,0 +1,40 @@
+# Accepted gitleaks findings (git history is scanned in full by CI).
+# All entries are non-production: test fixtures (fake JWTs / sample API keys in
+# test files, incl. the extracted carpincho-wallet and the old canton-base tree)
+# plus one legacy local-dev canton-base/.env JWT (file removed from HEAD).
+# A NEW secret produces a new fingerprint and still fails the scan.
+1eeec67c9a85da4dee550de204299159e40f4131:canton-base/wallet-service/test/canton-token.test.ts:jwt:20
+1fb6410540f3c0b02b54885c977b00b753bf8fac:canton-base/.env:jwt:20
+249472710bf5e4ea0c48835d5cb6119811d96ee8:carpincho-wallet/test/components/SendTokensPanel.test.tsx:generic-api-key:72
+25e76090d2b0114a2afc65fc572861a62d28c571:canton-barebones/wallet-service/test/smoke.test.ts:jwt:70
+2868e2d6a97894ecded3a9314669c5aa27b62f26:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:257
+2868e2d6a97894ecded3a9314669c5aa27b62f26:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:293
+2868e2d6a97894ecded3a9314669c5aa27b62f26:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:322
+2868e2d6a97894ecded3a9314669c5aa27b62f26:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:358
+2ca15fdc1d723773e47b0df6d19f92cf730d7c4f:canton-base/wallet-service/test/smoke.test.ts:jwt:70
+39683a76f5effb224a05d55fd589feb9d2615fae:carpincho-wallet/test/components/AssetsPanel.test.tsx:generic-api-key:188
+3b88dcbf98980ef2e80d01425283ab34cd122c13:carpincho-wallet/test/components/AssetsPanel.test.tsx:generic-api-key:117
+427c52b8035a7c8a73ebd29b06300698ac46df50:carpincho-wallet/src/hooks/useTokenHoldingDetails.ts:generic-api-key:21
+45bd73ad8e6cb76d9d4875074283f0644e50527e:canton-base/test/mint-token.test.mjs:jwt:21
+4927fc2825f96931e14077b32aa12c00ae05f954:carpincho-wallet/test/hooks/useTokenHoldings.test.tsx:generic-api-key:35
+4927fc2825f96931e14077b32aa12c00ae05f954:carpincho-wallet/test/hooks/useTokenHoldings.test.tsx:generic-api-key:51
+5ae0662bfcaacb638bc3185bd7066bb754e24722:carpincho-wallet/test/components/AssetsPanel.test.tsx:generic-api-key:103
+5ae0662bfcaacb638bc3185bd7066bb754e24722:carpincho-wallet/test/components/AssetsPanel.test.tsx:generic-api-key:185
+5c201eec18ca016a9c3a2430a20e98a0287a09e1:carpincho-wallet/test/components/HomeTabs.test.tsx:generic-api-key:119
+5fe8636a40498e9c388ea70e64a24b28e78b7fe8:carpincho-wallet/src/hooks/useTokenHoldings.ts:generic-api-key:27
+5fe8636a40498e9c388ea70e64a24b28e78b7fe8:carpincho-wallet/test/components/HomeTabs.test.tsx:generic-api-key:89
+5fe8636a40498e9c388ea70e64a24b28e78b7fe8:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:63
+612dd7ce13b1747bfb69e5d2796525b1d4d42322:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:144
+690f7ae2b92b087d9230a038699eb63a2cb56725:canton-barebones/test/mint-token.test.mjs:jwt:30
+690f7ae2b92b087d9230a038699eb63a2cb56725:canton-barebones/wallet-service/test/canton-token.test.ts:jwt:23
+786f74dc09cf1071da784f2f43c4af5354eeaf20:canton-barebones/wallet-service/test/canton-token.test.ts:jwt:20
+82ee1250af02baac7bef4f7d352e726dc716a898:canton-barebones/test/mint-token.test.mjs:jwt:21
+a4866258f89361731dd99146261ba9080cac2785:canton-base/test/mint-token.test.mjs:jwt:21
+a64a4540260733976ddcfab4d4e026a78728afe9:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:111
+a64a4540260733976ddcfab4d4e026a78728afe9:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:151
+bcbbd77190bbd21c8476f344748a4c60c85e0f76:carpincho-wallet/test/components/HomeTabs.test.tsx:generic-api-key:181
+dffe2621c93e6f27bb80f5c4ef227fbae2322381:carpincho-wallet/test/components/TokensPanel.test.tsx:generic-api-key:378
+e32f531bdfb85087ddb7b60827d04e83d8228745:canton-barebones/test/mint-token.test.mjs:jwt:21
+e32f531bdfb85087ddb7b60827d04e83d8228745:canton-barebones/wallet-service/test/canton-token.test.ts:jwt:20
+e32f531bdfb85087ddb7b60827d04e83d8228745:canton-barebones/wallet-service/test/smoke.test.ts:jwt:70
+f06440cf962b2674f131b4626f899a30c2c18912:carpincho-wallet/test/components/AssetsPanel.test.tsx:generic-api-key:277
