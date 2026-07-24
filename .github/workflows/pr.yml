@@ -10,6 +10,9 @@ name: pr
 
 on:
   pull_request:
+    # `edited` fires on title/body/base changes. It is kept only so the commitlint
+    # job re-lints the PR title (the squash-merge subject); the heavy jobs and the
+    # commit-range lint skip metadata-only edits via `if: github.event.action != 'edited'`.
     types: [opened, synchronize, reopened, edited]
 
 # Newer pushes to the same PR supersede in-flight runs.
@@ -31,6 +34,7 @@ jobs:
   biome:
     name: 1 - biome
     runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: corepack enable
@@ -46,6 +50,7 @@ jobs:
   typecheck-build:
     name: 2 - typecheck + build + knip
     runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: corepack enable
@@ -62,6 +67,7 @@ jobs:
   test:
     name: 3 - test
     runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: corepack enable
@@ -91,6 +97,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint PR commit range
+        # A title/body edit does not change the commit range; only re-lint on code events.
+        if: github.event.action != 'edited'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -107,6 +115,7 @@ jobs:
   gitleaks:
     name: 5 - gitleaks
     runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
