@@ -5,7 +5,7 @@ Local Canton Network stack for wallet-first dApp experiments.
 ```mermaid
 flowchart TD
   fe["dapp/frontend<br/>dApp frontend<br/>http://localhost:3012"]
-  wallet["carpincho-wallet<br/>Vault + signer<br/>http://localhost:3011"]
+  wallet["carpincho-wallet (separate repo)<br/>Vault + signer<br/>http://localhost:3011"]
   ws["canton-barebones/wallet-service<br/>External-party bridge<br/>http://localhost:3010"]
   au["Splice app-user<br/>primary local validator<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>SV / DSO / synchronizer side"]
@@ -75,11 +75,11 @@ copy `CANTON_AUTH_SECRET` into Carpincho.
 Optional WalletConnect fallback:
 
 ```bash
-cp carpincho-wallet/.env.local.example carpincho-wallet/.env.local
 cp dapp/frontend/.env.local.example dapp/frontend/.env.local
 ```
 
-Set `VITE_WC_PROJECT_ID` in both files only if you use WalletConnect.
+Set `VITE_WC_PROJECT_ID` only if you use WalletConnect. The Carpincho wallet's own
+WalletConnect env is configured in its repo.
 
 ## Quick Start
 
@@ -103,12 +103,15 @@ Verify wallet-service:
 npm run wallet-service:health
 ```
 
-Start Carpincho and the dApp:
+Start the dApp:
 
 ```bash
-npm run wallet:dev
 npm run app:dev
 ```
+
+Run the Carpincho wallet from its own repo
+([github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet));
+it serves on `http://localhost:3011`.
 
 Open the dApp:
 
@@ -124,14 +127,9 @@ In the frontend:
 
 ## Extension
 
-Build the extension:
-
-```bash
-npm run carpincho:build:extension
-```
-
-Load `carpincho-wallet/dist-extension` from `chrome://extensions` with
-Developer mode enabled.
+The Carpincho browser extension is built and released from its own repository:
+[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet).
+See that repo's README for build and load instructions.
 
 ## Services And Ports
 
@@ -161,23 +159,3 @@ If `wallet.localhost`, `scan.localhost`, or `sv.localhost` do not resolve, add:
 ```text
 127.0.0.1 wallet.localhost scan.localhost sv.localhost
 ```
-
-## Releasing
-
-The root `package.json` `version` is the single source of truth for the release. Publishing a GitHub Release builds and publishes the artifacts.
-
-1. Bump the version and tag it from the repo root:
-
-   ```bash
-   npm version <x.y.z>
-   ```
-
-   This updates the root `package.json`, commits, and creates the `v<x.y.z>` tag.
-
-2. Push the commit and tag:
-
-   ```bash
-   git push --follow-tags
-   ```
-
-3. Publish a GitHub Release for that tag (the GitHub UI, or `gh release create v<x.y.z>`).

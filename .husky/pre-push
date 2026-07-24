@@ -1,8 +1,5 @@
 set -e
 
-echo "TypeScript checks: carpincho-wallet"
-( cd carpincho-wallet && npx tsc -b --noEmit --pretty )
-
 echo "TypeScript checks: dapp/frontend"
 ( cd dapp/frontend && npx tsc -b --noEmit --pretty )
 

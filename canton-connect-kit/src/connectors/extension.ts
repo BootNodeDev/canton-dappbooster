@@ -6,8 +6,8 @@
 //
 // SPLICE_WALLET_EVENT is Carpincho's protocol extension to fill the gap that
 // the canonical WindowTransport leaves on the injected path; the canonical
-// extension transport carries request/response only. See
-// `carpincho-wallet/src/extension/messages.ts` for the wire shapes.
+// extension transport carries request/response only. See `src/extension/messages.ts`
+// in the carpincho-wallet repo (github.com/BootNodeDev/carpincho-wallet) for the wire shapes.
 
 import type { Provider } from '@canton-network/core-splice-provider'
 import type { RpcTypes as DappRpcTypes } from '@canton-network/core-wallet-dapp-rpc-client'

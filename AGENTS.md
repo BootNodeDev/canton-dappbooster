@@ -4,11 +4,12 @@ This file is the canonical monorepo-wide agent configuration. `CLAUDE.md`
 files are compatibility shims that point here or to a sibling `AGENTS.md`.
 Each subproject can layer its own `AGENTS.md` for stack-specific deltas:
 
-- [`carpincho-wallet/AGENTS.md`](carpincho-wallet/AGENTS.md) — CIP-0103 wallet (Vite + React + Biome)
 - [`canton-connect-kit/AGENTS.md`](canton-connect-kit/AGENTS.md) — wagmi-style React hooks for Canton dApps
 - [`canton-barebones/wallet-service/AGENTS.md`](canton-barebones/wallet-service/AGENTS.md) — wallet-service bridge rules
-- [`dapp/e2e/AGENTS.md`](dapp/e2e/AGENTS.md) — Playwright black-box integration test rules
 - `canton-barebones/`, `dapp/daml/`, `dapp/frontend/` — see each subproject's `README.md`
+
+The Carpincho wallet (CIP-0103 browser wallet) lives in its own repository at
+[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet); it is no longer part of this monorepo.
 
 For the system shape (data flow, components, ports), see [`architecture.md`](architecture.md).
 
@@ -30,10 +31,8 @@ Current distribution:
 | Scope | README | AGENTS | CLAUDE | architecture | Decision |
 |-------|--------|--------|--------|--------------|----------|
 | root | yes | yes | shim | yes | Canonical repo rules and cross-component seams. |
-| `carpincho-wallet/` | yes | yes | shim | yes | Complex wallet internals: vault, provider, extension, WalletConnect, theme, session. |
 | `canton-connect-kit/` | yes | yes | shim | yes | Public hook API, connector abstractions, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | yes | shim | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/e2e/` | yes | yes | shim | no | Independent Playwright package with strict black-box testing conventions. |
 | `dapp/frontend/` | yes | no | no | no | Small dApp UI; root rules and README are enough. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
@@ -50,7 +49,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config |
-| Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `carpincho-wallet/`, `canton-connect-kit/`, `dapp/frontend/`, and `dapp/e2e/` |
+| Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect-kit/`, `dapp/frontend/`, and `canton-barebones/` |
 | Pre-push | tsc | Root `.husky/pre-push` runs `tsc --noEmit` per Node subproject |
 
 ## Subprojects
@@ -60,9 +59,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`canton-barebones/`](canton-barebones/) | Local Canton participant + Postgres via docker-compose; deploy + health + token scripts | Docker, Bash, Node scripts | 3013/3014/3015/3016/3017/3018 |
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `npm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
-| [`carpincho-wallet/`](carpincho-wallet/) | CIP-0103 wallet — vault, signing, WalletConnect, Chrome extension | Vite 6 + React 18 + Tailwind v4 + Biome | 3011 |
 | [`dapp/frontend/`](dapp/frontend/) | dApp UI | Vite + React + Tailwind v4 + Radix UI + Biome | 3012 |
-| [`dapp/e2e/`](dapp/e2e/) | dApp integration tests | Playwright + TypeScript | n/a |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
 
 ## Code Style
@@ -80,7 +77,6 @@ Subproject docs must not restate root rules. They should describe only their loc
 - Run a subproject script either by `cd <subproject>` or by using `npm --prefix <subproject> run <script>`. The root `package.json` exposes orchestration shortcuts:
   - `npm run canton:up` / `canton:down` / `canton:health` / `canton:token`
   - `npm run build-dar -- <daml-project>` / `npm run deploy-dar -- <dar>`
-  - `npm run carpincho:build:extension`
   - `npm run app:dev`
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `package-lock.json` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
@@ -94,9 +90,8 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
 ## Testing
 
 - Each subproject owns its own test runner. Run from the subproject directory or via `npm --prefix`:
-  - `carpincho-wallet`: `npm test` (Node `node:test` + `tsx` + happy-dom)
   - `dapp/frontend`: `npm test` (Node `node:test` with `--experimental-strip-types`)
-  - `dapp/e2e`: `npm test` (Playwright against the running local stack)
+  - `canton-connect-kit`: `npm test` (Node `node:test` + `tsx`)
   - `canton-barebones`: `npm test` (Node `node:test` against the scripts)
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 

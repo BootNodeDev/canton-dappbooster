@@ -20,10 +20,9 @@ A `Connect with WalletConnect` button is available, but
 it requires a Reown project id;
 
 Get a project id from [cloud.reown.com](https://cloud.reown.com), then set
-`VITE_WC_PROJECT_ID` in both `.env.local` files:
+`VITE_WC_PROJECT_ID` in `.env.local`:
 
 ```bash
 # dapp/frontend/.env.local
-# carpincho-wallet/.env.local
 VITE_WC_PROJECT_ID=your_reown_project_id
 ```

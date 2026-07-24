@@ -5,10 +5,9 @@
 | --- | --- | --- |
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
 | `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
-| `carpincho-wallet/` | Vite 6 + React 18 + Tailwind v4 + Radix UI + WalletConnect + `@tanstack/react-query` + `@noble/ed25519` | CIP-0103 browser wallet, encrypted vault, signer, injected provider |
+| `carpincho-wallet` (separate repo) | Vite 6 + React 18 + Tailwind v4 + Radix UI + WalletConnect + `@tanstack/react-query` + `@noble/ed25519` | CIP-0103 browser wallet, encrypted vault, signer, injected provider — lives in its own repo (github.com/BootNodeDev/carpincho-wallet) |
 | `dapp/frontend/` | Vite + React + `@canton-network/dapp-sdk` | Example dApp that talks to Carpincho |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
-| `dapp/e2e/` | Playwright + TypeScript | Black-box integration tests |
 | `canton-connect-kit/` | TypeScript + React | Reusable wallet connection hooks |
 
 ## Data Flow
@@ -16,7 +15,7 @@
 ```mermaid
 flowchart TD
   fe["dapp/frontend<br/>http://localhost:3012"]
-  wallet["carpincho-wallet<br/>http://localhost:3011"]
+  wallet["carpincho-wallet (separate repo)<br/>http://localhost:3011"]
   ws["wallet-service<br/>http://localhost:3010"]
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
@@ -90,7 +89,6 @@ with the same script, configured manually in its LocalNet settings.
 | `npm run canton:health` | check app-user, sv, Scan, wallet UI, and wallet-service |
 | `npm run canton:token -- ledger-api-user` | generate a LocalNet dev JWT |
 | `npm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `npm run wallet:dev` | start Carpincho web UI |
 | `npm run app:dev` | start the dApp frontend |
 
 For the bring-up sequence, follow [`README.md`](README.md).

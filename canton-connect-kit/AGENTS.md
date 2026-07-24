@@ -8,7 +8,7 @@ This file applies only to `canton-connect-kit/`. For monorepo-wide rules, see [`
 
 ## Working Rules
 
-- Keep this package app-agnostic. Do not import from `dapp/`, `carpincho-wallet/`, or `canton-barebones/`.
+- Keep this package app-agnostic. Do not import from `dapp/` or `canton-barebones/`, and keep it decoupled from any specific wallet implementation.
 - Treat `src/index.ts` as the public API. New exports should be deliberate and documented in `README.md`.
 - Keep connectors narrow: `detect`, `connect`, and provider/session wiring only.
 - Keep hooks thin. Hooks should read from `ConnectKitProvider` context and expose lifecycle state; shared state transitions belong in `ConnectKitProvider.tsx`.

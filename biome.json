@@ -9,10 +9,8 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "carpincho-wallet/**",
       "canton-connect-kit/**",
       "dapp/frontend/**",
-      "dapp/e2e/**",
       "canton-barebones/**",
       "!**/api-specs"
     ]
@@ -35,39 +33,6 @@
     }
   },
   "overrides": [
-    {
-      "includes": ["carpincho-wallet/**"],
-      "formatter": {
-        "attributePosition": "multiline"
-      },
-      "css": {
-        "parser": {
-          "cssModules": false,
-          "tailwindDirectives": true
-        }
-      },
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "patterns": [
-                  {
-                    "group": ["./**", "../**"],
-                    "message": "Use the '@/' alias instead of relative imports."
-                  },
-                  {
-                    "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
-                    "message": "Do not include the file extension in imports."
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
     {
       "includes": ["dapp/frontend/**"],
       "css": {
@@ -105,19 +70,6 @@
                 ]
               }
             }
-          }
-        }
-      }
-    },
-    {
-      "includes": ["dapp/e2e/**"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "noEmptyPattern": "off"
-          },
-          "style": {
-            "noNonNullAssertion": "off"
           }
         }
       }

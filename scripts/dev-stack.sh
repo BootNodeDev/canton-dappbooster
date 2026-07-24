@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 #
-# dev-stack.sh — start or stop the full local Canton dApp stack.
+# dev-stack.sh — start or stop the local Canton dApp stack.
+#
+# The Carpincho wallet lives in its own repository
+# (github.com/BootNodeDev/carpincho-wallet) and is run from there. This script
+# brings up everything the wallet talks to: the Splice LocalNet containers,
+# wallet-service, and the dApp frontend.
 #
 # Docker lifecycle is managed separately from the stack: start/quit Docker with
 # `docker-up` / `docker-down` (macOS only), the Docker app, or your CLI. `up`
@@ -11,23 +16,20 @@
 #   ./scripts/dev-stack.sh menu        # same as above
 #   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (npm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
-#   ./scripts/dev-stack.sh up          # start the stack (containers, DAR, dev servers, extension)
-#   ./scripts/dev-stack.sh down        # stop dev servers and tear down containers
+#   ./scripts/dev-stack.sh up          # start the stack (containers, DAR, dApp dev server)
+#   ./scripts/dev-stack.sh down        # stop the dApp dev server and tear down containers
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status      # show what is currently running
-#   ./scripts/dev-stack.sh extension   # build the Chrome extension into carpincho-wallet/dist-extension
-#   ./scripts/dev-stack.sh mock-up     # mock-only: mocked wallet-service + carpincho web app (no Docker)
-#   ./scripts/dev-stack.sh mock-down   # stop the mocked wallet-service + carpincho web app only
+#   ./scripts/dev-stack.sh mock-up     # mock-only: mocked wallet-service (no Docker)
+#   ./scripts/dev-stack.sh mock-down   # stop the mocked wallet-service only
 #
 # What `up` starts (in order; Docker must already be running):
 #   1. Splice LocalNet bundle + wallet-service containers (npm run canton:up)
 #   2. Health checks (canton + wallet-service)
 #   3. Builds and deploys the Daml DAR (name derived from daml.yaml)
-#   4. Carpincho wallet dev server  -> http://localhost:3011  (background)
-#   5. dApp frontend dev server     -> http://localhost:3012  (background)
-#   6. Builds the Chrome extension into carpincho-wallet/dist-extension
+#   4. dApp frontend dev server     -> http://localhost:3012  (background)
 #
-# `down` reverses 4/5 (kills the dev servers) and tears down the containers.
+# `down` reverses 4 (kills the dApp dev server) and tears down the containers.
 
 set -euo pipefail
 
@@ -37,9 +39,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
-WALLET_LOG="$RUN_DIR/wallet-dev.log"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
-WALLET_PID="$RUN_DIR/wallet-dev.pid"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
 MOCK_WS_LOG="$RUN_DIR/mock-wallet-service.log"
 MOCK_WS_PID="$RUN_DIR/mock-wallet-service.pid"
@@ -48,7 +48,6 @@ MOCK_WS_PID="$RUN_DIR/mock-wallet-service.pid"
 DAML_DIR="dapp/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
-EXT_SRC="carpincho-wallet/dist-extension"
 
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
@@ -68,18 +67,6 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   done
   warn "$label did not report ready within ${timeout}s (check $file)"
   return 1
-}
-
-build_extension() {
-  # A fresh clone may have no deps yet; one root install links every workspace.
-  if [ ! -d node_modules ]; then
-    install_deps
-  fi
-
-  log "Building the Carpincho Chrome extension..."
-  npm run carpincho:build:extension
-  log "Extension ready at $EXT_SRC"
-  echo "   Load it via chrome://extensions -> Developer mode -> Load unpacked"
 }
 
 install_deps() { # one root npm install links every workspace
@@ -178,17 +165,7 @@ up() {
   log "Deploying the DAR to Canton..."
   npm run deploy-dar -- "$DAR_PATH"
 
-  # 4. Carpincho wallet dev server (3011)
-  if lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "Port 3011 already in use; skipping wallet dev server."
-  else
-    log "Starting Carpincho wallet dev server -> http://localhost:3011"
-    nohup npm run wallet:dev >"$WALLET_LOG" 2>&1 &
-    echo $! >"$WALLET_PID"
-    wait_for 60 "$WALLET_LOG" "ready in|localhost:3011" "wallet dev server" || true
-  fi
-
-  # 5. dApp frontend dev server (3012)
+  # 4. dApp frontend dev server (3012)
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3012 already in use; skipping dApp dev server."
   else
@@ -198,14 +175,10 @@ up() {
     wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
   fi
 
-  # 6. Build extension (into carpincho-wallet/dist-extension)
-  build_extension
-
   echo
   log "Stack is up:"
   cat <<EOF
    wallet-service          http://localhost:3010
-   carpincho wallet        http://localhost:3011   (log: $WALLET_LOG)
    dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
    app-user wallet UI      http://wallet.localhost:2000
    app-user JSON API       http://localhost:2975
@@ -214,9 +187,8 @@ up() {
    Scan UI                 http://scan.localhost:4000
    SV UI                   http://sv.localhost:4000
    PostgreSQL              localhost:5432
-   extension folder        $EXT_SRC
 EOF
-  echo "   Load the extension via chrome://extensions -> Developer mode -> Load unpacked"
+  echo "   Run the Carpincho wallet from its own repo (github.com/BootNodeDev/carpincho-wallet) at http://localhost:3011"
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>
@@ -235,10 +207,8 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
 
 down() {
   # 1. Dev servers
-  stop_pidfile "$WALLET_PID" "wallet dev server"
   stop_pidfile "$DAPP_PID" "dApp dev server"
-  # Belt-and-suspenders: kill any stray vite on our ports.
-  pkill -f "carpincho-wallet run dev" 2>/dev/null || true
+  # Belt-and-suspenders: kill any stray vite on our port.
   pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
 
   # 2. Containers (only if the daemon is reachable). Docker itself is left
@@ -292,39 +262,27 @@ mock_up() {
     wait_http 60 "http://localhost:3010/health" "mocked wallet-service" || true
   fi
 
-  # Carpincho web app -> http://localhost:3011
-  if lsof -nP -iTCP:3011 -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "Port 3011 already in use; skipping carpincho web app."
-  else
-    log "Starting Carpincho web app -> http://localhost:3011"
-    nohup npm run wallet:dev >"$WALLET_LOG" 2>&1 &
-    echo $! >"$WALLET_PID"
-    wait_for 60 "$WALLET_LOG" "ready in|localhost:3011" "carpincho web app" || true
-  fi
-
   echo
   log "Mock stack is up:"
   cat <<EOF
    mocked wallet-service  http://localhost:3010   (log: $MOCK_WS_LOG)
-   carpincho web app      http://localhost:3011   (log: $WALLET_LOG)
 EOF
-  echo "   No Docker / Canton / dApp frontend in this mode. Stop with: $0 mock-down"
+  echo "   No Docker / Canton / dApp frontend in this mode. Point the Carpincho wallet"
+  echo "   (from its own repo) at http://localhost:3010. Stop with: $0 mock-down"
 }
 
 mock_down() {
   stop_pidfile "$MOCK_WS_PID" "mocked wallet-service"
-  stop_pidfile "$WALLET_PID" "carpincho web app"
-  # Belt-and-suspenders for stray processes on our ports.
+  # Belt-and-suspenders for stray processes on our port.
   pkill -f "WALLET_SERVICE_MOCK" 2>/dev/null || true
   pkill -f "tsx watch src/server.ts" 2>/dev/null || true
-  pkill -f "carpincho-wallet run dev" 2>/dev/null || true
 
   echo
-  log "Mock stack is down. Ports 3010/3011:"
-  if lsof -nP -iTCP:3010,3011 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010,3011 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Mock stack is down. Port 3010:"
+  if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3010 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
-    echo "   (both free)"
+    echo "   (free)"
   fi
 }
 
@@ -334,17 +292,16 @@ menu() {
   fi
 
   # Display label per item; `keys` is the matching action dispatched on select.
-  local keys=(install docker-up docker-down up down mock-up mock-down extension quit)
-  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Wallet up" "Wallet down" "Build extension" "Quit")
+  local keys=(install docker-up docker-down up down mock-up mock-down quit)
+  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Mock up" "Mock down" "Quit")
   local descs=(
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start containers, dev servers, build DAR and extension"
-    "stop dev servers + tear down containers"
-    "start mock wallet-service + carpincho web app (no Docker)"
-    "stop the mock wallet-service + carpincho web app"
-    "build the extension (carpincho-wallet/dist-extension)"
+    "start containers, dApp dev server, build DAR"
+    "stop dApp dev server + tear down containers"
+    "start mocked wallet-service (no Docker)"
+    "stop the mocked wallet-service"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -400,7 +357,6 @@ menu() {
       down)        ( down ) || warn "down did not finish cleanly" ;;
       mock-up)     ( mock_up ) || warn "mock-up did not finish cleanly" ;;
       mock-down)   ( mock_down ) || warn "mock-down did not finish cleanly" ;;
-      extension)   ( build_extension ) || warn "extension build failed" ;;
     esac
     printf '\n  \033[2mPress Enter to return to the menu...\033[0m'
     read -r _ || true
@@ -432,8 +388,7 @@ case "${1:-menu}" in
   down)        down ;;
   docker-down) docker_down ;;
   status)      status ;;
-  extension)   build_extension ;;
   mock-up)     mock_up ;;
   mock-down)   mock_down ;;
-  *)           die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status|extension|mock-up|mock-down}" ;;
+  *)           die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status|mock-up|mock-down}" ;;
 esac

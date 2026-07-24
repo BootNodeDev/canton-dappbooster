@@ -4,7 +4,6 @@
       "Bash(set -e)",
       "Bash(npm run *)",
       "Bash(npm install *)",
-      "Bash(npm --prefix carpincho-wallet *)",
       "Bash(npm --prefix counter/* *)",
       "Bash(npm --prefix canton-barebones *)",
       "Bash(sh .husky/pre-push)",
