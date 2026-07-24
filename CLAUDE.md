@@ -50,10 +50,13 @@ Subproject docs must not restate root rules. They should describe only their loc
 | Node | 24 | Pinned via root `.nvmrc`; inherits to every Node subproject |
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
-| Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config |
+| Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
 | Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect-kit/`, `dapp/frontend/`, and `canton-barebones/` |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
-| Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules |
+| Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
+| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
+| Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
 ## Subprojects
 
@@ -97,6 +100,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `dapp/frontend`: `pnpm test` (Node `node:test` with `--experimental-strip-types`)
   - `canton-connect-kit`: `pnpm test` (Node `node:test` + `tsx`)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
+- From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`).
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
 ## Commit Standards
@@ -177,7 +181,9 @@ The `issue` skill at `.claude/skills/issue/` applies these labels automatically 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: `git push --dry-run` exercises the pre-push `pnpm typecheck` sweep across all Node subprojects.
+- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`.
+- `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
+- Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
 - For the full end-to-end loop (Canton up → DAR built → DAR deployed → wallet-service → wallet → dApp), follow [`README.md`](README.md) §1–6.
 
 ## References

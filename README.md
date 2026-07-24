@@ -159,3 +159,38 @@ If `wallet.localhost`, `scan.localhost`, or `sv.localhost` do not resolve, add:
 ```text
 127.0.0.1 wallet.localhost scan.localhost sv.localhost
 ```
+
+## Development
+
+Root scripts, run from the repo root:
+
+| Command | What it does |
+| --- | --- |
+| `pnpm lint` | Biome check across the JS workspaces (fails on warnings) |
+| `pnpm typecheck` | `tsc --noEmit` in every TS workspace |
+| `pnpm build` | Build every workspace (`dapp/daml` needs `dpm`) |
+| `pnpm test` | Run each workspace's test suite |
+| `pnpm knip` | Dead-code and unused-dependency scan |
+
+### Secret scanning
+
+The husky hooks scan for secrets with gitleaks: `pre-commit` on staged changes and
+`pre-push` on the outgoing commit range. On first run they install the pinned gitleaks into
+`bin/` (git-ignored) via [`scripts/install-gitleaks.sh`](scripts/install-gitleaks.sh) —
+checksum-verified, version read from [`.gitleaks-version`](.gitleaks-version), the same
+install CI uses. Accepted non-secret findings (test fixtures, legacy history) are listed in
+[`.gitleaksignore`](.gitleaksignore); a new secret still fails the scan.
+
+### Continuous integration
+
+Every pull request runs the [`pr`](.github/workflows/pr.yml) gate: biome, typecheck + build
++ knip, tests, commitlint (commit range + PR title), and a full-history gitleaks scan. `main`
+is protected — a PR needs one approval and all checks green to merge. New issues and PRs are
+added to the project board ([`add-to-project`](.github/workflows/add-to-project.yml)) and PRs
+are assigned to their author ([`pr-assign`](.github/workflows/pr-assign.yml)).
+
+### Dependency updates
+
+[Renovate](renovate.json) batches non-major updates into one weekly PR. The `@canton-network/*`
+SDK graph is pinned in `pnpm-workspace.yaml` and held for manual approval on the Dependency
+Dashboard, so it is never bumped without a deliberate review.
