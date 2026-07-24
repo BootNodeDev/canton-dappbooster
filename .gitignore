@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 
+# gitleaks binary, installed by scripts/install-gitleaks.sh
+/bin/
+
 # build output
 dist/
 dist-extension/

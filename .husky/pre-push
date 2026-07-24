@@ -1,12 +1,22 @@
 set -e
 
-echo "TypeScript checks: dapp/frontend"
-pnpm -C dapp/frontend exec tsc -b --noEmit --pretty
+pnpm typecheck
 
-echo "TypeScript checks: canton-barebones/wallet-service"
-pnpm -C canton-barebones/wallet-service exec tsc --noEmit --pretty
+. "$(dirname "$0")/gitleaks.sh"
 
-echo "TypeScript checks: canton-connect-kit"
-pnpm -C canton-connect-kit exec tsc -b --noEmit --pretty
-
-echo "All TypeScript checks passed. Proceeding with push."
+# Backstop: scan the outgoing commit range for each ref git feeds us on stdin
+# (<local ref> <local sha> <remote ref> <remote sha>). Catches secrets committed
+# while the pre-commit hook was bypassed. rc is tracked explicitly so every ref is
+# scanned and a leak in any of them fails the push, independent of the caller's set -e.
+z=0000000000000000000000000000000000000000
+rc=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$z" ] && continue
+  if [ "$remote_sha" = "$z" ]; then
+    range="$local_sha --not --remotes"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+  gitleaks git --redact --verbose --log-opts="$range" . || rc=1
+done
+exit "$rc"

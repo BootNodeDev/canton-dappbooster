@@ -1,2 +1,5 @@
 echo "Running lint-staged"
 pnpm exec lint-staged
+
+. "$(dirname "$0")/gitleaks.sh"
+gitleaks git --redact --staged --verbose
