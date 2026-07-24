@@ -1,36 +1,20 @@
-# PR gate - the mechanical checks every pull request must pass.
-#
-# Ported from cn-dappbooster-v1 and adapted to this repo's layout. v1's
-# packages/*/examples/* jobs (publint + attw, the "use client" grep, examples
-# build) are dropped: this repo publishes nothing and has no examples workspace.
-# The DAML package (dapp/daml) is excluded from the build because its `dpm build`
-# needs the Daml toolchain, which the runner does not have; DAML is exercised by
-# the local build-dar/deploy flow instead.
 name: pr
 
 on:
   pull_request:
-    # `edited` fires on title/body/base changes. It is kept only so the commitlint
-    # job re-lints the PR title (the squash-merge subject); the heavy jobs and the
-    # commit-range lint skip metadata-only edits via `if: github.event.action != 'edited'`.
     types: [opened, synchronize, reopened, edited]
 
-# Newer pushes to the same PR supersede in-flight runs.
 concurrency:
   group: pr-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Read-only by default; this gate never writes to the repo.
 permissions:
   contents: read
 
 env:
-  # Skip husky's `prepare` hook install during CI `pnpm install`.
   HUSKY: 0
 
 jobs:
-  # 1 - biome. Same command as the local hook/script, so lint is identical
-  # local and in CI (single source of truth).
   biome:
     name: 1 - biome
     runs-on: ubuntu-latest
@@ -45,8 +29,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
-  # 2 - typecheck + build + knip. Build excludes dapp/daml (needs the Daml
-  # toolchain the runner lacks). knip is the dead-code / dead-dependency gate.
   typecheck-build:
     name: 2 - typecheck + build + knip
     runs-on: ubuntu-latest
@@ -63,7 +45,6 @@ jobs:
       - run: pnpm -r --filter '!./dapp/daml' run --if-present build
       - run: pnpm knip
 
-  # 3 - test. Node 24, the repo's pinned version (.nvmrc).
   test:
     name: 3 - test
     runs-on: ubuntu-latest
@@ -78,9 +59,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
-  # 4 - commitlint. Hooks alone are bypassable, so re-check the PR commit range
-  # in CI. Also lints the PR title: it becomes the squash-merge subject, so it
-  # must be a conventional commit.
   commitlint:
     name: 4 - commitlint
     runs-on: ubuntu-latest
@@ -97,7 +75,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint PR commit range
-        # A title/body edit does not change the commit range; only re-lint on code events.
         if: github.event.action != 'edited'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -109,9 +86,6 @@ jobs:
       - name: Lint PR title
         run: printf '%s' "$PR_TITLE" | pnpm exec commitlint --verbose
 
-  # 5 - Gitleaks secret scanning. Runs the MIT-licensed gitleaks CLI directly
-  # (pinned + checksum-verified via .gitleaks-version, the same install the local
-  # hooks use), NOT gitleaks-action, which requires a paid license for org repos.
   gitleaks:
     name: 5 - gitleaks
     runs-on: ubuntu-latest
