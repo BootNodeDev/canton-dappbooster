@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# pnpm 11 forwards the `--` separator to the script; drop it so `pnpm run
+# deploy-dar -- <dar>` and a direct `deploy-dar.sh <dar>` both work.
+[ "${1:-}" = "--" ] && shift
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: scripts/deploy-dar.sh path/to/file.dar" >&2
   exit 1
