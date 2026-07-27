@@ -55,6 +55,7 @@
     {
       "includes": [
         "canton-connect-kit/**",
+        "canton-dappbooster/**",
         "dapp/frontend/src/**",
         "!dapp/frontend/src/**/*.test.ts",
         "!dapp/frontend/src/**/*.test.tsx"

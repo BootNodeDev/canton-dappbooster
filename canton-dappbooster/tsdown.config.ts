@@ -6,6 +6,6 @@ export default defineConfig({
   // Browser library: don't let engines.node steer platform/target to Node.
   platform: 'neutral',
   dts: true,
-  clean: true,
+  // Keep the .js extension the exports map points at (default flips with platform).
   fixedExtension: false,
 })
