@@ -17,6 +17,9 @@ tsdown builds ESM + `.d.ts` with `css: { inject: true }`, so a component's `impo
 preserved and consumers auto-load styles. `exports` carries a `development` condition → `src`, so
 Vite serves source live in dev; `dist` is used for production and publish.
 
+Consumers resolve source in dev and typecheck (no kit build needed); their production build resolves
+`dist`. Build the kit first, or run `pnpm build` from the repo root, which builds workspaces in order.
+
 ## Styling convention
 
 Plain CSS + CSS custom properties — no Tailwind, no CSS-in-JS.
