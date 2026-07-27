@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { formatCC, formatPct, shortenParty } from '@/lib/format'
-import { MIN_GRANT_AMOUNT } from '@/lib/schedule'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
 import { Button } from './Button'
@@ -47,13 +46,10 @@ export const GrantTable = ({
         </thead>
         <tbody>
           {rows.map(({ grant, derived }) => {
-            const claimedFraction =
-              grant.totalAmount === 0 ? 0 : derived.claimed / grant.totalAmount
             const milestones =
               grant.schedule.curve.kind === 'milestone'
                 ? grant.schedule.curve.points.map((p) => p.fraction)
                 : undefined
-            const canClaim = derived.claimable >= MIN_GRANT_AMOUNT
             return (
               <tr
                 key={grant.id}
@@ -82,7 +78,7 @@ export const GrantTable = ({
                     <ScheduleBar
                       className="w-28"
                       vestedFraction={derived.fraction}
-                      claimedFraction={claimedFraction}
+                      claimedFraction={derived.claimedFraction}
                       milestones={milestones}
                     />
                     <span className="w-9 font-mono text-[0.7rem] text-fg-muted">
@@ -105,7 +101,7 @@ export const GrantTable = ({
                 </td>
                 <td className="px-4 py-3.5 text-right">
                   {role === 'receiver' ? (
-                    <Button size="sm" disabled={!canClaim} onClick={() => onClaim?.(grant)}>
+                    <Button size="sm" disabled={!derived.canClaim} onClick={() => onClaim?.(grant)}>
                       Claim
                     </Button>
                   ) : (

@@ -53,8 +53,6 @@ type AcsRow = {
   }
 }
 
-type CreatedArg = { contractId: string; arg: Record<string, unknown> }
-
 const num = (value: unknown): number => Number(value ?? 0)
 
 const shortCid = (contractId: string): string => contractId.slice(0, 8)
@@ -81,69 +79,85 @@ export const splitNote = (
   return { title: title === '' ? `Vesting ${shortCid(contractId)}` : title, note }
 }
 
-const created = (row: AcsRow): CreatedArg | undefined => {
+// Shared decode: guard the row, split the note, and pull the fields every template
+// carries the same way (id, title/note, provider, funder=proposer, receiver=beneficiary).
+// Each mapper layers its template-specific fields on top.
+type DecodedBase = {
+  arg: Record<string, unknown>
+  id: string
+  title: string
+  note?: string
+  provider: PartyId
+  funder: PartyId
+  receiver: PartyId
+}
+
+const decodeBase = (row: AcsRow): DecodedBase | undefined => {
   const event = row.contractEntry?.JsActiveContract?.createdEvent
   const arg = event?.createArgument
   if (event?.contractId === undefined || arg === undefined) {
     return undefined
   }
-  return { contractId: event.contractId, arg }
+  const { title, note } = splitNote(arg.note, event.contractId)
+  return {
+    arg,
+    id: event.contractId,
+    title,
+    note,
+    provider: String(arg.provider ?? '') as PartyId,
+    funder: String(arg.proposer ?? '') as PartyId,
+    receiver: String(arg.beneficiary ?? '') as PartyId,
+  }
 }
 
 export const rowToProposal = (row: AcsRow): Proposal | undefined => {
-  const entry = created(row)
-  if (entry === undefined) {
+  const base = decodeBase(row)
+  if (base === undefined) {
     return undefined
   }
-  const { contractId, arg } = entry
-  const { title, note } = splitNote(arg.note, contractId)
   return {
-    id: contractId,
-    title,
-    provider: String(arg.provider ?? '') as PartyId,
-    proposer: String(arg.proposer ?? '') as PartyId,
-    receiver: String(arg.beneficiary ?? '') as PartyId,
-    totalAmount: num(arg.total),
-    schedule: decodeSchedule(arg.schedule),
-    note,
+    id: base.id,
+    title: base.title,
+    provider: base.provider,
+    proposer: base.funder,
+    receiver: base.receiver,
+    totalAmount: num(base.arg.total),
+    schedule: decodeSchedule(base.arg.schedule),
+    note: base.note,
   }
 }
 
 export const rowToGrant = (row: AcsRow): Grant | undefined => {
-  const entry = created(row)
-  if (entry === undefined) {
+  const base = decodeBase(row)
+  if (base === undefined) {
     return undefined
   }
-  const { contractId, arg } = entry
-  const { title, note } = splitNote(arg.note, contractId)
   return {
-    id: contractId,
-    title,
-    provider: String(arg.provider ?? '') as PartyId,
-    creator: String(arg.proposer ?? '') as PartyId,
-    receiver: String(arg.beneficiary ?? '') as PartyId,
-    totalAmount: num(arg.total),
-    schedule: decodeSchedule(arg.schedule),
-    alreadyWithdrawn: num(arg.claimed),
-    note,
+    id: base.id,
+    title: base.title,
+    provider: base.provider,
+    creator: base.funder,
+    receiver: base.receiver,
+    totalAmount: num(base.arg.total),
+    schedule: decodeSchedule(base.arg.schedule),
+    alreadyWithdrawn: num(base.arg.claimed),
+    note: base.note,
   }
 }
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
-  const entry = created(row)
-  if (entry === undefined) {
+  const base = decodeBase(row)
+  if (base === undefined) {
     return undefined
   }
-  const { contractId, arg } = entry
-  const { title, note } = splitNote(arg.note, contractId)
   return {
-    id: contractId,
-    title,
-    provider: String(arg.provider ?? '') as PartyId,
-    creator: String(arg.proposer ?? '') as PartyId,
-    receiver: String(arg.beneficiary ?? '') as PartyId,
-    amount: num(arg.amount),
-    withdrawn: num(arg.withdrawn),
-    note,
+    id: base.id,
+    title: base.title,
+    provider: base.provider,
+    creator: base.funder,
+    receiver: base.receiver,
+    amount: num(base.arg.amount),
+    withdrawn: num(base.arg.withdrawn),
+    note: base.note,
   }
 }

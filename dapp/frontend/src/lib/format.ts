@@ -57,11 +57,10 @@ export const relativeTime = (iso: string, nowMs: number): string => {
   const diff = target - nowMs
   const abs = Math.abs(diff)
   const days = Math.round(abs / DAY)
-  let value: string
   if (days < 1) {
-    value = 'today'
-    return value
+    return 'today'
   }
+  let value: string
   if (days < 30) {
     value = `${days} day${days === 1 ? '' : 's'}`
   } else if (days < 365) {

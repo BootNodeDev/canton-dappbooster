@@ -68,8 +68,11 @@ export class LiteBackend implements VestingBackend {
     return result.offset
   }
 
-  private async readAcs(party: string, templateId: string): Promise<unknown[]> {
-    const offset = await this.ledgerEnd()
+  private async readAcs(
+    party: string,
+    templateId: string,
+    offset: string | number,
+  ): Promise<unknown[]> {
     const rows = await walletServiceRequest<unknown>(this.rpcUrl, 'ledgerApi', {
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
@@ -105,10 +108,13 @@ export class LiteBackend implements VestingBackend {
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
+    // One ledger-end fetch for all three reads: fewer round-trips and a single,
+    // consistent snapshot offset instead of three near-simultaneous ones.
+    const offset = await this.ledgerEnd()
     const [proposalRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, this.proposalTid),
-      this.readAcs(partyId, this.contractTid),
-      this.readAcs(partyId, this.claimTid),
+      this.readAcs(partyId, this.proposalTid, offset),
+      this.readAcs(partyId, this.contractTid, offset),
+      this.readAcs(partyId, this.claimTid, offset),
     ])
     const proposals = proposalRows
       .map((row) => rowToProposal(row as Parameters<typeof rowToProposal>[0]))
@@ -126,7 +132,7 @@ export class LiteBackend implements VestingBackend {
   // via explicit disclosure. Returns the disclosed blob size so the UI can surface
   // the mechanic.
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
-    const factoryRows = await this.readAcs(this.operator, this.factoryTid)
+    const factoryRows = await this.readAcs(this.operator, this.factoryTid, await this.ledgerEnd())
     const ref = factoryRows
       .map((row) => extractCreatedEventBlob(row as Parameters<typeof extractCreatedEventBlob>[0]))
       .find((candidate) => candidate !== undefined)

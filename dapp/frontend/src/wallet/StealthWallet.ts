@@ -2,6 +2,7 @@
 // CanActAs pool; execute() submits via the ledgerApi proxy (no signing popup).
 import { walletServiceRequest } from '@/backend/ledgerApi'
 import type { PartyRef } from '@/backend/VestingBackend'
+import { partyHint } from '@/lib/format'
 import type { DisclosedContract, LedgerCommand, Wallet } from './Wallet'
 
 type Account = { partyId: string; hint?: string }
@@ -23,7 +24,7 @@ export class StealthWallet implements Wallet {
   async listParties(): Promise<PartyRef[]> {
     const accounts = await walletServiceRequest<Account[]>(this.rpcUrl, 'listAccounts')
     return accounts.map((account) => ({
-      name: friendlyName(account.hint ?? account.partyId.split('::')[0] ?? account.partyId),
+      name: friendlyName(account.hint ?? partyHint(account.partyId)),
       partyId: account.partyId,
     }))
   }

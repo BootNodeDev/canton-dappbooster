@@ -84,7 +84,6 @@ export const Modal = ({
         aria-label="Close dialog"
         onClick={onClose}
         className="absolute inset-0 bg-[var(--scrim,rgba(8,8,18,0.6))] backdrop-blur-sm"
-        style={{ background: 'rgba(8,8,18,0.6)' }}
       />
       <div
         ref={dialogRef}

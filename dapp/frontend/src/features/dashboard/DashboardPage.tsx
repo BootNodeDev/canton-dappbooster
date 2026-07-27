@@ -1,19 +1,17 @@
 import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
+import { CancelGrantDialog } from '@/components/CancelGrantDialog'
 import { Card } from '@/components/Card'
 import { ClaimDialog } from '@/components/ClaimDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { GrantCard } from '@/components/GrantCard'
 import { type GrantRow, GrantTable } from '@/components/GrantTable'
 import { KpiCard } from '@/components/KpiCard'
-import { Modal } from '@/components/Modal'
 import { PrivacyNote } from '@/components/PrivacyNote'
-import { toast } from '@/components/toast'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
-import { errorText } from '@/lib/errorText'
-import { formatCC } from '@/lib/format'
+import { formatCC, partyHint } from '@/lib/format'
 import type { Grant, VestedClaim } from '@/store/types'
 import { useUiStore } from '@/store/useUiStore'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -48,7 +46,6 @@ export const DashboardPage = (): React.JSX.Element => {
   const [filter, setFilter] = useState<Filter>('all')
   const [claimTarget, setClaimTarget] = useState<ClaimTarget | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
-  const [cancelling, setCancelling] = useState(false)
 
   const rows = useMemo<GrantRow[]>(() => {
     const mine = grants.filter((g) =>
@@ -93,7 +90,6 @@ export const DashboardPage = (): React.JSX.Element => {
 
   const residualClaimable = myClaims.reduce((sum, c) => sum + (c.amount - c.withdrawn), 0)
   const isEmpty = rows.length === 0 && myClaims.length === 0
-  const cancelDerived = cancelTarget === null ? null : deriveGrant(cancelTarget, nowMs)
 
   const onConfirmClaim = async (amount: number): Promise<void> => {
     if (claimTarget === null) {
@@ -103,22 +99,6 @@ export const DashboardPage = (): React.JSX.Element => {
       await withdraw(backend, partyId, claimTarget.id, amount)
     } else {
       await claimResidual(backend, partyId, claimTarget.id, amount)
-    }
-  }
-
-  const onConfirmCancel = async (): Promise<void> => {
-    if (cancelTarget === null) {
-      return
-    }
-    setCancelling(true)
-    try {
-      await cancel(backend, partyId, cancelTarget.id)
-      toast.success('Grant cancelled; earned residual set aside for the receiver')
-      setCancelTarget(null)
-    } catch (err) {
-      toast.error(errorText(err))
-    } finally {
-      setCancelling(false)
     }
   }
 
@@ -288,49 +268,17 @@ export const DashboardPage = (): React.JSX.Element => {
         />
       )}
 
-      <Modal
-        open={cancelTarget !== null}
-        onClose={() => setCancelTarget(null)}
-        title="Cancel grant"
-        description={
-          cancelTarget === null
-            ? ''
-            : `Vested-but-unclaimed CC is set aside as a residual claim for ${cancelTarget.receiver.split('::')[0]}.`
-        }
-      >
-        {cancelDerived !== null && (
-          <div className="flex flex-col gap-4">
-            <div className="rounded-xl border border-border bg-bg/40 p-4 text-sm">
-              <div className="flex justify-between">
-                <span className="text-fg-muted">Returned to you</span>
-                <AmountDisplay value={cancelDerived.unvested} className="font-semibold" />
-              </div>
-              <div className="mt-1.5 flex justify-between">
-                <span className="text-fg-muted">Residual to receiver</span>
-                <AmountDisplay value={cancelDerived.claimable} className="font-semibold" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2.5">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setCancelTarget(null)}
-                disabled={cancelling}
-              >
-                Keep grant
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => void onConfirmCancel()}
-                disabled={cancelling}
-              >
-                {cancelling ? 'Submitting…' : 'Cancel grant'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {cancelTarget !== null && (
+        <CancelGrantDialog
+          open
+          onClose={() => setCancelTarget(null)}
+          grant={cancelTarget}
+          nowMs={nowMs}
+          description={`Vested-but-unclaimed CC is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
+          successMessage="Grant cancelled; earned residual set aside for the receiver"
+          onConfirm={() => cancel(backend, partyId, cancelTarget.id)}
+        />
+      )}
     </div>
   )
 }

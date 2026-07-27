@@ -2,18 +2,15 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
+import { CancelGrantDialog } from '@/components/CancelGrantDialog'
 import { Card } from '@/components/Card'
 import { ClaimDialog } from '@/components/ClaimDialog'
 import { ArrowLeftIcon, LockIcon } from '@/components/icons'
 import { MilestoneTimeline } from '@/components/MilestoneTimeline'
-import { Modal } from '@/components/Modal'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { StatusPill } from '@/components/StatusPill'
-import { toast } from '@/components/toast'
 import { useNow } from '@/lib/clock'
-import { errorText } from '@/lib/errorText'
 import { formatCC, formatDate, shortenParty } from '@/lib/format'
-import { MIN_GRANT_AMOUNT } from '@/lib/schedule'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
 
 const Stat = ({
@@ -43,7 +40,6 @@ export const GrantDetailPage = (): React.JSX.Element => {
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
 
   if (grant === undefined) {
     return (
@@ -62,20 +58,6 @@ export const GrantDetailPage = (): React.JSX.Element => {
   const isCreator = grant.creator === partyId
   const isMilestone = grant.schedule.curve.kind === 'milestone'
   const grantHistory = history.filter((h) => h.grantId === grant.id)
-  const canClaim = derived.claimable >= MIN_GRANT_AMOUNT
-
-  const onCancel = async (): Promise<void> => {
-    setCancelling(true)
-    try {
-      await cancel(backend, partyId, grant.id)
-      toast.success('Grant cancelled')
-      setCancelOpen(false)
-    } catch (err) {
-      toast.error(errorText(err))
-    } finally {
-      setCancelling(false)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -109,7 +91,7 @@ export const GrantDetailPage = (): React.JSX.Element => {
                 <LockIcon width={14} height={14} /> Locked until cliff
               </span>
             ) : (
-              <Button disabled={!canClaim} onClick={() => setClaimOpen(true)}>
+              <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
                 Claim {formatCC(derived.claimable)} CC
               </Button>
             ))}
@@ -221,43 +203,17 @@ export const GrantDetailPage = (): React.JSX.Element => {
         />
       )}
 
-      <Modal
-        open={cancelOpen}
-        onClose={() => setCancelOpen(false)}
-        title="Cancel grant"
-        description="Vested-but-unclaimed CC becomes a residual claim for the receiver; the contract is archived."
-      >
-        <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-border bg-bg/40 p-4 text-sm">
-            <div className="flex justify-between">
-              <span className="text-fg-muted">Returned to you</span>
-              <AmountDisplay value={derived.unvested} className="font-semibold" />
-            </div>
-            <div className="mt-1.5 flex justify-between">
-              <span className="text-fg-muted">Residual to receiver</span>
-              <AmountDisplay value={derived.claimable} className="font-semibold" />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2.5">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setCancelOpen(false)}
-              disabled={cancelling}
-            >
-              Keep grant
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => void onCancel()}
-              disabled={cancelling}
-            >
-              {cancelling ? 'Submitting…' : 'Cancel grant'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {cancelOpen && (
+        <CancelGrantDialog
+          open
+          onClose={() => setCancelOpen(false)}
+          grant={grant}
+          nowMs={nowMs}
+          description="Vested-but-unclaimed CC becomes a residual claim for the receiver; the contract is archived."
+          successMessage="Grant cancelled"
+          onConfirm={() => cancel(backend, partyId, grant.id)}
+        />
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
 import { errorText } from '@/lib/errorText'
-import { vestedAmount, vestedFraction } from '@/lib/schedule'
+import { MIN_GRANT_AMOUNT, vestedFraction } from '@/lib/schedule'
 import { useBackend, useParty } from '@/wallet/hooks'
 import type { Grant, Proposal, VestedClaim, WithdrawEvent } from './types'
 
@@ -14,7 +14,10 @@ export interface GrantDerived {
   vested: number
   claimable: number
   claimed: number
+  claimedFraction: number
   unvested: number
+  // Claimable is at or above the re-lock floor, so a claim is worth offering.
+  canClaim: boolean
   status: GrantStatus
 }
 
@@ -23,13 +26,23 @@ export interface GrantDerived {
 // swap — components read figures only from here / lib/schedule.
 export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   const fraction = vestedFraction(grant.schedule, nowMs)
-  const vested = vestedAmount(grant.schedule, grant.totalAmount, nowMs)
+  const vested = grant.totalAmount * fraction
   const claimed = grant.alreadyWithdrawn
   const claimable = Math.max(0, vested - claimed)
   const unvested = Math.max(0, grant.totalAmount - vested)
+  const claimedFraction = grant.totalAmount === 0 ? 0 : claimed / grant.totalAmount
   const status: GrantStatus =
     fraction <= 0 ? 'in_cliff' : fraction >= 1 ? 'fully_vested' : 'vesting'
-  return { fraction, vested, claimable, claimed, unvested, status }
+  return {
+    fraction,
+    vested,
+    claimable,
+    claimed,
+    claimedFraction,
+    unvested,
+    canClaim: claimable >= MIN_GRANT_AMOUNT,
+    status,
+  }
 }
 
 interface VestingState {

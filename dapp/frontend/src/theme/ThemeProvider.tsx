@@ -80,8 +80,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }): React.JSX.
   }, [])
 
   const toggle = useCallback((): void => {
-    setMode(resolve(mode) === 'dark' ? 'light' : 'dark')
-  }, [mode, setMode])
+    setMode(resolved === 'dark' ? 'light' : 'dark')
+  }, [resolved, setMode])
 
   const value = useMemo<ThemeContextValue>(
     () => ({ mode, resolved, setMode, toggle }),

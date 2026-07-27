@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatDate, formatPct, relativeTime, shortenParty } from '@/lib/format'
-import { MIN_GRANT_AMOUNT, nextMilestone } from '@/lib/schedule'
+import { nextMilestone } from '@/lib/schedule'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
 import { AmountDisplay } from './AmountDisplay'
@@ -45,8 +45,6 @@ export const GrantCard = ({
   const curve = grant.schedule.curve
   const isMilestone = curve.kind === 'milestone'
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
-  const claimedFraction = grant.totalAmount === 0 ? 0 : derived.claimed / grant.totalAmount
-  const canClaim = derived.claimable >= MIN_GRANT_AMOUNT
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
   const counterpartyLabel = role === 'receiver' ? 'from' : 'to'
 
@@ -65,10 +63,10 @@ export const GrantCard = ({
           </StatusPill>
           {derived.status === 'in_cliff' ? (
             <StatusPill tone="neutral">In cliff</StatusPill>
-          ) : derived.status === 'fully_vested' ? (
-            <StatusPill tone="success">Fully vested</StatusPill>
           ) : (
-            <StatusPill tone="success">Vesting</StatusPill>
+            <StatusPill tone="success">
+              {derived.status === 'fully_vested' ? 'Fully vested' : 'Vesting'}
+            </StatusPill>
           )}
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
@@ -83,7 +81,7 @@ export const GrantCard = ({
         </div>
         <ScheduleBar
           vestedFraction={derived.fraction}
-          claimedFraction={claimedFraction}
+          claimedFraction={derived.claimedFraction}
           milestones={milestones}
         />
         <Legend
@@ -115,7 +113,7 @@ export const GrantCard = ({
             ) : (
               <Button
                 size="sm"
-                disabled={!canClaim}
+                disabled={!derived.canClaim}
                 onClick={() => onClaim?.(grant)}
                 className="md:w-auto"
               >

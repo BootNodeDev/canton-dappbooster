@@ -89,16 +89,16 @@ export const WalletProvider = ({ children }: { children: ReactNode }): React.JSX
       setBackend(nextBackend)
       const operatorId = deployed ? config.deployment.operator : MOCK_OPERATOR
       setOperator(operatorId)
-      const accounts = await wallet.listParties().catch(() => [] as PartyRef[])
+      // Independent reads — run them together to save a round-trip in deployed mode.
+      const [accounts, available] = await Promise.all([
+        wallet.listParties().catch(() => [] as PartyRef[]),
+        nextBackend.isAvailable(),
+      ])
       if (epoch !== loadEpoch.current) {
         return
       }
       const nextPool = accounts.filter((account) => account.partyId !== operatorId)
       setPool(nextPool)
-      const available = await nextBackend.isAvailable()
-      if (epoch !== loadEpoch.current) {
-        return
-      }
       setBackendAvailable(available)
       const remembered =
         rememberedPartyId === undefined

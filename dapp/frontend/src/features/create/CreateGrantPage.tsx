@@ -8,6 +8,7 @@ import { toast } from '@/components/toast'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
+import { partyHint } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useParty } from '@/wallet/hooks'
@@ -38,6 +39,26 @@ const addMonths = (d: Date, m: number): Date => {
   return copy
 }
 
+// The default months-out schedule, for a fresh form and for undoing a demo preset.
+const defaultSchedule = (
+  base: Date,
+): { cliff: string; start: string; end: string; milestones: MilestoneInput[] } => ({
+  cliff: addMonths(base, 3).toISOString(),
+  start: base.toISOString(),
+  end: addMonths(base, 24).toISOString(),
+  milestones: [
+    { id: 'm1', date: addMonths(base, 3).toISOString(), pct: '25' },
+    { id: 'm2', date: addMonths(base, 9).toISOString(), pct: '60' },
+    { id: 'm3', date: addMonths(base, 18).toISOString(), pct: '100' },
+  ],
+})
+
+// Isolates the 1s clock to the preview marker so typing in the form doesn't
+// reconcile the whole page each tick.
+const LiveScheduleCurve = ({ schedule }: { schedule: VestingSchedule }): React.JSX.Element => (
+  <ScheduleCurve schedule={schedule} nowMs={useNow()} />
+)
+
 // Build a short demo schedule anchored at `anchorMs` (cliff = anchor, vests over duration).
 const buildDemoSchedule = (preset: DemoPreset, anchorMs: number): VestingSchedule => {
   const at = (ms: number): string => new Date(anchorMs + ms).toISOString()
@@ -63,24 +84,20 @@ const inputClass =
   'mt-1.5 h-11 w-full rounded-xl border border-border bg-bg px-3 text-fg outline-none focus:shadow-[var(--ring)]'
 
 export const CreateGrantPage = (): React.JSX.Element => {
-  const nowMs = useNow()
   const navigate = useNavigate()
   const { party } = useParty()
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
 
   const today = new Date(now())
+  const initial = defaultSchedule(today)
   const [receiver, setReceiver] = useState('')
   const [amount, setAmount] = useState('')
   const [curveKind, setCurveKind] = useState<CurveKind>('linear')
-  const [cliff, setCliff] = useState(addMonths(today, 3).toISOString())
-  const [start, setStart] = useState(today.toISOString())
-  const [end, setEnd] = useState(addMonths(today, 24).toISOString())
-  const [milestones, setMilestones] = useState<MilestoneInput[]>([
-    { id: 'm1', date: addMonths(today, 3).toISOString(), pct: '25' },
-    { id: 'm2', date: addMonths(today, 9).toISOString(), pct: '60' },
-    { id: 'm3', date: addMonths(today, 18).toISOString(), pct: '100' },
-  ])
+  const [cliff, setCliff] = useState(initial.cliff)
+  const [start, setStart] = useState(initial.start)
+  const [end, setEnd] = useState(initial.end)
+  const [milestones, setMilestones] = useState<MilestoneInput[]>(initial.milestones)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [disclosedBytes, setDisclosedBytes] = useState<number | null>(null)
@@ -145,17 +162,13 @@ export const CreateGrantPage = (): React.JSX.Element => {
   }
   // Restore the default months-out schedule (undo a quick-demo preset).
   const resetSchedule = (): void => {
-    const t = new Date(now())
+    const next = defaultSchedule(new Date(now()))
     setDemo(null)
     setCurveKind('linear')
-    setStart(t.toISOString())
-    setCliff(addMonths(t, 3).toISOString())
-    setEnd(addMonths(t, 24).toISOString())
-    setMilestones([
-      { id: 'm1', date: addMonths(t, 3).toISOString(), pct: '25' },
-      { id: 'm2', date: addMonths(t, 9).toISOString(), pct: '60' },
-      { id: 'm3', date: addMonths(t, 18).toISOString(), pct: '100' },
-    ])
+    setStart(next.start)
+    setCliff(next.cliff)
+    setEnd(next.end)
+    setMilestones(next.milestones)
   }
 
   const submit = async (): Promise<void> => {
@@ -169,7 +182,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
     const title =
       trimmedNote !== ''
         ? trimmedNote.split(/[.\n]/)[0].slice(0, 60)
-        : `Grant to ${receiver.split('::')[0]}`
+        : `Grant to ${partyHint(receiver)}`
     setSubmitting(true)
     try {
       const result = await createVesting(backend, partyId, {
@@ -443,13 +456,13 @@ export const CreateGrantPage = (): React.JSX.Element => {
           <div className="mt-1 flex items-baseline justify-between">
             <span className="text-xs text-fg-muted">Receiver</span>
             <span className="font-mono text-xs text-fg">
-              {receiver === '' ? '—' : receiver.split('::')[0]}
+              {receiver === '' ? '—' : partyHint(receiver)}
             </span>
           </div>
 
           <div className="mt-5">
             {scheduleValid ? (
-              <ScheduleCurve schedule={schedule} nowMs={nowMs} />
+              <LiveScheduleCurve schedule={schedule} />
             ) : (
               <div className="grid h-40 place-items-center rounded-xl border border-dashed border-border text-xs text-fg-muted">
                 Enter a valid schedule to preview the curve
