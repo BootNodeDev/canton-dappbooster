@@ -1,6 +1,7 @@
 packages:
   - canton-connect-kit
   - canton-dappbooster
+  - canton-theme
   - canton-barebones
   - canton-barebones/wallet-service
   - dapp/daml

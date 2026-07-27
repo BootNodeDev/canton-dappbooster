@@ -1,8 +1,9 @@
 import type { ReactElement } from 'react'
-import './Placeholder.css'
+import { anatomy } from './anatomy'
 
-// TEMP(#31): proves the tsdown CSS+build pipeline and cross-package consumption.
-// Replaced by the real <Identifier> primitive in #6.
+// TEMP(#31): proves the build + theming pipeline and cross-package consumption.
+// Replaced by the real <Identifier> primitive in #6. Carries no styling — the
+// theme (@bootnodedev/canton-theme) styles anatomy.parts.root.
 export function Placeholder(): ReactElement {
-  return <span className="cnc-placeholder">canton-dappbooster</span>
+  return <span className={anatomy.parts.root}>canton-dappbooster</span>
 }

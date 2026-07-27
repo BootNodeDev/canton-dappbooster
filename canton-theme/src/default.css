@@ -1,3 +1,7 @@
+/* Prestyled default theme. Selects on the part classes each component declares
+   in its anatomy.ts and reads --cnc-* tokens (see tokens.css). Everything lives
+   under @layer cnc so consumer styles win by default. Fallbacks keep it usable
+   with no tokens.css loaded. */
 @layer cnc {
   .cnc-placeholder {
     display: inline-flex;

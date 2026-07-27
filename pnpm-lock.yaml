@@ -148,9 +148,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tsdown/css':
-        specifier: 0.22.14
-        version: 0.22.14(jiti@2.7.0)(postcss@8.5.23)(tsdown@0.22.14)(tsx@4.23.1)(yaml@2.9.0)
       '@types/react':
         specifier: ^18.3.31
         version: 18.3.31
@@ -182,6 +179,8 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@25.9.5)(happy-dom@20.11.1)(jsdom@29.1.1(@noble/hashes@1.8.0))(vite@8.1.5(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
 
+  canton-theme: {}
+
   dapp/daml: {}
 
   dapp/frontend:
@@ -189,6 +188,9 @@ importers:
       '@bootnodedev/canton-dappbooster':
         specifier: workspace:*
         version: link:../../canton-dappbooster
+      '@bootnodedev/canton-theme':
+        specifier: workspace:*
+        version: link:../../canton-theme
       '@canton-network/dapp-sdk':
         specifier: 1.1.0
         version: 1.1.0(@walletconnect/sign-client@2.23.10(typescript@5.9.3)(zod@4.4.3))(@walletconnect/types@2.23.10)
@@ -6420,6 +6422,7 @@ snapshots:
       - jiti
       - tsx
       - yaml
+    optional: true
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -8396,6 +8399,7 @@ snapshots:
       postcss: 8.5.23
       tsx: 4.23.1
       yaml: 2.9.0
+    optional: true
 
   postcss@8.5.23:
     dependencies:

@@ -1,0 +1,17 @@
+{
+  "name": "@bootnodedev/canton-theme",
+  "version": "0.2.0",
+  "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster: --cnc-* tokens + default component styles",
+  "type": "module",
+  "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./tokens.css": "./src/tokens.css",
+    "./default.css": "./src/default.css"
+  }
+}

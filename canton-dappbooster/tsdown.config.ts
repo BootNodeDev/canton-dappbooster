@@ -5,6 +5,5 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   clean: true,
-  css: { inject: true },
   fixedExtension: false,
 })

@@ -16,6 +16,7 @@
   "author": "",
   "type": "module",
   "private": true,
+  "sideEffects": false,
   "engines": {
     "node": ">=24"
   },
@@ -35,7 +36,6 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
-    "@tsdown/css": "0.22.14",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.4",

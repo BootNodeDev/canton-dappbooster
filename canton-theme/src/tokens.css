@@ -1,0 +1,11 @@
+/* --cnc-* design tokens: the public theming + dark-mode contract. Components
+   never define these; consumers load this file or set the properties themselves.
+   The full token convention (semantic scale, dark mode) is owned by #19 — this
+   file carries only what the current components consume. */
+:root {
+  --cnc-text: #1a1a1a;
+  --cnc-surface: #f5f5f5;
+  --cnc-border: #d4d4d4;
+  --cnc-radius: 4px;
+  --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
+}
