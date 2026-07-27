@@ -1,0 +1,80 @@
+/* Semantic design tokens, dual mode.
+   Brand hues from BootNodeDev/dappbooster-canton-landing + cn-dappbooster.
+   Light = :root, Dark = [data-theme="dark"]. `data-theme` is set on <html>
+   before first paint (see index.html) and toggled by ThemeProvider. */
+
+:root {
+  --bg: #f7f7f7;
+  --surface: #ffffff;
+  --surface-2: #ececf0;
+  --muted: #ececf0;
+  --border: #e2e2ea;
+  --border-strong: #ccccd6;
+
+  --fg: #2c2d40;
+  --fg-muted: #4b4d60;
+  --fg-soft: #6b6d80;
+
+  --primary: #692581;
+  --primary-hover: #8b46a4;
+  --primary-soft: #f3e8f8;
+  --primary-fg: #ffffff;
+  --accent: #c670e5;
+  --pink: #e71d73;
+
+  --success: #137047;
+  --success-soft: #e2f3ea;
+  --warning: #8a6400;
+  --warning-soft: #f6ecd2;
+  --danger: #a32626;
+  --danger-soft: #f6dede;
+
+  --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
+  --gradient-text: linear-gradient(120deg, #692581, #c670e5 55%, #e71d73);
+  --glow: 0 10px 26px rgba(198, 112, 229, 0.35);
+  --shadow-card: 0 12px 28px -16px rgba(28, 29, 46, 0.18);
+  --shadow-popover: 0 18px 36px -12px rgba(28, 29, 46, 0.22);
+  --ring: 0 0 0 3px rgba(105, 37, 129, 0.32);
+
+  --page-radial:
+    radial-gradient(55% 50% at 80% -5%, rgba(231, 29, 115, 0.08), transparent 60%),
+    radial-gradient(50% 50% at 5% 5%, rgba(198, 112, 229, 0.1), transparent 55%);
+}
+
+[data-theme="dark"] {
+  --bg: #14152b;
+  --surface: #1c1d2e;
+  --surface-2: #232539;
+  --muted: #232539;
+  --border: #2c2e46;
+  --border-strong: #5f6178;
+
+  --fg: #fafbfc;
+  --fg-muted: #c5c2cb;
+  --fg-soft: #e2e0e7;
+
+  --primary: #9d54b8;
+  --primary-hover: #b06cc9;
+  --primary-soft: #2a1f3a;
+  --primary-fg: #ffffff;
+  --accent: #c670e5;
+  --pink: #e71d73;
+
+  --success: #5fbf86;
+  --success-soft: #16291f;
+  --warning: #d4a85a;
+  --warning-soft: #332a16;
+  --danger: #e57373;
+  --danger-soft: #331a1a;
+
+  --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
+  --gradient-text: linear-gradient(120deg, #c670e5, #e71d73 60%, #ff6b9d);
+  --glow: 0 10px 26px rgba(231, 29, 115, 0.4);
+  --shadow-card: 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+  --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.7);
+  --ring: 0 0 0 3px rgba(198, 112, 229, 0.4);
+
+  --page-radial:
+    radial-gradient(60% 50% at 80% -5%, rgba(231, 29, 115, 0.16), transparent 60%),
+    radial-gradient(55% 55% at 4% 4%, rgba(198, 112, 229, 0.18), transparent 55%);
+}

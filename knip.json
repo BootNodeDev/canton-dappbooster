@@ -12,12 +12,6 @@
     },
     "canton-dappbooster": {
       "entry": ["src/**/*.test.{ts,tsx}"]
-    },
-    "dapp/frontend": {
-      "ignoreDependencies": [
-        "@fontsource-variable/jetbrains-mono",
-        "@fontsource-variable/manrope"
-      ]
     }
   }
 }

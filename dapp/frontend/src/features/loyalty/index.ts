@@ -1,1 +1,0 @@
-export { LoyaltyCard } from './LoyaltyCard'

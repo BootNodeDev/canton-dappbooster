@@ -1,1 +1,0 @@
-export { SignMessageDemo } from './SignMessageDemo'
