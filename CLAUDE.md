@@ -38,6 +38,7 @@ Current distribution:
 | `dapp/frontend/` | yes | no | no | no | Small dApp UI; root rules and README are enough. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
+| `canton-dappbooster/` | yes | no | no | no | tsdown-built UI library; root rules + README suffice. |
 
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
 
@@ -67,6 +68,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | dApp UI | Vite + React + Tailwind v4 + Radix UI + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | Reusable UI components for Canton dApps (tsdown-built library). #31 scaffold: the temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React + tsdown + vitest + Biome | n/a (library) |
 
 ## Code Style
 
@@ -100,6 +102,8 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `dapp/frontend`: `pnpm test` (Node `node:test` with `--experimental-strip-types`)
   - `canton-connect-kit`: `pnpm test` (Node `node:test` + `tsx`)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
+  - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
+- Kit components are tested inside `canton-dappbooster` (vitest handles CSS + jsdom). `dapp/frontend`'s `node --test` covers frontend logic only — it can't import CSS-bearing kit modules (no CSS loader, no DOM); exercise app+kit integration via e2e.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`).
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
