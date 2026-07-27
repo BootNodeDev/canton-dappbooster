@@ -12,6 +12,8 @@ import { PrivacyNote } from '@/components/PrivacyNote'
 import { toast } from '@/components/toast'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
+import { errorText } from '@/lib/errorText'
+import { formatCC } from '@/lib/format'
 import type { Grant, VestedClaim } from '@/store/types'
 import { useUiStore } from '@/store/useUiStore'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -91,6 +93,7 @@ export const DashboardPage = (): React.JSX.Element => {
 
   const residualClaimable = myClaims.reduce((sum, c) => sum + (c.amount - c.withdrawn), 0)
   const isEmpty = rows.length === 0 && myClaims.length === 0
+  const cancelDerived = cancelTarget === null ? null : deriveGrant(cancelTarget, nowMs)
 
   const onConfirmClaim = async (amount: number): Promise<void> => {
     if (claimTarget === null) {
@@ -113,7 +116,7 @@ export const DashboardPage = (): React.JSX.Element => {
       toast.success('Grant cancelled; earned residual set aside for the receiver')
       setCancelTarget(null)
     } catch (err) {
-      toast.error((err as Error).message)
+      toast.error(errorText(err))
     } finally {
       setCancelling(false)
     }
@@ -247,7 +250,7 @@ export const DashboardPage = (): React.JSX.Element => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold text-fg">Residual claims</h2>
             <span className="font-mono text-xs text-fg-muted">
-              {residualClaimable > 0 ? `${residualClaimable.toLocaleString()} CC claimable` : ''}
+              {residualClaimable > 0 ? `${formatCC(residualClaimable)} CC claimable` : ''}
             </span>
           </div>
           {myClaims.map((claim) => (
@@ -295,22 +298,16 @@ export const DashboardPage = (): React.JSX.Element => {
             : `Vested-but-unclaimed CC is set aside as a residual claim for ${cancelTarget.receiver.split('::')[0]}.`
         }
       >
-        {cancelTarget !== null && (
+        {cancelDerived !== null && (
           <div className="flex flex-col gap-4">
             <div className="rounded-xl border border-border bg-bg/40 p-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-fg-muted">Returned to you</span>
-                <AmountDisplay
-                  value={deriveGrant(cancelTarget, nowMs).unvested}
-                  className="font-semibold"
-                />
+                <AmountDisplay value={cancelDerived.unvested} className="font-semibold" />
               </div>
               <div className="mt-1.5 flex justify-between">
                 <span className="text-fg-muted">Residual to receiver</span>
-                <AmountDisplay
-                  value={deriveGrant(cancelTarget, nowMs).claimable}
-                  className="font-semibold"
-                />
+                <AmountDisplay value={cancelDerived.claimable} className="font-semibold" />
               </div>
             </div>
             <div className="flex justify-end gap-2.5">

@@ -21,6 +21,10 @@ export const AmountDisplay = ({
 }: AmountDisplayProps): React.JSX.Element => (
   <span className={cn('font-mono tabular-nums', gradient && 'gradient-text', className)}>
     {formatCC(value)}
-    <span className={cn('ml-1 font-sans font-semibold text-fg-muted', unitClassName)}>{unit}</span>
+    {unit !== '' && (
+      <span className={cn('ml-1 font-sans font-semibold text-fg-muted', unitClassName)}>
+        {unit}
+      </span>
+    )}
   </span>
 )

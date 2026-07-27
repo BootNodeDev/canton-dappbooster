@@ -62,7 +62,7 @@ export const relativeTime = (iso: string, nowMs: number): string => {
     value = 'today'
     return value
   }
-  if (days < 45) {
+  if (days < 30) {
     value = `${days} day${days === 1 ? '' : 's'}`
   } else if (days < 365) {
     const months = Math.round(days / 30)

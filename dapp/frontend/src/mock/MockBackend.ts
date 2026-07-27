@@ -1,6 +1,6 @@
 import type { CreateVestInput, Mode, VestingBackend, VestingView } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
-import { vestedAmount } from '@/lib/schedule'
+import { MIN_GRANT_AMOUNT, vestedAmount } from '@/lib/schedule'
 import type { Grant, Proposal, VestedClaim } from '@/store/types'
 import { MOCK_OPERATOR } from './seed'
 
@@ -46,6 +46,9 @@ export class MockBackend implements VestingBackend {
   }
 
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
+    if (args.totalAmount < MIN_GRANT_AMOUNT) {
+      throw new Error(`Grant total must be at least ${MIN_GRANT_AMOUNT} CC`)
+    }
     const proposal: Proposal = {
       id: mockId('proposal'),
       title: args.title,
@@ -90,6 +93,18 @@ export class MockBackend implements VestingBackend {
     contractCid: string
     amount: number
   }): Promise<void> {
+    const grant = this.grants.find((g) => g.id === contractCid)
+    if (grant === undefined) {
+      return
+    }
+    // Mirror Contract_Claim: never claim past the vested, unclaimed balance.
+    const claimable = Math.max(
+      0,
+      vestedAmount(grant.schedule, grant.totalAmount, now()) - grant.alreadyWithdrawn,
+    )
+    if (amount > claimable + 1e-9) {
+      throw new Error('Claim exceeds the vested, unclaimed balance')
+    }
     this.grants = this.grants.map((g) =>
       g.id === contractCid ? { ...g, alreadyWithdrawn: g.alreadyWithdrawn + amount } : g,
     )
@@ -131,6 +146,14 @@ export class MockBackend implements VestingBackend {
     claimCid: string
     amount: number
   }): Promise<void> {
+    const claim = this.claims.find((c) => c.id === claimCid)
+    if (claim === undefined) {
+      return
+    }
+    // Mirror Claim_Withdraw: never withdraw past the residual balance.
+    if (amount > claim.amount - claim.withdrawn + 1e-9) {
+      throw new Error('Withdrawal exceeds the residual balance')
+    }
     this.claims = this.claims
       .map((c) => (c.id === claimCid ? { ...c, withdrawn: c.withdrawn + amount } : c))
       .filter((c) => c.withdrawn < c.amount - 1e-9)

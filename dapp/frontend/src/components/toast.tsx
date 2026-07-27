@@ -21,7 +21,7 @@ const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   push: (tone, message) =>
     set((state) => ({
-      toasts: [...state.toasts, { id: crypto.randomUUID().slice(0, 8), tone, message }],
+      toasts: [...state.toasts, { id: crypto.randomUUID(), tone, message }],
     })),
   dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))
@@ -62,7 +62,12 @@ const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
 export const Toaster = (): React.JSX.Element => {
   const toasts = useToastStore((s) => s.toasts)
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex w-80 flex-col gap-2.5">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex w-80 flex-col gap-2.5"
+    >
       {toasts.map((item) => (
         <ToastRow key={item.id} item={item} />
       ))}

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
+import { errorText } from '@/lib/errorText'
 import { vestedAmount, vestedFraction } from '@/lib/schedule'
 import { useBackend, useParty } from '@/wallet/hooks'
 import type { Grant, Proposal, VestedClaim, WithdrawEvent } from './types'
@@ -66,7 +67,10 @@ interface VestingState {
 
 const uid = (prefix: string): string => `${prefix}-${crypto.randomUUID().slice(0, 8)}`
 
-const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+// Monotonic guard: a party/mode switch fires a new refresh, and only the newest
+// read may commit its result. Without it a slow read for the old party can resolve
+// last and clobber the fresh view (harmless with the mock, real over the network).
+let refreshEpoch = 0
 
 export const useVestingStore = create<VestingState>((set, get) => ({
   grants: [],
@@ -77,6 +81,7 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   error: undefined,
 
   refresh: async (backend, partyId) => {
+    const epoch = ++refreshEpoch
     if (partyId === '') {
       set({ grants: [], proposals: [], claims: [] })
       return
@@ -84,6 +89,9 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     set({ loading: true, error: undefined })
     try {
       const view = await backend.viewAs(partyId)
+      if (epoch !== refreshEpoch) {
+        return
+      }
       set({
         grants: view.grants,
         proposals: view.proposals,
@@ -91,6 +99,9 @@ export const useVestingStore = create<VestingState>((set, get) => ({
         loading: false,
       })
     } catch (err) {
+      if (epoch !== refreshEpoch) {
+        return
+      }
       set({ loading: false, error: errorText(err) })
     }
   },

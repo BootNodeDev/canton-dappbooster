@@ -120,6 +120,43 @@ describe('MockBackend', () => {
     expect(bob.grants[0].alreadyWithdrawn).toBe(350)
   })
 
+  it('withdraw rejects an amount past the vested, unclaimed balance', async () => {
+    // Fully-past schedule → vested = 1000; withdrawn 100 → claimable 900.
+    const backend = new MockBackend(
+      view({ grants: [grant({ id: 'g1', totalAmount: 1000, alreadyWithdrawn: 100 })] }),
+    )
+    await expect(
+      backend.withdraw({ receiver: BOB, contractCid: 'g1', amount: 950 }),
+    ).rejects.toThrow(/exceeds/)
+
+    const bob = await backend.viewAs(BOB)
+    expect(bob.grants[0].alreadyWithdrawn).toBe(100) // unchanged
+  })
+
+  it('createVesting rejects a total below the minimum', async () => {
+    const backend = new MockBackend(view())
+    await expect(
+      backend.createVesting({
+        proposer: ALICE,
+        receiver: BOB,
+        totalAmount: 0.5,
+        schedule: pastSchedule,
+        title: 'Too small',
+      }),
+    ).rejects.toThrow(/at least/)
+    expect((await backend.viewAs(BOB)).proposals).toEqual([])
+  })
+
+  it('claimResidual rejects a withdrawal past the residual balance', async () => {
+    const backend = new MockBackend(
+      view({ claims: [claim({ id: 'r1', amount: 200, withdrawn: 50 })] }),
+    )
+    await expect(
+      backend.claimResidual({ receiver: BOB, claimCid: 'r1', amount: 200 }),
+    ).rejects.toThrow(/exceeds/)
+    expect((await backend.viewAs(BOB)).claims[0].withdrawn).toBe(50) // unchanged
+  })
+
   it('cancel removes the grant and leaves the receiver a residual claim for the unwithdrawn vested amount', async () => {
     // Fully-past schedule → vested = total = 1000; withdrawn 400 → residual 600.
     const backend = new MockBackend(

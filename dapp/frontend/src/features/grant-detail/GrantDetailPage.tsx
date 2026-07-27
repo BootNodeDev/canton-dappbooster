@@ -11,6 +11,7 @@ import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { StatusPill } from '@/components/StatusPill'
 import { toast } from '@/components/toast'
 import { useNow } from '@/lib/clock'
+import { errorText } from '@/lib/errorText'
 import { formatCC, formatDate, shortenParty } from '@/lib/format'
 import { MIN_GRANT_AMOUNT } from '@/lib/schedule'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -70,7 +71,7 @@ export const GrantDetailPage = (): React.JSX.Element => {
       toast.success('Grant cancelled')
       setCancelOpen(false)
     } catch (err) {
-      toast.error((err as Error).message)
+      toast.error(errorText(err))
     } finally {
       setCancelling(false)
     }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { errorText } from '@/lib/errorText'
 import { claimAmountInput, clampClaimAmount, formatCC, formatCCFull } from '@/lib/format'
 import { MIN_GRANT_AMOUNT } from '@/lib/schedule'
 import { Button } from './Button'
@@ -29,9 +30,15 @@ export const ClaimDialog = ({
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Seed the max only on the open transition. `available` recomputes each second for
+  // a live-vesting grant, so re-seeding on its change would overwrite what the user types.
+  const seeded = useRef(false)
   useEffect(() => {
-    if (open) {
+    if (open && !seeded.current) {
+      seeded.current = true
       setRaw(claimAmountInput(available))
+    } else if (!open) {
+      seeded.current = false
     }
   }, [open, available])
 
@@ -46,11 +53,12 @@ export const ClaimDialog = ({
     }
     setSubmitting(true)
     try {
-      await onConfirm(clampClaimAmount(amount, available))
-      toast.success(`${actionLabel}ed ${formatCC(amount)} CC`)
+      const claimed = clampClaimAmount(amount, available)
+      await onConfirm(claimed)
+      toast.success(`${actionLabel}ed ${formatCC(claimed)} CC`)
       onClose()
     } catch (err) {
-      toast.error((err as Error).message)
+      toast.error(errorText(err))
     } finally {
       setSubmitting(false)
     }

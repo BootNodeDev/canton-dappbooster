@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react'
+import { type ReactNode, useEffect, useId, useRef } from 'react'
 import { cn } from '@/lib/cn'
 
 const FOCUSABLE =
@@ -23,6 +23,13 @@ export const Modal = ({
   className,
 }: ModalProps): React.JSX.Element | null => {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
+  const descId = useId()
+  // Held in a ref so a new onClose identity (callers pass an inline closure, and the
+  // page re-renders each second via useNow) does not re-run the focus-trap effect,
+  // which would otherwise steal focus back to the first focusable every tick.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) {
@@ -31,7 +38,7 @@ export const Modal = ({
     const previouslyFocused = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') {
@@ -64,7 +71,7 @@ export const Modal = ({
       document.body.style.overflow = prev
       previouslyFocused?.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) {
     return null
@@ -83,15 +90,22 @@ export const Modal = ({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
+        aria-describedby={description !== undefined ? descId : undefined}
         tabIndex={-1}
         className={cn(
           'relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
           className,
         )}
       >
-        <h2 className="text-lg font-bold tracking-tight text-fg">{title}</h2>
-        {description !== undefined && <p className="mt-1 text-sm text-fg-muted">{description}</p>}
+        <h2 id={titleId} className="text-lg font-bold tracking-tight text-fg">
+          {title}
+        </h2>
+        {description !== undefined && (
+          <p id={descId} className="mt-1 text-sm text-fg-muted">
+            {description}
+          </p>
+        )}
         <div className="mt-5">{children}</div>
       </div>
     </div>

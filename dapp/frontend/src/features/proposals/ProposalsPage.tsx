@@ -5,6 +5,7 @@ import { PrivacyNote } from '@/components/PrivacyNote'
 import { ProposalCard } from '@/components/ProposalCard'
 import { toast } from '@/components/toast'
 import { useNow } from '@/lib/clock'
+import { errorText } from '@/lib/errorText'
 import type { Proposal } from '@/store/types'
 import { useUiStore } from '@/store/useUiStore'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -30,7 +31,7 @@ export const ProposalsPage = (): React.JSX.Element => {
       await accept(backend, partyId, proposal.id)
       toast.success('Proposal accepted, grant active')
     } catch (err) {
-      toast.error((err as Error).message)
+      toast.error(errorText(err))
     }
   }
 

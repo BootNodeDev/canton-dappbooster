@@ -7,6 +7,7 @@ import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
+import { errorText } from '@/lib/errorText'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useParty } from '@/wallet/hooks'
@@ -85,6 +86,16 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const [disclosedBytes, setDisclosedBytes] = useState<number | null>(null)
   // When set, the schedule is a quick-demo preset and gets re-anchored to submit time.
   const [demo, setDemo] = useState<DemoPreset | null>(null)
+
+  // Editing the grant's identity clears the created panel, restoring the submit button.
+  const editReceiver = (value: string): void => {
+    setReceiver(value)
+    setDisclosedBytes(null)
+  }
+  const editAmount = (value: string): void => {
+    setAmount(value.replace(/[^0-9.]/g, ''))
+    setDisclosedBytes(null)
+  }
 
   const schedule = useMemo<VestingSchedule>(() => {
     if (curveKind === 'linear') {
@@ -174,7 +185,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
         `Proposal created · delivered via explicit disclosure · ${result.disclosedBytes} bytes`,
       )
     } catch (err) {
-      toast.error((err as Error).message)
+      toast.error(errorText(err))
     } finally {
       setSubmitting(false)
     }
@@ -193,7 +204,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
               <input
                 id="receiver"
                 value={receiver}
-                onChange={(e) => setReceiver(e.target.value)}
+                onChange={(e) => editReceiver(e.target.value)}
                 placeholder="bob::1220…"
                 className={cn(inputClass, 'font-mono text-sm')}
               />
@@ -212,7 +223,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 id="amount"
                 inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                onChange={(e) => editAmount(e.target.value)}
                 placeholder="0"
                 className={cn(inputClass, 'font-mono')}
               />

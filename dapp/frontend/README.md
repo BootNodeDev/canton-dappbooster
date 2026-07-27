@@ -31,7 +31,7 @@ which party you act as; it is remembered in `localStorage`). No env vars needed.
 |------|------|
 | `src/backend/` | `VestingBackend` interface + pure ACS→domain mappers. `createBackend` returns the in-memory `MockBackend` by default, or `LiteBackend` (real ledger over the wallet-service `ledgerApi` proxy) once a `vesting-lite-parties.json` is present. |
 | `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), and `seed.ts` (the sample dataset, relative to now). |
-| `src/wallet/` | `DirectWalletProvider`: the party pool and the "acting as" party. Exposes `useParty` / `useConnect` / `useParties` / `useBackend`. |
+| `src/wallet/` | `WalletProvider` (the DirectWallet): the party pool and the "acting as" party. Exposes `useParty` / `useConnect` / `useParties` / `useBackend`. |
 | `src/store/useVestingStore.ts` | Backend-backed store; actions submit then refresh. Pure `deriveGrant` + `lib/schedule.ts` mirror the on-ledger math. |
 | `src/app/` | Shell: landing party-picker, top bar (role lens, theme, party switcher), sidebar. Renders the app only once a party is selected. |
 | `src/features/` | Pages: dashboard, proposals, create, grant-detail. |

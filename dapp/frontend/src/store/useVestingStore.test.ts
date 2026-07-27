@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
 import type { Grant } from './types'
-import { deriveGrant } from './useVestingStore'
+import { deriveGrant, useVestingStore } from './useVestingStore'
 
 const ms = (iso: string): number => new Date(iso).getTime()
 
@@ -56,5 +57,54 @@ describe('deriveGrant', () => {
     expect(d.vested).toBe(0)
     expect(d.claimable).toBe(0)
     expect(d.unvested).toBe(0)
+  })
+})
+
+const deferred = <T>(): { promise: Promise<T>; resolve: (value: T) => void } => {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+// Backend stub whose viewAs resolution order we control, to exercise the race guard.
+const raceBackend = (routes: Record<string, Promise<VestingView>>): VestingBackend =>
+  ({
+    mode: 'lite',
+    isAvailable: async () => true,
+    viewAs: (partyId: string) => routes[partyId],
+    createVesting: async () => ({ disclosedBytes: 0 }),
+    accept: async () => {},
+    withdraw: async () => {},
+    cancel: async () => {},
+    claimResidual: async () => {},
+  }) as unknown as VestingBackend
+
+describe('useVestingStore.refresh', () => {
+  const someGrant = (id: string): Grant => ({ ...grant(), id })
+
+  it('drops a stale in-flight read so the newest refresh wins', async () => {
+    const slow = deferred<VestingView>()
+    const fast = deferred<VestingView>()
+    const backend = raceBackend({ A: slow.promise, B: fast.promise })
+
+    const { refresh } = useVestingStore.getState()
+    const pA = refresh(backend, 'A') // older epoch, resolves last
+    const pB = refresh(backend, 'B') // newer epoch, resolves first
+
+    fast.resolve({ grants: [someGrant('B')], proposals: [], claims: [] })
+    await pB
+    expect(useVestingStore.getState().grants.map((g) => g.id)).toEqual(['B'])
+
+    slow.resolve({ grants: [someGrant('A')], proposals: [], claims: [] })
+    await pA
+    expect(useVestingStore.getState().grants.map((g) => g.id)).toEqual(['B'])
+  })
+
+  it('clears the view when the acting party becomes empty', async () => {
+    useVestingStore.setState({ grants: [someGrant('x')] })
+    await useVestingStore.getState().refresh(raceBackend({}), '')
+    expect(useVestingStore.getState().grants).toEqual([])
   })
 })
