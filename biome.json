@@ -10,6 +10,7 @@
     "ignoreUnknown": true,
     "includes": [
       "canton-connect-kit/**",
+      "canton-dappbooster/**",
       "dapp/frontend/**",
       "canton-barebones/**",
       "!**/api-specs",
