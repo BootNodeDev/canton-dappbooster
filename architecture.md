@@ -9,6 +9,8 @@
 | `dapp/frontend/` | Vite + React + `@canton-network/dapp-sdk` | Example dApp that talks to Carpincho |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
 | `canton-connect-kit/` | TypeScript + React | Reusable wallet connection hooks |
+| `canton-dappbooster/` | TypeScript + React + tsdown | L2 headless UI components, zero styling |
+| `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
 
 ## Data Flow
 

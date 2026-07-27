@@ -53,7 +53,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
-| Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect-kit/`, `dapp/frontend/`, and `canton-barebones/` |
+| Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect-kit/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, and `canton-barebones/` |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
 | Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
