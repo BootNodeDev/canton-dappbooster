@@ -20,6 +20,10 @@ source live in dev; `dist` is used for production and publish.
 Consumers resolve source in dev and typecheck (no kit build needed); their production build resolves
 `dist`. Build the kit first, or run `pnpm build` from the repo root, which builds workspaces in order.
 
+Dev-deps pin React 18 on purpose — the floor of the `^18.3.1 || ^19.0.0` peer range — so tests
+exercise the lowest supported version. Consumers on React 19 (like `dapp/frontend`) compile the kit
+against their own newer types.
+
 ## Styling: components carry none
 
 Components (L2) ship zero styling opinion. Styling lives in the separate

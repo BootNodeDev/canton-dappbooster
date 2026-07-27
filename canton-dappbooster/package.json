@@ -10,10 +10,8 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
-    "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which files does not ship)\" && exit 1"
+    "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
   "type": "module",
   "private": true,
   "sideEffects": false,
