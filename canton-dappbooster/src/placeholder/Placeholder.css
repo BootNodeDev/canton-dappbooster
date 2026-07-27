@@ -1,0 +1,12 @@
+@layer cnc {
+  .cnc-placeholder {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-family: var(--cnc-font-mono, ui-monospace, SFMono-Regular, monospace);
+    color: var(--cnc-text, #1a1a1a);
+    background: var(--cnc-surface, #f5f5f5);
+    border: 1px solid var(--cnc-border, #d4d4d4);
+    border-radius: var(--cnc-radius, 4px);
+  }
+}

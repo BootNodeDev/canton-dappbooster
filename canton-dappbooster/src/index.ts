@@ -1,3 +1,3 @@
 // Public barrel for @bootnodedev/canton-dappbooster.
-// Components land here starting with #6 (Identifier).
-export {}
+// TEMP(#31): Placeholder proves the pipeline; #6 replaces it with Identifier.
+export { Placeholder } from './placeholder/Placeholder'
