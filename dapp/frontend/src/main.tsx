@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-// Kit components ship zero styling; load the theme (tokens + defaults) explicitly.
+// Kit components ship no styling; load the theme explicitly.
 import '@bootnodedev/canton-theme/tokens.css'
 import '@bootnodedev/canton-theme/default.css'
 import { ThemeProvider } from '@/theme/ThemeProvider'

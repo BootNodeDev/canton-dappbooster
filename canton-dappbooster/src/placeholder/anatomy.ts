@@ -1,7 +1,5 @@
-// A component's contract as code. `parts` are the CSS class hooks the theme
-// selects on; `states` are the data-*/aria-* attribute values it keys off.
-// Single source of truth: theme selectors, tests, and docs derive from here, so
-// the behavior engine underneath can change without breaking consumers.
+// Single source of truth for theme selectors, tests, and docs.
+// `parts` = CSS class hooks; `states` = data-*/aria-* values.
 export const anatomy = {
   parts: { root: 'cnc-placeholder' },
   states: {},
