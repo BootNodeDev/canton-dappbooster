@@ -38,7 +38,8 @@ Current distribution:
 | `dapp/frontend/` | yes | no | no | no | Small dApp UI; root rules and README are enough. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
-| `canton-dappbooster/` | yes | no | no | no | tsdown-built UI library; root rules + README suffice. |
+| `canton-dappbooster/` | yes | no | no | yes | L2 headless components; architecture.md holds the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
+| `canton-theme/` | yes | no | no | no | Plain-CSS theme (L3); README covers the two CSS exports. |
 
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
 
@@ -68,7 +69,8 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | dApp UI | Vite + React + Tailwind v4 + Radix UI + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | Reusable UI components for Canton dApps (tsdown-built library). #31 scaffold: the temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React + tsdown + vitest + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React + tsdown + vitest + Biome | n/a (library) |
+| [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
 
