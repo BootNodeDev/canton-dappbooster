@@ -1,3 +1,4 @@
+import { Placeholder } from '@bootnodedev/canton-dappbooster'
 import { ConnectKitProvider } from 'canton-connect-kit'
 import type { JSX } from 'react'
 import { useState } from 'react'
@@ -31,7 +32,11 @@ export const App = (): JSX.Element => {
             walletConnectProjectId: envString('VITE_WC_PROJECT_ID'),
           }}
         >
-          <ConnectionBar>{isSignDemo ? <SignMessageDemo /> : <LoyaltyCard />}</ConnectionBar>
+          <ConnectionBar>
+            {/* TEMP(#31): kit pipeline proof — replaced by <Identifier> in #6 */}
+            <Placeholder />
+            {isSignDemo ? <SignMessageDemo /> : <LoyaltyCard />}
+          </ConnectionBar>
         </ConnectKitProvider>
       </ToastProvider>
     </TooltipProvider>
