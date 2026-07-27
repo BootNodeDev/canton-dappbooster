@@ -22,6 +22,12 @@
       "description": "The @canton-network/* SDK graph is pinned in pnpm-workspace.yaml (dapp-sdk 1.1.0) and updated by hand when we choose to. Disabled so Renovate never proposes or nags SDK bumps; re-enable, or bump the pins manually, to update.",
       "matchPackageNames": ["@canton-network/**"],
       "enabled": false
+    },
+    {
+      "description": "Hold TypeScript major bumps (v7 is the new Go-native compiler; see closed PR #24) until we choose to adopt. Minor/patch within the current major still flow via the weekly batch.",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
