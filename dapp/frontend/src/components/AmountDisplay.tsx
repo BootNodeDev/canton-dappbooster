@@ -6,7 +6,6 @@ interface AmountDisplayProps {
   // Token unit, default CC.
   unit?: string
   className?: string
-  unitClassName?: string
   // Render with the brand gradient text clip (hero figures).
   gradient?: boolean
 }
@@ -16,15 +15,10 @@ export const AmountDisplay = ({
   value,
   unit = 'CC',
   className,
-  unitClassName,
   gradient = false,
 }: AmountDisplayProps): React.JSX.Element => (
   <span className={cn('font-mono tabular-nums', gradient && 'gradient-text', className)}>
     {formatCC(value)}
-    {unit !== '' && (
-      <span className={cn('ml-1 font-sans font-semibold text-fg-muted', unitClassName)}>
-        {unit}
-      </span>
-    )}
+    {unit !== '' && <span className="ml-1 font-sans font-semibold text-fg-muted">{unit}</span>}
   </span>
 )

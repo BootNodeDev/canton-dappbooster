@@ -11,7 +11,6 @@ interface ClaimDialogProps {
   onClose: () => void
   title: string
   available: number
-  actionLabel?: string
   // Submits the ledger command; the dialog awaits it and closes on success.
   onConfirm: (amount: number) => Promise<void>
 }
@@ -24,7 +23,6 @@ export const ClaimDialog = ({
   onClose,
   title,
   available,
-  actionLabel = 'Claim',
   onConfirm,
 }: ClaimDialogProps): React.JSX.Element => {
   const [raw, setRaw] = useState('')
@@ -55,7 +53,7 @@ export const ClaimDialog = ({
     try {
       const claimed = clampClaimAmount(amount, available)
       await onConfirm(claimed)
-      toast.success(`${actionLabel}ed ${formatCC(claimed)} CC`)
+      toast.success(`Claimed ${formatCC(claimed)} CC`)
       onClose()
     } catch (err) {
       toast.error(errorText(err))
@@ -69,7 +67,7 @@ export const ClaimDialog = ({
       open={open}
       onClose={onClose}
       title={title}
-      description={`Available to ${actionLabel.toLowerCase()}: ${formatCCFull(available)} CC`}
+      description={`Available to claim: ${formatCCFull(available)} CC`}
     >
       <label
         htmlFor="claim-amount"
@@ -104,7 +102,7 @@ export const ClaimDialog = ({
           Cancel
         </Button>
         <Button size="sm" onClick={() => void submit()} disabled={!valid || submitting}>
-          {submitting ? 'Submitting…' : actionLabel}
+          {submitting ? 'Submitting…' : 'Claim'}
         </Button>
       </div>
     </Modal>
