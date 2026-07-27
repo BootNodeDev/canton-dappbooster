@@ -7,7 +7,7 @@
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
 | `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
 | `carpincho-wallet` (separate repo) | Vite 6 + React 18 + Tailwind v4 + Radix UI + WalletConnect + `@tanstack/react-query` + `@noble/ed25519` | CIP-0103 browser wallet, encrypted vault, signer, injected provider — lives in its own repo (github.com/BootNodeDev/carpincho-wallet) |
-| `dapp/frontend/` | Vite + React + `@canton-network/dapp-sdk` | Example dApp that talks to Carpincho |
+| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; runs mock-first (in-memory backend, no services). Live ledger + CIP-0103 path deferred |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
 | `canton-connect-kit/` | TypeScript + React | Reusable wallet connection hooks |
 | `canton-dappbooster/` | TypeScript + React + tsdown | L2 headless UI components, zero styling |
@@ -32,6 +32,11 @@ flowchart TD
   dar --> au
 ```
 
+> `dapp/frontend` currently hosts the Canton Coin vesting dApp running **mock-first**
+> (in-memory backend + a DirectWallet party-picker); it does not use the
+> CIP-0103/Carpincho or wallet-service path above yet. That live path returns when the
+> vesting live backend lands (deferred).
+
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
 needed by Splice and Canton Coin. The app-provider UI profile is not started;
@@ -40,7 +45,7 @@ containers still expose app-provider backend ports.
 
 State boundaries:
 
-- The dApp talks to Carpincho through the CIP-0103 provider surface.
+- The CIP-0103 path: a dApp talks to Carpincho through the provider surface (the vesting dApp in `dapp/frontend` runs mock-first and does not use it yet).
 - Carpincho owns user keys and signs locally.
 - wallet-service holds `CANTON_BACKEND_TOKEN` and remains the external-party onboarding bridge.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
