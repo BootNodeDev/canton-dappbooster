@@ -10,6 +10,9 @@
     "canton-connect-kit": {
       "entry": ["test/**/*.test.{ts,tsx}"]
     },
+    "canton-dappbooster": {
+      "entry": ["src/**/*.test.{ts,tsx}"]
+    },
     "dapp/frontend": {
       "ignoreDependencies": [
         "@fontsource-variable/jetbrains-mono",
