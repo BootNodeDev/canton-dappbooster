@@ -1,4 +1,4 @@
-# canton-connect-kit
+# canton-connect
 
 wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets.
 Pairs with `carpincho-wallet`, but works with any wallet that implements
@@ -40,7 +40,7 @@ import {
   useSignMessage,
   useExecute,
   useLedger,
-} from 'canton-connect-kit'
+} from '@bootnodedev/canton-connect'
 
 function App() {
   return (

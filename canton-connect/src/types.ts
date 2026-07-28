@@ -1,4 +1,4 @@
-// Public types exposed to consumers of canton-connect-kit.
+// Public types exposed to consumers of canton-connect.
 
 export type ConnectMode = 'extension' | 'walletconnect' | 'preferred'
 
@@ -46,7 +46,7 @@ export interface WalletConnectConnectorOptions {
 
 export interface ConnectorProvider {
   // The Provider type from @canton-network/core-splice-provider — typed as
-  // `unknown` here so canton-connect-kit doesn't force-bundle the type at
+  // `unknown` here so canton-connect doesn't force-bundle the type at
   // build time. The kit's internal code treats it as a generic Provider.
   provider: unknown
   providerType: 'browser' | 'remote'

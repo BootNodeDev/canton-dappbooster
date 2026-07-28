@@ -7,7 +7,7 @@
     ".": {
       "entry": ["scripts/**/*.mjs!"]
     },
-    "canton-connect-kit": {
+    "canton-connect": {
       "entry": ["test/**/*.test.{ts,tsx}"]
     },
     "canton-dappbooster": {

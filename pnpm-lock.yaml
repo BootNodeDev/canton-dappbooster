@@ -92,7 +92,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  canton-connect-kit:
+  canton-connect:
     devDependencies:
       '@canton-network/core-splice-provider':
         specifier: 1.4.0

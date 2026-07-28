@@ -1,10 +1,10 @@
-# Agent Configuration — canton-connect-kit
+# Agent Configuration — canton-connect
 
-This file applies only to `canton-connect-kit/`. For monorepo-wide rules, see [`../CLAUDE.md`](../CLAUDE.md).
+This file applies only to `canton-connect/`. For monorepo-wide rules, see [`../CLAUDE.md`](../CLAUDE.md).
 
 ## Scope
 
-`canton-connect-kit` is a React hook library for Canton dApps. It exposes a stable wagmi-style hook surface while hiding connector details for the injected CIP-0103 provider and the optional WalletConnect fallback.
+`canton-connect` is a React hook library for Canton dApps. It exposes a stable wagmi-style hook surface while hiding connector details for the injected CIP-0103 provider and the optional WalletConnect fallback.
 
 ## Working Rules
 
@@ -21,7 +21,7 @@ See [`architecture.md`](architecture.md) for the provider, connector, hook, and 
 
 ## Testing
 
-- Run tests with `pnpm test` from this package, or `pnpm -C canton-connect-kit test` from the repo root.
+- Run tests with `pnpm test` from this package, or `pnpm -C canton-connect test` from the repo root.
 - Use the configured `node:test` + `tsx` setup.
 - Prefer connector factories and test doubles over importing wallet or dApp source.
 - Cover context state transitions, connector selection, event subscriptions, and hook return values.
