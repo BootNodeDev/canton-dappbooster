@@ -3,8 +3,9 @@ import { defineConfig } from 'tsdown'
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm'],
+  // Browser lib: keep engines.node from steering platform to Node.
+  platform: 'neutral',
   dts: true,
-  clean: true,
-  css: { inject: true },
+  // platform: neutral flips the default extension; keep the .js the exports map points at.
   fixedExtension: false,
 })

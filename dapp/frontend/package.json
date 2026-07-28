@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@bootnodedev/canton-dappbooster": "workspace:*",
+    "@bootnodedev/canton-theme": "workspace:*",
     "@canton-network/dapp-sdk": "^1.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",

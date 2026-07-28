@@ -1,3 +1,4 @@
+/* Under @layer cnc so consumer styles win; token fallbacks keep it usable with no tokens.css. */
 @layer cnc {
   .cnc-placeholder {
     display: inline-flex;

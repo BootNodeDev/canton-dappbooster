@@ -2,6 +2,7 @@
 
 ## Tech Stack
 
+| Subproject | Stack | Purpose |
 | --- | --- | --- |
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
 | `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
@@ -9,6 +10,8 @@
 | `dapp/frontend/` | Vite + React + `@canton-network/dapp-sdk` | Example dApp that talks to Carpincho |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
 | `canton-connect-kit/` | TypeScript + React | Reusable wallet connection hooks |
+| `canton-dappbooster/` | TypeScript + React + tsdown | L2 headless UI components, zero styling |
+| `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
 
 ## Data Flow
 
