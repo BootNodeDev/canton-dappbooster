@@ -35,7 +35,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect-kit/` | yes | shim | yes | yes | Public hook API, connector abstractions, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/frontend/` | yes | no | no | no | Small dApp UI; root rules and README are enough. |
+| `dapp/frontend/` | yes | no | no | no | Canton Coin vesting dApp (mock-first); root rules + README suffice. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | no | no | yes | L2 headless components; architecture.md holds the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
@@ -67,7 +67,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`canton-barebones/`](canton-barebones/) | Local Canton participant + Postgres via docker-compose; deploy + health + token scripts | Docker, Bash, Node scripts | 3013/3014/3015/3016/3017/3018 |
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
-| [`dapp/frontend/`](dapp/frontend/) | dApp UI | Vite + React + Tailwind v4 + Radix UI + Biome | 3012 |
+| [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
@@ -101,11 +101,11 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
 ## Testing
 
 - Each subproject owns its own test runner. Run from the subproject directory or via `pnpm -C`:
-  - `dapp/frontend`: `pnpm test` (Node `node:test` with `--experimental-strip-types`)
+  - `dapp/frontend`: `pnpm test` (vitest, node env)
   - `canton-connect-kit`: `pnpm test` (Node `node:test` + `tsx`)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
-- Kit components are tested inside `canton-dappbooster` (vitest handles CSS + jsdom). `dapp/frontend`'s `node --test` covers frontend logic only — it can't import CSS-bearing kit modules (no CSS loader, no DOM); exercise app+kit integration via e2e.
+- Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic — schedule math, the mock backend, the store, and the ACS→domain mappers; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`).
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 

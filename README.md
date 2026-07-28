@@ -72,15 +72,6 @@ The token script uses `ledger-api-user` as the default JWT subject. Generate
 another token with the same script or reuse the backend token locally. Do not
 copy `CANTON_AUTH_SECRET` into Carpincho.
 
-Optional WalletConnect fallback:
-
-```bash
-cp dapp/frontend/.env.local.example dapp/frontend/.env.local
-```
-
-Set `VITE_WC_PROJECT_ID` only if you use WalletConnect. The Carpincho wallet's own
-WalletConnect env is configured in its repo.
-
 ## Quick Start
 
 Start the stack:
@@ -119,11 +110,9 @@ Open the dApp:
 http://localhost:3012
 ```
 
-In the frontend:
-
-1. Keep `canton:localnet` in settings.
-2. Click `Connect with Carpincho`.
-3. Approve the request in Carpincho.
+The vesting dApp runs **mock-first** (a DirectWallet party-picker + in-memory
+backend), so it needs neither the stack above nor Carpincho — pick any party on the
+landing screen to act as it. The live wallet-service / Carpincho path is deferred.
 
 ## Extension
 

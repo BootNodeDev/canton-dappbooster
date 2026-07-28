@@ -1,57 +1,100 @@
-import type { JSX } from 'react'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { ThemeContext, type ThemeMode } from '@/theme/ThemeContext'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
-const STORAGE_KEY = 'bn-canton-stampbook:theme'
+export type ThemeMode = 'light' | 'dark' | 'system'
+export type ResolvedTheme = 'light' | 'dark'
 
-const readStoredMode = (): ThemeMode | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
+const STORAGE_KEY = 'cc-vesting-theme'
+
+interface ThemeContextValue {
+  mode: ThemeMode
+  resolved: ResolvedTheme
+  setMode: (mode: ThemeMode) => void
+  toggle: () => void
+}
+
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
+
+const prefersDark = (): boolean =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+
+const readStored = (): ThemeMode => {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored
-    }
+    const value = window.localStorage.getItem(STORAGE_KEY)
+    return value === 'light' || value === 'dark' ? value : 'system'
   } catch {
-    // ignore
+    return 'system'
   }
-  return null
 }
 
-interface ThemeProviderProps {
-  children: ReactNode
+const resolve = (mode: ThemeMode): ResolvedTheme =>
+  mode === 'system' ? (prefersDark() ? 'dark' : 'light') : mode
+
+const apply = (resolved: ResolvedTheme): void => {
+  document.documentElement.dataset.theme = resolved
 }
 
-export const ThemeProvider = ({ children }: ThemeProviderProps): JSX.Element => {
-  const [mode, setModeState] = useState<ThemeMode>(() => readStoredMode() ?? 'system')
+export const ThemeProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
+  const [mode, setModeState] = useState<ThemeMode>(() => readStored())
+  const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(mode))
 
   useEffect(() => {
-    const root = document.documentElement
-    if (mode !== 'system') {
-      root.dataset.theme = mode
-      return
-    }
-    // System mode: resolve from a single MediaQueryList and follow its changes.
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const apply = (): void => {
-      root.dataset.theme = media.matches ? 'dark' : 'light'
-    }
-    apply()
-    media.addEventListener('change', apply)
-    return () => media.removeEventListener('change', apply)
+    const next = resolve(mode)
+    setResolved(next)
+    apply(next)
   }, [mode])
 
-  const setMode = useCallback((next: ThemeMode) => {
+  // Follow OS changes while in system mode.
+  useEffect(() => {
+    if (mode !== 'system') {
+      return
+    }
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (): void => {
+      const next = resolve('system')
+      setResolved(next)
+      apply(next)
+    }
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [mode])
+
+  const setMode = useCallback((next: ThemeMode): void => {
     setModeState(next)
     try {
-      window.localStorage.setItem(STORAGE_KEY, next)
+      if (next === 'system') {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } else {
+        window.localStorage.setItem(STORAGE_KEY, next)
+      }
     } catch {
-      // ignore quota / privacy errors
+      // ignore
     }
   }, [])
 
-  const value = useMemo(() => ({ mode, setMode }), [mode, setMode])
+  const toggle = useCallback((): void => {
+    setMode(resolved === 'dark' ? 'light' : 'dark')
+  }, [resolved, setMode])
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({ mode, resolved, setMode, toggle }),
+    [mode, resolved, setMode, toggle],
+  )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+}
+
+export const useTheme = (): ThemeContextValue => {
+  const ctx = useContext(ThemeContext)
+  if (ctx === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return ctx
 }

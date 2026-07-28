@@ -1,16 +1,18 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-// Kit components ship no styling; load the theme explicitly.
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+// Kit components ship zero styling; load the theme (tokens + defaults) explicitly.
 import '@bootnodedev/canton-theme/tokens.css'
 import '@bootnodedev/canton-theme/default.css'
-import { ThemeProvider } from '@/theme/ThemeProvider'
 import { App } from './App'
-import './index.css'
+import './styles/index.css'
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
-  </React.StrictMode>,
+const rootEl = document.getElementById('root')
+if (rootEl === null) {
+  throw new Error('Root element #root not found')
+}
+
+createRoot(rootEl).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
 )
