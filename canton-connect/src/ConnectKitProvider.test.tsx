@@ -1,9 +1,7 @@
-import './setup-dom'
-import { strict as assert } from 'node:assert'
-import { describe, it } from 'node:test'
 import { render, screen } from '@testing-library/react'
 import type { JSX } from 'react'
-import { ConnectKitProvider, useConnectKitContext } from '../src/ConnectKitProvider'
+import { describe, expect, it } from 'vitest'
+import { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
 
 const config = { appName: 'Test dApp' }
 
@@ -25,9 +23,9 @@ describe('ConnectKitProvider', () => {
         <StatusProbe />
       </ConnectKitProvider>,
     )
-    assert.equal(screen.getByTestId('status').textContent, 'idle')
-    assert.equal(screen.getByTestId('connected').textContent, 'no-client')
-    assert.equal(screen.getByTestId('locked').textContent, 'unlocked')
+    expect(screen.getByTestId('status').textContent).toBe('idle')
+    expect(screen.getByTestId('connected').textContent).toBe('no-client')
+    expect(screen.getByTestId('locked').textContent).toBe('unlocked')
   })
 
   it('useConnectKitContext throws when used outside the provider', () => {
@@ -35,6 +33,6 @@ describe('ConnectKitProvider', () => {
       useConnectKitContext()
       return <span />
     }
-    assert.throws(() => render(<Naked />), /inside a <ConnectKitProvider>/)
+    expect(() => render(<Naked />)).toThrow(/inside a <ConnectKitProvider>/)
   })
 })
