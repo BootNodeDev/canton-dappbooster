@@ -193,7 +193,6 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
         const { DappClient } = await import('@canton-network/dapp-sdk')
         const nextClient = new DappClient(selected.provider as Provider<DappRpcTypes>, {
           providerType: selected.providerType,
-          injectGlobal: false,
         })
         const connection = await nextClient.connect()
         if (!connection.isConnected) {
