@@ -1,10 +1,65 @@
-/* Public --cnc-* theming contract; consumers load this or define the properties. Full convention (scale, dark mode) is #19. */
+/* Public --cnc-* theming contract. Consumers load this file or define the properties themselves.
+   Naming convention and the rule for adding a token: see ../CLAUDE.md. */
 :root {
-  --cnc-text: #1a1a1a;
-  --cnc-text-muted: #6b6b6b;
+  /* surface */
+  --cnc-bg: #f7f7f7;
+  --cnc-surface: #ffffff;
+  --cnc-surface-muted: #ececf0;
+
+  /* text */
+  --cnc-text: #2c2d40;
+  --cnc-text-muted: #4b4d60;
+
+  /* border */
+  --cnc-border: #e2e2ea;
+  --cnc-border-strong: #ccccd6;
+
+  /* accent */
   --cnc-accent: #692581;
+  --cnc-accent-hover: #8b46a4;
+  --cnc-accent-muted: #f3e8f8;
+  --cnc-accent-fg: #ffffff;
+
+  /* state */
   --cnc-success: #137047;
+  --cnc-success-muted: #e2f3ea;
+  --cnc-warning: #8a6400;
+  --cnc-warning-muted: #f6ecd2;
   --cnc-danger: #a32626;
+  --cnc-danger-muted: #f6dede;
+
+  /* shape — mode-independent, so no dark counterpart */
   --cnc-radius: 4px;
   --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Keyed on the attribute, not prefers-color-scheme: a mode toggle has to be able to force light on
+   a dark OS, and it cannot override a media query. */
+[data-theme="dark"] {
+  /* surface */
+  --cnc-bg: #14152b;
+  --cnc-surface: #1c1d2e;
+  --cnc-surface-muted: #232539;
+
+  /* text */
+  --cnc-text: #fafbfc;
+  --cnc-text-muted: #c5c2cb;
+
+  /* border */
+  --cnc-border: #2c2e46;
+  --cnc-border-strong: #5f6178;
+
+  /* accent */
+  --cnc-accent: #9d54b8;
+  --cnc-accent-hover: #b06cc9;
+  --cnc-accent-muted: #2a1f3a;
+  --cnc-accent-fg: #ffffff;
+
+  /* state */
+  --cnc-success: #5fbf86;
+  --cnc-success-muted: #16291f;
+  --cnc-warning: #d4a85a;
+  --cnc-warning-muted: #332a16;
+  --cnc-danger: #e57373;
+  --cnc-danger-muted: #331a1a;
 }

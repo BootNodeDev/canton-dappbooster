@@ -19,6 +19,9 @@ import '@bootnodedev/canton-theme/default.css'
 
 - `default.css` carries token fallbacks, so it renders standalone. Load `tokens.css` too (or
   define the `--cnc-*` properties yourself) to theme and to support dark mode.
+- Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, before first paint
+  to avoid a flash. It deliberately does not follow `prefers-color-scheme` by itself, so that a mode
+  toggle can override the OS preference in both directions.
 - All defaults live under `@layer cnc`, so your own CSS wins without specificity fights.
 
 With Tailwind, position the `cnc` layer explicitly. Tailwind otherwise owns the layer order it

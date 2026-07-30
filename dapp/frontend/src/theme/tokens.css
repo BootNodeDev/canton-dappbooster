@@ -79,15 +79,10 @@
     radial-gradient(55% 55% at 4% 4%, rgba(198, 112, 229, 0.18), transparent 55%);
 }
 
-/* Bridge the kit's --cnc-* contract onto this palette so kit components inherit the app's
-   look. One block covers both modes: var() resolves lazily, so --fg here is already the
-   mode-correct value. Loaded after canton-theme/tokens.css, so these win. */
+/* Colours are not bridged: canton-theme ships this same brand palette and its own dark mode, so kit
+   components already match. Only these two differ, because a library cannot ship a webfont and has
+   no opinion on our radius scale. Loaded after canton-theme/tokens.css, so these win. */
 :root {
-  --cnc-text: var(--fg);
-  --cnc-text-muted: var(--fg-muted);
-  --cnc-accent: var(--primary);
-  --cnc-success: var(--success);
-  --cnc-danger: var(--danger);
-  --cnc-radius: var(--radius-md);
   --cnc-font-mono: var(--font-mono);
+  --cnc-radius: var(--radius-md);
 }
