@@ -21,5 +21,7 @@ export type { UseWalletStatusResult } from './hooks/useWalletStatus'
 export { useWalletStatus } from './hooks/useWalletStatus'
 export type { RawWalletAccount } from './lib/walletAccount'
 export { selectPrimaryAccount, toParty } from './lib/walletAccount'
+export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from './mock/mockAdapter'
+export { createMockAdapter } from './mock/mockAdapter'
 
 export type { ConnectionStatus, ConnectKitConfig, ConnectMode, Party } from './types'

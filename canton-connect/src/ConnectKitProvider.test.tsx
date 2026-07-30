@@ -4,6 +4,7 @@ import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
+import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
 
@@ -70,6 +71,80 @@ describe('ConnectKitProvider', () => {
     expect(result.current.status).toBe('connected')
 
     wallet.dispose()
+  })
+
+  it('connects through the mock adapter with no real wallet installed', async () => {
+    const mock = createMockAdapter({ id: 'mock-test', accounts: [{ partyId: 'alice::mock1220' }] })
+
+    const config = {
+      appName: 'test',
+      additionalAdapters: [mock],
+      // Selecting by id, not ordering — a real announced wallet could also be in the entries.
+      walletPicker: createAutoPicker('mock-test'),
+    }
+    const { result } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.party?.partyId).toBe('alice::mock1220')
+    expect(result.current.status).toBe('connected')
+  })
+
+  it('mock party tracks the configured networkId when the mock sets none', async () => {
+    const mock = createMockAdapter({
+      id: 'mock-adaptive',
+      accounts: [{ partyId: 'alice::mock1220' }],
+    })
+
+    const config = {
+      appName: 'test',
+      networkId: 'canton:testnet',
+      additionalAdapters: [mock],
+      walletPicker: createAutoPicker('mock-adaptive'),
+    }
+    const { result } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.party?.networkId).toBe('canton:testnet')
+  })
+
+  it('mock party keeps its own networkId even when it disagrees with the config', async () => {
+    const mock = createMockAdapter({
+      id: 'mock-devnet',
+      networkId: 'canton:devnet',
+      accounts: [{ partyId: 'alice::mock1220' }],
+    })
+
+    const config = {
+      appName: 'test',
+      networkId: 'canton:testnet',
+      additionalAdapters: [mock],
+      walletPicker: createAutoPicker('mock-devnet'),
+    }
+    const { result } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.party?.networkId).toBe('canton:devnet')
   })
 
   it('wires events for a restored session even when the wallet reports locked', async () => {
