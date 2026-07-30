@@ -8,7 +8,7 @@ import type {
   StatusEvent,
   TxChangedEvent,
 } from '@canton-network/dapp-sdk'
-import { DappSDK } from '@canton-network/dapp-sdk'
+import { DappSDK, WalletConnectAdapter } from '@canton-network/dapp-sdk'
 import {
   createContext,
   type JSX,
@@ -57,10 +57,32 @@ export interface ConnectKitProviderProps {
   children: ReactNode
 }
 
-// Seam for the WalletConnect adapter (#4) and mock adapter (#7); both land as later tasks.
-const buildAdditionalAdapters = (
-  additionalAdapters: ProviderAdapter[] | undefined,
-): ProviderAdapter[] => additionalAdapters ?? []
+type AdapterConfig = Pick<
+  ConnectKitConfig,
+  'appName' | 'appDescription' | 'appUrl' | 'walletConnectProjectId' | 'additionalAdapters'
+>
+
+const buildAdditionalAdapters = (config: AdapterConfig, network: string): ProviderAdapter[] => {
+  const adapters: ProviderAdapter[] = [...(config.additionalAdapters ?? [])]
+
+  if (config.walletConnectProjectId !== undefined && config.walletConnectProjectId !== '') {
+    adapters.push(
+      WalletConnectAdapter.create({
+        projectId: config.walletConnectProjectId,
+        // The CAIP-2 chain the wallet must serve is the configured Canton network id, not the SDK's devnet default.
+        chainId: network,
+        metadata: {
+          name: config.appName,
+          description: config.appDescription ?? config.appName,
+          url: config.appUrl ?? (typeof window === 'undefined' ? '' : window.location.origin),
+          icons: [],
+        },
+      }),
+    )
+  }
+
+  return adapters
+}
 
 export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps): JSX.Element => {
   const [status, setStatus] = useState<ConnectionStatus>('idle')
@@ -77,8 +99,25 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
   )
 
   const additionalAdapters = useMemo(
-    () => buildAdditionalAdapters(config.additionalAdapters),
-    [config.additionalAdapters],
+    () =>
+      buildAdditionalAdapters(
+        {
+          appName: config.appName,
+          appDescription: config.appDescription,
+          appUrl: config.appUrl,
+          walletConnectProjectId: config.walletConnectProjectId,
+          additionalAdapters: config.additionalAdapters,
+        },
+        network,
+      ),
+    [
+      config.appName,
+      config.appDescription,
+      config.appUrl,
+      config.walletConnectProjectId,
+      config.additionalAdapters,
+      network,
+    ],
   )
 
   // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().

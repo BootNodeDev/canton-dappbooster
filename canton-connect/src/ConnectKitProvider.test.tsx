@@ -1,3 +1,5 @@
+import type { WalletPickerEntry, WalletPickerFn } from '@canton-network/dapp-sdk'
+import { DappSDK } from '@canton-network/dapp-sdk'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -8,10 +10,21 @@ import { createFakeWallet } from './testing/fakeWallet'
 const KERNEL_DISCOVERY_KEY = 'splice_wallet_kernel_discovery'
 const DISCOVERY_SESSION_KEY = 'splice_discovery_client_session'
 
+// Selecting the entry would start real pairing; capture what was offered and bail.
+const capturePicker =
+  (offered: WalletPickerEntry[]): WalletPickerFn =>
+  async (entries) => {
+    offered.push(...entries)
+    throw new Error('cancel')
+  }
+
 describe('ConnectKitProvider', () => {
   afterEach(() => {
     localStorage.removeItem(KERNEL_DISCOVERY_KEY)
     localStorage.removeItem(DISCOVERY_SESSION_KEY)
+
+    // A prototype spy survives a failed assertion; restoring here keeps it out of later tests.
+    vi.restoreAllMocks()
   })
 
   it('initial state is idle with no party and not locked', () => {
@@ -144,5 +157,66 @@ describe('ConnectKitProvider', () => {
     )
 
     wallet.dispose()
+  })
+
+  it('offers a WalletConnect entry when a project id is configured', async () => {
+    const offered: WalletPickerEntry[] = []
+
+    const config = {
+      appName: 'test',
+      walletConnectProjectId: 'test-project',
+      walletPicker: capturePicker(offered),
+    }
+    const { result } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect().catch(() => undefined)
+    })
+
+    expect(offered).toEqual([
+      expect.objectContaining({ providerId: 'walletconnect', type: 'mobile' }),
+    ])
+  })
+
+  it('offers no WalletConnect entry without a project id', async () => {
+    const offered: WalletPickerEntry[] = []
+
+    const config = { appName: 'test', walletPicker: capturePicker(offered) }
+    const { result } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect().catch(() => undefined)
+    })
+
+    expect(offered).toEqual([])
+  })
+
+  it('does not re-init when a rerender passes a new config object with the same field values', async () => {
+    const initSpy = vi.spyOn(DappSDK.prototype, 'init')
+
+    // Hoisted so this reference stays stable across renders — only the wrapping config object is fresh.
+    const walletPicker = createAutoPicker()
+
+    const { rerender } = renderHook(() => useConnectKitContext(), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={{ appName: 'test', walletPicker }}>
+          {children}
+        </ConnectKitProvider>
+      ),
+    })
+
+    await waitFor(() => expect(initSpy).toHaveBeenCalledTimes(1))
+
+    rerender()
+
+    expect(initSpy).toHaveBeenCalledTimes(1)
   })
 })
