@@ -1,13 +1,54 @@
 /* Under @layer cnc so consumer styles win; token fallbacks keep it usable with no tokens.css. */
 @layer cnc {
-  .cnc-placeholder {
+  .cnc-identifier {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
-    font-family: var(--cnc-font-mono, ui-monospace, SFMono-Regular, monospace);
+    gap: 0.375rem;
+    min-width: 0;
+    max-width: 100%;
+    /* On the root, not the value, so a consumer utility class can override it. */
     color: var(--cnc-text, #1a1a1a);
-    background: var(--cnc-surface, #f5f5f5);
-    border: 1px solid var(--cnc-border, #d4d4d4);
+  }
+
+  /* Inherits font-size so the same primitive sits correctly in a heading, a row, or a table cell. */
+  .cnc-identifier__value {
+    overflow: hidden;
+    font-family: var(--cnc-font-mono, ui-monospace, SFMono-Regular, monospace);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .cnc-identifier__copy,
+  .cnc-identifier__link {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    padding: 0;
+    font-size: 0.875em;
+    color: var(--cnc-text-muted, #6b6b6b);
+    background: none;
+    border: 0;
     border-radius: var(--cnc-radius, 4px);
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .cnc-identifier__copy:hover,
+  .cnc-identifier__link:hover {
+    color: var(--cnc-accent, #692581);
+  }
+
+  .cnc-identifier__copy:focus-visible,
+  .cnc-identifier__link:focus-visible {
+    outline: 2px solid var(--cnc-accent, #692581);
+    outline-offset: 2px;
+  }
+
+  .cnc-identifier__copy[data-state="copied"] {
+    color: var(--cnc-success, #137047);
+  }
+
+  .cnc-identifier__copy[data-state="error"] {
+    color: var(--cnc-danger, #a32626);
   }
 }
