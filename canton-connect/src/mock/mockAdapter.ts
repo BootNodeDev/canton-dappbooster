@@ -16,19 +16,29 @@ type RequestResult = Awaited<ReturnType<MockProvider['request']>>
 type Listener = Parameters<MockProvider['on']>[1]
 type Wallet = dappAPI.Wallet
 
+/** A single account the mock adapter reports from `listAccounts`. */
 export interface MockAccount {
   partyId: string
   name?: string
   publicKey?: string
 }
 
+/** Options for `createMockAdapter`. */
 export interface CreateMockAdapterOptions {
+  /** Provider id used in the picker and for `createAutoPicker` selection. Defaults to `'mock'`. */
   id?: string
+  /** Accounts reported from `listAccounts`, first entry primary. Defaults to a single generated account. */
   accounts?: MockAccount[]
+  /** Network id reported by the mock's accounts. Omit to let `CantonConnectConfig.networkId` apply instead. */
   networkId?: string
 }
 
+/**
+ * A `ProviderAdapter` that answers the connect flow with canned data — see
+ * `createMockAdapter`.
+ */
 export interface MockAdapter extends ProviderAdapter {
+  /** Simulates the wallet pushing `event` (e.g. `'statusChanged'`) to whatever subscribed via `provider().on(...)`. */
   emit: (event: string, payload: unknown) => void
 }
 
@@ -155,5 +165,15 @@ class MockProviderAdapter implements ProviderAdapter {
   }
 }
 
+/**
+ * Creates a `ProviderAdapter` that answers the connect flow (`connect`,
+ * `status`, `listAccounts`, `disconnect`) with configured or default data —
+ * enough to drive `CantonConnectProvider` with no real wallet installed. Pass
+ * it via `CantonConnectConfig.additionalAdapters`.
+ *
+ * Everything outside that flow (`prepareExecute`, `signMessage`, `ledgerApi`,
+ * etc.) throws naming the method, on purpose: a canned execute or sign
+ * result would be indistinguishable from a real one.
+ */
 export const createMockAdapter = (options: CreateMockAdapterOptions = {}): MockAdapter =>
   new MockProviderAdapter(options)
