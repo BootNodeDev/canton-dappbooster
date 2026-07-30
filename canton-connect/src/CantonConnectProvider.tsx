@@ -1,4 +1,4 @@
-// ConnectKitProvider owns the wallet connection lifecycle and exposes it
+// CantonConnectProvider owns the wallet connection lifecycle and exposes it
 // through React context. Hooks (useConnect, useParty, useSignMessage, etc.)
 // are thin readers that subscribe to this context.
 
@@ -21,7 +21,7 @@ import {
   useState,
 } from 'react'
 import { selectPrimaryAccount, toParty } from './lib/walletAccount'
-import type { ConnectionStatus, ConnectKitConfig, Party } from './types'
+import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 
 export interface TxStatusSnapshot {
   status: string
@@ -29,8 +29,8 @@ export interface TxStatusSnapshot {
   payload?: unknown
 }
 
-export interface ConnectKitContextValue {
-  config: ConnectKitConfig
+export interface CantonConnectContextValue {
+  config: CantonConnectConfig
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
@@ -42,23 +42,23 @@ export interface ConnectKitContextValue {
   disconnect: () => Promise<void>
 }
 
-const ConnectKitContext = createContext<ConnectKitContextValue | undefined>(undefined)
+const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
-export const useConnectKitContext = (): ConnectKitContextValue => {
-  const ctx = useContext(ConnectKitContext)
+export const useCantonConnectContext = (): CantonConnectContextValue => {
+  const ctx = useContext(CantonConnectContext)
   if (ctx === undefined) {
-    throw new Error('useConnectKit* hooks must be used inside a <ConnectKitProvider>')
+    throw new Error('canton-connect hooks must be used inside a <CantonConnectProvider>')
   }
   return ctx
 }
 
-export interface ConnectKitProviderProps {
-  config: ConnectKitConfig
+export interface CantonConnectProviderProps {
+  config: CantonConnectConfig
   children: ReactNode
 }
 
 type AdapterConfig = Pick<
-  ConnectKitConfig,
+  CantonConnectConfig,
   'appName' | 'appDescription' | 'appUrl' | 'walletConnectProjectId' | 'additionalAdapters'
 >
 
@@ -84,7 +84,10 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
   return adapters
 }
 
-export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps): JSX.Element => {
+export const CantonConnectProvider = ({
+  config,
+  children,
+}: CantonConnectProviderProps): JSX.Element => {
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [party, setParty] = useState<Party | undefined>(undefined)
   const [isLocked, setIsLocked] = useState(false)
@@ -219,7 +222,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
     setLastTx(undefined)
   }, [sdk])
 
-  const value = useMemo<ConnectKitContextValue>(
+  const value = useMemo<CantonConnectContextValue>(
     () => ({
       config,
       sdk,
@@ -235,5 +238,5 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
     [config, sdk, party, status, isLocked, connectError, lastTx, connect, disconnect],
   )
 
-  return <ConnectKitContext.Provider value={value}>{children}</ConnectKitContext.Provider>
+  return <CantonConnectContext.Provider value={value}>{children}</CantonConnectContext.Provider>
 }

@@ -1,4 +1,4 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export interface UseConnectResult {
   connect: () => Promise<void>
@@ -9,7 +9,7 @@ export interface UseConnectResult {
 }
 
 export const useConnect = (): UseConnectResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     connect: ctx.connect,
     disconnect: ctx.disconnect,

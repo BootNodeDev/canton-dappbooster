@@ -1,6 +1,6 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export type { LedgerApiParams }
 
@@ -10,7 +10,7 @@ export interface UseLedgerResult {
 }
 
 export const useLedger = (): UseLedgerResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
 
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {

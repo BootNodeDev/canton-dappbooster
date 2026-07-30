@@ -2,11 +2,11 @@
 // to CIP-0103 wallets. See README.md for the design rationale.
 
 export type {
-  ConnectKitContextValue,
-  ConnectKitProviderProps,
+  CantonConnectContextValue,
+  CantonConnectProviderProps,
   TxStatusSnapshot,
-} from './ConnectKitProvider'
-export { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
+} from './CantonConnectProvider'
+export { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
 export type { UseConnectResult } from './hooks/useConnect'
 export { useConnect } from './hooks/useConnect'
 export type { PrepareExecuteParams, UseExecuteResult } from './hooks/useExecute'
@@ -22,4 +22,4 @@ export { useWalletStatus } from './hooks/useWalletStatus'
 export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from './mock/mockAdapter'
 export { createMockAdapter } from './mock/mockAdapter'
 
-export type { ConnectionStatus, ConnectKitConfig, Party } from './types'
+export type { CantonConnectConfig, ConnectionStatus, Party } from './types'

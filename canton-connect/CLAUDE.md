@@ -10,12 +10,12 @@ all transports. Browser-only. A stopgap, meant to stay cheap to delete.
 
 ## Working rules
 
-- **Wrap the facade; don't rebuild it.** `ConnectKitProvider` holds one `DappSDK` instance and drives `init`/`connect`/events. Do not reintroduce hand-rolled connectors, a `ConnectorProvider` type, or a connector abstraction — the facade replaced all of that.
+- **Wrap the facade; don't rebuild it.** `CantonConnectProvider` holds one `DappSDK` instance and drives `init`/`connect`/events. Do not reintroduce hand-rolled connectors, a `ConnectorProvider` type, or a connector abstraction — the facade replaced all of that.
 - **Import the SDK's types; never hand-copy them, and drop casts.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event names come from `@canton-network/core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`). A `param as Parameters<…>` cast means you duplicated a type the SDK already exports — delete the duplicate, import the real type.
 - **Teardown before the client swaps.** `sdk`'s `onX`/`removeOnX` bind to the current `this.client`, and `sdk.connect()` swaps it. Remove listeners *before* a connect (then re-wire after), or they leak on the old client. Keep the mount/connect/disconnect teardown paths consistent.
-- **The picker is a config seam.** `ConnectKitConfig.walletPicker` — omit for the SDK popup; inject `createAutoPicker()` in tests, a themed component later. Don't wire a picker UI into this package; UI lives in `canton-dappbooster` + `canton-theme`.
+- **The picker is a config seam.** `CantonConnectConfig.walletPicker` — omit for the SDK popup; inject `createAutoPicker()` in tests, a themed component later. Don't wire a picker UI into this package; UI lives in `canton-dappbooster` + `canton-theme`.
 - **The mock adapter answers the connect flow only.** `createMockAdapter()` implements `connect`/`disconnect`/`status`/`listAccounts` and throws naming the method for anything else. Don't extend it to fake `execute` or `signMessage` — a canned result there is indistinguishable from a real wallet's.
-- **Keep hooks thin.** Read `ConnectKitProvider` context or delegate straight to a facade method. Shared state transitions belong in `ConnectKitProvider.tsx`.
+- **Keep hooks thin.** Read `CantonConnectProvider` context or delegate straight to a facade method. Shared state transitions belong in `CantonConnectProvider.tsx`.
 - Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
 - Relative imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
 

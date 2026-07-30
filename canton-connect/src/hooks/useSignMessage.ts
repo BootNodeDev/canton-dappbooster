@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export interface UseSignMessageResult {
   signMessage: (message: string) => Promise<string>
@@ -10,7 +10,7 @@ export interface UseSignMessageResult {
 }
 
 export const useSignMessage = (): UseSignMessageResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   const [signature, setSignature] = useState<string | undefined>(undefined)
   const [isSigning, setIsSigning] = useState(false)
   const [error, setError] = useState<Error | undefined>(undefined)

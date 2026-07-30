@@ -30,7 +30,7 @@ planned follow-up. Not published (`private: true` in `package.json`).
 
 ```tsx
 import {
-  ConnectKitProvider,
+  CantonConnectProvider,
   useConnect,
   useParty,
   useWalletStatus,
@@ -41,9 +41,9 @@ import {
 
 function App() {
   return (
-    <ConnectKitProvider config={{ appName: 'My dApp', networkId: 'canton:local' }}>
+    <CantonConnectProvider config={{ appName: 'My dApp', networkId: 'canton:local' }}>
       <Dapp />
-    </ConnectKitProvider>
+    </CantonConnectProvider>
   )
 }
 
@@ -79,7 +79,7 @@ mode argument; the picker is what chooses the wallet.
 
 ## Hook reference
 
-Every hook throws if called outside `<ConnectKitProvider>`.
+Every hook throws if called outside `<CantonConnectProvider>`.
 
 | Hook | Returns | Notes |
 |---|---|---|
@@ -95,7 +95,7 @@ call useConnect().connect() first` if called before connecting.
 
 ## Configuration
 
-`ConnectKitConfig`, passed to `<ConnectKitProvider config={...}>`:
+`CantonConnectConfig`, passed to `<CantonConnectProvider config={...}>`:
 
 | Field | Default | Effect |
 |---|---|---|
@@ -121,7 +121,7 @@ call useConnect().connect() first` if called before connecting.
   the first one), for driving `connect()` without a popup.
 
 ```tsx
-import { ConnectKitProvider, createMockAdapter } from '@bootnodedev/canton-connect'
+import { CantonConnectProvider, createMockAdapter } from '@bootnodedev/canton-connect'
 import { createAutoPicker } from '@bootnodedev/canton-connect/testing'
 
 const config = {

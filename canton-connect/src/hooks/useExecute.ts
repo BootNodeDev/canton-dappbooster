@@ -1,6 +1,6 @@
 import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback, useState } from 'react'
-import { type TxStatusSnapshot, useConnectKitContext } from '../ConnectKitProvider'
+import { type TxStatusSnapshot, useCantonConnectContext } from '../CantonConnectProvider'
 
 export type { PrepareExecuteParams }
 
@@ -13,7 +13,7 @@ export interface UseExecuteResult {
 }
 
 export const useExecute = (): UseExecuteResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   const [isExecuting, setIsExecuting] = useState(false)
   const [error, setError] = useState<Error | undefined>(undefined)
 

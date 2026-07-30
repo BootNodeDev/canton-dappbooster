@@ -11,7 +11,7 @@ export interface Party {
   publicKey?: string
 }
 
-export interface ConnectKitConfig {
+export interface CantonConnectConfig {
   appName: string
   appDescription?: string
   appUrl?: string

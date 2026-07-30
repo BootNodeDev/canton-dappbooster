@@ -1,4 +1,4 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export interface UseWalletStatusResult {
   isLocked: boolean
@@ -6,7 +6,7 @@ export interface UseWalletStatusResult {
 }
 
 export const useWalletStatus = (): UseWalletStatusResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     isLocked: ctx.isLocked,
     isConnected: ctx.status === 'connected',

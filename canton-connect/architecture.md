@@ -11,7 +11,7 @@ It is browser-only.
 
 ```
 src/
-  ConnectKitProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
+  CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
   hooks/
     useConnect.ts          connect / disconnect lifecycle
     useParty.ts            active party
@@ -26,7 +26,7 @@ src/
     autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
     index.ts               ./testing sub-path barrel
   mock/                     createMockAdapter: a mock ProviderAdapter for dev/test
-  types.ts                 Party, ConnectionStatus, ConnectKitConfig
+  types.ts                 Party, ConnectionStatus, CantonConnectConfig
   index.ts                 public exports
 ```
 
@@ -36,7 +36,7 @@ src/
 flowchart TD
   app["Consumer dApp"]
   hooks["Hooks — useConnect / useParty / useExecute / …"]
-  provider["ConnectKitProvider (holds a DappSDK instance)"]
+  provider["CantonConnectProvider (holds a DappSDK instance)"]
   sdk["@canton-network/dapp-sdk — DappSDK facade"]
   picker["walletPicker (SDK popup by default; injected in tests/dev)"]
   adapters["ExtensionAdapter · WalletConnectAdapter · (RemoteAdapter, deferred)"]
@@ -54,7 +54,7 @@ flowchart TD
 
 ## Key abstractions
 
-### `ConnectKitProvider`
+### `CantonConnectProvider`
 
 Holds one `DappSDK` instance (`new DappSDK({ walletPicker? })`) and owns all shared state — party,
 connection status, lock status, last-tx snapshot, connect error. Hooks are readers over this context
@@ -74,7 +74,7 @@ they leak on the old client. `disconnect()` and unmount also tear down.
 
 ### The wallet picker
 
-`ConnectKitConfig.walletPicker?: WalletPickerFn`. Omitted → the SDK's built-in popup (`pickWallet`,
+`CantonConnectConfig.walletPicker?: WalletPickerFn`. Omitted → the SDK's built-in popup (`pickWallet`,
 from `core-wallet-ui-components`). Injected → a custom picker: `createAutoPicker` (headless, for
 tests/dev) today, and a `canton-theme`-styled picker component later (deferred follow-up). This one
 seam covers production UX, testability, and the future themed UI.
@@ -87,7 +87,7 @@ seam covers production UX, testability, and the future themed UI.
 by the facade's announce protocol — nothing to register for them. `defaultAdapters: []` suppresses
 the SDK's bundled `localhost:3030` dev Wallet Gateway.
 
-`networkId` (`ConnectKitConfig.networkId`, default `'canton:local'`) drives two things from one
+`networkId` (`CantonConnectConfig.networkId`, default `'canton:local'`) drives two things from one
 field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId` (set in
 `wireEvents`, via `toParty`).
 
@@ -110,7 +110,7 @@ field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId`
 
 ## Deferred (filed follow-ups)
 
-- **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `ConnectKitConfig` (issue #2, reframed; decoupled from #3).
+- **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `CantonConnectConfig` (issue #2, reframed; decoupled from #3).
 - **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control.
 - **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns.
 

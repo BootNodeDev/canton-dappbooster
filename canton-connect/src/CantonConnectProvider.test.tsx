@@ -3,7 +3,7 @@ import { DappSDK } from '@canton-network/dapp-sdk'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
+import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
 import { useParty } from './hooks/useParty'
@@ -23,7 +23,7 @@ const capturePicker =
     throw new Error('cancel')
   }
 
-describe('ConnectKitProvider', () => {
+describe('CantonConnectProvider', () => {
   afterEach(() => {
     localStorage.removeItem(KERNEL_DISCOVERY_KEY)
     localStorage.removeItem(DISCOVERY_SESSION_KEY)
@@ -34,9 +34,9 @@ describe('ConnectKitProvider', () => {
 
   it('initial state is idle with no party and not locked', () => {
     const config = { appName: 'Test dApp' }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -45,12 +45,12 @@ describe('ConnectKitProvider', () => {
     expect(result.current.isLocked).toBe(false)
   })
 
-  it('useConnectKitContext throws when used outside the provider', () => {
+  it('useCantonConnectContext throws when used outside the provider', () => {
     const Naked = (): JSX.Element => {
-      useConnectKitContext()
+      useCantonConnectContext()
       return <span />
     }
-    expect(() => render(<Naked />)).toThrow(/inside a <ConnectKitProvider>/)
+    expect(() => render(<Naked />)).toThrow(/inside a <CantonConnectProvider>/)
   })
 
   it('connects the announced wallet the picker selects', async () => {
@@ -61,9 +61,9 @@ describe('ConnectKitProvider', () => {
     })
 
     const config = { appName: 'test', walletPicker: createAutoPicker() }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -86,9 +86,9 @@ describe('ConnectKitProvider', () => {
       // Selecting by id, not ordering — a real announced wallet could also be in the entries.
       walletPicker: createAutoPicker('mock-test'),
     }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -112,9 +112,9 @@ describe('ConnectKitProvider', () => {
       additionalAdapters: [mock],
       walletPicker: createAutoPicker('mock-adaptive'),
     }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -138,9 +138,9 @@ describe('ConnectKitProvider', () => {
       additionalAdapters: [mock],
       walletPicker: createAutoPicker('mock-devnet'),
     }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -171,9 +171,9 @@ describe('ConnectKitProvider', () => {
     })
 
     const config = { appName: 'test', walletPicker: createAutoPicker() }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -213,9 +213,9 @@ describe('ConnectKitProvider', () => {
     })
 
     const config = { appName: 'test', walletPicker: createAutoPicker() }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -246,9 +246,9 @@ describe('ConnectKitProvider', () => {
       walletConnectProjectId: 'test-project',
       walletPicker: capturePicker(offered),
     }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -265,9 +265,9 @@ describe('ConnectKitProvider', () => {
     const offered: WalletPickerEntry[] = []
 
     const config = { appName: 'test', walletPicker: capturePicker(offered) }
-    const { result } = renderHook(() => useConnectKitContext(), {
+    const { result } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -284,11 +284,11 @@ describe('ConnectKitProvider', () => {
     // Hoisted so this reference stays stable across renders — only the wrapping config object is fresh.
     const walletPicker = createAutoPicker()
 
-    const { rerender } = renderHook(() => useConnectKitContext(), {
+    const { rerender } = renderHook(() => useCantonConnectContext(), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={{ appName: 'test', walletPicker }}>
+        <CantonConnectProvider config={{ appName: 'test', walletPicker }}>
           {children}
-        </ConnectKitProvider>
+        </CantonConnectProvider>
       ),
     })
 
@@ -309,7 +309,7 @@ describe('ConnectKitProvider', () => {
     const config = { appName: 'test', walletPicker: createAutoPicker() }
     const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -347,7 +347,7 @@ describe('ConnectKitProvider', () => {
     const config = { appName: 'test', walletPicker: createAutoPicker() }
     const { result } = renderHook(() => ({ connect: useConnect(), status: useWalletStatus() }), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -380,7 +380,7 @@ describe('ConnectKitProvider', () => {
     const config = { appName: 'test', walletPicker: createAutoPicker() }
     const { result } = renderHook(() => ({ connect: useConnect(), execute: useExecute() }), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
@@ -422,7 +422,7 @@ describe('ConnectKitProvider', () => {
     const config = { appName: 'test', walletPicker: createAutoPicker() }
     const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
       wrapper: ({ children }) => (
-        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
       ),
     })
 
