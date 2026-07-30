@@ -16,6 +16,8 @@ export interface FakeWalletOptions {
   name?: string
   target?: string
   accounts?: FakeWalletAccount[]
+  // isConnected per successive status() call (last entry repeats) — simulates a restore-then-locked wallet.
+  statusResponses?: boolean[]
 }
 
 export interface FakeWallet {
@@ -35,6 +37,7 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const target = options.target ?? options.id
   const accounts = options.accounts ?? [{ partyId: `${options.id}::1220abcd`, primary: true }]
   const seen: string[] = []
+  let statusCallCount = 0
 
   const announce = (): void => {
     window.dispatchEvent(
@@ -44,16 +47,27 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     )
   }
 
-  const answer = (method: string): unknown => {
-    const responses: Record<string, unknown> = {
-      status: {
-        provider: { id: options.id, providerType: 'browser' },
-        connection: { isConnected: true },
-      },
-      connect: { isConnected: true },
-      listAccounts: accounts,
+  const nextStatusIsConnected = (): boolean => {
+    const responses = options.statusResponses
+    if (responses === undefined || responses.length === 0) {
+      return true
     }
-    return responses[method] ?? {}
+    const index = Math.min(statusCallCount, responses.length - 1)
+    statusCallCount += 1
+    return responses[index]
+  }
+
+  // Thunks, not eager values — calling other methods must not advance the statusResponses sequence.
+  const answer = (method: string): unknown => {
+    const responses: Record<string, () => unknown> = {
+      status: () => ({
+        provider: { id: options.id, providerType: 'browser' },
+        connection: { isConnected: nextStatusIsConnected() },
+      }),
+      connect: () => ({ isConnected: true }),
+      listAccounts: () => accounts,
+    }
+    return (responses[method] ?? (() => ({})))()
   }
 
   const onMessage = (event: MessageEvent): void => {

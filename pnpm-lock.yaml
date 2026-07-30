@@ -69,13 +69,7 @@ importers:
 
   canton-connect:
     devDependencies:
-      '@canton-network/core-splice-provider':
-        specifier: ^1.8.0
-        version: 1.8.0
       '@canton-network/core-types':
-        specifier: ^1.8.0
-        version: 1.8.0
-      '@canton-network/core-wallet-dapp-rpc-client':
         specifier: ^1.8.0
         version: 1.8.0
       '@canton-network/dapp-sdk':

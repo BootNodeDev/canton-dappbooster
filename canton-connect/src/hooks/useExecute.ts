@@ -1,44 +1,34 @@
+import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback, useState } from 'react'
 import { type TxStatusSnapshot, useConnectKitContext } from '../ConnectKitProvider'
 
-export interface ExecuteParams {
-  commandId?: string
-  commands: unknown[]
-  actAs?: string[]
-  readAs?: string[]
-  disclosedContracts?: unknown[]
-  synchronizerId?: string
-  packageIdSelectionPreference?: string[]
-}
+export type { PrepareExecuteParams }
 
 export interface UseExecuteResult {
-  execute: (params: ExecuteParams) => Promise<unknown>
+  execute: (params: PrepareExecuteParams) => Promise<unknown>
   lastTx: TxStatusSnapshot | undefined
   isExecuting: boolean
   error: Error | undefined
   reset: () => void
 }
 
-// Wraps prepareExecuteAndWait and surfaces the live txChanged lifecycle
-// (pending → signed → executed / failed) via the lastTx field. The
-// txChanged events are wired by ConnectKitProvider; this hook just exposes
-// the latest snapshot for declarative rendering.
+// lastTx mirrors the live txChanged lifecycle (pending → signed → executed/failed); wired by ConnectKitProvider.
 export const useExecute = (): UseExecuteResult => {
   const ctx = useConnectKitContext()
   const [isExecuting, setIsExecuting] = useState(false)
   const [error, setError] = useState<Error | undefined>(undefined)
 
   const execute = useCallback(
-    async (params: ExecuteParams): Promise<unknown> => {
-      if (ctx.client === undefined) {
+    async (params: PrepareExecuteParams): Promise<unknown> => {
+      if (ctx.status !== 'connected') {
         throw new Error('wallet is not connected — call useConnect().connect() first')
       }
+
       setIsExecuting(true)
       setError(undefined)
+
       try {
-        return await ctx.client.prepareExecuteAndWait(
-          params as Parameters<typeof ctx.client.prepareExecuteAndWait>[0],
-        )
+        return await ctx.sdk.prepareExecuteAndWait(params)
       } catch (err) {
         const e = err as Error
         setError(e)
@@ -47,7 +37,7 @@ export const useExecute = (): UseExecuteResult => {
         setIsExecuting(false)
       }
     },
-    [ctx.client],
+    [ctx.sdk, ctx.status],
   )
 
   const reset = useCallback((): void => {

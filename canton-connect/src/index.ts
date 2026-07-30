@@ -7,12 +7,9 @@ export type {
   TxStatusSnapshot,
 } from './ConnectKitProvider'
 export { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
-export type { CreateExtensionConnectorOptions } from './connectors/extension'
-export { createExtensionConnector, DEFAULT_EXTENSION_TARGET } from './connectors/extension'
-export { createWalletConnectConnector } from './connectors/walletconnect'
 export type { UseConnectResult } from './hooks/useConnect'
 export { useConnect } from './hooks/useConnect'
-export type { ExecuteParams, UseExecuteResult } from './hooks/useExecute'
+export type { PrepareExecuteParams, UseExecuteResult } from './hooks/useExecute'
 export { useExecute } from './hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from './hooks/useLedger'
 export { useLedger } from './hooks/useLedger'
@@ -25,14 +22,4 @@ export { useWalletStatus } from './hooks/useWalletStatus'
 export type { RawWalletAccount } from './lib/walletAccount'
 export { selectPrimaryAccount, toParty } from './lib/walletAccount'
 
-export type {
-  ConnectionStatus,
-  ConnectKitConfig,
-  ConnectMode,
-  Connector,
-  ConnectorProvider,
-  ExtensionConnector,
-  Party,
-  WalletConnectConnector,
-  WalletConnectConnectorOptions,
-} from './types'
+export type { ConnectionStatus, ConnectKitConfig, ConnectMode, Party } from './types'

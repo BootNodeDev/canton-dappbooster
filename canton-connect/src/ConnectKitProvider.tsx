@@ -1,15 +1,14 @@
 // ConnectKitProvider owns the wallet connection lifecycle and exposes it
 // through React context. Hooks (useConnect, useParty, useSignMessage, etc.)
 // are thin readers that subscribe to this context.
-//
-// Connector dispatch:
-//   - mode='extension': injected provider only; throws if not detected
-//   - mode='walletconnect': WC fallback; requires walletConnectProjectId
-//   - mode='preferred' (default): try extension, fall back to WalletConnect
 
-import type { Provider } from '@canton-network/core-splice-provider'
-import type { RpcTypes as DappRpcTypes } from '@canton-network/core-wallet-dapp-rpc-client'
-import type { DappClient } from '@canton-network/dapp-sdk'
+import type {
+  AccountsChangedEvent,
+  ProviderAdapter,
+  StatusEvent,
+  TxChangedEvent,
+} from '@canton-network/dapp-sdk'
+import { DappSDK } from '@canton-network/dapp-sdk'
 import {
   createContext,
   type JSX,
@@ -21,17 +20,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { createExtensionConnector } from './connectors/extension'
-import { createWalletConnectConnector } from './connectors/walletconnect'
-import { type RawWalletAccount, selectPrimaryAccount, toParty } from './lib/walletAccount'
-import type {
-  ConnectionStatus,
-  ConnectKitConfig,
-  ConnectMode,
-  ExtensionConnector,
-  Party,
-  WalletConnectConnector,
-} from './types'
+import { selectPrimaryAccount, toParty } from './lib/walletAccount'
+import type { ConnectionStatus, ConnectKitConfig, Party } from './types'
 
 export interface TxStatusSnapshot {
   status: string
@@ -41,15 +31,14 @@ export interface TxStatusSnapshot {
 
 export interface ConnectKitContextValue {
   config: ConnectKitConfig
-  client: DappClient | undefined
+  sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
   isLocked: boolean
   connectError: Error | undefined
   isConnecting: boolean
-  pairingUri: string | undefined
   lastTx: TxStatusSnapshot | undefined
-  connect: (mode?: ConnectMode) => Promise<void>
+  connect: () => Promise<void>
   disconnect: () => Promise<void>
 }
 
@@ -68,209 +57,143 @@ export interface ConnectKitProviderProps {
   children: ReactNode
 }
 
-export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps): JSX.Element => {
-  const [client, setClient] = useState<DappClient | undefined>(undefined)
-  const [party, setParty] = useState<Party | undefined>(undefined)
-  const [status, setStatus] = useState<ConnectionStatus>('idle')
-  const [isLocked, setIsLocked] = useState(false)
-  const [connectError, setConnectError] = useState<Error | undefined>(undefined)
-  const [pairingUri, setPairingUri] = useState<string | undefined>(undefined)
-  const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)
+// Seam for the WalletConnect adapter (#4) and mock adapter (#7); both land as later tasks.
+const buildAdditionalAdapters = (
+  additionalAdapters: ProviderAdapter[] | undefined,
+): ProviderAdapter[] => additionalAdapters ?? []
 
-  // Hold the live connector providers so we can detach event listeners on
-  // disconnect or re-connect without re-creating them.
-  const teardownRef = useRef<(() => void) | undefined>(undefined)
+export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps): JSX.Element => {
+  const [status, setStatus] = useState<ConnectionStatus>('idle')
+  const [party, setParty] = useState<Party | undefined>(undefined)
+  const [isLocked, setIsLocked] = useState(false)
+  const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)
+  const [connectError, setConnectError] = useState<Error | undefined>(undefined)
 
   const network = config.network ?? 'canton:local'
 
-  const extensionConnector = useMemo<ExtensionConnector>(
-    () => config.extensionConnectorFactory?.() ?? createExtensionConnector(),
-    [config.extensionConnectorFactory],
+  const sdk = useMemo(
+    () => new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {}),
+    [config.walletPicker],
   )
 
-  const buildWalletConnectConnector = useCallback((): WalletConnectConnector => {
-    const projectId = config.walletConnectProjectId
-    if (projectId === undefined || projectId.trim() === '') {
-      throw new Error(
-        'walletConnectProjectId is required for the walletconnect connector; set it on <ConnectKitProvider config> or use the extension connector',
-      )
+  const additionalAdapters = useMemo(
+    () => buildAdditionalAdapters(config.additionalAdapters),
+    [config.additionalAdapters],
+  )
+
+  // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().
+  const teardownRef = useRef<(() => void) | undefined>(undefined)
+
+  const wireEvents = useCallback((): (() => void) => {
+    const onAccounts = (accounts: AccountsChangedEvent): void => {
+      const primary = selectPrimaryAccount(accounts)
+      setParty(primary === undefined ? undefined : toParty(primary, network))
     }
-    const opts = {
-      projectId,
-      network,
-      metadata: {
-        name: config.appName,
-        description: config.appDescription ?? config.appName,
-        url: config.appUrl ?? (typeof window === 'undefined' ? '' : window.location.origin),
-        icons: [],
-      },
-      onUri: setPairingUri,
+    const onStatus = (event: StatusEvent): void => {
+      setIsLocked(!event.connection.isConnected)
     }
-    return config.walletConnectConnectorFactory?.(opts) ?? createWalletConnectConnector(opts)
-  }, [
-    config.walletConnectProjectId,
-    config.appName,
-    config.appDescription,
-    config.appUrl,
-    config.walletConnectConnectorFactory,
-    network,
-  ])
+    const onTx = (event: TxChangedEvent): void => {
+      setLastTx({
+        status: event.status,
+        commandId: event.commandId,
+        payload: 'payload' in event ? event.payload : undefined,
+      })
+    }
 
-  const wireEvents = useCallback(
-    (nextClient: DappClient): (() => void) => {
-      const accountsHandler = async (payload: unknown): Promise<void> => {
-        const accounts = Array.isArray(payload)
-          ? (payload as RawWalletAccount[])
-          : ((await nextClient.listAccounts()) as RawWalletAccount[])
-        const primary = selectPrimaryAccount(accounts)
-        if (primary === undefined) {
-          setParty(undefined)
-          return
-        }
-        setParty(toParty(primary, network))
-      }
-      const txHandler = (payload: unknown): void => {
-        if (typeof payload !== 'object' || payload === null) {
-          return
-        }
-        const evt = payload as { status?: unknown; commandId?: unknown; payload?: unknown }
-        if (typeof evt.status !== 'string') {
-          return
-        }
-        setLastTx({
-          status: evt.status,
-          commandId: typeof evt.commandId === 'string' ? evt.commandId : undefined,
-          payload: evt.payload,
-        })
-      }
-      const statusHandler = (payload: unknown): void => {
-        if (typeof payload !== 'object' || payload === null) {
-          return
-        }
-        const evt = payload as { connection?: { isConnected?: unknown } }
-        const connected = evt.connection?.isConnected
-        if (typeof connected === 'boolean') {
-          setIsLocked(connected === false)
-        }
-      }
-      const connectedHandler = (): void => setIsLocked(false)
+    void sdk.onAccountsChanged(onAccounts)
+    void sdk.onStatusChanged(onStatus)
+    void sdk.onTxChanged(onTx)
 
-      nextClient.onAccountsChanged(accountsHandler)
-      nextClient.onTxChanged(txHandler)
-      nextClient.onStatusChanged(statusHandler)
-      nextClient.onConnected(connectedHandler)
-      return () => {
-        nextClient.removeOnAccountsChanged(accountsHandler)
-        nextClient.removeOnTxChanged(txHandler)
-        nextClient.removeOnStatusChanged(statusHandler)
-        nextClient.removeOnConnected(connectedHandler)
-      }
-    },
-    [network],
-  )
+    return () => {
+      void sdk.removeOnAccountsChanged(onAccounts).catch(() => undefined)
+      void sdk.removeOnStatusChanged(onStatus).catch(() => undefined)
+      void sdk.removeOnTxChanged(onTx).catch(() => undefined)
+    }
+  }, [sdk, network])
 
-  const connect = useCallback(
-    async (mode: ConnectMode = 'preferred'): Promise<void> => {
-      if (status === 'connecting') {
-        return
-      }
-      setStatus('connecting')
-      setConnectError(undefined)
-      setPairingUri(undefined)
-      try {
-        const selected =
-          mode === 'walletconnect'
-            ? await buildWalletConnectConnector().connect()
-            : await (async () => {
-                if (await extensionConnector.detect()) {
-                  return await extensionConnector.connect()
-                }
-                if (mode === 'extension') {
-                  throw new Error('Carpincho extension was not detected')
-                }
-                return await buildWalletConnectConnector().connect()
-              })()
-        const { DappClient } = await import('@canton-network/dapp-sdk')
-        const nextClient = new DappClient(selected.provider as Provider<DappRpcTypes>, {
-          providerType: selected.providerType,
-        })
-        const connection = await nextClient.connect()
-        if (!connection.isConnected) {
-          throw new Error(connection.reason ?? 'Wallet did not connect')
-        }
-        const accounts = (await nextClient.listAccounts()) as RawWalletAccount[]
-        const primary = selectPrimaryAccount(accounts)
-        if (primary === undefined) {
-          await nextClient.disconnect().catch(() => undefined)
-          throw new Error('Wallet connected without accounts')
-        }
-        teardownRef.current = wireEvents(nextClient)
-        setClient(nextClient)
-        setParty(toParty(primary, network))
-        setIsLocked(false)
-        setStatus('connected')
-        setPairingUri(undefined)
-      } catch (err) {
-        const error = err as Error
-        setConnectError(error)
-        setStatus('disconnected')
-        throw error
-      }
-    },
-    [status, extensionConnector, buildWalletConnectConnector, wireEvents, network],
-  )
+  useEffect(() => {
+    let cancelled = false
 
-  const disconnect = useCallback(async (): Promise<void> => {
-    const current = client
-    // Tear down React state synchronously so a hung wallet cannot trap the
-    // consumer in a busy state. The async disconnect runs in the background.
+    // defaultAdapters: [] keeps the SDK's bundled localhost dev gateway out of the picker.
+    void sdk.init({ additionalAdapters, defaultAdapters: [] }).then(async () => {
+      if (cancelled) return
+
+      // status() throws when there's nothing to restore — that's normal, not an error.
+      const restored = await sdk.status().catch(() => undefined)
+      if (cancelled || restored === undefined) return
+
+      // Wire events regardless of lock state so a later unlock push isn't dropped silently.
+      teardownRef.current = wireEvents()
+      setIsLocked(!restored.connection.isConnected)
+      setStatus('connected')
+
+      if (!restored.connection.isConnected) return // locked — wait for the unlock push
+
+      const accounts = await sdk.listAccounts()
+      const primary = selectPrimaryAccount(accounts)
+      setParty(primary === undefined ? undefined : toParty(primary, network))
+    })
+
+    return () => {
+      cancelled = true
+      teardownRef.current?.()
+      teardownRef.current = undefined
+    }
+  }, [sdk, additionalAdapters, network, wireEvents])
+
+  const connect = useCallback(async (): Promise<void> => {
+    setStatus('connecting')
+    setConnectError(undefined)
+
+    // Remove listeners from the current client before connect() swaps in a new one.
     teardownRef.current?.()
     teardownRef.current = undefined
-    setClient(undefined)
+
+    try {
+      const result = await sdk.connect() // opens the picker
+      if (!result.isConnected) {
+        throw new Error(result.reason ?? 'Wallet did not connect')
+      }
+
+      teardownRef.current = wireEvents()
+
+      const accounts = await sdk.listAccounts()
+      const primary = selectPrimaryAccount(accounts)
+      setParty(primary === undefined ? undefined : toParty(primary, network))
+      setStatus('connected')
+    } catch (err) {
+      setConnectError(err as Error)
+      setStatus('disconnected')
+      throw err
+    }
+  }, [sdk, network, wireEvents])
+
+  const disconnect = useCallback(async (): Promise<void> => {
+    teardownRef.current?.()
+    teardownRef.current = undefined
+
+    await sdk.disconnect().catch(() => undefined)
+
     setParty(undefined)
     setStatus('disconnected')
     setIsLocked(false)
-    setPairingUri(undefined)
     setLastTx(undefined)
-    setConnectError(undefined)
-    if (current !== undefined) {
-      await current.disconnect().catch(() => undefined)
-    }
-  }, [client])
-
-  useEffect(
-    () => () => {
-      teardownRef.current?.()
-    },
-    [],
-  )
+  }, [sdk])
 
   const value = useMemo<ConnectKitContextValue>(
     () => ({
       config,
-      client,
+      sdk,
       party,
       status,
       isLocked,
       connectError,
       isConnecting: status === 'connecting',
-      pairingUri,
       lastTx,
       connect,
       disconnect,
     }),
-    [
-      config,
-      client,
-      party,
-      status,
-      isLocked,
-      connectError,
-      pairingUri,
-      lastTx,
-      connect,
-      disconnect,
-    ],
+    [config, sdk, party, status, isLocked, connectError, lastTx, connect, disconnect],
   )
 
   return <ConnectKitContext.Provider value={value}>{children}</ConnectKitContext.Provider>

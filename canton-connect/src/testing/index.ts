@@ -1,3 +1,4 @@
+export { createAutoPicker } from './autoPicker'
 export {
   createFakeWallet,
   type FakeWallet,

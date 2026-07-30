@@ -1,13 +1,11 @@
 import { useConnectKitContext } from '../ConnectKitProvider'
-import type { ConnectMode } from '../types'
 
 export interface UseConnectResult {
-  connect: (mode?: ConnectMode) => Promise<void>
+  connect: () => Promise<void>
   disconnect: () => Promise<void>
   isConnecting: boolean
   isConnected: boolean
   connectError: Error | undefined
-  pairingUri: string | undefined
 }
 
 export const useConnect = (): UseConnectResult => {
@@ -18,6 +16,5 @@ export const useConnect = (): UseConnectResult => {
     isConnecting: ctx.isConnecting,
     isConnected: ctx.status === 'connected',
     connectError: ctx.connectError,
-    pairingUri: ctx.pairingUri,
   }
 }

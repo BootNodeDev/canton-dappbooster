@@ -1,32 +1,28 @@
+import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
 import { useConnectKitContext } from '../ConnectKitProvider'
 
-export interface LedgerApiParams {
-  requestMethod: 'get' | 'post' | 'patch' | 'put' | 'delete'
-  resource: string
-  body?: Record<string, unknown>
-  query?: Record<string, unknown>
-  path?: Record<string, unknown>
-}
+export type { LedgerApiParams }
 
 export interface UseLedgerResult {
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
 
-// Raw pass-through to the participant JSON API via the connected wallet.
-// Use when the typed hooks (`useExecute`, etc.) don't cover what you need —
-// e.g. reading the ACS or querying ledger-end.
+// Raw pass-through to the participant JSON API — use when the typed hooks don't cover what you need.
 export const useLedger = (): UseLedgerResult => {
   const ctx = useConnectKitContext()
+
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {
-      if (ctx.client === undefined) {
+      if (ctx.status !== 'connected') {
         throw new Error('wallet is not connected — call useConnect().connect() first')
       }
-      return await ctx.client.ledgerApi(params as Parameters<typeof ctx.client.ledgerApi>[0])
+
+      return await ctx.sdk.ledgerApi(params)
     },
-    [ctx.client],
+    [ctx.sdk, ctx.status],
   )
-  return { ledgerApi, isReady: ctx.client !== undefined }
+
+  return { ledgerApi, isReady: ctx.status === 'connected' }
 }

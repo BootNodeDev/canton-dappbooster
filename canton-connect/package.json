@@ -46,9 +46,7 @@
     }
   },
   "devDependencies": {
-    "@canton-network/core-splice-provider": "^1.8.0",
     "@canton-network/core-types": "^1.8.0",
-    "@canton-network/core-wallet-dapp-rpc-client": "^1.8.0",
     "@canton-network/dapp-sdk": "^1.4.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
