@@ -4,6 +4,10 @@ import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConnectKitProvider, useConnectKitContext } from './ConnectKitProvider'
+import { useConnect } from './hooks/useConnect'
+import { useExecute } from './hooks/useExecute'
+import { useParty } from './hooks/useParty'
+import { useWalletStatus } from './hooks/useWalletStatus'
 import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
@@ -180,7 +184,7 @@ describe('ConnectKitProvider', () => {
     act(() => {
       wallet.push('statusChanged', {
         provider: { id: 'wallet-a', providerType: 'browser' },
-        connection: { isConnected: true },
+        connection: { isConnected: true, isNetworkConnected: true },
       })
     })
 
@@ -293,5 +297,166 @@ describe('ConnectKitProvider', () => {
     rerender()
 
     expect(initSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('delivers a pushed accountsChanged event to useParty()', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    expect(result.current.party.party?.partyId).toBe('alice::1220ab')
+
+    act(() => {
+      wallet.push('accountsChanged', [
+        {
+          partyId: 'bob::9931cd',
+          primary: true,
+          hint: 'bob',
+          publicKey: 'pub-bob',
+          networkId: 'canton:local',
+        },
+      ])
+    })
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
+    expect(result.current.party.party?.name).toBe('bob')
+
+    wallet.dispose()
+  })
+
+  it('flips useWalletStatus().isLocked when a statusChanged push reports the wallet disconnected', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result } = renderHook(() => ({ connect: useConnect(), status: useWalletStatus() }), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    expect(result.current.status.isLocked).toBe(false)
+
+    act(() => {
+      wallet.push('statusChanged', {
+        provider: { id: 'wallet-a', providerType: 'browser' },
+        // Network stays up; only the wallet locks — proves the handler keys on isConnected alone.
+        connection: { isConnected: false, isNetworkConnected: true },
+      })
+    })
+
+    await waitFor(() => expect(result.current.status.isLocked).toBe(true))
+
+    wallet.dispose()
+  })
+
+  it('advances useExecute().lastTx through a pending then executed txChanged push', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result } = renderHook(() => ({ connect: useConnect(), execute: useExecute() }), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    act(() => {
+      wallet.push('txChanged', { status: 'pending', commandId: 'cmd-1' })
+    })
+
+    await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('pending'))
+    expect(result.current.execute.lastTx?.payload).toBe(undefined)
+
+    act(() => {
+      wallet.push('txChanged', {
+        status: 'executed',
+        commandId: 'cmd-1',
+        payload: { updateId: 'update-1', completionOffset: 42 },
+      })
+    })
+
+    await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('executed'))
+    expect(result.current.execute.lastTx?.payload).toEqual({
+      updateId: 'update-1',
+      completionOffset: 42,
+    })
+
+    wallet.dispose()
+  })
+
+  it('stops applying pushed events to the hooks after disconnect()', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <ConnectKitProvider config={config}>{children}</ConnectKitProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    expect(result.current.party.party?.partyId).toBe('alice::1220ab')
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    expect(result.current.party.party).toBe(undefined)
+
+    act(() => {
+      wallet.push('accountsChanged', [
+        {
+          partyId: 'carol::deadbeef',
+          primary: true,
+          hint: 'carol',
+          publicKey: 'pub-carol',
+          networkId: 'canton:local',
+        },
+      ])
+    })
+
+    // waitFor exhausts its retry window trying to observe the change; rejecting proves it never arrived.
+    await expect(
+      waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::deadbeef')),
+    ).rejects.toThrow()
+
+    expect(result.current.party.party).toBe(undefined)
+
+    wallet.dispose()
   })
 })
