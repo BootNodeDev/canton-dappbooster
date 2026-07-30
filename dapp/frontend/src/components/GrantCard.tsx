@@ -1,5 +1,6 @@
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
-import { formatDate, formatPct, relativeTime, shortenParty } from '@/lib/format'
+import { formatDate, formatPct, relativeTime } from '@/lib/format'
 import { nextMilestone } from '@/lib/schedule'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
@@ -70,7 +71,7 @@ export const GrantCard = ({
           )}
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
-          {counterpartyLabel} {shortenParty(counterparty)}
+          {counterpartyLabel} {truncateIdentifier(counterparty)}
         </div>
       </div>
 

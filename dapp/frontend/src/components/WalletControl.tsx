@@ -1,8 +1,55 @@
+import {
+  Identifier,
+  partyHint,
+  truncateIdentifier,
+  useCopyToClipboard,
+} from '@bootnodedev/canton-dappbooster'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDownIcon, CopyIcon, LogoutIcon } from '@/components/icons'
-import { toast } from '@/components/toast'
-import { partyHint, shortenParty } from '@/lib/format'
+import type { PartyRef } from '@/backend/VestingBackend'
+import { CheckIcon, ChevronDownIcon, CopyIcon, LogoutIcon } from '@/components/icons'
+import { copyToast, toast } from '@/components/toast'
 import { useConnect, useParties, useParty } from '@/wallet/hooks'
+
+// A switch row cannot use <Identifier>: its copy control would nest a button inside the switch.
+const PartyRow = ({
+  candidate,
+  onSwitch,
+}: {
+  candidate: PartyRef
+  onSwitch: () => void
+}): React.JSX.Element => {
+  const { state, copy } = useCopyToClipboard()
+  return (
+    <li className="flex items-stretch gap-1">
+      <button
+        type="button"
+        onClick={onSwitch}
+        className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg p-2 text-sm font-semibold text-fg transition-colors hover:bg-muted"
+      >
+        <span className="flex items-center gap-2">
+          <span className="size-5 shrink-0 rounded-full bg-[image:var(--gradient-brand)]" />
+          {candidate.name}
+        </span>
+        <span className="truncate font-mono text-[0.7rem] text-fg-muted">
+          {truncateIdentifier(candidate.partyId)}
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label={`Copy ${candidate.name} party id`}
+        title={`Copy ${candidate.name} party id`}
+        onClick={() => void copy(candidate.partyId).then(copyToast(`${candidate.name} party id`))}
+        className="grid w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-fg-muted transition-colors hover:border-primary hover:text-primary"
+      >
+        {state === 'copied' ? (
+          <CheckIcon width={13} height={13} />
+        ) : (
+          <CopyIcon width={13} height={13} />
+        )}
+      </button>
+    </li>
+  )
+}
 
 // Party switcher. Pill shows the acting party hint + chevron. The menu lets you
 // copy the acting id, switch to another party in the pool, see the operator as the
@@ -40,15 +87,6 @@ export const WalletControl = (): React.JSX.Element | null => {
     return null
   }
 
-  const copyId = async (id: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(id)
-      toast.success('Party id copied')
-    } catch {
-      toast.error('Could not copy')
-    }
-  }
-
   const others = pool.filter((candidate) => candidate.partyId !== party.partyId)
 
   return (
@@ -69,19 +107,13 @@ export const WalletControl = (): React.JSX.Element | null => {
           <span className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-fg-muted">
             Acting as
           </span>
-          <div className="mt-1 flex items-stretch gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg bg-muted p-2 font-mono text-xs text-fg">
-              {shortenParty(party.partyId)}
-            </code>
-            <button
-              type="button"
-              aria-label="Copy party id"
-              onClick={() => void copyId(party.partyId)}
-              className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-surface text-fg-muted transition-colors hover:border-primary hover:text-primary"
-            >
-              <CopyIcon width={15} height={15} />
-            </button>
-          </div>
+          <Identifier
+            value={party.partyId}
+            label="party id"
+            announce={false}
+            onCopy={copyToast('Party id')}
+            className="mt-1 w-full justify-between rounded-lg bg-muted p-2 text-xs"
+          />
 
           {others.length > 0 && (
             <div className="mt-3">
@@ -90,34 +122,15 @@ export const WalletControl = (): React.JSX.Element | null => {
               </span>
               <ul className="mt-1.5 flex max-h-56 flex-col gap-1 overflow-y-auto">
                 {others.map((candidate) => (
-                  <li key={candidate.partyId} className="flex items-stretch gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        connect(candidate)
-                        setOpen(false)
-                        toast.success(`Acting as ${candidate.name}`)
-                      }}
-                      className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg p-2 text-sm font-semibold text-fg transition-colors hover:bg-muted"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="size-5 shrink-0 rounded-full bg-[image:var(--gradient-brand)]" />
-                        {candidate.name}
-                      </span>
-                      <span className="truncate font-mono text-[0.7rem] text-fg-muted">
-                        {shortenParty(candidate.partyId)}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Copy ${candidate.name} party id`}
-                      title={`Copy ${candidate.name} party id`}
-                      onClick={() => void copyId(candidate.partyId)}
-                      className="grid w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-fg-muted transition-colors hover:border-primary hover:text-primary"
-                    >
-                      <CopyIcon width={13} height={13} />
-                    </button>
-                  </li>
+                  <PartyRow
+                    key={candidate.partyId}
+                    candidate={candidate}
+                    onSwitch={() => {
+                      connect(candidate)
+                      setOpen(false)
+                      toast.success(`Acting as ${candidate.name}`)
+                    }}
+                  />
                 ))}
               </ul>
             </div>
@@ -128,9 +141,13 @@ export const WalletControl = (): React.JSX.Element | null => {
               <span className="text-[0.6rem] font-bold uppercase tracking-[0.08em] text-fg-muted">
                 factory owner
               </span>
-              <div className="truncate font-mono text-[0.7rem] text-fg-soft">
-                {shortenParty(operator)}
-              </div>
+              <Identifier
+                value={operator}
+                label="factory owner party id"
+                announce={false}
+                onCopy={copyToast('Factory owner party id')}
+                className="w-full justify-between text-[0.7rem] text-fg-soft"
+              />
             </div>
           )}
 

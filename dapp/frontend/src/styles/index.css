@@ -1,6 +1,15 @@
+/* Must precede the first @import. `cnc` sits above Tailwind's preflight, which resets
+   `button { color: inherit }` over the copy control, and below `utilities` so a className on a kit
+   component still wins. Any Tailwind layer missing from this list lands on top, `properties`
+   included, so revisit on a Tailwind upgrade. */
+@layer properties, theme, base, cnc, components, utilities;
+
 @import "tailwindcss";
 @import "@fontsource-variable/manrope";
 @import "@fontsource-variable/jetbrains-mono";
+/* Kit components ship no styling. Theme first, then the app's token bridge overrides it. */
+@import "@bootnodedev/canton-theme/tokens.css";
+@import "@bootnodedev/canton-theme/default.css";
 @import "../theme/tokens.css";
 
 /* Map semantic CSS variables to Tailwind utilities. `inline` keeps the

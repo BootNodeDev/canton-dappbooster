@@ -1,4 +1,4 @@
-import { shortenParty } from '@/lib/format'
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { useConnect, useParties } from '@/wallet/hooks'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -50,7 +50,7 @@ export const ConnectScreen = (): React.JSX.Element => {
                       <span className="font-semibold text-fg">{party.name}</span>
                     </span>
                     <span className="truncate font-mono text-xs text-fg-muted">
-                      {shortenParty(party.partyId)}
+                      {truncateIdentifier(party.partyId)}
                     </span>
                   </button>
                 </li>
@@ -59,7 +59,7 @@ export const ConnectScreen = (): React.JSX.Element => {
           )}
           {operator !== '' && (
             <p className="mt-3 font-mono text-[0.7rem] text-fg-soft">
-              factory owner · {shortenParty(operator)}
+              factory owner · {truncateIdentifier(operator)}
             </p>
           )}
         </div>
