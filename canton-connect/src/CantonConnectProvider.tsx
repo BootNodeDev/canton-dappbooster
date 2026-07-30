@@ -216,6 +216,9 @@ export const CantonConnectProvider = ({
       const accounts = await sdk.listAccounts()
       const primary = selectPrimaryAccount(accounts)
       setParty(primary === undefined ? undefined : toParty(primary, networkId))
+
+      // connect() only resolves for an unlocked wallet, so clear any lock left by a restored session.
+      setIsLocked(false)
       setStatus('connected')
     } catch (err) {
       setConnectError(err as Error)

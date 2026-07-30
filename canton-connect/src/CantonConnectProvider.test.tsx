@@ -204,6 +204,43 @@ describe('CantonConnectProvider', () => {
     wallet.dispose()
   })
 
+  it('clears isLocked when connect() succeeds after a locked session was restored', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    // Restore's own check sees connected, ours finds it locked, connect()'s sees connected again.
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      statusResponses: [true, false, true],
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.isLocked).toBe(true))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.isLocked).toBe(false)
+    expect(result.current.party?.partyId).toBe('alice::1220ab')
+
+    wallet.dispose()
+  })
+
   it('tears down the previous client listeners before connect() swaps the client', async () => {
     localStorage.setItem(
       KERNEL_DISCOVERY_KEY,
