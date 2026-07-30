@@ -46,7 +46,7 @@
   },
   "overrides": [
     {
-      "includes": ["canton-barebones/**", "canton-connect/test/**", "**/*.d.ts"],
+      "includes": ["canton-barebones/**", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {

@@ -20,8 +20,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { selectPrimaryAccount, toParty } from './lib/walletAccount'
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
+import { selectPrimaryAccount, toParty } from './walletAccount'
 
 export interface TxStatusSnapshot {
   status: string

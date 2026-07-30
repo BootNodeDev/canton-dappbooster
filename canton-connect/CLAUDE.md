@@ -19,6 +19,11 @@ all transports. Browser-only. A stopgap, meant to stay cheap to delete.
 - Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
 - Relative imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
 
+## Layout deltas from the root rules
+
+- **`CantonConnectProvider.tsx` lives at `src/` root, not in `components/`.** It renders only `<Context.Provider>{children}</Context.Provider>` — no markup, no visible state, no `ref` — so it is context infrastructure, and the component-authoring rules in [`../CLAUDE.md`](../CLAUDE.md) (a11y state exposure, `ref` as an ordinary prop, role-based tests) do not apply to it. Agreed on PR #45, which deliberately left this package out of its sweep.
+- **`src/testing/` is a published subpath export** (`./testing` in `package.json`), unlike `canton-dappbooster`'s package-local `src/testing/`. The root rule that `testing/` is never imported from non-test code still holds here and is enforced by Biome; the export exists because the fake wallet is useful to *other* packages' test suites.
+
 ## Testing
 
 - `pnpm -C canton-connect test` — **vitest + jsdom** (not `node:test`).
