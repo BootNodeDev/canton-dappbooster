@@ -3,6 +3,9 @@
 Reusable UI components for Canton dApps — identifier display, copy-to-clipboard actions,
 explorer links, and related building blocks.
 
+`src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
+the call site. Authoring rules for new components live in [`CLAUDE.md`](CLAUDE.md).
+
 ## Scripts
 
 | Script | What it does |
@@ -39,18 +42,3 @@ import '@bootnodedev/canton-theme/default.css'
 
 The contract between the two is the DOM each component renders — not code. See
 [`architecture.md`](architecture.md) for the seam and the reasoning.
-
-## Authoring a component
-
-The reference is `src/placeholder/`. Each component follows the same shape:
-
-1. **`anatomy.ts`** — declare `parts` (CSS class hooks, `.cnc-<component>*`) and `states`
-   (`data-*` / `aria-*` values). This typed const is the single source of truth.
-2. **Component `.tsx`** — render semantic markup; use `anatomy.parts.*` for class names; put state
-   on `aria-*` / `data-state`. No CSS import. For keyboard-heavy widgets, hand-roll on Zag
-   prop-getters; display primitives use plain React state.
-3. **Theme styles** — add the part-class rules to `@bootnodedev/canton-theme`'s `default.css`
-   (under `@layer cnc`, reading `var(--cnc-*)`); add any new tokens to its `tokens.css`.
-4. **Test** — assert against `anatomy.parts.*`, not hard-coded strings, so the contract stays the
-   single source of truth.
-5. **Export** the component from `src/index.ts`.

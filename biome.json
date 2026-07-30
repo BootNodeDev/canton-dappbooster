@@ -32,10 +32,35 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": true,
+            "filenameCases": ["camelCase", "PascalCase"]
+          }
+        }
+      }
     }
   },
   "overrides": [
+    {
+      "includes": ["canton-barebones/**", "canton-connect-kit/test/**", "**/*.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "strictCase": true,
+                "filenameCases": ["camelCase", "kebab-case", "PascalCase"]
+              }
+            }
+          }
+        }
+      }
+    },
     {
       "includes": ["dapp/frontend/**"],
       "css": {
@@ -56,13 +81,7 @@
       }
     },
     {
-      "includes": [
-        "canton-connect-kit/**",
-        "canton-dappbooster/**",
-        "dapp/frontend/src/**",
-        "!dapp/frontend/src/**/*.test.ts",
-        "!dapp/frontend/src/**/*.test.tsx"
-      ],
+      "includes": ["canton-connect-kit/**", "canton-dappbooster/**", "dapp/frontend/**"],
       "linter": {
         "rules": {
           "style": {
@@ -75,6 +94,69 @@
                     "message": "Do not include the file extension in imports."
                   }
                 ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "canton-connect-kit/src/**",
+        "canton-dappbooster/src/**",
+        "dapp/frontend/src/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx",
+        "!**/testing/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+                    "message": "Do not include the file extension in imports."
+                  },
+                  {
+                    "group": ["**/testing/**"],
+                    "message": "testing/ is test-only. Do not import it from source."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/src/icons/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "filenameCases": ["export"],
+                "match": "([A-Z].*?)[.](.+)"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/src/hooks/*.ts", "**/src/hooks/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "filenameCases": ["camelCase"],
+                "match": "(index|use[A-Z].*?)[.](.+)"
               }
             }
           }

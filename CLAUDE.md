@@ -7,6 +7,7 @@ files are compatibility shims that point here or to a sibling `CLAUDE.md`.
 Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 
 - [`canton-connect-kit/CLAUDE.md`](canton-connect-kit/CLAUDE.md) — wagmi-style React hooks for Canton dApps
+- [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
 - [`canton-barebones/wallet-service/CLAUDE.md`](canton-barebones/wallet-service/CLAUDE.md) — wallet-service bridge rules
 - `canton-barebones/`, `dapp/daml/`, `dapp/frontend/` — see each subproject's `README.md`
 
@@ -38,7 +39,7 @@ Current distribution:
 | `dapp/frontend/` | yes | no | no | no | Canton Coin vesting dApp (mock-first); root rules + README suffice. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
-| `canton-dappbooster/` | yes | no | no | yes | L2 headless components; architecture.md holds the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
+| `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
 | `canton-theme/` | yes | no | no | no | Plain-CSS theme (L3); README covers the two CSS exports. |
 
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
@@ -69,7 +70,7 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 19 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. `src/index.ts` is the public API. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
@@ -79,6 +80,63 @@ Subproject docs must not restate root rules. They should describe only their loc
 - **No semicolons** in TypeScript / JavaScript across the repo.
 - **Comments are terse and explain *why*, not *what*.** Prefer one line. Do not restate what the code already says, narrate steps, or write multi-line prose where a short clause suffices. If the code needs a paragraph to be understood, simplify the code instead.
 - Lint and formatting are centralized in the root `biome.json`. Add project-specific rules under `overrides` keyed by path; do not create per-subproject Biome configs.
+
+## File & Folder Organization
+
+Applies to every TypeScript subproject. Biome (`biome.json`) enforces the allowed casings, the `use`
+prefix inside any `src/hooks/`, one-export-per-file naming inside any `src/icons/`, extensionless
+imports, and the `testing/` boundary. Which of the allowed casings a given file takes is convention:
+a linter reads basenames, so it cannot tell a component from a multi-export collection, and folder
+casing it cannot see at all.
+
+| Kind | Casing | Example |
+|------|--------|---------|
+| React component | PascalCase, matching the export | `Button.tsx`, `CopyIcon.tsx` |
+| Class or instantiable module | PascalCase | `MockBackend.ts` |
+| Hook | camelCase, `use`-prefixed | `useCopyToClipboard.ts` |
+| Plain module or helper | camelCase | `truncate.ts`, `format.ts` |
+| Multi-export leaf collection | camelCase plural | `icons.tsx`, `hooks.ts` |
+| Test | `<sibling>.test.ts(x)`, beside its source | `truncate.test.ts` |
+
+A component's own test keeps the component name (`Identifier.test.tsx`), not the entry filename.
+
+Placement:
+
+- Colocate by default. A module used by one component lives beside it; promote it only when a second
+  consumer appears.
+- Promoted code goes in a kind folder at the src root (`components/`, `hooks/`, `icons/`,
+  `testing/`). Those exist from their first member.
+- Components live in `components/`, which is a kind folder like the rest and gets no special case.
+  Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
+  than a parent composing them.
+- A leaf collection (`icons.tsx`, `hooks.ts`) holds same-kind exports beside their one consumer.
+  Promoting it to a kind folder splits it into one file per export, named after that export.
+- Never a folder wrapping a single module. A one-file component stays a flat file
+  (`components/Button.tsx`) and earns a folder only when it outgrows one file.
+- A component folder is PascalCase, its entry is `index.tsx`, and its subcomponents are PascalCase
+  files beside it.
+- `testing/` holds test-only helpers and doubles, never imported from non-test code.
+- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, and
+  where a caller could reasonably pick a different export, when to reach for it. Do not restate the type.
+- Relative imports carry no file extension. `canton-barebones/` is the exception: it runs on
+  `NodeNext`, where the extension is load-bearing, so its imports keep `.ts` and lint allows it.
+
+## Authoring a Component or Hook
+
+Applies wherever a component or hook is written, app or library alike. Only *styling* differs by
+package, because only `canton-dappbooster` splits markup from styles across a package boundary; its
+`CLAUDE.md` owns that contract. Nothing below differs.
+
+- Render the element that carries the meaning, and keep the component legal where it is used: one
+  rendered inline is a `span`, not a `div`.
+- **Every state change a sighted user can see must reach assistive tech too.** Icons are
+  `aria-hidden`, so a state carried only by an icon needs a live region or a changing accessible
+  name. Two buttons where one looks selected need `aria-pressed`. Never leave this to the consumer.
+- Expose that state on the element as `aria-*` or `data-*`, never through a class name alone, so the
+  styling hook and the accessibility state stay one source of truth.
+- `ref` is an ordinary prop (React 19). Do not reach for `forwardRef`.
+- Tests assert on roles, accessible names, and whatever contract the component declares. Never on
+  styling.
 
 ## Working Rules
 

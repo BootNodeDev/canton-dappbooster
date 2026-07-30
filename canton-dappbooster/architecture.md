@@ -1,7 +1,7 @@
 # Architecture — @bootnodedev/canton-dappbooster
 
 The kit's structural seams and the contract every component follows. This is the "why";
-the per-component authoring checklist is in [`README.md`](README.md). Repo-wide rules live in
+the per-component authoring checklist is in [`CLAUDE.md`](CLAUDE.md). Repo-wide rules live in
 [`../CLAUDE.md`](../CLAUDE.md).
 
 This package is an MVP meant to lift into the parent project

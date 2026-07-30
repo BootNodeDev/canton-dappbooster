@@ -40,6 +40,8 @@ docs/
 **/.playwright-mcp/
 test-results/
 playwright-report/
+# stray captures land at the repo root; no tracked image belongs there
+/*.png
 
 # brainstorming visual companion
 .superpowers/
