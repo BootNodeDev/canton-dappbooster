@@ -1,3 +1,15 @@
 // Public barrel for @bootnodedev/canton-dappbooster.
-// TEMP(#31): Placeholder proves the pipeline; #6 replaces it with Identifier.
-export { Placeholder } from './components/Placeholder'
+
+export { Identifier, type IdentifierProps } from './components/Identifier'
+export {
+  partyHint,
+  type TruncateOptions,
+  truncateIdentifier,
+} from './components/Identifier/truncate'
+export {
+  type CopyOutcome,
+  type CopyState,
+  type UseCopyToClipboardOptions,
+  type UseCopyToClipboardResult,
+  useCopyToClipboard,
+} from './hooks/useCopyToClipboard'

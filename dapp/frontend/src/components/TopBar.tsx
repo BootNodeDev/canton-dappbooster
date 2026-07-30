@@ -1,4 +1,3 @@
-import { Placeholder } from '@bootnodedev/canton-dappbooster'
 import { RoleToggle } from './RoleToggle'
 import { ThemeToggle } from './ThemeToggle'
 import { WalletControl } from './WalletControl'
@@ -20,9 +19,6 @@ export const TopBar = ({ title, crumb }: TopBarProps): React.JSX.Element => (
         <h1 className="text-xl font-extrabold tracking-tight text-fg">{title}</h1>
       </div>
       <div className="flex items-center gap-3">
-        {/* TEMP(#31): kit build + theming pipeline proof, shown only once connected —
-            replaced by the real <Identifier> primitive in #6. */}
-        <Placeholder />
         <RoleToggle />
         <ThemeToggle />
         <WalletControl />
