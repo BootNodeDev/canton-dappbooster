@@ -16,7 +16,6 @@ export interface FakeWalletOptions {
   name?: string
   target?: string
   accounts?: FakeWalletAccount[]
-  // isConnected per successive status() call (last entry repeats) — simulates a restore-then-locked wallet.
   statusResponses?: boolean[]
 }
 

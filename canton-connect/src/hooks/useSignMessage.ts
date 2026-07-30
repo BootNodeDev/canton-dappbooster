@@ -9,7 +9,6 @@ export interface UseSignMessageResult {
   reset: () => void
 }
 
-// The facade's signMessage owns message encoding; this hook only tracks call state.
 export const useSignMessage = (): UseSignMessageResult => {
   const ctx = useConnectKitContext()
   const [signature, setSignature] = useState<string | undefined>(undefined)

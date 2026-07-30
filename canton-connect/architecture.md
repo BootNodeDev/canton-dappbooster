@@ -1,92 +1,117 @@
 # Architecture Overview — canton-connect
 
-`canton-connect` is the React adapter layer between Canton dApps and CIP-0103 wallets. It gives consumers wagmi-style hooks while normalizing two wallet transports: the injected browser extension provider and optional WalletConnect.
+`canton-connect` is a thin React wrapper over `@canton-network/dapp-sdk`'s `DappSDK` facade. It
+gives consumer dApps a stable wagmi-style hook surface; the SDK owns discovery, the wallet picker,
+the connection session, and every wallet transport (browser extension, WalletConnect, remote
+gateway). The package is a stopgap meant to be cheap to delete as the SDK's own React story matures.
+
+It is browser-only.
 
 ## Project Structure
 
 ```
 src/
-  ConnectKitProvider.tsx       React context, connection lifecycle, event wiring
-  connectors/
-    extension.ts               Injected CIP-0103 provider detection and event bridge
-    walletconnect.ts           WalletConnect Sign Client fallback provider
+  ConnectKitProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
   hooks/
-    useConnect.ts              Connect/disconnect lifecycle
-    useExecute.ts              prepareExecuteAndWait wrapper and tx state
-    useLedger.ts               ledgerApi pass-through
-    useParty.ts                active party state
-    useSignMessage.ts          signMessage request state
-    useWalletStatus.ts         lock/connect status state
+    useConnect.ts          connect / disconnect lifecycle
+    useParty.ts            active party
+    useWalletStatus.ts     lock / connect status
+    useSignMessage.ts      sdk.signMessage lifecycle
+    useExecute.ts          sdk.prepareExecuteAndWait + live tx state
+    useLedger.ts           sdk.ledgerApi pass-through
   lib/
-    walletAccount.ts           Wallet account normalization and primary selection
-  types.ts                     Public config, connector, party, and status types
-  index.ts                     Public package exports
+    walletAccount.ts       account normalization + primary selection (selectPrimaryAccount, toParty)
+  testing/
+    fakeWallet.ts          test-only CIP-0103 extension over postMessage (also drives real discovery)
+    autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
+    index.ts               ./testing sub-path barrel
+  mock/                     createMockAdapter: a mock ProviderAdapter for dev/test
+  types.ts                 Party, ConnectionStatus, ConnectKitConfig
+  index.ts                 public exports
 ```
 
-## Data Flow
+## Data flow
 
 ```mermaid
 flowchart TD
   app["Consumer dApp"]
-  hooks["Hooks<br/>useConnect / useParty / useExecute / useLedger"]
-  provider["ConnectKitProvider"]
-  extension["Extension connector<br/>CIP-0103 injected provider"]
-  wc["WalletConnect connector<br/>optional fallback"]
-  client["@canton-network/dapp-sdk<br/>DappClient"]
+  hooks["Hooks — useConnect / useParty / useExecute / …"]
+  provider["ConnectKitProvider (holds a DappSDK instance)"]
+  sdk["@canton-network/dapp-sdk — DappSDK facade"]
+  picker["walletPicker (SDK popup by default; injected in tests/dev)"]
+  adapters["ExtensionAdapter · WalletConnectAdapter · (RemoteAdapter, deferred)"]
   wallet["CIP-0103 wallet"]
 
   app --> hooks
   hooks --> provider
-  provider --> extension
-  provider --> wc
-  extension --> client
-  wc --> client
-  client --> wallet
-  wallet -->|"accountsChanged / txChanged / connected / statusChanged"| client
-  client --> provider
+  provider -->|init / connect| sdk
+  sdk --> picker
+  sdk --> adapters
+  adapters --> wallet
+  wallet -->|accountsChanged / statusChanged / txChanged| sdk
+  sdk -->|onAccountsChanged / onStatusChanged / onTxChanged| provider
 ```
 
-## Key Abstractions
+## Key abstractions
 
 ### `ConnectKitProvider`
 
-`ConnectKitProvider.tsx` owns all shared state: active `DappClient`, party, connection status, lock status, WalletConnect pairing URI, last transaction snapshot, and connection errors. Hooks should stay as readers over this context.
+Holds one `DappSDK` instance (`new DappSDK({ walletPicker? })`) and owns all shared state — party,
+connection status, lock status, last-tx snapshot, connect error. Hooks are readers over this context
+(or thin delegators to facade methods). Lifecycle:
 
-Connection modes:
+- **mount**: `sdk.init({ additionalAdapters, defaultAdapters: [] })` cold-starts and restores a
+  persisted session *without* opening the picker. If a session restores — even a locked one — events
+  are wired immediately so a later unlock push isn't dropped.
+- **connect()**: `sdk.connect()` opens the picker and connects the chosen wallet.
+- **events**: `sdk.onAccountsChanged/onStatusChanged/onTxChanged` → React state. Same event names and
+  types the SDK's `DappClient` exposes.
 
-- `extension`: require the injected browser provider.
-- `walletconnect`: require `walletConnectProjectId` and pair through WalletConnect.
-- `preferred`: try the extension first, then fall back to WalletConnect.
+**Invariant — teardown before the client swaps.** `sdk`'s `onX`/`removeOnX` bind to the *current*
+`this.client`, and `sdk.connect()` replaces the client with a new one. So listeners must be removed
+*before* triggering a connect (`connect()` tears down first, then swaps, then re-wires); otherwise
+they leak on the old client. `disconnect()` and unmount also tear down.
 
-The provider wires wallet-pushed events once per connected client and tears them down on disconnect or unmount.
+### The wallet picker
 
-### Extension Connector
+`ConnectKitConfig.walletPicker?: WalletPickerFn`. Omitted → the SDK's built-in popup (`pickWallet`,
+from `core-wallet-ui-components`). Injected → a custom picker: `createAutoPicker` (headless, for
+tests/dev) today, and a `canton-theme`-styled picker component later (deferred follow-up). This one
+seam covers production UX, testability, and the future themed UI.
 
-`connectors/extension.ts` uses `@canton-network/dapp-sdk`'s `ExtensionAdapter` to detect Carpincho through `canton:requestProvider` / `canton:announceProvider`.
+### Additional adapters
 
-Carpincho also emits `SPLICE_WALLET_EVENT` messages so wallet-pushed events can reach the canonical provider's `emit` path. The connector translates those page messages into provider events for `accountsChanged`, `txChanged`, `connected`, and `statusChanged`.
+`buildAdditionalAdapters(config)` assembles the non-extension adapters passed to `sdk.init`:
+`WalletConnectAdapter.create({ projectId, … })` when `walletConnectProjectId` is set, plus any
+`config.additionalAdapters` (e.g. the dev/test mock adapter). Extension wallets are auto-discovered
+by the facade's announce protocol — nothing to register for them. `defaultAdapters: []` suppresses
+the SDK's bundled `localhost:3030` dev Wallet Gateway.
 
-### WalletConnect Connector
-
-`connectors/walletconnect.ts` implements a `Provider` around `@walletconnect/sign-client`. The Sign Client is dynamically imported so extension-only consumers do not load WalletConnect code.
-
-The connector maps canonical CIP-0103 requests onto `canton_*` WalletConnect methods and forwards `session_event` messages to provider listeners.
+`networkId` (`ConnectKitConfig.networkId`, default `'canton:local'`) drives two things from one
+field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId` (set in
+`wireEvents`, via `toParty`).
 
 ### Hooks
 
-Each hook exposes one consumer-facing concern:
-
 | Hook | Responsibility |
 |------|----------------|
-| `useConnect` | Start/stop the active wallet connection and expose pairing / error state. |
-| `useParty` | Return the current primary party and connection status. |
-| `useWalletStatus` | Return lock/connect status derived from wallet events. |
-| `useSignMessage` | Wrap `signMessage` as a promise lifecycle. |
-| `useExecute` | Wrap `prepareExecuteAndWait` and expose transaction status updates. |
-| `useLedger` | Expose raw `ledgerApi` for reads not covered by higher-level hooks. |
+| `useConnect` | start/stop the connection; expose error/connecting state |
+| `useParty` | current primary party + connection status |
+| `useWalletStatus` | lock/connect status from wallet events |
+| `useSignMessage` | `sdk.signMessage` as a promise lifecycle |
+| `useExecute` | `sdk.prepareExecuteAndWait` + live tx status |
+| `useLedger` | raw `sdk.ledgerApi` pass-through |
 
-## Boundaries
+## Boundaries & conventions
 
-This package must not depend on the scaffold's dApp, wallet, or wallet-service internals. Its stable boundary is the CIP-0103 provider surface plus `@canton-network/dapp-sdk`.
+- Wraps `@canton-network/dapp-sdk` and nothing app-specific. No imports from `dapp/` or `canton-barebones/`. Names no wallet.
+- **Import the SDK's types; never hand-copy them.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event constants come from `core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`). No `as Parameters<…>` casts.
+- No SDK-import quarantine — the package is a thin SDK wrapper throughout (the old `core`/`connectors` split it served was cancelled by adopting the facade).
+
+## Deferred (filed follow-ups)
+
+- **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `ConnectKitConfig` (issue #2, reframed; decoupled from #3).
+- **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control.
+- **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns.
 
 For the full local stack around this package, see the root [`architecture.md`](../architecture.md).

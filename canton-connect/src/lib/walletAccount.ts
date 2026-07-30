@@ -4,7 +4,8 @@
 
 import type { Party } from '../types'
 
-export interface RawWalletAccount {
+// One entry of a CIP-0103 listAccounts response, before mapping to Party.
+interface RawWalletAccount {
   primary?: boolean
   partyId: string
   hint?: string
@@ -15,6 +16,7 @@ export interface RawWalletAccount {
 export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAccount | undefined =>
   accounts.find((a) => a.primary) ?? accounts[0]
 
+// hint becomes name; an account's own networkId outranks the config fallback.
 export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): Party => ({
   partyId: account.partyId,
   networkId: account.networkId ?? fallbackNetworkId,

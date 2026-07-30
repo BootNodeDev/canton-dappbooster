@@ -25,12 +25,10 @@ export interface MockAccount {
 export interface CreateMockAdapterOptions {
   id?: string
   accounts?: MockAccount[]
-  // Wins over ConnectKitConfig.networkId when set — unset, toParty()'s config fallback applies.
   networkId?: string
 }
 
 export interface MockAdapter extends ProviderAdapter {
-  // Fire a wallet-pushed event at provider subscribers.
   emit: (event: string, payload: unknown) => void
 }
 

@@ -9,7 +9,6 @@ export interface UseLedgerResult {
   isReady: boolean
 }
 
-// Raw pass-through to the participant JSON API — use when the typed hooks don't cover what you need.
 export const useLedger = (): UseLedgerResult => {
   const ctx = useConnectKitContext()
 

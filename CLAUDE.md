@@ -38,7 +38,7 @@ Current distribution:
 | Scope | README | AGENTS | CLAUDE | architecture | Decision |
 |-------|--------|--------|--------|--------------|----------|
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
-| `canton-connect/` | yes | shim | yes | yes | Public hook API, connector abstractions, provider event wiring. |
+| `canton-connect/` | yes | shim | yes | yes | Public hook API, the facade's adapter/picker seams, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
 | `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp (mock-first); root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
@@ -84,7 +84,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
-| [`canton-connect/`](canton-connect/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 19 + Biome | n/a (library) |
+| [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`. Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
@@ -166,7 +166,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   - `pnpm run app:dev`
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
-- `pnpm-workspace.yaml` pins the whole `@canton-network/*` family via `overrides`: `dapp-sdk` at `1.1.0` and the `core-*` packages at the exact versions the stack was verified against. The SDK ships breaking changes inside its `^1.x` range (e.g. `core-provider-dapp` 1.8 drops an export `dapp-sdk` 1.1 imports), so without the pins pnpm resolves an incompatible set. `1.2.0` of `dapp-sdk` is intentionally held back. Do not bump these without testing the dApp flow against the newer SDK.
+- `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they float on the ranges in its own `package.json` (`dapp-sdk` `^1.4.0`); bump those directly and test the connect flow, not `pnpm-workspace.yaml`.
 - Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
@@ -178,7 +178,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
 
 - Each subproject owns its own test runner. Run from the subproject directory or via `pnpm -C`:
   - `dapp/frontend`: `pnpm test` (vitest, node env)
-  - `canton-connect`: `pnpm test` (Node `node:test` + `tsx`)
+  - `canton-connect`: `pnpm test` (vitest + jsdom)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.

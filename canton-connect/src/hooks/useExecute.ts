@@ -12,7 +12,6 @@ export interface UseExecuteResult {
   reset: () => void
 }
 
-// lastTx mirrors the live txChanged lifecycle (pending → signed → executed/failed); wired by ConnectKitProvider.
 export const useExecute = (): UseExecuteResult => {
   const ctx = useConnectKitContext()
   const [isExecuting, setIsExecuting] = useState(false)

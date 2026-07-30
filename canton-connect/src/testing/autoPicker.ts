@@ -1,6 +1,5 @@
 import type { WalletPickerFn } from '@canton-network/dapp-sdk'
 
-// Headless picker for tests/dev: select by providerId, or the first entry.
 export const createAutoPicker =
   (pick?: string): WalletPickerFn =>
   async (entries) => {
