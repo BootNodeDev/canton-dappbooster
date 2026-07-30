@@ -6,7 +6,7 @@ JavaScript, zero runtime. Two independently consumable artifacts:
 | Export | What it is |
 | --- | --- |
 | `@bootnodedev/canton-theme/tokens.css` | `--cnc-*` custom properties — the theming + dark-mode contract |
-| `@bootnodedev/canton-theme/default.css` | prestyled defaults selecting on component part classes, under `@layer cnc` |
+| `@bootnodedev/canton-theme/default.css` | prestyled defaults selecting on component part classes |
 
 ## Usage
 
@@ -22,7 +22,10 @@ import '@bootnodedev/canton-theme/default.css'
 - Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, before first paint
   to avoid a flash. It deliberately does not follow `prefers-color-scheme` by itself, so that a mode
   toggle can override the OS preference in both directions.
-- All defaults live under `@layer cnc`, so your own CSS wins without specificity fights.
+- Overriding a token means overriding it in both modes. Your `:root` also beats our
+  `[data-theme="dark"]` block, so a light-only override stays applied in dark.
+- The whole package lives under `@layer cnc`, so any unlayered CSS of yours wins without specificity
+  fights, whether you import us first or last.
 
 With Tailwind, position the `cnc` layer explicitly. Tailwind otherwise owns the layer order it
 emits, and its preflight resets `button { color: inherit }`, which beats the theme's copy-control

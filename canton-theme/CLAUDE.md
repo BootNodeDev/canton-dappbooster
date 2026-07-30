@@ -13,6 +13,15 @@ Plain CSS. No JavaScript, no build step, no dependencies. Two independently cons
 - `src/default.css` — prestyled defaults selecting on the part classes and states each component
   declares in its `anatomy.ts`.
 
+## Layering
+
+Both files go entirely inside `@layer cnc`. Unlayered CSS beats layered CSS whatever the
+specificity, so a consumer overrides anything here with a plain rule and it holds whether they
+import us first or last. Import order must never be load-bearing.
+
+Never use `!important`. Inside a layer it inverts: a layered `!important` beats an unlayered one, so
+a single one here would be unbeatable from outside the package.
+
 ## Naming a token
 
 `--cnc-<role>[-<variant>]`, lower-kebab.
@@ -57,7 +66,6 @@ Every token in `:root` needs a dark counterpart unless it is mode-independent by
 
 ## Writing default.css
 
-- Everything under `@layer cnc`, so consumer CSS wins without specificity fights.
 - Every `var()` carries a fallback. `default.css` must render standalone when `tokens.css` is absent.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
