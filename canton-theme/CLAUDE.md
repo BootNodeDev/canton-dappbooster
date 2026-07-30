@@ -64,6 +64,11 @@ a media query. The attribute must decide in both directions.
 Every token in `:root` needs a dark counterpart unless it is mode-independent by construction
 (radius, font stack).
 
+`color-scheme` follows the same rule and is the one non-token declaration here: it hands the browser
+the mode for the surfaces we cannot style (scrollbars, form controls, the caret). One explicit value
+per mode. Never `color-scheme: light dark`, which defers to the OS and so undoes the attribute in
+exactly the case the attribute exists for.
+
 ## Writing default.css
 
 - Every `var()` carries a fallback. `default.css` must render standalone when `tokens.css` is absent.
