@@ -19,8 +19,7 @@ src/
     useSignMessage.ts      sdk.signMessage lifecycle
     useExecute.ts          sdk.prepareExecuteAndWait + live tx state
     useLedger.ts           sdk.ledgerApi pass-through
-  lib/
-    walletAccount.ts       account normalization + primary selection (selectPrimaryAccount, toParty)
+  walletAccount.ts         account normalization + primary selection (selectPrimaryAccount, toParty)
   testing/
     fakeWallet.ts          test-only CIP-0103 extension over postMessage (also drives real discovery)
     autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
@@ -81,7 +80,7 @@ seam covers production UX, testability, and the future themed UI.
 
 ### Additional adapters
 
-`buildAdditionalAdapters(config)` assembles the non-extension adapters passed to `sdk.init`:
+`buildAdditionalAdapters(config, networkId)` assembles the non-extension adapters passed to `sdk.init`:
 `WalletConnectAdapter.create({ projectId, … })` when `walletConnectProjectId` is set, plus any
 `config.additionalAdapters` (e.g. the dev/test mock adapter). Extension wallets are auto-discovered
 by the facade's announce protocol — nothing to register for them. `defaultAdapters: []` suppresses
@@ -108,10 +107,10 @@ field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId`
 - **Import the SDK's types; never hand-copy them.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event constants come from `core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`). No `as Parameters<…>` casts.
 - No SDK-import quarantine — the package is a thin SDK wrapper throughout (the old `core`/`connectors` split it served was cancelled by adopting the facade).
 
-## Deferred (filed follow-ups)
+## Deferred
 
 - **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `CantonConnectConfig` (issue #2, reframed; decoupled from #3).
-- **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control.
-- **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns.
+- **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control. Not yet filed.
+- **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns (issue #40).
 
 For the full local stack around this package, see the root [`architecture.md`](../architecture.md).

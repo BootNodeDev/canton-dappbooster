@@ -102,9 +102,14 @@ call useConnect().connect() first` if called before connecting.
 | `appName` | required | wallet-facing app name; today only read for the WalletConnect adapter's metadata |
 | `appDescription`, `appUrl` | unset | also WalletConnect metadata only — inert without `walletConnectProjectId` |
 | `networkId` | `'canton:local'` | the CIP-0103 network id; also the WalletConnect adapter's `chainId` |
-| `walletConnectProjectId` | unset | set to register the SDK's `WalletConnectAdapter`; needs the optional peer `@walletconnect/sign-client` |
+| `walletConnectProjectId` | unset | set to register the SDK's `WalletConnectAdapter` |
 | `walletPicker` | unset | omit for the SDK's built-in popup; inject `createAutoPicker()` in tests, a themed picker later |
 | `additionalAdapters` | `[]` | extra `ProviderAdapter`s to register, e.g. `createMockAdapter()` |
+
+`@walletconnect/sign-client` is declared an optional peer, but `dapp-sdk` 1.4 imports it
+statically at the top of its bundle (`dist/index.js:7`), so it has to be installed whether or not
+you set `walletConnectProjectId`. Only the *session* is lazy — `SignClient.init()` runs when a
+pairing starts, not at import. Worth an upstream issue; until then, treat it as required.
 
 ## Testing helpers
 
