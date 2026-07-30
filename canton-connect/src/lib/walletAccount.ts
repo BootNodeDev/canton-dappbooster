@@ -15,9 +15,9 @@ export interface RawWalletAccount {
 export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAccount | undefined =>
   accounts.find((a) => a.primary) ?? accounts[0]
 
-export const toParty = (account: RawWalletAccount, fallbackNetwork: string): Party => ({
+export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): Party => ({
   partyId: account.partyId,
-  network: account.networkId ?? fallbackNetwork,
+  networkId: account.networkId ?? fallbackNetworkId,
   ...(account.hint === undefined ? {} : { name: account.hint }),
   ...(account.publicKey === undefined ? {} : { publicKey: account.publicKey }),
 })

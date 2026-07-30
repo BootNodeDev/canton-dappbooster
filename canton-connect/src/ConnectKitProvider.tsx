@@ -62,7 +62,7 @@ type AdapterConfig = Pick<
   'appName' | 'appDescription' | 'appUrl' | 'walletConnectProjectId' | 'additionalAdapters'
 >
 
-const buildAdditionalAdapters = (config: AdapterConfig, network: string): ProviderAdapter[] => {
+const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): ProviderAdapter[] => {
   const adapters: ProviderAdapter[] = [...(config.additionalAdapters ?? [])]
 
   if (config.walletConnectProjectId !== undefined && config.walletConnectProjectId !== '') {
@@ -70,7 +70,7 @@ const buildAdditionalAdapters = (config: AdapterConfig, network: string): Provid
       WalletConnectAdapter.create({
         projectId: config.walletConnectProjectId,
         // The CAIP-2 chain the wallet must serve is the configured Canton network id, not the SDK's devnet default.
-        chainId: network,
+        chainId: networkId,
         metadata: {
           name: config.appName,
           description: config.appDescription ?? config.appName,
@@ -91,7 +91,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
   const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)
   const [connectError, setConnectError] = useState<Error | undefined>(undefined)
 
-  const network = config.network ?? 'canton:local'
+  const networkId = config.networkId ?? 'canton:local'
 
   const sdk = useMemo(
     () => new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {}),
@@ -108,7 +108,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
           walletConnectProjectId: config.walletConnectProjectId,
           additionalAdapters: config.additionalAdapters,
         },
-        network,
+        networkId,
       ),
     [
       config.appName,
@@ -116,7 +116,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
       config.appUrl,
       config.walletConnectProjectId,
       config.additionalAdapters,
-      network,
+      networkId,
     ],
   )
 
@@ -126,7 +126,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
   const wireEvents = useCallback((): (() => void) => {
     const onAccounts = (accounts: AccountsChangedEvent): void => {
       const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, network))
+      setParty(primary === undefined ? undefined : toParty(primary, networkId))
     }
     const onStatus = (event: StatusEvent): void => {
       setIsLocked(!event.connection.isConnected)
@@ -148,7 +148,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
       void sdk.removeOnStatusChanged(onStatus).catch(() => undefined)
       void sdk.removeOnTxChanged(onTx).catch(() => undefined)
     }
-  }, [sdk, network])
+  }, [sdk, networkId])
 
   useEffect(() => {
     let cancelled = false
@@ -170,7 +170,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
 
       const accounts = await sdk.listAccounts()
       const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, network))
+      setParty(primary === undefined ? undefined : toParty(primary, networkId))
     })
 
     return () => {
@@ -178,7 +178,7 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
       teardownRef.current?.()
       teardownRef.current = undefined
     }
-  }, [sdk, additionalAdapters, network, wireEvents])
+  }, [sdk, additionalAdapters, networkId, wireEvents])
 
   const connect = useCallback(async (): Promise<void> => {
     setStatus('connecting')
@@ -198,14 +198,14 @@ export const ConnectKitProvider = ({ config, children }: ConnectKitProviderProps
 
       const accounts = await sdk.listAccounts()
       const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, network))
+      setParty(primary === undefined ? undefined : toParty(primary, networkId))
       setStatus('connected')
     } catch (err) {
       setConnectError(err as Error)
       setStatus('disconnected')
       throw err
     }
-  }, [sdk, network, wireEvents])
+  }, [sdk, networkId, wireEvents])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()

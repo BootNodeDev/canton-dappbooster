@@ -22,9 +22,9 @@ describe('selectPrimaryAccount', () => {
 })
 
 describe('toParty', () => {
-  it('maps the wallet account into Party shape and uses the fallback network when missing', () => {
+  it('maps the wallet account into Party shape and uses the fallback networkId when missing', () => {
     const party = toParty({ partyId: 'alice::fp', hint: 'alice' }, 'canton:local')
-    expect(party).toEqual({ partyId: 'alice::fp', network: 'canton:local', name: 'alice' })
+    expect(party).toEqual({ partyId: 'alice::fp', networkId: 'canton:local', name: 'alice' })
   })
 
   it('prefers the account-supplied networkId when present', () => {
@@ -32,7 +32,7 @@ describe('toParty', () => {
       { partyId: 'alice::fp', networkId: 'canton:prod', publicKey: 'pk' },
       'canton:local',
     )
-    expect(party.network).toBe('canton:prod')
+    expect(party.networkId).toBe('canton:prod')
     expect(party.publicKey).toBe('pk')
     expect(party.name).toBe(undefined)
   })

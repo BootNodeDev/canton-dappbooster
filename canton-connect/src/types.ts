@@ -8,7 +8,7 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnect
 
 export interface Party {
   partyId: string
-  network: string
+  networkId: string
   name?: string
   publicKey?: string
 }
@@ -18,7 +18,7 @@ export interface ConnectKitConfig {
   appDescription?: string
   appUrl?: string
   // CIP-0103 network id, e.g. 'canton:local'.
-  network?: string
+  networkId?: string
   // Reown project id; enables the WalletConnect adapter when set (Task 6).
   walletConnectProjectId?: string
   // Omit for the SDK's built-in popup picker. Injected in tests (auto-select) and,
