@@ -52,6 +52,7 @@ describe('truncateIdentifier', () => {
   })
 
   it('never returns more characters than it was given', () => {
+    // Deliberately malformed: shortening must never make a string longer, whatever it is given.
     const inputs = [PARTY, PLAIN, 'a'.repeat(30), `::${'f'.repeat(30)}`, 'alice::ns::extra']
     const knobs = [{}, { tail: 0 }, { head: 0 }, { threshold: 1 }, { head: 20, tail: 20 }]
     for (const value of inputs) {
