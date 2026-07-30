@@ -14,8 +14,8 @@ export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, '
   value: string
   /** Accessible noun for the controls, e.g. `party id` reads as "Copy party id". */
   label?: string
-  /** `false` renders the value whole; an object overrides the truncation defaults. */
-  truncate?: boolean | TruncateOptions
+  /** Truncation is the default. `false` renders the value whole; an object overrides the defaults. */
+  truncate?: false | TruncateOptions
   copy?: boolean
   /** `false` when the consumer announces the copy outcome itself, e.g. through a toast. */
   announce?: boolean
@@ -54,7 +54,7 @@ const SR_ONLY: CSSProperties = {
 export const Identifier = ({
   value,
   label = DEFAULT_LABEL,
-  truncate = true,
+  truncate,
   copy = true,
   announce = true,
   href,
@@ -65,8 +65,7 @@ export const Identifier = ({
 }: IdentifierProps): ReactElement => {
   const { state, copy: writeToClipboard } = useCopyToClipboard()
 
-  const display =
-    truncate === false ? value : truncateIdentifier(value, truncate === true ? undefined : truncate)
+  const display = truncate === false ? value : truncateIdentifier(value, truncate)
 
   return (
     <span ref={ref} className={[anatomy.parts.root, className].filter(Boolean).join(' ')} {...rest}>

@@ -55,6 +55,12 @@ describe('Identifier', () => {
     expect(part('value')).toHaveTextContent(truncateIdentifier(PARTY, { head: 4, tail: 4 }))
   })
 
+  it('leaves the untouched knobs at their defaults when given a partial override', () => {
+    render(<Identifier value={PARTY} truncate={{ head: 4 }} />)
+    expect(part('value')).toHaveTextContent(truncateIdentifier(PARTY, { head: 4 }))
+    expect(part('value')).not.toHaveTextContent(truncateIdentifier(PARTY))
+  })
+
   it('labels the copy control with the supplied noun', () => {
     render(<Identifier value={PARTY} label="party id" />)
     expect(screen.getByRole('button', { name: 'Copy party id' })).toBeInTheDocument()
