@@ -20,9 +20,12 @@ source live in dev; `dist` is used for production and publish.
 Consumers resolve source in dev and typecheck (no kit build needed); their production build resolves
 `dist`. Build the kit first, or run `pnpm build` from the repo root, which builds workspaces in order.
 
-Dev-deps pin React 18 on purpose — the floor of the `^18.3.1 || ^19.0.0` peer range — so tests
-exercise the lowest supported version. Consumers on React 19 (like `dapp/frontend`) compile the kit
-against their own newer types.
+React 19 only, peer and dev alike. Components take `ref` as an ordinary prop.
+
+A consumer whose React resolves to a different copy than the kit's ends up with two Reacts in one
+bundle, where hooks read a null dispatcher and every render throws. Only a production build shows
+it, since the `development` condition resolves the kit to source. `resolve.dedupe` in the bundler
+is the fix.
 
 ## Styling: components carry none
 
