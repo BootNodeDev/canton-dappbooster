@@ -23,27 +23,56 @@ import {
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
+/**
+ * A snapshot of the transaction lifecycle, mirrored from the SDK's
+ * `txChanged` event as a submitted command moves through pending, signed,
+ * executed, or failed.
+ */
 export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
   commandId: TxChangedEvent['commandId']
   payload?: unknown
 }
 
+/**
+ * The full connection state and actions shared by every hook in this
+ * package. Read it via `useCantonConnectContext()`, or through one of the
+ * narrower hooks (`useConnect`, `useParty`, etc.) that each pick a slice
+ * of it.
+ */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
+  /**
+   * The `DappSDK` instance this provider drives. One per `CantonConnectProvider`,
+   * recreated only when `config.walletPicker` changes.
+   */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
+  /**
+   * True while the wallet reports connected-but-locked: a session exists
+   * but the wallet needs an unlock before it will serve requests.
+   */
   isLocked: boolean
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
+  /**
+   * Opens the wallet picker (the SDK's popup, or `config.walletPicker` when
+   * set) and connects the wallet selected there. Rejects if the user cancels
+   * or the connection fails.
+   */
   connect: () => Promise<void>
+  /** Disconnects and resets local state (`party`, `status`, `isLocked`, `lastTx`) even if the underlying SDK call fails. */
   disconnect: () => Promise<void>
 }
 
 const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
+/**
+ * Reads the current `CantonConnectContextValue` from context.
+ * Throws if called outside a `CantonConnectProvider`.
+ */
 export const useCantonConnectContext = (): CantonConnectContextValue => {
   const ctx = useContext(CantonConnectContext)
   if (ctx === undefined) {
@@ -52,6 +81,7 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
   return ctx
 }
 
+/** Props for `CantonConnectProvider`. */
 export interface CantonConnectProviderProps {
   config: CantonConnectConfig
   children: ReactNode
@@ -84,6 +114,18 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
   return adapters
 }
 
+/**
+ * Owns the wallet connection lifecycle for the part of the tree it wraps:
+ * creates a `DappSDK` instance from `config`, restores a previous session on
+ * mount (no need to call `connect()` again after a page refresh if one
+ * exists), and wires wallet-pushed events into the state every hook in this
+ * package reads.
+ *
+ * The hooks reading this context mirror wagmi's naming and decomposition,
+ * not its result shapes: wagmi's hooks are TanStack Query mutations
+ * (`mutate`/`mutateAsync`/`isPending`/`data`/`status`/`reset`); these resolve
+ * plain promises and expose fields like `isSigning`/`isExecuting`/`signature`/`lastTx`.
+ */
 export const CantonConnectProvider = ({
   config,
   children,
