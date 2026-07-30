@@ -22,8 +22,8 @@ Plain CSS. No JavaScript, no build step, no dependencies. Two independently cons
 - **Name the role, never the appearance or the component.** `--cnc-text-muted`, not `--cnc-grey`
   (appearance drifts when the palette changes) and not `--cnc-identifier-copy` (a token every
   component can read is the point).
-- Roles: `bg`, `surface`, `text`, `border`, `accent`, and the state roles `success`, `warning`,
-  `danger`.
+- Colour roles: `bg`, `surface`, `text`, `border`, `accent`, and the state roles `success`,
+  `warning`, `danger`. Shape roles: `radius`, `font-mono`.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
     still a text colour; `--cnc-surface-muted` is still a surface.
