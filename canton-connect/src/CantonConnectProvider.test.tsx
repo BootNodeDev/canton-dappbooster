@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
+import { useLedger } from './hooks/useLedger'
 import { useParty } from './hooks/useParty'
+import { useSignMessage } from './hooks/useSignMessage'
 import { useWalletStatus } from './hooks/useWalletStatus'
 import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
@@ -14,6 +16,8 @@ import { createFakeWallet } from './testing/fakeWallet'
 
 const KERNEL_DISCOVERY_KEY = 'splice_wallet_kernel_discovery'
 const DISCOVERY_SESSION_KEY = 'splice_discovery_client_session'
+const SUGGESTED_ENTRIES_KEY = 'splice_wallet_picker_suggested_entries'
+const RECENT_GATEWAYS_KEY = 'splice_wallet_picker_recent'
 
 // Selecting the entry would start real pairing; capture what was offered and bail.
 const capturePicker =
@@ -23,10 +27,17 @@ const capturePicker =
     throw new Error('cancel')
   }
 
+// A picker a test can call connect() with when it never intends to succeed.
+const throwingPicker: WalletPickerFn = async () => {
+  throw new Error('cancel')
+}
+
 describe('CantonConnectProvider', () => {
   afterEach(() => {
     localStorage.removeItem(KERNEL_DISCOVERY_KEY)
     localStorage.removeItem(DISCOVERY_SESSION_KEY)
+    localStorage.removeItem(SUGGESTED_ENTRIES_KEY)
+    localStorage.removeItem(RECENT_GATEWAYS_KEY)
 
     // A prototype spy survives a failed assertion; restoring here keeps it out of later tests.
     vi.restoreAllMocks()
@@ -236,6 +247,74 @@ describe('CantonConnectProvider', () => {
     )
 
     wallet.dispose()
+  })
+
+  it('keeps delivering events to useParty() after a throwing picker rejects connect() on a restored session', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    // Restore's internal check, our own restore check, and the post-failure probe all see the same still-live, connected client.
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      statusResponses: [true, true, true],
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: throwingPicker }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+    expect(result.current.party.status).toBe('connected')
+
+    // sdk.connect() rejects before it ever swaps its client — the restored session survives.
+    await act(async () => {
+      await expect(result.current.connect.connect()).rejects.toThrow('cancel')
+    })
+
+    expect(result.current.party.party?.partyId).toBe('alice::1220ab')
+
+    act(() => {
+      wallet.push('accountsChanged', [
+        {
+          partyId: 'bob::9931cd',
+          primary: true,
+          hint: 'bob',
+          publicKey: 'pub-bob',
+          networkId: 'canton:local',
+        },
+      ])
+    })
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
+
+    wallet.dispose()
+  })
+
+  it('sets connectError and rejects connect() when the picker throws', async () => {
+    const config = { appName: 'test', walletPicker: throwingPicker }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await expect(result.current.connect()).rejects.toThrow('cancel')
+    })
+
+    expect(result.current.connectError?.message).toBe('cancel')
+    expect(result.current.status).toBe('disconnected')
   })
 
   it('offers a WalletConnect entry when a project id is configured', async () => {
@@ -458,5 +537,97 @@ describe('CantonConnectProvider', () => {
     expect(result.current.party.party).toBe(undefined)
 
     wallet.dispose()
+  })
+
+  it('tears down listeners when the provider unmounts', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker() }
+    const { result, unmount } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    const removeSpy = vi.spyOn(result.current.sdk, 'removeOnAccountsChanged')
+
+    unmount()
+
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+
+    wallet.dispose()
+  })
+
+  it('useSignMessage throws its not-connected guard before connecting', async () => {
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useSignMessage(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await expect(result.current.signMessage('hello')).rejects.toThrow(
+      'wallet is not connected — call useConnect().connect() first',
+    )
+  })
+
+  it('useLedger throws its not-connected guard before connecting', async () => {
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useLedger(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await expect(
+      result.current.ledgerApi({ requestMethod: 'get', resource: '/v2/parties' }),
+    ).rejects.toThrow('wallet is not connected — call useConnect().connect() first')
+  })
+
+  it('sets useExecute().error on a failing execute and clears it on reset()', async () => {
+    const mock = createMockAdapter({
+      id: 'mock-execute',
+      accounts: [{ partyId: 'alice::mock1220' }],
+    })
+
+    const config = {
+      appName: 'test',
+      additionalAdapters: [mock],
+      walletPicker: createAutoPicker('mock-execute'),
+    }
+    const { result } = renderHook(() => ({ connect: useConnect(), execute: useExecute() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    // The mock only answers the connect flow — prepareExecuteAndWait throws naming itself.
+    await act(async () => {
+      await expect(result.current.execute.execute({ commands: [] })).rejects.toThrow(
+        "mock adapter does not implement 'prepareExecuteAndWait'",
+      )
+    })
+
+    expect(result.current.execute.error?.message).toBe(
+      "mock adapter does not implement 'prepareExecuteAndWait'",
+    )
+
+    act(() => {
+      result.current.execute.reset()
+    })
+
+    expect(result.current.execute.error).toBe(undefined)
   })
 })

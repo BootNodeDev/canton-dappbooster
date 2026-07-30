@@ -24,8 +24,8 @@ import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
 export interface TxStatusSnapshot {
-  status: string
-  commandId?: string
+  status: TxChangedEvent['status']
+  commandId: TxChangedEvent['commandId']
   payload?: unknown
 }
 
@@ -142,9 +142,9 @@ export const CantonConnectProvider = ({
       })
     }
 
-    void sdk.onAccountsChanged(onAccounts)
-    void sdk.onStatusChanged(onStatus)
-    void sdk.onTxChanged(onTx)
+    void sdk.onAccountsChanged(onAccounts).catch(() => undefined)
+    void sdk.onStatusChanged(onStatus).catch(() => undefined)
+    void sdk.onTxChanged(onTx).catch(() => undefined)
 
     return () => {
       void sdk.removeOnAccountsChanged(onAccounts).catch(() => undefined)
@@ -152,6 +152,29 @@ export const CantonConnectProvider = ({
       void sdk.removeOnTxChanged(onTx).catch(() => undefined)
     }
   }, [sdk, networkId])
+
+  // Shared by mount-restore and a failed connect() that left a live client behind — wires events (unless already wired) and syncs isLocked/status/party from a status() read.
+  const syncFromStatus = useCallback(
+    async (restored: StatusEvent): Promise<void> => {
+      // Wire events regardless of lock state so a later unlock push isn't dropped silently.
+      if (teardownRef.current === undefined) {
+        teardownRef.current = wireEvents()
+      }
+
+      setIsLocked(!restored.connection.isConnected)
+      setStatus('connected')
+
+      if (!restored.connection.isConnected) {
+        setParty(undefined) // locked — wait for the unlock push
+        return
+      }
+
+      const accounts = await sdk.listAccounts()
+      const primary = selectPrimaryAccount(accounts)
+      setParty(primary === undefined ? undefined : toParty(primary, networkId))
+    },
+    [sdk, networkId, wireEvents],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -164,16 +187,7 @@ export const CantonConnectProvider = ({
       const restored = await sdk.status().catch(() => undefined)
       if (cancelled || restored === undefined) return
 
-      // Wire events regardless of lock state so a later unlock push isn't dropped silently.
-      teardownRef.current = wireEvents()
-      setIsLocked(!restored.connection.isConnected)
-      setStatus('connected')
-
-      if (!restored.connection.isConnected) return // locked — wait for the unlock push
-
-      const accounts = await sdk.listAccounts()
-      const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, networkId))
+      await syncFromStatus(restored)
     })
 
     return () => {
@@ -181,7 +195,7 @@ export const CantonConnectProvider = ({
       teardownRef.current?.()
       teardownRef.current = undefined
     }
-  }, [sdk, additionalAdapters, networkId, wireEvents])
+  }, [sdk, additionalAdapters, syncFromStatus])
 
   const connect = useCallback(async (): Promise<void> => {
     setStatus('connecting')
@@ -205,10 +219,21 @@ export const CantonConnectProvider = ({
       setStatus('connected')
     } catch (err) {
       setConnectError(err as Error)
-      setStatus('disconnected')
+
+      // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
+      const restored = await sdk.status().catch(() => undefined)
+
+      if (restored === undefined) {
+        setParty(undefined)
+        setIsLocked(false)
+        setStatus('disconnected')
+      } else {
+        await syncFromStatus(restored)
+      }
+
       throw err
     }
-  }, [sdk, networkId, wireEvents])
+  }, [sdk, networkId, wireEvents, syncFromStatus])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()

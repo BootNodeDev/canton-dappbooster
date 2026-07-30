@@ -3,6 +3,7 @@ import {
   CANTON_REQUEST_PROVIDER_EVENT,
   WalletEvent,
 } from '@canton-network/core-types'
+import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 
 export interface FakeWalletAccount {
   partyId: string
@@ -22,7 +23,6 @@ export interface FakeWalletOptions {
 export interface FakeWallet {
   announce: () => void
   push: (method: string, params: unknown) => void
-  requestedMethods: () => string[]
   dispose: () => void
 }
 
@@ -35,7 +35,6 @@ interface IncomingMessage {
 export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const target = options.target ?? options.id
   const accounts = options.accounts ?? [{ partyId: `${options.id}::1220abcd`, primary: true }]
-  const seen: string[] = []
   let statusCallCount = 0
 
   const announce = (): void => {
@@ -56,14 +55,18 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     return responses[index]
   }
 
+  const buildStatus = (): StatusEvent => ({
+    provider: { id: options.id, providerType: 'browser' },
+    connection: { isConnected: nextStatusIsConnected(), isNetworkConnected: true },
+  })
+
+  const buildConnect = (): ConnectResult => ({ isConnected: true, isNetworkConnected: true })
+
   // Thunks, not eager values — calling other methods must not advance the statusResponses sequence.
   const answer = (method: string): unknown => {
     const responses: Record<string, () => unknown> = {
-      status: () => ({
-        provider: { id: options.id, providerType: 'browser' },
-        connection: { isConnected: nextStatusIsConnected() },
-      }),
-      connect: () => ({ isConnected: true }),
+      status: buildStatus,
+      connect: buildConnect,
       listAccounts: () => accounts,
     }
     return (responses[method] ?? (() => ({})))()
@@ -96,7 +99,6 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     }
 
     const method = data.request?.method ?? ''
-    seen.push(method)
 
     // No `target`: the real submitResponse frame doesn't carry one either.
     window.postMessage(
@@ -127,7 +129,6 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   return {
     announce,
     push,
-    requestedMethods: (): string[] => [...seen],
     dispose: (): void => {
       window.removeEventListener('message', onMessage)
       window.removeEventListener(CANTON_REQUEST_PROVIDER_EVENT, announce)
