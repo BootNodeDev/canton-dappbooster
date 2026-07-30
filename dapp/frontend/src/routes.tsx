@@ -1,9 +1,9 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
-import { AppShell } from '@/app/AppShell'
-import { CreateGrantPage } from '@/features/create/CreateGrantPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { GrantDetailPage } from '@/features/grant-detail/GrantDetailPage'
-import { ProposalsPage } from '@/features/proposals/ProposalsPage'
+import { AppShell } from '@/components/AppShell'
+import { CreateGrantPage } from '@/features/CreateGrantPage'
+import { DashboardPage } from '@/features/DashboardPage'
+import { GrantDetailPage } from '@/features/GrantDetailPage'
+import { ProposalsPage } from '@/features/ProposalsPage'
 
 export const routes: RouteObject[] = [
   {

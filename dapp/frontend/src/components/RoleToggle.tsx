@@ -18,6 +18,7 @@ export const RoleToggle = (): React.JSX.Element => {
         <button
           key={r.value}
           type="button"
+          aria-pressed={role === r.value}
           onClick={() => setRole(r.value)}
           className={cn(
             'rounded-full px-4 py-1.5 text-[0.8rem] font-bold transition-colors',
