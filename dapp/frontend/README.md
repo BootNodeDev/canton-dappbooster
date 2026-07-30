@@ -33,8 +33,8 @@ which party you act as; it is remembered in `localStorage`). No env vars needed.
 | `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), and `seed.ts` (the sample dataset, relative to now). |
 | `src/wallet/` | `WalletProvider` (the DirectWallet): the party pool and the "acting as" party. Exposes `useParty` / `useConnect` / `useParties` / `useBackend`. |
 | `src/store/useVestingStore.ts` | Backend-backed store; actions submit then refresh. Pure `deriveGrant` + `lib/schedule.ts` mirror the on-ledger math. |
-| `src/app/` | Shell: landing party-picker, top bar (role lens, theme, party switcher), sidebar. Renders the app only once a party is selected. |
-| `src/features/` | Pages: dashboard, proposals, create, grant-detail. |
+| `src/components/` | Every component, shell and leaf alike: `AppShell` (renders the app only once a party is selected), the landing party-picker, top bar (role lens, theme, party switcher), sidebar, and the cards, dialogs, table, and charts they compose. |
+| `src/features/` | Routed pages only: dashboard, proposals, create, grant-detail. |
 
 ## Going live (deferred)
 
