@@ -17,16 +17,16 @@
   /* accent */
   --cnc-accent: #692581;
   --cnc-accent-hover: #8b46a4;
-  --cnc-accent-muted: #f3e8f8;
+  --cnc-accent-subtle: #f3e8f8;
   --cnc-accent-fg: #ffffff;
 
   /* state */
   --cnc-success: #137047;
-  --cnc-success-muted: #e2f3ea;
+  --cnc-success-subtle: #e2f3ea;
   --cnc-warning: #8a6400;
-  --cnc-warning-muted: #f6ecd2;
+  --cnc-warning-subtle: #f6ecd2;
   --cnc-danger: #a32626;
-  --cnc-danger-muted: #f6dede;
+  --cnc-danger-subtle: #f6dede;
 
   /* shape — mode-independent, so no dark counterpart */
   --cnc-radius: 4px;
@@ -52,14 +52,14 @@
   /* accent */
   --cnc-accent: #9d54b8;
   --cnc-accent-hover: #b06cc9;
-  --cnc-accent-muted: #2a1f3a;
+  --cnc-accent-subtle: #2a1f3a;
   --cnc-accent-fg: #ffffff;
 
   /* state */
   --cnc-success: #5fbf86;
-  --cnc-success-muted: #16291f;
+  --cnc-success-subtle: #16291f;
   --cnc-warning: #d4a85a;
-  --cnc-warning-muted: #332a16;
+  --cnc-warning-subtle: #332a16;
   --cnc-danger: #e57373;
-  --cnc-danger-muted: #331a1a;
+  --cnc-danger-subtle: #331a1a;
 }
