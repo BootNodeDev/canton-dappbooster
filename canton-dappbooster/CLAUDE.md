@@ -11,12 +11,12 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 
 ## Layout
 
-On top of the root rules:
+`src/components/Identifier/` is the reference. On top of the root rules:
 
 - `anatomy.ts` is a fixed, contractual filename inside a component folder, not a stylistic choice.
   It is the single source of truth for theme selectors, test assertions, and docs.
-- Part classes are kebab-case regardless of the folder's casing: `Placeholder/` renders
-  `.cnc-placeholder`, a future `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
+- Part classes are kebab-case regardless of the folder's casing: `Identifier/` renders
+  `.cnc-identifier`, a future `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
 - `src/index.ts` is the public API. Nothing else is importable by consumers.
 - `src/icons/` sits at the root ahead of the second-consumer rule: an icon is never one component's,
   and its shared `Svg` wrapper has no component folder to belong to. One icon per file, named after
@@ -34,7 +34,8 @@ accessibility and markup semantics. The styling contract they defer to is this:
 3. **Theme styles** — add the part-class rules to `canton-theme`'s `default.css` (under
    `@layer cnc`, reading `var(--cnc-*)`); add any new tokens to its `tokens.css`.
 4. **Test** — the contract the root rule says to assert against is `anatomy.parts.*` here. A state
-   the theme styles but no role or accessible name carries needs a live-region part of its own.
+   the theme styles but no role or accessible name carries needs a live-region part; see `status` on
+   `<Identifier>`.
 5. **Export** from `src/index.ts`.
 
 ## Working Rules

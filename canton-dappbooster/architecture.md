@@ -28,7 +28,7 @@ style with the default theme, their own CSS, or nothing.
 Each component declares its contract as code — a typed const of `parts` (CSS class hooks) and
 `states` (the `data-*` / `aria-*` values styled off). It is the single source of truth: theme
 selectors, test assertions, and docs all derive from it, so the behavior engine underneath can
-change without breaking consumers. See `src/placeholder/anatomy.ts` for the reference shape.
+change without breaking consumers. See `src/components/Identifier/anatomy.ts` for the reference shape.
 
 The class strings live in `anatomy.ts`; the theme (a separate package) selects the same strings.
 Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
@@ -45,11 +45,24 @@ primitives — `<Identifier>` (#6), explorer link (#9), hash (#10) — need no s
 hand-rolled with plain React state. So the `@zag-js/*` dependency lands with the first widget that
 needs it, not before; adding it now would be an unused dependency.
 
+`@zag-js/clipboard` is a genuine fit for `<Identifier>`'s copy control, and it still loses: it
+models copied/not-copied but not a rejected write, which the `onCopy` outcome contract needs, and
+it takes the value as machine config rather than per call, which a list of per-row copy controls
+would pay for. Because the anatomy is the contract, the swap stays available: it would rewrite
+`src/hooks/useCopyToClipboard.ts` and touch neither the parts, the props, the theme, nor the tests.
+A real tooltip in place of the `title` attribute would flip that verdict immediately.
+
 ## Styling hooks
 
-- **Parts** are semantic classes: `.cnc-<component>*` (e.g. `.cnc-placeholder`).
+- **Parts** are semantic classes: `.cnc-<component>*`, BEM `__` for sub-parts (e.g.
+  `.cnc-identifier`, `.cnc-identifier__copy`).
 - **State** is the `aria-*` / `data-state` already on the element, so the styling hook and the
   accessibility state are one source of truth.
+- **One exception to zero styling:** visually hiding a live region is functional, not decorative —
+  a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
+  the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way
+  Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is
+  styled in L2.
 - Tokens are `var(--cnc-*, <fallback>)`; defaults live under `@layer cnc` so consumer CSS wins.
 - Token naming convention and dark mode are owned by #19; the theme provider by #13.
 

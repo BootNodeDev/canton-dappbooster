@@ -21,6 +21,19 @@ import '@bootnodedev/canton-theme/default.css'
   define the `--cnc-*` properties yourself) to theme and to support dark mode.
 - All defaults live under `@layer cnc`, so your own CSS wins without specificity fights.
 
+With Tailwind, position the `cnc` layer explicitly. Tailwind otherwise owns the layer order it
+emits, and its preflight resets `button { color: inherit }`, which beats the theme's copy-control
+colours. Declare the order yourself, before the first `@import`:
+
+```css
+@layer properties, theme, base, cnc, components, utilities;
+
+@import "tailwindcss";
+```
+
+Any layer Tailwind emits that the statement omits lands on top of the ones it names, so keep
+`properties` (its `@property` polyfill) in the list.
+
 ## Why a separate package
 
 Components (L2) carry zero styling opinion; the theme (L3) is a separate concern styling the DOM
