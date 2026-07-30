@@ -1,5 +1,5 @@
-// Display formatting. Amounts and party ids render in JetBrains Mono (see tokens);
-// these helpers handle grouping, truncation, and relative dates.
+// Display formatting: amount grouping and relative dates. Identifier truncation lives in
+// the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
 
 const ccFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 0,
@@ -28,18 +28,6 @@ export const clampClaimAmount = (amount: number, available: number): number =>
   Number(Math.min(amount, available).toFixed(10))
 
 export const formatPct = (fraction: number): string => `${(fraction * 100).toFixed(1)}%`
-
-// A Canton party id is `hint::fingerprint`. Show the readable hint plus a short
-// fingerprint tail, e.g. `alice::1220…c4d1`.
-export const shortenParty = (partyId: string): string => {
-  const [hint, fingerprint] = partyId.split('::')
-  if (fingerprint === undefined) {
-    return hint.length > 14 ? `${hint.slice(0, 6)}…${hint.slice(-4)}` : hint
-  }
-  return `${hint}::${fingerprint.slice(0, 4)}…${fingerprint.slice(-4)}`
-}
-
-export const partyHint = (partyId: string): string => partyId.split('::')[0]
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',

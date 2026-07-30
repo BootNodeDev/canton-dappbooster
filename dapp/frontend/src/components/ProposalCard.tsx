@@ -1,4 +1,5 @@
-import { formatCC, formatDate, relativeTime, shortenParty } from '@/lib/format'
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import { formatCC, formatDate, relativeTime } from '@/lib/format'
 import { vestedFraction } from '@/lib/schedule'
 import type { Proposal } from '@/store/types'
 import { Button } from './Button'
@@ -29,7 +30,7 @@ export const ProposalCard = ({
         <div className="min-w-0">
           <h3 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h3>
           <div className="mt-1 font-mono text-xs text-fg-soft">
-            {direction === 'incoming' ? 'from' : 'to'} {shortenParty(counterparty)}
+            {direction === 'incoming' ? 'from' : 'to'} {truncateIdentifier(counterparty)}
           </div>
         </div>
         <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>

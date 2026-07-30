@@ -1,3 +1,4 @@
+import { Identifier } from '@bootnodedev/canton-dappbooster'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
@@ -9,8 +10,9 @@ import { ArrowLeftIcon, LockIcon } from '@/components/icons'
 import { MilestoneTimeline } from '@/components/MilestoneTimeline'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { StatusPill } from '@/components/StatusPill'
+import { copyToast } from '@/components/toast'
 import { useNow } from '@/lib/clock'
-import { formatCC, formatDate, shortenParty } from '@/lib/format'
+import { formatCC, formatDate } from '@/lib/format'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
 
 const Stat = ({
@@ -165,9 +167,17 @@ export const GrantDetailPage = (): React.JSX.Element => {
                 ['Receiver', grant.receiver],
               ] as const
             ).map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-3">
+              <div key={label} className="flex items-center justify-between gap-3">
                 <dt className="text-fg-muted">{label}</dt>
-                <dd className="truncate font-mono text-xs text-fg">{shortenParty(value)}</dd>
+                <dd className="m-0 min-w-0">
+                  <Identifier
+                    value={value}
+                    label={`${label.toLowerCase()} party id`}
+                    announce={false}
+                    onCopy={copyToast(`${label} party id`)}
+                    className="text-xs"
+                  />
+                </dd>
               </div>
             ))}
           </dl>

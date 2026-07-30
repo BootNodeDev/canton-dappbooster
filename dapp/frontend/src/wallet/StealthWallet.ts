@@ -1,8 +1,8 @@
 // Hosted wallet over the wallet-service. listParties() reads the service's
 // CanActAs pool; execute() submits via the ledgerApi proxy (no signing popup).
+import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { walletServiceRequest } from '@/backend/ledgerApi'
 import type { PartyRef } from '@/backend/VestingBackend'
-import { partyHint } from '@/lib/format'
 import type { DisclosedContract, LedgerCommand, Wallet } from './Wallet'
 
 type Account = { partyId: string; hint?: string }

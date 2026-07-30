@@ -22,9 +22,9 @@ Applied on import to fit this repo's conventions and land green **mock-first**:
   zero services. `WalletProvider` picks `MockWallet` in that same case. The live
   `LiteBackend` code is kept in-tree but inert until a deployment config appears.
 - **Shared kit + theme (new):** added `@bootnodedev/canton-dappbooster` and
-  `@bootnodedev/canton-theme`; `main.tsx` imports the theme CSS and the top bar
-  renders the temporary `<Placeholder />` kit-pipeline proof (shown only once
-  connected; replaced by `<Identifier>` in #6).
+  `@bootnodedev/canton-theme`; `src/styles/index.css` imports the theme CSS. The
+  source's own party-id truncation and copy helpers were dropped in favour of the
+  kit's `<Identifier>` primitive and its `truncateIdentifier` / `partyHint` formatters.
 - **Centralized tooling:** removed the vendored `biome.json`, `CLAUDE.md`,
   `AGENTS.md`, `architecture.md`, and `.nvmrc`; the repo uses one root Biome config
   and root Node pin. The source's `noImportantStyles`/`noDescendingSpecificity` CSS

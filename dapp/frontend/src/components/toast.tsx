@@ -32,6 +32,17 @@ export const toast = {
   info: (message: string): void => useToastStore.getState().push('info', message),
 }
 
+// The Toaster is the app's live region, so kit `<Identifier>`s using this pass `announce={false}`.
+export const copyToast =
+  (noun: string) =>
+  (outcome: { ok: boolean }): void => {
+    if (outcome.ok) {
+      toast.success(`${noun} copied`)
+    } else {
+      toast.error(`Could not copy ${noun.toLowerCase()}`)
+    }
+  }
+
 const toneStyles: Record<ToastTone, string> = {
   success: 'border-success/40 text-success',
   error: 'border-danger/40 text-danger',

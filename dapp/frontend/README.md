@@ -43,9 +43,17 @@ bootstrap-written `public/vesting-lite-parties.json` (`{pkg, operator, rpcUrl}`)
 flips `createBackend` to `LiteBackend` with no code change — the `MockBackend` and
 `LiteBackend` share the same `VestingBackend` seam.
 
-## Note: kit Placeholder
+## Shared kit
 
-The top bar renders `<Placeholder />` from `@bootnodedev/canton-dappbooster`
-(styled by `@bootnodedev/canton-theme`) once connected — a temporary proof that the
-kit build + theming pipeline is wired end-to-end. It is replaced by the real
-`<Identifier>` primitive in #6.
+Party ids come from `@bootnodedev/canton-dappbooster`, styled by
+`@bootnodedev/canton-theme`. The app holds no truncation or copy-to-clipboard
+logic of its own. Where an id is a standalone element it renders the full
+`<Identifier>` primitive (the wallet menu, the grant-detail parties list); where
+it sits inside a `<button>`, a `<Link>`, or a sentence it uses the kit's pure
+`truncateIdentifier` / `partyHint` formatters instead, since a copy control
+cannot nest inside another interactive element.
+
+`src/styles/index.css` is the single stylesheet entry. Its leading
+`@layer properties, theme, base, cnc, components, utilities` runs before the
+first `@import`, which is what puts the theme's `cnc` layer above Tailwind's
+preflight and below the app's utilities.

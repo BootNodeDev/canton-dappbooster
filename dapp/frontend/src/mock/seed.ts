@@ -2,15 +2,15 @@ import type { PartyRef, VestingView } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
 import type { VestingSchedule } from '@/lib/schedule'
 
-// The mock deployment's operator (contract provider). Internal to the mock; not a
-// selectable party.
-export const MOCK_OPERATOR = 'operator::mock-vesting'
+// Not real 68-char fingerprints, but long enough to trip display truncation. Tails differ so the
+// shortened forms stay distinguishable.
+export const MOCK_OPERATOR = 'operator::12205b3e91d7a04c68f2b15e9c37d80a4f6b23e15c98d740a2e63f19'
 
 const PARTY = {
-  alice: 'alice::mock-vesting',
-  bob: 'bob::mock-vesting',
-  carol: 'carol::mock-vesting',
-  dave: 'dave::mock-vesting',
+  alice: 'alice::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb4',
+  bob: 'bob::1220a7c31e08f45a92d6108e37cb2f5019ad4e6b73c8f21d09b5e7a3',
+  carol: 'carol::12204e8a17c93b06d2f5e84a1b7c3d90f6a2e5b8c1d47f30a9e62b1',
+  dave: 'dave::1220c91f37b6d284e05a3c7f18b92d6e4a70c53f81b26d9e04a7f3c2',
 } as const
 
 // The party pool the DirectWallet offers on the landing picker.

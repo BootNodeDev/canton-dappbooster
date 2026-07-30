@@ -1,5 +1,6 @@
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
-import { formatCC, formatPct, shortenParty } from '@/lib/format'
+import { formatCC, formatPct } from '@/lib/format'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
 import { Button } from './Button'
@@ -60,9 +61,7 @@ export const GrantTable = ({
                     {grant.title}
                   </Link>
                   <div className="mt-0.5 font-mono text-[0.7rem] text-fg-soft">
-                    {role === 'receiver'
-                      ? shortenParty(grant.creator)
-                      : shortenParty(grant.receiver)}
+                    {truncateIdentifier(role === 'receiver' ? grant.creator : grant.receiver)}
                   </div>
                 </td>
                 <td className="px-4 py-3.5">
