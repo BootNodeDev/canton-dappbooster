@@ -6,11 +6,10 @@
 | --- | --- | --- |
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
 | `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
-| `carpincho-wallet` (separate repo) | Vite 6 + React 18 + Tailwind v4 + Radix UI + WalletConnect + `@tanstack/react-query` + `@noble/ed25519` | CIP-0103 browser wallet, encrypted vault, signer, injected provider — lives in its own repo (github.com/BootNodeDev/carpincho-wallet) |
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; runs mock-first (in-memory backend, no services). Live ledger + CIP-0103 path deferred |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
-| `canton-connect-kit/` | TypeScript + React | Reusable wallet connection hooks |
-| `canton-dappbooster/` | TypeScript + React + tsdown | L2 headless UI components, zero styling |
+| `canton-connect-kit/` | TypeScript + React 19 | Reusable wallet connection hooks |
+| `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
 
 ## Data Flow

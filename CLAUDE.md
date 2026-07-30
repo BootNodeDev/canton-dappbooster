@@ -68,8 +68,8 @@ Subproject docs must not restate root rules. They should describe only their loc
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
-| [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 18 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React + tsdown + vitest + Biome | n/a (library) |
+| [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 19 + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. The temporary `Placeholder` + its `dapp/frontend` use are replaced by `<Identifier>` in #6. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
