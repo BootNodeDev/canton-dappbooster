@@ -287,6 +287,82 @@ describe('CantonConnectProvider', () => {
     wallet.dispose()
   })
 
+  it('returns the in-flight attempt instead of starting a second connect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-reentrant',
+      target: 'wallet-reentrant',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    // Announced wallets surface in the picker as browser:ext:<id>.
+    const config = {
+      appName: 'test',
+      walletPicker: createAutoPicker('browser:ext:wallet-reentrant'),
+    }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    const connectSpy = vi.spyOn(result.current.sdk, 'connect')
+
+    await act(async () => {
+      const first = result.current.connect()
+      const second = result.current.connect()
+
+      // Identity, not equivalence: an async wrapper re-wraps the shared promise per caller.
+      expect(second).toBe(first)
+
+      await Promise.all([first, second])
+    })
+
+    expect(connectSpy).toHaveBeenCalledTimes(1)
+    expect(result.current.party?.partyId).toBe('alice::1')
+
+    wallet.dispose()
+  })
+
+  it('leaves no orphaned wiring when connect() overlaps an in-flight connect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-overlap',
+      target: 'wallet-overlap',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletPicker: createAutoPicker('browser:ext:wallet-overlap') }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      const first = result.current.connect.connect()
+      const second = result.current.connect.connect()
+      await Promise.all([first, second])
+    })
+
+    expect(result.current.party.party?.partyId).toBe('alice::1')
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    act(() => {
+      wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
+    })
+
+    // Rejecting proves no wiring survived the disconnect — a leaked listener would deliver the push.
+    await expect(
+      waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::9')),
+    ).rejects.toThrow()
+
+    expect(result.current.party.party).toBe(undefined)
+
+    wallet.dispose()
+  })
+
   it('keeps delivering events to useParty() after a throwing picker rejects connect() on a restored session', async () => {
     localStorage.setItem(
       KERNEL_DISCOVERY_KEY,
