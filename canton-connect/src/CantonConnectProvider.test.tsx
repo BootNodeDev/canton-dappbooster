@@ -287,6 +287,45 @@ describe('CantonConnectProvider', () => {
     wallet.dispose()
   })
 
+  it('tears down the wiring when the session vanishes between connect() and the account read', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-vanish',
+      target: 'wallet-vanish',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    // connect() itself succeeds; the account read then fails and the probe finds no session left.
+    vi.spyOn(DappSDK.prototype, 'listAccounts').mockRejectedValue(new Error('read exploded'))
+    vi.spyOn(DappSDK.prototype, 'status').mockRejectedValue(new Error('no session'))
+
+    const config = { appName: 'test', walletPicker: createAutoPicker('browser:ext:wallet-vanish') }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await expect(result.current.connect.connect()).rejects.toThrow('read exploded')
+    })
+
+    expect(result.current.party.status).toBe('disconnected')
+
+    act(() => {
+      wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
+    })
+
+    // The push is already in flight; disposing now keeps a failure here from leaking the announce listener.
+    wallet.dispose()
+
+    // The wiring went up after connect() succeeded; rejecting proves the no-session reset took it down.
+    await expect(
+      waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::9')),
+    ).rejects.toThrow()
+
+    expect(result.current.party.party).toBe(undefined)
+  })
+
   it('tears down the previous client listeners before connect() swaps the client', async () => {
     localStorage.setItem(
       KERNEL_DISCOVERY_KEY,
@@ -474,6 +513,68 @@ describe('CantonConnectProvider', () => {
 
     expect(result.current.connectError?.message).toBe('cancel')
     expect(result.current.status).toBe('disconnected')
+  })
+
+  it('keeps the original connect error when the recovery read also fails', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    // Restore's internal check, our restore check, and the post-failure probe all see a live session.
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      statusResponses: [true, true, true],
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletPicker: throwingPicker }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+
+    // The recovery's own account read fails too — its error must not replace the picker's.
+    vi.spyOn(DappSDK.prototype, 'listAccounts').mockRejectedValue(new Error('read exploded'))
+
+    await act(async () => {
+      await expect(result.current.connect.connect()).rejects.toThrow('cancel')
+    })
+
+    // The wallet's part is over; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
+    expect(result.current.connect.connectError?.message).toBe('cancel')
+    expect(result.current.party.status).toBe('disconnected')
+  })
+
+  it('clears a previous connect error on disconnect()', async () => {
+    const config = { appName: 'test', walletPicker: throwingPicker }
+    const { result } = renderHook(() => useConnect(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await expect(result.current.connect()).rejects.toThrow('cancel')
+    })
+
+    expect(result.current.connectError?.message).toBe('cancel')
+
+    await act(async () => {
+      await result.current.disconnect()
+    })
+
+    expect(result.current.connectError).toBe(undefined)
   })
 
   it('surfaces an init failure instead of sitting idle', async () => {
