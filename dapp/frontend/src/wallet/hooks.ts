@@ -1,5 +1,5 @@
 import type { PartyRef, VestingBackend } from '@/backend/VestingBackend'
-import { useWalletContext } from './WalletProvider'
+import { useWalletContext } from '@/providers/WalletProvider'
 
 // Hook surface kept stable across the mock→direct swap: components import
 // useParty / useConnect. useParties exposes the pool + operator + availability for
