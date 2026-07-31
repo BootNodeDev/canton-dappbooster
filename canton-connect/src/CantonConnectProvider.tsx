@@ -24,9 +24,8 @@ import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
 /**
- * A snapshot of the transaction lifecycle, mirrored from the SDK's
- * `txChanged` event as a submitted command moves through pending, signed,
- * executed, or failed.
+ * Mirrored from the SDK's `txChanged` event as a command moves through
+ * pending, signed, executed or failed.
  */
 export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
@@ -35,44 +34,29 @@ export interface TxStatusSnapshot {
 }
 
 /**
- * The full connection state and actions shared by every hook in this
- * package. Read it via `useCantonConnectContext()`, or through one of the
- * narrower hooks (`useConnect`, `useParty`, etc.) that each pick a slice
- * of it.
+ * The full connection state and actions behind every hook in this package.
+ * Prefer the narrower hooks (`useConnect`, `useParty`, …); each picks a slice of this.
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
-  /**
-   * The `DappSDK` instance this provider drives. One per `CantonConnectProvider`,
-   * recreated only when `config.walletPicker` changes.
-   */
+  /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
-  /**
-   * True while the wallet reports connected-but-locked: a session exists
-   * but the wallet needs an unlock before it will serve requests.
-   */
+  /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
   isLocked: boolean
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /**
-   * Opens the wallet picker (the SDK's popup, or `config.walletPicker` when
-   * set) and connects the wallet selected there. Rejects if the user cancels
-   * or the connection fails.
-   */
+  /** Opens the picker — the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
   connect: () => Promise<void>
-  /** Disconnects and resets local state (`party`, `status`, `isLocked`, `lastTx`) even if the underlying SDK call fails. */
+  /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
 const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
-/**
- * Reads the current `CantonConnectContextValue` from context.
- * Throws if called outside a `CantonConnectProvider`.
- */
+/** Throws if called outside a `CantonConnectProvider`. */
 export const useCantonConnectContext = (): CantonConnectContextValue => {
   const ctx = useContext(CantonConnectContext)
   if (ctx === undefined) {
@@ -81,7 +65,6 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
   return ctx
 }
 
-/** Props for `CantonConnectProvider`. */
 export interface CantonConnectProviderProps {
   config: CantonConnectConfig
   children: ReactNode
@@ -115,16 +98,9 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
 }
 
 /**
- * Owns the wallet connection lifecycle for the part of the tree it wraps:
- * creates a `DappSDK` instance from `config`, restores a previous session on
- * mount (no need to call `connect()` again after a page refresh if one
- * exists), and wires wallet-pushed events into the state every hook in this
- * package reads.
- *
- * The hooks reading this context mirror wagmi's naming and decomposition,
- * not its result shapes: wagmi's hooks are TanStack Query mutations
- * (`mutate`/`mutateAsync`/`isPending`/`data`/`status`/`reset`); these resolve
- * plain promises and expose fields like `isSigning`/`isExecuting`/`signature`/`lastTx`.
+ * Owns the connection lifecycle: creates the `DappSDK` from `config`, restores a previous
+ * session on mount, and wires wallet-pushed events into the state the hooks read.
+ * Those hooks mirror wagmi's naming, not its TanStack Query result shapes.
  */
 export const CantonConnectProvider = ({
   config,

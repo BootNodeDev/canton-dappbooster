@@ -1,10 +1,8 @@
 import type { WalletPickerFn } from '@canton-network/dapp-sdk'
 
 /**
- * Creates a `WalletPickerFn` that selects without a UI — pass it as
- * `CantonConnectConfig.walletPicker` to drive `connect()` in tests or headless
- * dev flows. Selects the entry whose `providerId` matches `pick`, or the
- * first discovered entry when `pick` is omitted. Throws if no entry matches.
+ * A `walletPicker` that selects with no UI, for tests and headless dev flows: the entry
+ * whose `providerId` matches `pick`, or the first discovered one. Throws if none match.
  */
 export const createAutoPicker =
   (pick?: string): WalletPickerFn =>

@@ -1,12 +1,8 @@
 import { useCallback, useState } from 'react'
 import { useCantonConnectContext } from '../CantonConnectProvider'
 
-/** Return value of `useSignMessage`. */
 export interface UseSignMessageResult {
-  /**
-   * Signs `message` with the connected wallet's key and resolves with the
-   * signature. Throws if no wallet is connected.
-   */
+  /** Throws if no wallet is connected. */
   signMessage: (message: string) => Promise<string>
   signature: string | undefined
   isSigning: boolean
@@ -15,10 +11,8 @@ export interface UseSignMessageResult {
 }
 
 /**
- * Signs an arbitrary message with the connected wallet — the SDK owns
- * message encoding — and tracks the result.
- *
- * Wagmi counterpart: `useSignMessage` — same name, same job.
+ * Signs an arbitrary message with the connected wallet; the SDK owns encoding.
+ * Wagmi: `useSignMessage`, same name and job.
  */
 export const useSignMessage = (): UseSignMessageResult => {
   const ctx = useCantonConnectContext()
