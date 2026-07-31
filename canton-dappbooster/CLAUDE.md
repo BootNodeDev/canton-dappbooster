@@ -18,6 +18,8 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 - Part classes are kebab-case regardless of the folder's casing: `Identifier/` renders
   `.cnc-identifier`, a future `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
 - `src/index.ts` is the public API. Nothing else is importable by consumers.
+- Nothing in `src/providers/` renders DOM of its own, so those folders have no `anatomy.ts` and no
+  theme rules: there is no markup to style. The authoring steps below are for components that render.
 - `src/icons/` sits at the root ahead of the second-consumer rule: an icon is never one component's,
   and its shared `Svg` wrapper has no component folder to belong to. One icon per file, named after
   its export — the root `biome.json` enforces that filename.
@@ -49,6 +51,11 @@ accessibility and markup semantics. The styling contract they defer to is this:
 ## Testing
 
 - Tests are colocated in `src`, beside what they cover.
+- A test installs the state it needs and inherits none. `vitest.config.ts` sets `restoreMocks` and
+  `unstubGlobals`, and `vitest.setup.ts` clears `localStorage` and the `data-theme` attribute after
+  every test, so no stub, spy, or attribute from the test before it is ever load-bearing.
+- `src/testing/` holds the helpers that install that state: `stubPrefersDark` for the OS colour
+  preference, `stubClipboard` for `navigator.clipboard`.
 
 ## Validation Checklist
 

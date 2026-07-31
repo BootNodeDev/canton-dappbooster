@@ -12,8 +12,8 @@ import { createBackend, isDeployed, loadBackendConfig } from '@/backend/createBa
 import type { PartyRef, VestingBackend } from '@/backend/VestingBackend'
 import { MockWallet } from '@/mock/MockWallet'
 import { MOCK_OPERATOR } from '@/mock/seed'
-import { StealthWallet } from './StealthWallet'
-import type { Wallet } from './Wallet'
+import { StealthWallet } from '@/wallet/StealthWallet'
+import type { Wallet } from '@/wallet/Wallet'
 
 // DirectWalletProvider. Talks to the ledger through the active VestingBackend.
 // "Connecting" is just choosing which party to act as; the party is remembered in

@@ -9,7 +9,7 @@
 @import "@fontsource-variable/jetbrains-mono";
 @import "@bootnodedev/canton-theme/tokens.css";
 @import "@bootnodedev/canton-theme/default.css";
-@import "../theme/tokens.css";
+@import "./tokens.css";
 
 /* Map semantic CSS variables to Tailwind utilities. `inline` keeps the
    generated utilities pointing at the live var, so [data-theme] switching

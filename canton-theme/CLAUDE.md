@@ -59,7 +59,9 @@ makes sense for, not just the one component that needed it.
 
 Dark values hang off `[data-theme="dark"]`, never `@media (prefers-color-scheme: dark)` alone. A
 runtime that lets the user choose light *on a dark OS* has to be able to win, and it cannot override
-a media query. The attribute must decide in both directions.
+a media query. The attribute must decide in both directions. That runtime is `<ThemeProvider>` in
+[`../canton-dappbooster`](../canton-dappbooster); the attribute is the whole contract between them,
+and this package stays free of JavaScript.
 
 Every token in `:root` needs a dark counterpart unless it is mode-independent by construction
 (radius, font stack).

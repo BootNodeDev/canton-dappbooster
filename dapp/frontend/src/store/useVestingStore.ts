@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
+import { useBackend } from '@/hooks/useBackend'
+import { useParty } from '@/hooks/useParty'
 import { now } from '@/lib/clock'
 import { errorText } from '@/lib/errorText'
 import { MIN_GRANT_AMOUNT, vestedFraction } from '@/lib/schedule'
-import { useBackend, useParty } from '@/wallet/hooks'
 import type { Grant, Proposal, VestedClaim, WithdrawEvent } from './types'
 
 export type GrantStatus = 'in_cliff' | 'vesting' | 'fully_vested'

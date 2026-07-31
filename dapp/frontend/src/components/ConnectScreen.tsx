@@ -1,5 +1,6 @@
 import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
-import { useConnect, useParties } from '@/wallet/hooks'
+import { useConnect } from '@/hooks/useConnect'
+import { useParties } from '@/hooks/useParties'
 import { ThemeToggle } from './ThemeToggle'
 
 // Landing party picker. Picking a party enters the app. The party is remembered

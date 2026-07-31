@@ -8,7 +8,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { PartyRef } from '@/backend/VestingBackend'
 import { CheckIcon, ChevronDownIcon, CopyIcon, LogoutIcon } from '@/components/icons'
 import { copyToast, toast } from '@/components/toast'
-import { useConnect, useParties, useParty } from '@/wallet/hooks'
+import { useConnect } from '@/hooks/useConnect'
+import { useParties } from '@/hooks/useParties'
+import { useParty } from '@/hooks/useParty'
 
 // A switch row cannot use <Identifier>: its copy control would nest a button inside the switch.
 const PartyRow = ({

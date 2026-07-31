@@ -18,10 +18,15 @@ import '@bootnodedev/canton-theme/default.css'
 ```
 
 - `default.css` carries token fallbacks, so it renders standalone. Load `tokens.css` too (or
-  define the `--cnc-*` properties yourself) to theme and to support dark mode.
-- Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, before first paint
-  to avoid a flash. It deliberately does not follow `prefers-color-scheme` by itself, so that a mode
-  toggle can override the OS preference in both directions.
+  define the `--cnc-*` properties yourself) to theme and to support dark mode. Defining them
+  yourself also means setting `color-scheme` directly, one explicit value per mode: it is not a
+  `--cnc-*` property, so skipping it leaves the browser painting scrollbars, form controls, and the
+  caret in the wrong mode.
+- Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, as early as you can:
+  applied after first paint it flashes. It deliberately does not follow `prefers-color-scheme` by
+  itself, so that a mode toggle can override the OS preference in both directions.
+  [`canton-dappbooster`](../canton-dappbooster)'s `<ThemeProvider>` drives it from React; nothing
+  here depends on that, and setting the attribute yourself is equally valid.
 - Overriding a token means overriding it in both modes. Your `:root` also beats our
   `[data-theme="dark"]` block, so a light-only override stays applied in dark.
 - The whole package lives under `@layer cnc`, so any unlayered CSS of yours wins without specificity
