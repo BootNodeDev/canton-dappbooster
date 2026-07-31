@@ -2,13 +2,15 @@
 // through React context. Hooks (useConnect, useParty, useSignMessage, etc.)
 // are thin readers that subscribe to this context.
 
+import type { WalletPickerEntry, WalletPickerResult } from '@canton-network/core-types'
 import type {
   AccountsChangedEvent,
   ProviderAdapter,
   StatusEvent,
   TxChangedEvent,
+  WalletPickerFn,
 } from '@canton-network/dapp-sdk'
-import { DappSDK, WalletConnectAdapter } from '@canton-network/dapp-sdk'
+import { DappSDK, UserRejectedError, WalletConnectAdapter } from '@canton-network/dapp-sdk'
 import {
   createContext,
   type JSX,
@@ -39,7 +41,7 @@ export interface TxStatusSnapshot {
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
-  /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
+  /** One per `CantonConnectProvider`, recreated only when the effective picker changes. */
   sdk: DappSDK
   party: Party | undefined
   /** Every usable party the wallet holds, primary first. `party` is always `parties[0]`. */
@@ -50,6 +52,14 @@ export interface CantonConnectContextValue {
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
+  /**
+  /** The pending wallet choice, only ever open in `walletSelection: 'in-page'` mode. */
+  walletPicker: {
+    isOpen: boolean
+    wallets: WalletPickerEntry[]
+    select: (providerId: string) => void
+    cancel: () => void
+  }
   /**
    * Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel.
    * Idempotent while an attempt is in flight: a second call joins the first.
@@ -102,6 +112,16 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
   return adapters
 }
 
+// The SDK awaits the picker's promise; the dApp answers later, so we keep the settle pair, not the promise.
+interface PendingChoice {
+  entries: WalletPickerEntry[]
+  resolve: (result: WalletPickerResult) => void
+  reject: (error: Error) => void
+}
+
+// Stable identity, so a closed picker never churns consumers' memos.
+const NO_OFFERED_WALLETS: WalletPickerEntry[] = []
+
 /**
  * Owns the connection lifecycle: creates the `DappSDK` from `config`, restores a previous
  * session on mount, and wires wallet-pushed events into the state the hooks read.
@@ -120,10 +140,25 @@ export const CantonConnectProvider = ({
 
   const networkId = config.networkId ?? 'canton:local'
 
-  const sdk = useMemo(
-    () => new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {}),
-    [config.walletPicker],
+  // The in-page selection bridge: undefined means no choice is pending, even one offering zero wallets.
+  const [offeredWallets, setOfferedWallets] = useState<WalletPickerEntry[] | undefined>(undefined)
+  const pendingChoiceRef = useRef<PendingChoice | undefined>(undefined)
+
+  // Stable identity: the sdk memo keys on it, so a per-render function would rebuild the SDK every render.
+  const inPagePicker = useCallback<WalletPickerFn>(
+    (entries) =>
+      new Promise<WalletPickerResult>((resolve, reject) => {
+        pendingChoiceRef.current = { entries, resolve, reject }
+        setOfferedWallets(entries)
+      }),
+    [],
   )
+
+  // An explicit picker is a stronger statement of intent than the mode flag.
+  const walletPicker =
+    config.walletPicker ?? (config.walletSelection === 'in-page' ? inPagePicker : undefined)
+
+  const sdk = useMemo(() => new DappSDK(walletPicker ? { walletPicker } : {}), [walletPicker])
 
   const additionalAdapters = useMemo(
     () =>
@@ -337,6 +372,38 @@ export const CantonConnectProvider = ({
     setLastTx(undefined)
   }, [sdk, resetToDisconnected, teardownWiring])
 
+  const select = useCallback((providerId: string): void => {
+    const pending = pendingChoiceRef.current
+    if (pending === undefined) {
+      return
+    }
+
+    const entry = pending.entries.find((candidate) => candidate.providerId === providerId)
+
+    pendingChoiceRef.current = undefined
+    setOfferedWallets(undefined)
+
+    if (entry === undefined) {
+      // A consumer bug, not a user action — labelling it a cancellation would hide it.
+      pending.reject(new Error(`canton-connect: no offered wallet with providerId ${providerId}`))
+      return
+    }
+
+    // An entry structurally satisfies WalletPickerResult, so the chosen one is the answer.
+    pending.resolve(entry)
+  }, [])
+
+  const cancel = useCallback((): void => {
+    const pending = pendingChoiceRef.current
+    if (pending === undefined) {
+      return
+    }
+
+    pendingChoiceRef.current = undefined
+    setOfferedWallets(undefined)
+    pending.reject(new UserRejectedError('Wallet selection cancelled'))
+  }, [])
+
   const value = useMemo<CantonConnectContextValue>(
     () => ({
       config,
@@ -348,10 +415,31 @@ export const CantonConnectProvider = ({
       connectError,
       isConnecting: status === 'connecting',
       lastTx,
+      walletPicker: {
+        // Derived from state, not the ref: a ref mutation would not re-render consumers.
+        isOpen: offeredWallets !== undefined,
+        wallets: offeredWallets ?? NO_OFFERED_WALLETS,
+        select,
+        cancel,
+      },
       connect,
       disconnect,
     }),
-    [config, sdk, party, parties, status, isLocked, connectError, lastTx, connect, disconnect],
+    [
+      config,
+      sdk,
+      party,
+      parties,
+      status,
+      isLocked,
+      connectError,
+      lastTx,
+      offeredWallets,
+      select,
+      cancel,
+      connect,
+      disconnect,
+    ],
   )
 
   return <CantonConnectContext.Provider value={value}>{children}</CantonConnectContext.Provider>

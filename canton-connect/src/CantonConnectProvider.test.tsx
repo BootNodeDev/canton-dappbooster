@@ -10,6 +10,7 @@ import { useLedger } from './hooks/useLedger'
 import { useParties } from './hooks/useParties'
 import { useParty } from './hooks/useParty'
 import { useSignMessage } from './hooks/useSignMessage'
+import { useWalletPicker } from './hooks/useWalletPicker'
 import { useWalletStatus } from './hooks/useWalletStatus'
 import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
@@ -1010,5 +1011,137 @@ describe('CantonConnectProvider', () => {
     expect(result.current.parties.parties).toEqual([])
 
     wallet.dispose()
+  })
+
+  it('publishes the offered wallets in in-page mode and connects the one select() picks', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-inpage',
+      target: 'wallet-inpage',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    // Announced wallets surface in the picker as browser:ext:<id>.
+    expect(result.current.picker.wallets.map((entry) => entry.providerId)).toContain(
+      'browser:ext:wallet-inpage',
+    )
+
+    await act(async () => {
+      result.current.picker.select('browser:ext:wallet-inpage')
+      await attempt
+    })
+
+    wallet.dispose()
+
+    expect(result.current.picker.isOpen).toBe(false)
+    expect(result.current.picker.wallets).toEqual([])
+    expect(result.current.party.party?.partyId).toBe('alice::1')
+  })
+
+  it('never opens a choice when in-page selection is off', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-popupmode',
+      target: 'wallet-popupmode',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = {
+      appName: 'test',
+      walletPicker: createAutoPicker('browser:ext:wallet-popupmode'),
+    }
+    const { result } = renderHook(() => ({ connect: useConnect(), picker: useWalletPicker() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    wallet.dispose()
+
+    expect(result.current.connect.isConnected).toBe(true)
+    expect(result.current.picker.isOpen).toBe(false)
+    expect(result.current.picker.wallets).toEqual([])
+  })
+
+  it('keeps an explicit walletPicker in charge even when in-page mode is on', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-precedence',
+      target: 'wallet-precedence',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = {
+      appName: 'test',
+      walletSelection: 'in-page' as const,
+      walletPicker: createAutoPicker('browser:ext:wallet-precedence'),
+    }
+    const { result } = renderHook(() => ({ connect: useConnect(), picker: useWalletPicker() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    // Resolving without select() ever being called proves the explicit picker answered.
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    wallet.dispose()
+
+    expect(result.current.connect.isConnected).toBe(true)
+    expect(result.current.picker.isOpen).toBe(false)
+  })
+
+  it('rejects the choice, naming the id, when select() is given an unoffered wallet', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-badselect',
+      target: 'wallet-badselect',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(() => ({ connect: useConnect(), picker: useWalletPicker() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    // A consumer bug, not a user cancellation — the rejection must name the id.
+    await act(async () => {
+      result.current.picker.select('not-offered')
+      await expect(attempt).rejects.toThrow(/not-offered/)
+    })
+
+    wallet.dispose()
+
+    expect(result.current.picker.isOpen).toBe(false)
+    expect(result.current.connect.isConnecting).toBe(false)
+    expect(result.current.connect.connectError?.message).toContain('not-offered')
   })
 })

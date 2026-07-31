@@ -13,6 +13,15 @@ export interface Party {
   publicKey?: string
 }
 
+/**
+ * The wallet a session belongs to, noted when it was chosen. Popup mode reports
+ * none: the SDK never says which wallet its own UI selected.
+ */
+export interface ConnectedWallet {
+  providerId: string
+  name: string
+}
+
 export interface CantonConnectConfig {
   /** WalletConnect pairing metadata only, so it is inert without `walletConnectProjectId`. */
   appName: string
@@ -24,7 +33,13 @@ export interface CantonConnectConfig {
   networkId?: string
   /** Reown project id. Without it, no WalletConnect entry is offered in the picker. */
   walletConnectProjectId?: string
-  /** Omit for the SDK's built-in popup picker. */
+  /**
+   * Where the user chooses a wallet. `'in-page'` hands the choice to your UI:
+   * `useWalletPicker()` reports the offered wallets while `connect()` waits. That
+   * list exists only during an attempt — wallets cannot be listed before one.
+   */
+  walletSelection?: 'popup' | 'in-page'
+  /** Omit for the SDK's built-in popup picker. Wins over `walletSelection`. */
   walletPicker?: WalletPickerFn
   /** Registered alongside the discovered ones, e.g. `createMockAdapter()` in dev/test. */
   additionalAdapters?: ProviderAdapter[]
