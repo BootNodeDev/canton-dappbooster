@@ -6,5 +6,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // A stub or spy surviving into the next test is an order-dependent pass; undo both centrally.
+    restoreMocks: true,
+    unstubGlobals: true,
   },
 })
