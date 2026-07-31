@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectPrimaryAccount, toParty } from './walletAccount'
+import { selectPrimaryAccount, toParties, toParty } from './walletAccount'
 
 describe('selectPrimaryAccount', () => {
   it('returns undefined for an empty list', () => {
@@ -35,5 +35,76 @@ describe('toParty', () => {
     expect(party.networkId).toBe('canton:prod')
     expect(party.publicKey).toBe('pk')
     expect(party.name).toBe(undefined)
+  })
+})
+
+describe('toParties', () => {
+  it('drops accounts whose status is not allocated', () => {
+    const parties = toParties(
+      [
+        { partyId: 'alice::1', status: 'allocated' },
+        { partyId: 'bob::2', status: 'initialized' },
+        { partyId: 'carol::3', status: 'removed' },
+      ],
+      'canton:local',
+    )
+
+    expect(parties.map((party) => party.partyId)).toEqual(['alice::1'])
+  })
+
+  it('keeps an account that reports no status at all', () => {
+    const parties = toParties([{ partyId: 'alice::1' }], 'canton:local')
+
+    expect(parties.map((party) => party.partyId)).toEqual(['alice::1'])
+  })
+
+  it('keeps a disabled account — disabled is a signing-provider note, not a usability flag', () => {
+    const parties = toParties(
+      [{ partyId: 'alice::1', status: 'allocated', disabled: true }],
+      'canton:local',
+    )
+
+    expect(parties.map((party) => party.partyId)).toEqual(['alice::1'])
+  })
+
+  it('puts the primary account first and keeps the wallet order otherwise', () => {
+    const parties = toParties(
+      [
+        { partyId: 'bob::2', status: 'allocated' },
+        { partyId: 'alice::1', status: 'allocated', primary: true },
+        { partyId: 'carol::3', status: 'allocated' },
+      ],
+      'canton:local',
+    )
+
+    expect(parties.map((party) => party.partyId)).toEqual(['alice::1', 'bob::2', 'carol::3'])
+  })
+
+  it('falls back to wallet order when nothing is flagged primary', () => {
+    const parties = toParties(
+      [
+        { partyId: 'bob::2', status: 'allocated' },
+        { partyId: 'alice::1', status: 'allocated' },
+      ],
+      'canton:local',
+    )
+
+    expect(parties.map((party) => party.partyId)).toEqual(['bob::2', 'alice::1'])
+  })
+
+  it('applies the networkId fallback per account', () => {
+    const parties = toParties(
+      [
+        { partyId: 'alice::1', status: 'allocated' },
+        { partyId: 'bob::2', status: 'allocated', networkId: 'canton:devnet' },
+      ],
+      'canton:local',
+    )
+
+    expect(parties.map((party) => party.networkId)).toEqual(['canton:local', 'canton:devnet'])
+  })
+
+  it('returns an empty list when every account is unusable', () => {
+    expect(toParties([{ partyId: 'alice::1', status: 'initialized' }], 'canton:local')).toEqual([])
   })
 })
