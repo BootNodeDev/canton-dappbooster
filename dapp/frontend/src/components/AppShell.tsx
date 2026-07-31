@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
+import { useParty } from '@/hooks/useParty'
 import { useUiStore } from '@/store/useUiStore'
-import { useParty } from '@/wallet/hooks'
 import { ConnectScreen } from './ConnectScreen'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'

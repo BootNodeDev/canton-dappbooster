@@ -6,12 +6,12 @@ import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
+import { useParty } from '@/hooks/useParty'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
-import { useParty } from '@/wallet/hooks'
 
 type CurveKind = 'linear' | 'milestone'
 

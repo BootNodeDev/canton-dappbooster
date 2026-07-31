@@ -1,9 +1,9 @@
 import type { ComponentType, SVGProps } from 'react'
 import { NavLink } from 'react-router-dom'
 import { DashboardIcon, InboxIcon, PlusCircleIcon } from '@/components/icons'
+import { useParty } from '@/hooks/useParty'
 import { cn } from '@/lib/cn'
 import { useVestingStore } from '@/store/useVestingStore'
-import { useParty } from '@/wallet/hooks'
 
 interface NavItem {
   to: string
