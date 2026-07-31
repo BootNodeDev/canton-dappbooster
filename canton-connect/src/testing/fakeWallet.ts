@@ -7,7 +7,6 @@ import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 
 const JSON_RPC_METHOD_NOT_FOUND = -32601
 
-/** A single account the fake wallet reports from `listAccounts`. */
 export interface FakeWalletAccount {
   partyId: string
   primary?: boolean
@@ -15,33 +14,26 @@ export interface FakeWalletAccount {
   publicKey?: string
 }
 
-/** Options for `createFakeWallet`. */
 export interface FakeWalletOptions {
   /** Provider id announced to `window`, and the postMessage `target` unless `target` is set. */
   id: string
-  /** Display name announced with the wallet. Defaults to `id`. */
+  /** Defaults to `id`. */
   name?: string
   /** postMessage target frame id. Defaults to `id`. */
   target?: string
-  /** Accounts returned from `listAccounts`. Defaults to a single account with `id` as its party prefix. */
+  /** Defaults to a single account with `id` as its party prefix. */
   accounts?: FakeWalletAccount[]
   /**
-   * `isConnected` answered on each successive `status` call, in order; the
-   * last entry repeats once exhausted. Lets a test simulate a session that
-   * restores connected, then reports locked.
+   * `isConnected` per successive `status` call, the last entry repeating once exhausted —
+   * lets a test restore a connected session, then report it locked.
    */
   statusResponses?: boolean[]
 }
 
-/** Handle returned by `createFakeWallet` for driving and tearing down the fake extension. */
 export interface FakeWallet {
   /** Re-announces the wallet, as if the extension had just loaded. */
   announce: () => void
-  /**
-   * Sends `method`/`params` to the page as a wallet-pushed notification
-   * (e.g. `'accountsChanged'`, `'statusChanged'`, `'txChanged'`) — the same
-   * way a real extension pushes unsolicited events.
-   */
+  /** Pushes an unsolicited notification the way a real extension does, e.g. `'statusChanged'`. */
   push: (method: string, params: unknown) => void
   /** Removes the `window` listeners this fake installed. Call it in test teardown. */
   dispose: () => void
@@ -54,12 +46,9 @@ interface IncomingMessage {
 }
 
 /**
- * Spins up a fake CIP-0103 browser-extension wallet for tests: announces
- * itself over `window` events and answers the same postMessage protocol a
- * real extension speaks, so it exercises the SDK's genuine `ExtensionAdapter`
- * transport rather than a stub. Answers `connect`, `status`, `listAccounts`
- * and `disconnect`; any other request rejects naming the method. Use `push` to
- * simulate wallet-initiated events, and call `dispose` when done.
+ * A fake CIP-0103 extension wallet for tests. It speaks the real postMessage protocol, so it
+ * exercises the SDK's genuine `ExtensionAdapter` rather than a stub. Answers `connect`,
+ * `status`, `listAccounts` and `disconnect`; anything else rejects naming the method.
  */
 export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const target = options.target ?? options.id

@@ -2,18 +2,11 @@ import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback, useState } from 'react'
 import { type TxStatusSnapshot, useCantonConnectContext } from '../CantonConnectProvider'
 
-/**
- * The SDK's own params for `prepareExecuteAndWait`, re-exported so callers
- * don't need a direct dependency on `@canton-network/dapp-sdk` for the type.
- */
+/** Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type. */
 export type { PrepareExecuteParams }
 
-/** Return value of `useExecute`. */
 export interface UseExecuteResult {
-  /**
-   * Submits `params` through the connected wallet and resolves once the
-   * ledger executes it. Throws if no wallet is connected.
-   */
+  /** Resolves once the ledger has executed, not at submission. Throws if not connected. */
   execute: (params: PrepareExecuteParams) => Promise<unknown>
   lastTx: TxStatusSnapshot | undefined
   isExecuting: boolean
@@ -22,14 +15,9 @@ export interface UseExecuteResult {
 }
 
 /**
- * Submits ledger commands through the connected wallet and tracks the
- * resulting transaction in `lastTx`, which `CantonConnectProvider` wires to the
- * SDK's `txChanged` event as it moves through pending, signed, and executed
- * or failed.
- *
- * Wagmi counterpart: `useWriteContract` and `useWaitForTransactionReceipt`
- * together, since `execute` resolves after execution rather than returning
- * at submission.
+ * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's
+ * `txChanged` event. Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`,
+ * since `execute` resolves after execution rather than at submission.
  */
 export const useExecute = (): UseExecuteResult => {
   const ctx = useCantonConnectContext()
