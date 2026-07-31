@@ -242,6 +242,51 @@ describe('CantonConnectProvider', () => {
     wallet.dispose()
   })
 
+  it('lands disconnected, with the wiring gone, when a restored session cannot read accounts', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-badread',
+      target: 'wallet-badread',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    // Connect once so a session exists to restore.
+    const config = { appName: 'test', walletPicker: createAutoPicker('browser:ext:wallet-badread') }
+    const first = renderHook(() => useConnect(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await first.result.current.connect()
+    })
+
+    first.unmount()
+
+    vi.spyOn(DappSDK.prototype, 'listAccounts').mockRejectedValue(new Error('read exploded'))
+
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.connect.connectError?.message).toBe('read exploded'))
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.party.party).toBe(undefined)
+
+    act(() => {
+      wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
+    })
+
+    // The wiring went up before the read; rejecting proves it came down when the read failed.
+    await expect(
+      waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::9')),
+    ).rejects.toThrow()
+
+    wallet.dispose()
+  })
+
   it('tears down the previous client listeners before connect() swaps the client', async () => {
     localStorage.setItem(
       KERNEL_DISCOVERY_KEY,
@@ -429,6 +474,20 @@ describe('CantonConnectProvider', () => {
 
     expect(result.current.connectError?.message).toBe('cancel')
     expect(result.current.status).toBe('disconnected')
+  })
+
+  it('surfaces an init failure instead of sitting idle', async () => {
+    vi.spyOn(DappSDK.prototype, 'init').mockRejectedValue(new Error('init exploded'))
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => ({ connect: useConnect(), party: useParty() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.connect.connectError?.message).toBe('init exploded'))
+    expect(result.current.party.status).toBe('disconnected')
   })
 
   it('offers a WalletConnect entry when a project id is configured', async () => {
