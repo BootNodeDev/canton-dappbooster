@@ -50,7 +50,10 @@ export interface CantonConnectContextValue {
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
+  /**
+   * Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel.
+   * Idempotent while an attempt is in flight: a second call joins the first.
+   */
   connect: () => Promise<void>
   /** Resets `party`, `parties`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
@@ -228,7 +231,10 @@ export const CantonConnectProvider = ({
     }
   }, [sdk, additionalAdapters, syncFromStatus])
 
-  const connect = useCallback(async (): Promise<void> => {
+  // The in-flight connect; a second call joins it instead of starting a rival attempt.
+  const attemptRef = useRef<Promise<void> | undefined>(undefined)
+
+  const runConnect = useCallback(async (): Promise<void> => {
     setStatus('connecting')
     setConnectError(undefined)
 
@@ -268,6 +274,24 @@ export const CantonConnectProvider = ({
       throw err
     }
   }, [sdk, applyAccounts, wireEvents, syncFromStatus])
+
+  // Not async: an async wrapper re-wraps the shared promise per caller, and a fire-and-forget join would then reject unhandled.
+  const connect = useCallback((): Promise<void> => {
+    const inFlight = attemptRef.current
+    if (inFlight !== undefined) {
+      return inFlight
+    }
+
+    const attempt = runConnect().finally(() => {
+      attemptRef.current = undefined
+    })
+    attemptRef.current = attempt
+
+    // One handler always attached, so a caller that ignores the promise cannot cause an unhandled rejection.
+    void attempt.catch(() => undefined)
+
+    return attempt
+  }, [runConnect])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()
