@@ -12,6 +12,9 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`canton-barebones/wallet-service/CLAUDE.md`](canton-barebones/wallet-service/CLAUDE.md) — wallet-service bridge rules
 - `canton-barebones/`, `dapp/daml/`, `dapp/frontend/` — see each subproject's `README.md`
 
+`dapp/frontend/` has no `CLAUDE.md`; its seams are in
+[`dapp/frontend/architecture.md`](dapp/frontend/architecture.md).
+
 The Carpincho wallet (CIP-0103 browser wallet) lives in its own repository at
 [github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet); it is no longer part of this monorepo.
 
@@ -37,7 +40,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect-kit/` | yes | shim | yes | yes | Public hook API, connector abstractions, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/frontend/` | yes | no | no | no | Canton Coin vesting dApp (mock-first); root rules + README suffice. Carries a `PROVENANCE.md` recording the vendored source. |
+| `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp (mock-first); root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
@@ -178,7 +181,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-connect-kit`: `pnpm test` (Node `node:test` + `tsx`)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
-- Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic — schedule math, the mock backend, the store, and the ACS→domain mappers; component/DOM behaviour and app+kit integration are out of scope there.
+- Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`).
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 

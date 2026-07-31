@@ -25,35 +25,13 @@ pnpm run app:dev   # → http://localhost:3012
 Pick any party on the landing screen to "connect" (the DirectWallet just chooses
 which party you act as; it is remembered in `localStorage`). No env vars needed.
 
-## Parts
-
-| Path | Role |
-|------|------|
-| `src/backend/` | `VestingBackend` interface + pure ACS→domain mappers. `createBackend` returns the in-memory `MockBackend` by default, or `LiteBackend` (real ledger over the wallet-service `ledgerApi` proxy) once a `vesting-lite-parties.json` is present. |
-| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), and `seed.ts` (the sample dataset, relative to now). |
-| `src/wallet/` | `WalletProvider` (the DirectWallet): the party pool and the "acting as" party. Exposes `useParty` / `useConnect` / `useParties` / `useBackend`. |
-| `src/store/useVestingStore.ts` | Backend-backed store; actions submit then refresh. Pure `deriveGrant` + `lib/schedule.ts` mirror the on-ledger math. |
-| `src/components/` | Every component, shell and leaf alike: `AppShell` (renders the app only once a party is selected), the landing party-picker, top bar (role lens, theme, party switcher), sidebar, and the cards, dialogs, table, and charts they compose. |
-| `src/features/` | Routed pages only: dashboard, proposals, create, grant-detail. |
-
 ## Going live (deferred)
 
 When the `vesting-lite` DAML package and bootstrap land, dropping the
 bootstrap-written `public/vesting-lite-parties.json` (`{pkg, operator, rpcUrl}`)
-flips `createBackend` to `LiteBackend` with no code change — the `MockBackend` and
-`LiteBackend` share the same `VestingBackend` seam.
+flips the app to the real ledger with no code change.
 
-## Shared kit
+## How it fits together
 
-Party ids come from `@bootnodedev/canton-dappbooster`, styled by
-`@bootnodedev/canton-theme`. The app holds no truncation or copy-to-clipboard
-logic of its own. Where an id is a standalone element it renders the full
-`<Identifier>` primitive (the wallet menu, the grant-detail parties list); where
-it sits inside a `<button>`, a `<Link>`, or a sentence it uses the kit's pure
-`truncateIdentifier` / `partyHint` formatters instead, since a copy control
-cannot nest inside another interactive element.
-
-`src/styles/index.css` is the single stylesheet entry. Its leading
-`@layer properties, theme, base, cnc, components, utilities` runs before the
-first `@import`, which is what puts the theme's `cnc` layer above Tailwind's
-preflight and below the app's utilities.
+The internal seams and the reasoning behind them are in
+[`architecture.md`](architecture.md).
