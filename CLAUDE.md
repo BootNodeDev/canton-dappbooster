@@ -8,6 +8,7 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 
 - [`canton-connect-kit/CLAUDE.md`](canton-connect-kit/CLAUDE.md) — wagmi-style React hooks for Canton dApps
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
+- [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md) — L3 `--cnc-*` token naming convention
 - [`canton-barebones/wallet-service/CLAUDE.md`](canton-barebones/wallet-service/CLAUDE.md) — wallet-service bridge rules
 - `canton-barebones/`, `dapp/daml/`, `dapp/frontend/` — see each subproject's `README.md`
 
@@ -40,9 +41,20 @@ Current distribution:
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
-| `canton-theme/` | yes | no | no | no | Plain-CSS theme (L3); README covers the two CSS exports. |
+| `canton-theme/` | yes | shim | yes | no | Plain-CSS theme (L3); README covers the two CSS exports, `CLAUDE.md` the `--cnc-*` naming convention an agent adding a token would otherwise invent. |
 
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
+
+**Reference material never goes in a README.** A README answers "what is this and how do I run it".
+Enumerations belong elsewhere however short they are: token lists, prop tables, exported-symbol
+indexes, config keys.
+
+- When the code *is* the list — a token file, a type, a barrel — the code is the doc. Group it with
+  category comments; a prose copy drifts within two PRs.
+- A rule constraining how to author the code goes in the nearest `CLAUDE.md`.
+- A seam between units goes in `architecture.md`.
+
+A README may state that a contract exists and link to it. It may not restate it.
 
 ## Stack & Conventions (monorepo)
 

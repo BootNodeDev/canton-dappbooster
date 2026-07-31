@@ -64,7 +64,8 @@ A real tooltip in place of the `title` attribute would flip that verdict immedia
   Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is
   styled in L2.
 - Tokens are `var(--cnc-*, <fallback>)`; defaults live under `@layer cnc` so consumer CSS wins.
-- Token naming convention and dark mode are owned by #19; the theme provider by #13.
+- Token naming convention and dark mode live in
+  [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md); the theme provider is still #13.
 
 ## Build & packaging
 
