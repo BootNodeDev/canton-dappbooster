@@ -55,7 +55,7 @@ export interface CantonConnectContextValue {
    * Idempotent while an attempt is in flight: a second call joins the first.
    */
   connect: () => Promise<void>
-  /** Resets `party`, `parties`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
+  /** Resets `party`, `parties`, `status`, `isLocked`, `connectError` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
@@ -209,15 +209,12 @@ export const CantonConnectProvider = ({
     [applyAccounts],
   )
 
+  // Disconnected is a clean slate: connectError becomes exactly the reason given, or nothing.
   const resetToDisconnected = useCallback((error?: Error): void => {
     setParty(undefined)
     setParties([])
     setIsLocked(false)
-
-    if (error !== undefined) {
-      setConnectError(error)
-    }
-
+    setConnectError(error)
     setStatus('disconnected')
   }, [])
 
@@ -296,17 +293,19 @@ export const CantonConnectProvider = ({
       const accounts = await sdk.listAccounts()
       markConnected(accounts)
     } catch (err) {
-      setConnectError(err as Error)
-
       // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
       const restored = await sdk.status().catch(() => undefined)
 
       if (restored === undefined) {
+        // The try above may have wired the swapped-in client; a vanished session must not keep listeners live.
+        teardownWiring()
         resetToDisconnected()
       } else {
         await syncFromStatus(restored)
       }
 
+      // Recorded after recovery so a failed recovery read cannot replace the error the caller catches.
+      setConnectError(err as Error)
       throw err
     }
   }, [sdk, markConnected, resetToDisconnected, syncFromStatus, teardownWiring, wireEvents])
