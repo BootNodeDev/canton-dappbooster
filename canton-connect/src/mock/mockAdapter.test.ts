@@ -50,6 +50,17 @@ describe('createMockAdapter', () => {
     expect(accounts[1]).toMatchObject({ partyId: 'bob::1220cd', primary: false })
   })
 
+  it('reports each account status, defaulting to allocated', async () => {
+    const provider = createMockAdapter({
+      accounts: [{ partyId: 'alice::1220ab', status: 'initialized' }, { partyId: 'bob::1220cd' }],
+    }).provider()
+
+    const accounts = await provider.request({ method: 'listAccounts' })
+
+    expect(accounts[0]?.status).toBe('initialized')
+    expect(accounts[1]?.status).toBe('allocated')
+  })
+
   it('falls back to a default account when none are configured', async () => {
     const provider = createMockAdapter({ id: 'mock-b' }).provider()
 

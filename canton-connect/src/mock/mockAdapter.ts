@@ -20,6 +20,8 @@ export interface MockAccount {
   partyId: string
   name?: string
   publicKey?: string
+  /** Wallet-reported lifecycle status. Defaults to `'allocated'`; set to model a not-yet-allocated or removed party. */
+  status?: dappAPI.WalletStatus
 }
 
 export interface CreateMockAdapterOptions {
@@ -41,8 +43,9 @@ const DEFAULT_PROVIDER_ID: ProviderId = 'mock'
 const DEFAULT_NAME = 'Mock Wallet'
 const DEFAULT_DESCRIPTION = 'Mock wallet for dev and tests — no real signing, never a live wallet'
 
-// Wallet requires status/signingProviderId; neither has a real mock equivalent.
-const MOCK_WALLET_STATUS: dappAPI.WalletStatus = 'allocated'
+// Wallet requires a status; accounts that don't declare one report allocated.
+const DEFAULT_WALLET_STATUS: dappAPI.WalletStatus = 'allocated'
+// Wallet requires signingProviderId; it has no real mock equivalent.
 const MOCK_SIGNING_PROVIDER_ID: dappAPI.SigningProviderId = 'mock'
 // Obviously fake, not '' — a presence check downstream shouldn't mistake this for real.
 const MOCK_PUBLIC_KEY: dappAPI.PublicKey = 'mock-public-key'
@@ -59,7 +62,7 @@ const toWallet = (
   ({
     primary,
     partyId: account.partyId,
-    status: MOCK_WALLET_STATUS,
+    status: account.status ?? DEFAULT_WALLET_STATUS,
     hint: account.name ?? account.partyId,
     publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
     // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.

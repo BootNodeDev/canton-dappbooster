@@ -3,7 +3,7 @@ import {
   CANTON_REQUEST_PROVIDER_EVENT,
   WalletEvent,
 } from '@canton-network/core-types'
-import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
+import type { ConnectResult, dappAPI, StatusEvent } from '@canton-network/dapp-sdk'
 
 const JSON_RPC_METHOD_NOT_FOUND = -32601
 
@@ -12,6 +12,8 @@ export interface FakeWalletAccount {
   primary?: boolean
   name?: string
   publicKey?: string
+  /** Wallet-reported lifecycle status. Omit to simulate a wallet that reports none. */
+  status?: dappAPI.WalletStatus
 }
 
 export interface FakeWalletOptions {
