@@ -1,7 +1,6 @@
-// Selecting a single party from a CIP-0103 listAccounts response. Wallets
-// typically tag exactly one entry with `primary: true`; this helper falls
-// back to the first entry when nothing is flagged.
+// Mapping a CIP-0103 listAccounts response to the package's Party type.
 
+import type { dappAPI } from '@canton-network/dapp-sdk'
 import type { Party } from './types'
 
 // One entry of a CIP-0103 listAccounts response, before mapping to Party.
@@ -11,6 +10,9 @@ interface RawWalletAccount {
   hint?: string
   publicKey?: string
   networkId?: string
+  status?: dappAPI.WalletStatus
+  // Never filter on this: a disabled party still works — it signs through the participant.
+  disabled?: boolean
 }
 
 export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAccount | undefined =>
@@ -23,3 +25,18 @@ export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): P
   ...(account.hint === undefined ? {} : { name: account.hint }),
   ...(account.publicKey === undefined ? {} : { publicKey: account.publicKey }),
 })
+
+// Only an allocated party exists on the ledger; a missing status is trusted (older wallets).
+const isUsable = (account: RawWalletAccount): boolean =>
+  account.status === undefined || account.status === 'allocated'
+
+// Every usable account as a Party: primary first, wallet order otherwise.
+export const toParties = (accounts: RawWalletAccount[], fallbackNetworkId: string): Party[] => {
+  const usable = accounts.filter(isUsable)
+  const primary = selectPrimaryAccount(usable)
+
+  const ordered =
+    primary === undefined ? usable : [primary, ...usable.filter((account) => account !== primary)]
+
+  return ordered.map((account) => toParty(account, fallbackNetworkId))
+}
