@@ -7,6 +7,7 @@ import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectP
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
 import { useLedger } from './hooks/useLedger'
+import { useParties } from './hooks/useParties'
 import { useParty } from './hooks/useParty'
 import { useSignMessage } from './hooks/useSignMessage'
 import { useWalletStatus } from './hooks/useWalletStatus'
@@ -666,5 +667,112 @@ describe('CantonConnectProvider', () => {
     })
 
     expect(result.current.execute.error).toBe(undefined)
+  })
+
+  it('exposes every usable party through useParties(), primary first', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-parties',
+      target: 'wallet-parties',
+      accounts: [
+        { partyId: 'bob::2', status: 'allocated' },
+        { partyId: 'alice::1', status: 'allocated', primary: true },
+        { partyId: 'pending::3', status: 'initialized' },
+      ],
+    })
+
+    // Announced wallets surface in the picker as browser:ext:<id>.
+    const config = { appName: 'test', walletPicker: createAutoPicker('browser:ext:wallet-parties') }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), parties: useParties(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    expect(result.current.parties.parties.map((party) => party.partyId)).toEqual([
+      'alice::1',
+      'bob::2',
+    ])
+    expect(result.current.party.party?.partyId).toBe('alice::1')
+    // The invariant every later task leans on: party is always parties[0].
+    expect(result.current.party.party).toEqual(result.current.parties.parties[0])
+
+    wallet.dispose()
+  })
+
+  it('an accountsChanged push updates useParties(), not only useParty()', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-push-parties',
+      target: 'wallet-push-parties',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = {
+      appName: 'test',
+      walletPicker: createAutoPicker('browser:ext:wallet-push-parties'),
+    }
+    const { result } = renderHook(() => ({ connect: useConnect(), parties: useParties() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    act(() => {
+      wallet.push('accountsChanged', [
+        { partyId: 'carol::9', primary: true, status: 'allocated' },
+        { partyId: 'dave::8', status: 'allocated' },
+        { partyId: 'nope::7', status: 'removed' },
+      ])
+    })
+
+    await waitFor(() =>
+      expect(result.current.parties.parties.map((party) => party.partyId)).toEqual([
+        'carol::9',
+        'dave::8',
+      ]),
+    )
+
+    wallet.dispose()
+  })
+
+  it('empties useParties() on disconnect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-parties-off',
+      target: 'wallet-parties-off',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = {
+      appName: 'test',
+      walletPicker: createAutoPicker('browser:ext:wallet-parties-off'),
+    }
+    const { result } = renderHook(() => ({ connect: useConnect(), parties: useParties() }), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+    expect(result.current.parties.parties).toHaveLength(1)
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    expect(result.current.parties.parties).toEqual([])
+
+    wallet.dispose()
   })
 })

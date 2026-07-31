@@ -21,7 +21,7 @@ import {
   useState,
 } from 'react'
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
-import { selectPrimaryAccount, toParty } from './walletAccount'
+import { toParties } from './walletAccount'
 
 /**
  * Mirrored from the SDK's `txChanged` event as a command moves through
@@ -42,6 +42,8 @@ export interface CantonConnectContextValue {
   /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
   sdk: DappSDK
   party: Party | undefined
+  /** Every usable party the wallet holds, primary first. `party` is always `parties[0]`. */
+  parties: Party[]
   status: ConnectionStatus
   /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
   isLocked: boolean
@@ -50,7 +52,7 @@ export interface CantonConnectContextValue {
   lastTx: TxStatusSnapshot | undefined
   /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
   connect: () => Promise<void>
-  /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
+  /** Resets `party`, `parties`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
@@ -108,6 +110,7 @@ export const CantonConnectProvider = ({
 }: CantonConnectProviderProps): JSX.Element => {
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [party, setParty] = useState<Party | undefined>(undefined)
+  const [parties, setParties] = useState<Party[]>([])
   const [isLocked, setIsLocked] = useState(false)
   const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)
   const [connectError, setConnectError] = useState<Error | undefined>(undefined)
@@ -144,10 +147,19 @@ export const CantonConnectProvider = ({
   // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().
   const teardownRef = useRef<(() => void) | undefined>(undefined)
 
+  // The initial read and the accountsChanged push are two doors into the same state; one mapping keeps them from drifting.
+  const applyAccounts = useCallback(
+    (accounts: AccountsChangedEvent): void => {
+      const mapped = toParties(accounts, networkId)
+      setParties(mapped)
+      setParty(mapped[0])
+    },
+    [networkId],
+  )
+
   const wireEvents = useCallback((): (() => void) => {
     const onAccounts = (accounts: AccountsChangedEvent): void => {
-      const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, networkId))
+      applyAccounts(accounts)
     }
     const onStatus = (event: StatusEvent): void => {
       setIsLocked(!event.connection.isConnected)
@@ -169,9 +181,9 @@ export const CantonConnectProvider = ({
       void sdk.removeOnStatusChanged(onStatus).catch(() => undefined)
       void sdk.removeOnTxChanged(onTx).catch(() => undefined)
     }
-  }, [sdk, networkId])
+  }, [sdk, applyAccounts])
 
-  // Shared by mount-restore and a failed connect() that left a live client behind — wires events (unless already wired) and syncs isLocked/status/party from a status() read.
+  // Shared by mount-restore and a failed connect() that left a live client behind — wires events (unless already wired) and syncs isLocked/status/parties from a status() read.
   const syncFromStatus = useCallback(
     async (restored: StatusEvent): Promise<void> => {
       // Wire events regardless of lock state so a later unlock push isn't dropped silently.
@@ -183,15 +195,16 @@ export const CantonConnectProvider = ({
       setStatus('connected')
 
       if (!restored.connection.isConnected) {
-        setParty(undefined) // locked — wait for the unlock push
+        // Locked — wait for the unlock push.
+        setParty(undefined)
+        setParties([])
         return
       }
 
       const accounts = await sdk.listAccounts()
-      const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, networkId))
+      applyAccounts(accounts)
     },
-    [sdk, networkId, wireEvents],
+    [sdk, applyAccounts, wireEvents],
   )
 
   useEffect(() => {
@@ -232,8 +245,7 @@ export const CantonConnectProvider = ({
       teardownRef.current = wireEvents()
 
       const accounts = await sdk.listAccounts()
-      const primary = selectPrimaryAccount(accounts)
-      setParty(primary === undefined ? undefined : toParty(primary, networkId))
+      applyAccounts(accounts)
 
       // connect() only resolves for an unlocked wallet, so clear any lock left by a restored session.
       setIsLocked(false)
@@ -246,6 +258,7 @@ export const CantonConnectProvider = ({
 
       if (restored === undefined) {
         setParty(undefined)
+        setParties([])
         setIsLocked(false)
         setStatus('disconnected')
       } else {
@@ -254,7 +267,7 @@ export const CantonConnectProvider = ({
 
       throw err
     }
-  }, [sdk, networkId, wireEvents, syncFromStatus])
+  }, [sdk, applyAccounts, wireEvents, syncFromStatus])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()
@@ -263,6 +276,7 @@ export const CantonConnectProvider = ({
     await sdk.disconnect().catch(() => undefined)
 
     setParty(undefined)
+    setParties([])
     setStatus('disconnected')
     setIsLocked(false)
     setLastTx(undefined)
@@ -273,6 +287,7 @@ export const CantonConnectProvider = ({
       config,
       sdk,
       party,
+      parties,
       status,
       isLocked,
       connectError,
@@ -281,7 +296,7 @@ export const CantonConnectProvider = ({
       connect,
       disconnect,
     }),
-    [config, sdk, party, status, isLocked, connectError, lastTx, connect, disconnect],
+    [config, sdk, party, parties, status, isLocked, connectError, lastTx, connect, disconnect],
   )
 
   return <CantonConnectContext.Provider value={value}>{children}</CantonConnectContext.Provider>
