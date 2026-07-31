@@ -1,6 +1,6 @@
+import { ThemeProvider } from '@bootnodedev/canton-dappbooster'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Toaster } from '@/components/toast'
-import { ThemeProvider } from '@/theme/ThemeProvider'
 import { WalletProvider } from '@/wallet/WalletProvider'
 import { routes } from './routes'
 

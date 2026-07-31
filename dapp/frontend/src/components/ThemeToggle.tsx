@@ -1,5 +1,5 @@
+import { useTheme } from '@bootnodedev/canton-dappbooster'
 import { MoonIcon, SunIcon } from '@/components/icons'
-import { useTheme } from '@/theme/ThemeProvider'
 
 export const ThemeToggle = (): React.JSX.Element => {
   const { resolved, toggle } = useTheme()

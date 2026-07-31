@@ -6,18 +6,6 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Canton Vesting</title>
     <meta name="description" content="Vesting dashboard for cc-vesting-contracts on Canton" />
-    <script>
-      // Set theme before first paint to avoid a flash.
-      (() => {
-        try {
-          const stored = localStorage.getItem("cc-vesting-theme")
-          const dark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches
-          document.documentElement.dataset.theme = dark ? "dark" : "light"
-        } catch {
-          document.documentElement.dataset.theme = "dark"
-        }
-      })()
-    </script>
   </head>
   <body>
     <div id="root"></div>
