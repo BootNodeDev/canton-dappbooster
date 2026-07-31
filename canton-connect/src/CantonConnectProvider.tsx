@@ -186,7 +186,42 @@ export const CantonConnectProvider = ({
     }
   }, [sdk, applyAccounts])
 
-  // Shared by mount-restore and a failed connect() that left a live client behind — wires events (unless already wired) and syncs isLocked/status/parties from a status() read.
+  const teardownWiring = useCallback((): void => {
+    teardownRef.current?.()
+    teardownRef.current = undefined
+  }, [])
+
+  // Connected but locked: the session exists, its accounts are unreadable until the unlock push.
+  const markConnectedLocked = useCallback((): void => {
+    setParty(undefined)
+    setParties([])
+    setIsLocked(true)
+    setStatus('connected')
+  }, [])
+
+  // An account read only succeeds against an unlocked wallet.
+  const markConnected = useCallback(
+    (accounts: AccountsChangedEvent): void => {
+      applyAccounts(accounts)
+      setIsLocked(false)
+      setStatus('connected')
+    },
+    [applyAccounts],
+  )
+
+  const resetToDisconnected = useCallback((error?: Error): void => {
+    setParty(undefined)
+    setParties([])
+    setIsLocked(false)
+
+    if (error !== undefined) {
+      setConnectError(error)
+    }
+
+    setStatus('disconnected')
+  }, [])
+
+  // Never throws: a failed read is contained here, so connect()'s catch keeps its original error.
   const syncFromStatus = useCallback(
     async (restored: StatusEvent): Promise<void> => {
       // Wire events regardless of lock state so a later unlock push isn't dropped silently.
@@ -194,42 +229,51 @@ export const CantonConnectProvider = ({
         teardownRef.current = wireEvents()
       }
 
-      setIsLocked(!restored.connection.isConnected)
-      setStatus('connected')
-
       if (!restored.connection.isConnected) {
-        // Locked — wait for the unlock push.
-        setParty(undefined)
-        setParties([])
+        markConnectedLocked()
         return
       }
 
-      const accounts = await sdk.listAccounts()
-      applyAccounts(accounts)
+      try {
+        const accounts = await sdk.listAccounts()
+        markConnected(accounts)
+      } catch (err) {
+        // Left wired, the next push would set a party on a disconnected provider.
+        teardownWiring()
+        resetToDisconnected(err as Error)
+      }
     },
-    [sdk, applyAccounts, wireEvents],
+    [sdk, markConnected, markConnectedLocked, resetToDisconnected, teardownWiring, wireEvents],
   )
 
   useEffect(() => {
     let cancelled = false
 
     // defaultAdapters: [] keeps the SDK's bundled localhost dev gateway out of the picker.
-    void sdk.init({ additionalAdapters, defaultAdapters: [] }).then(async () => {
-      if (cancelled) return
+    void sdk
+      .init({ additionalAdapters, defaultAdapters: [] })
+      .then(async () => {
+        if (cancelled) return
 
-      // status() throws when there's nothing to restore — that's normal, not an error.
-      const restored = await sdk.status().catch(() => undefined)
-      if (cancelled || restored === undefined) return
+        // status() throws when there's nothing to restore — that's normal, not an error.
+        const restored = await sdk.status().catch(() => undefined)
+        if (cancelled || restored === undefined) return
 
-      await syncFromStatus(restored)
-    })
+        await syncFromStatus(restored)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+
+        // Only init() can land here — syncFromStatus never throws — so nothing was wired yet.
+        setConnectError(err as Error)
+        setStatus('disconnected')
+      })
 
     return () => {
       cancelled = true
-      teardownRef.current?.()
-      teardownRef.current = undefined
+      teardownWiring()
     }
-  }, [sdk, additionalAdapters, syncFromStatus])
+  }, [sdk, additionalAdapters, syncFromStatus, teardownWiring])
 
   // The in-flight connect; a second call joins it instead of starting a rival attempt.
   const attemptRef = useRef<Promise<void> | undefined>(undefined)
@@ -239,8 +283,7 @@ export const CantonConnectProvider = ({
     setConnectError(undefined)
 
     // Remove listeners from the current client before connect() swaps in a new one.
-    teardownRef.current?.()
-    teardownRef.current = undefined
+    teardownWiring()
 
     try {
       const result = await sdk.connect() // opens the picker
@@ -251,11 +294,7 @@ export const CantonConnectProvider = ({
       teardownRef.current = wireEvents()
 
       const accounts = await sdk.listAccounts()
-      applyAccounts(accounts)
-
-      // connect() only resolves for an unlocked wallet, so clear any lock left by a restored session.
-      setIsLocked(false)
-      setStatus('connected')
+      markConnected(accounts)
     } catch (err) {
       setConnectError(err as Error)
 
@@ -263,17 +302,14 @@ export const CantonConnectProvider = ({
       const restored = await sdk.status().catch(() => undefined)
 
       if (restored === undefined) {
-        setParty(undefined)
-        setParties([])
-        setIsLocked(false)
-        setStatus('disconnected')
+        resetToDisconnected()
       } else {
         await syncFromStatus(restored)
       }
 
       throw err
     }
-  }, [sdk, applyAccounts, wireEvents, syncFromStatus])
+  }, [sdk, markConnected, resetToDisconnected, syncFromStatus, teardownWiring, wireEvents])
 
   // Not async: an async wrapper re-wraps the shared promise per caller, and a fire-and-forget join would then reject unhandled.
   const connect = useCallback((): Promise<void> => {
@@ -294,17 +330,13 @@ export const CantonConnectProvider = ({
   }, [runConnect])
 
   const disconnect = useCallback(async (): Promise<void> => {
-    teardownRef.current?.()
-    teardownRef.current = undefined
+    teardownWiring()
 
     await sdk.disconnect().catch(() => undefined)
 
-    setParty(undefined)
-    setParties([])
-    setStatus('disconnected')
-    setIsLocked(false)
+    resetToDisconnected()
     setLastTx(undefined)
-  }, [sdk])
+  }, [sdk, resetToDisconnected, teardownWiring])
 
   const value = useMemo<CantonConnectContextValue>(
     () => ({
