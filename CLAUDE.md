@@ -82,7 +82,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect-kit/`](canton-connect-kit/) | wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets | TypeScript + React 19 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling). Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`. Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
@@ -117,10 +117,13 @@ Placement:
 - Colocate by default. A module used by one component lives beside it; promote it only when a second
   consumer appears.
 - Promoted code goes in a kind folder at the src root (`components/`, `hooks/`, `icons/`,
-  `testing/`). Those exist from their first member.
+  `providers/`, `testing/`). Those exist from their first member.
 - Components live in `components/`, which is a kind folder like the rest and gets no special case.
   Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
   than a parent composing them.
+- A component whose job is to supply context rather than render markup lives in `providers/`, named
+  `<Thing>Provider`, so what wraps the tree is one place to look instead of a hunt through feature
+  folders.
 - A leaf collection (`icons.tsx`, `hooks.ts`) holds same-kind exports beside their one consumer.
   Promoting it to a kind folder splits it into one file per export, named after that export.
 - Never a folder wrapping a single module. A one-file component stays a flat file

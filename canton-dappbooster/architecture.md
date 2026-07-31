@@ -63,9 +63,36 @@ A real tooltip in place of the `title` attribute would flip that verdict immedia
   the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way
   Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is
   styled in L2.
-- Tokens are `var(--cnc-*, <fallback>)`; defaults live under `@layer cnc` so consumer CSS wins.
+- Tokens are `var(--cnc-*, <fallback>)`; the whole theme package is under `@layer cnc` so consumer
+  CSS wins.
 - Token naming convention and dark mode live in
-  [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md); the theme provider is still #13.
+  [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md).
+
+## Theme runtime
+
+`<ThemeProvider>` is the one runtime export that touches the L3 seam, and it touches it at exactly
+one point: it writes `light` or `dark` to `data-theme` on `<html>`, which is the attribute the theme
+keys its dark values on. It reads no token names and ships no CSS, so a consumer swapping the theme
+out keeps the runtime.
+
+The attribute is the contract, so a consumer can also drive it themselves and skip the provider.
+
+The write happens in a layout effect, so the tree the provider wraps never paints in the wrong theme.
+What still flashes is the page background, painted before the bundle runs. Closing that needs either a
+script in `<head>` ahead of the bundle, which makes the consumer carry a pasted string, a build
+plugin, or a server render, or a `prefers-color-scheme` fallback in L3 under
+`html:not([data-theme])`, which [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md) neither forbids
+nor rules on: it bans the media query *alone*, and a fallback stops matching the moment the provider
+writes the attribute. Neither is built; the flash is accepted.
+
+Anything but `light` or `dark` in storage means system, so a cleared or corrupt store degrades to the
+OS preference rather than to a hardcoded mode.
+
+Mode lives in React state rather than in the attribute, because `system` is not a value the attribute
+can hold: it resolves to one of the other two and has to keep following `matchMedia`.
+
+The provider is client-only. It reads the OS preference to pick its initial state, so a server render
+throws rather than guessing a mode the client would then hydrate away from.
 
 ## Build & packaging
 

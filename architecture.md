@@ -9,7 +9,7 @@
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; runs mock-first (in-memory backend, no services). Live ledger + CIP-0103 path deferred |
 | `dapp/daml/` | DAML | `quickstart-tally` DAR |
 | `canton-connect-kit/` | TypeScript + React 19 | Reusable wallet connection hooks |
-| `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling |
+| `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
 
 ## Data Flow

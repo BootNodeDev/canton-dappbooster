@@ -42,3 +42,29 @@ import '@bootnodedev/canton-theme/default.css'
 
 The contract between the two is the DOM each component renders — not code. See
 [`architecture.md`](architecture.md) for the seam and the reasoning.
+
+## Light / dark / system
+
+The one styling-adjacent runtime this package does ship. `<ThemeProvider>` owns the mode and writes
+`data-theme` to `<html>`, which is what the theme keys its dark values on; `useTheme()` reads and
+sets it. No token names live here.
+
+A reload flashes the page background before React applies the attribute, and this package ships
+nothing to prevent it. [`architecture.md`](architecture.md) has the reasoning.
+
+Client-only: the provider reads the OS preference as it mounts, so a server render throws.
+
+```tsx
+import { ThemeProvider, useTheme } from '@bootnodedev/canton-dappbooster'
+
+const App = () => (
+  <ThemeProvider>
+    <Page />
+  </ThemeProvider>
+)
+
+const ModeToggle = () => {
+  const { resolved, toggle } = useTheme()
+  return <button onClick={toggle}>{resolved === 'dark' ? 'Light' : 'Dark'}</button>
+}
+```
