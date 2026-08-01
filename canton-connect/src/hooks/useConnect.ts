@@ -3,7 +3,11 @@ import { useCantonConnectContext } from '../CantonConnectProvider'
 export interface UseConnectResult {
   /** Opens the picker and connects the chosen wallet. Idempotent while an attempt is in flight. */
   connect: () => Promise<void>
-  /** Clears the local party, status, and any connect error even if the wallet's own disconnect call fails. */
+  /**
+   * Cancels any pending wallet choice, waits for an in-flight `connect()` to
+   * settle, then clears the local party, status, and any connect error even
+   * if the wallet's own disconnect call fails.
+   */
   disconnect: () => Promise<void>
   isConnecting: boolean
   isConnected: boolean
