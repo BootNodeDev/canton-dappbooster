@@ -22,7 +22,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
+import { clearConnectedWallet, readConnectedWallet, writeConnectedWallet } from './connectedWallet'
+import type { CantonConnectConfig, ConnectedWallet, ConnectionStatus, Party } from './types'
 import { toParties } from './walletAccount'
 
 /**
@@ -46,6 +47,13 @@ export interface CantonConnectContextValue {
   party: Party | undefined
   /** Every usable party the wallet holds, primary first. `party` is always `parties[0]`. */
   parties: Party[]
+  /**
+   * The wallet this session belongs to, remembered across page reloads.
+   * `undefined` in the default popup mode by design — the SDK never reports
+   * which wallet its own popup selected, and observing that would mean
+   * depending on the SDK's UI bundle.
+   */
+  wallet: ConnectedWallet | undefined
   status: ConnectionStatus
   /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
   isLocked: boolean
@@ -141,6 +149,7 @@ export const CantonConnectProvider = ({
   const [isLocked, setIsLocked] = useState(false)
   const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)
   const [connectError, setConnectError] = useState<Error | undefined>(undefined)
+  const [connectedWallet, setConnectedWallet] = useState<ConnectedWallet | undefined>(undefined)
 
   const networkId = config.networkId ?? 'canton:local'
 
@@ -150,6 +159,9 @@ export const CantonConnectProvider = ({
 
   // Set while a cancellation is killing the attempt; only a user cancel may run the failure path's recovery.
   const cancelSourceRef = useRef<CancelSource | undefined>(undefined)
+
+  // What the picker chose, held until the attempt actually lands on that wallet's client.
+  const chosenWalletRef = useRef<ConnectedWallet | undefined>(undefined)
 
   // Stable identity: the sdk memo keys on it, so a per-render function would rebuild the SDK every render.
   const inPagePicker = useCallback<WalletPickerFn>((entries) => {
@@ -164,9 +176,24 @@ export const CantonConnectProvider = ({
     })
   }, [])
 
+  const suppliedPicker = config.walletPicker
+
+  // Wraps only to note what the consumer's picker returned; memoized so the sdk memo below holds.
+  const notingPicker = useMemo<WalletPickerFn | undefined>(
+    () =>
+      suppliedPicker === undefined
+        ? undefined
+        : async (entries) => {
+            const result = await suppliedPicker(entries)
+            chosenWalletRef.current = { providerId: result.providerId, name: result.name }
+            return result
+          },
+    [suppliedPicker],
+  )
+
   // An explicit picker is a stronger statement of intent than the mode flag.
   const walletPicker =
-    config.walletPicker ?? (config.walletSelection === 'in-page' ? inPagePicker : undefined)
+    notingPicker ?? (config.walletSelection === 'in-page' ? inPagePicker : undefined)
 
   const sdk = useMemo(() => new DappSDK(walletPicker ? { walletPicker } : {}), [walletPicker])
 
@@ -266,6 +293,23 @@ export const CantonConnectProvider = ({
     setStatus('disconnected')
   }, [])
 
+  // Written on landing, never on selection: an attempt that dies after the choice leaves nothing.
+  const rememberChosenWallet = useCallback((): void => {
+    const chosen = chosenWalletRef.current
+    if (chosen === undefined) {
+      return
+    }
+
+    writeConnectedWallet(chosen)
+    setConnectedWallet(chosen)
+  }, [])
+
+  // The record is only ever a label on the SDK's session: no session, no label.
+  const forgetConnectedWallet = useCallback((): void => {
+    clearConnectedWallet()
+    setConnectedWallet(undefined)
+  }, [])
+
   // Rejecting starts the in-flight connect()'s failure path; the recorded source tells it who owns the aftermath.
   const cancelPending = useCallback((source: CancelSource): void => {
     const pending = pendingChoiceRef.current
@@ -299,21 +343,39 @@ export const CantonConnectProvider = ({
         teardownRef.current = wireEvents()
       }
 
+      // A restored session has no chosen wallet in memory; the record is the only source.
+      if (chosenWalletRef.current === undefined) {
+        setConnectedWallet(readConnectedWallet())
+      }
+
       if (!restored.connection.isConnected) {
+        // A real landing on the chosen wallet's client, just locked — the record must become it.
         markConnectedLocked()
+        rememberChosenWallet()
         return
       }
 
       try {
         const accounts = await sdk.listAccounts()
         markConnected(accounts)
+        rememberChosenWallet()
       } catch (err) {
         // Left wired, the next push would set a party on a disconnected provider.
         teardownWiring()
         resetToDisconnected(err as Error)
+        forgetConnectedWallet()
       }
     },
-    [sdk, markConnected, markConnectedLocked, resetToDisconnected, teardownWiring, wireEvents],
+    [
+      sdk,
+      markConnected,
+      markConnectedLocked,
+      resetToDisconnected,
+      rememberChosenWallet,
+      forgetConnectedWallet,
+      teardownWiring,
+      wireEvents,
+    ],
   )
 
   useEffect(() => {
@@ -327,7 +389,13 @@ export const CantonConnectProvider = ({
 
         // status() throws when there's nothing to restore — that's normal, not an error.
         const restored = await sdk.status().catch(() => undefined)
-        if (cancelled || restored === undefined) return
+        if (cancelled) return
+
+        // The SDK's session is the authority; a record it no longer backs is deleted, not trusted.
+        if (restored === undefined) {
+          forgetConnectedWallet()
+          return
+        }
 
         await syncFromStatus(restored)
       })
@@ -343,7 +411,15 @@ export const CantonConnectProvider = ({
       cancelAttempt('unmount')
       teardownWiring()
     }
-  }, [sdk, additionalAdapters, syncFromStatus, teardownWiring, cancelAttempt, resetToDisconnected])
+  }, [
+    sdk,
+    additionalAdapters,
+    syncFromStatus,
+    teardownWiring,
+    cancelAttempt,
+    resetToDisconnected,
+    forgetConnectedWallet,
+  ])
 
   const runConnect = useCallback(async (): Promise<void> => {
     setStatus('connecting')
@@ -362,6 +438,7 @@ export const CantonConnectProvider = ({
 
       const accounts = await sdk.listAccounts()
       markConnected(accounts)
+      rememberChosenWallet()
     } catch (err) {
       const cancelledBy = cancelSourceRef.current
       cancelSourceRef.current = undefined
@@ -378,6 +455,7 @@ export const CantonConnectProvider = ({
         // The try above may have wired the swapped-in client; a vanished session must not keep listeners live.
         teardownWiring()
         resetToDisconnected()
+        forgetConnectedWallet()
       } else {
         await syncFromStatus(restored)
       }
@@ -386,7 +464,16 @@ export const CantonConnectProvider = ({
       setConnectError(err as Error)
       throw err
     }
-  }, [sdk, markConnected, resetToDisconnected, syncFromStatus, teardownWiring, wireEvents])
+  }, [
+    sdk,
+    markConnected,
+    resetToDisconnected,
+    rememberChosenWallet,
+    forgetConnectedWallet,
+    syncFromStatus,
+    teardownWiring,
+    wireEvents,
+  ])
 
   // Not async: an async wrapper re-wraps the shared promise per caller, and a fire-and-forget join would then reject unhandled.
   const connect = useCallback((): Promise<void> => {
@@ -397,8 +484,9 @@ export const CantonConnectProvider = ({
 
     const attempt = runConnect().finally(() => {
       attemptRef.current = undefined
-      // A condemned source outliving its settled attempt would wrongly mute the next attempt's recovery.
+      // A condemned source or unconsumed choice outliving its attempt would corrupt the next one's recovery.
       cancelSourceRef.current = undefined
+      chosenWalletRef.current = undefined
     })
     attemptRef.current = attempt
 
@@ -419,8 +507,9 @@ export const CantonConnectProvider = ({
     await sdk.disconnect().catch(() => undefined)
 
     resetToDisconnected()
+    forgetConnectedWallet()
     setLastTx(undefined)
-  }, [sdk, cancelAttempt, resetToDisconnected, teardownWiring])
+  }, [sdk, cancelAttempt, resetToDisconnected, forgetConnectedWallet, teardownWiring])
 
   const select = useCallback((providerId: string): void => {
     const pending = pendingChoiceRef.current
@@ -439,6 +528,9 @@ export const CantonConnectProvider = ({
       return
     }
 
+    // Noted, not persisted: only an attempt that lands turns the choice into the record.
+    chosenWalletRef.current = { providerId: entry.providerId, name: entry.name }
+
     // An entry structurally satisfies WalletPickerResult, so the chosen one is the answer.
     pending.resolve(entry)
   }, [])
@@ -453,6 +545,7 @@ export const CantonConnectProvider = ({
       sdk,
       party,
       parties,
+      wallet: connectedWallet,
       status,
       isLocked,
       connectError,
@@ -473,6 +566,7 @@ export const CantonConnectProvider = ({
       sdk,
       party,
       parties,
+      connectedWallet,
       status,
       isLocked,
       connectError,
