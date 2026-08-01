@@ -48,7 +48,7 @@ export interface CantonConnectContextValue {
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /** Opens the picker — the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
+  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
   connect: () => Promise<void>
   /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>

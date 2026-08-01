@@ -24,7 +24,7 @@ export interface FakeWalletOptions {
   /** Defaults to a single account with `id` as its party prefix. */
   accounts?: FakeWalletAccount[]
   /**
-   * `isConnected` per successive `status` call, the last entry repeating once exhausted —
+   * `isConnected` per successive `status` call, the last entry repeating once exhausted;
    * lets a test restore a connected session, then report it locked.
    */
   statusResponses?: boolean[]

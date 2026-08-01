@@ -163,7 +163,7 @@ class MockProviderAdapter implements ProviderAdapter {
 /**
  * Answers the connect flow with canned data, so `CantonConnectProvider` runs with no wallet
  * installed; pass it via `CantonConnectConfig.additionalAdapters`. Anything outside that flow
- * throws naming the method — a canned result would be indistinguishable from a real one.
+ * throws naming the method; a canned result would be indistinguishable from a real one.
  */
 export const createMockAdapter = (options: CreateMockAdapterOptions = {}): MockAdapter =>
   new MockProviderAdapter(options)
