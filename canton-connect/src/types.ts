@@ -1,5 +1,3 @@
-// Public types exposed to consumers of canton-connect.
-
 import type { ProviderAdapter, WalletPickerFn } from '@canton-network/dapp-sdk'
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'

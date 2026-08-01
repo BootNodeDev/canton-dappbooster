@@ -1,6 +1,3 @@
-// Mock ProviderAdapter — lets a dApp or test connect with no real wallet installed.
-// Only the connect flow is answered; everything else throws rather than fake a result.
-
 import type {
   dappAPI,
   ProviderAdapter,

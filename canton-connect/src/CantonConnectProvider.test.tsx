@@ -30,7 +30,6 @@ const capturePicker =
     throw new Error('cancel')
   }
 
-// A picker a test can call connect() with when it never intends to succeed.
 const throwingPicker: WalletPickerFn = async () => {
   throw new Error('cancel')
 }
@@ -203,7 +202,7 @@ describe('CantonConnectProvider', () => {
       })
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() => expect(result.current.isLocked).toBe(false))
@@ -283,7 +282,7 @@ describe('CantonConnectProvider', () => {
       wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     // The wiring went up before the read; rejecting proves it came down when the read failed.
@@ -320,7 +319,7 @@ describe('CantonConnectProvider', () => {
       wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
     })
 
-    // The push is already in flight; disposing now keeps a failure here from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     // The wiring went up after connect() succeeded; rejecting proves the no-session reset took it down.
@@ -341,8 +340,7 @@ describe('CantonConnectProvider', () => {
       JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
     )
 
-    // Restore's internal check sees connected, our own check finds it locked, connect()'s own
-    // check (against the swapped-in client) sees connected again.
+    // Status calls: restore's check, ours (finds it locked), connect()'s on the swapped-in client.
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',
@@ -359,8 +357,7 @@ describe('CantonConnectProvider', () => {
 
     await waitFor(() => expect(result.current.isLocked).toBe(true))
 
-    // connect() replaces sdk's internal client with a new one; teardown must run against the
-    // old client first, or removeOnAccountsChanged ends up targeting the wrong client.
+    // connect() swaps the client; teardown must run first, or the remove lands on the wrong client.
     const removeSpy = vi.spyOn(result.current.sdk, 'removeOnAccountsChanged')
     const connectSpy = vi.spyOn(result.current.sdk, 'connect')
 
@@ -442,7 +439,7 @@ describe('CantonConnectProvider', () => {
       wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     // Rejecting proves no wiring survived the disconnect — a leaked listener would deliver the push.
@@ -463,7 +460,7 @@ describe('CantonConnectProvider', () => {
       JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
     )
 
-    // Restore's internal check, our own restore check, and the post-failure probe all see the same still-live, connected client.
+    // Restore's check, ours, and the post-failure probe all see the same live, connected client.
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',
@@ -500,7 +497,7 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
@@ -556,7 +553,7 @@ describe('CantonConnectProvider', () => {
       await expect(result.current.connect.connect()).rejects.toThrow('cancel')
     })
 
-    // The wallet's part is over; disposing now keeps a failure below from leaking the announce listener.
+    // The wallet's part is over; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     expect(result.current.connect.connectError?.message).toBe('cancel')
@@ -641,7 +638,7 @@ describe('CantonConnectProvider', () => {
   it('does not re-init when a rerender passes a new config object with the same field values', async () => {
     const initSpy = vi.spyOn(DappSDK.prototype, 'init')
 
-    // Hoisted so this reference stays stable across renders — only the wrapping config object is fresh.
+    // Hoisted so the reference stays stable across renders; only the wrapping config object is fresh.
     const walletPicker = createAutoPicker()
 
     const { rerender } = renderHook(() => useCantonConnectContext(), {
@@ -767,7 +764,7 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
@@ -802,7 +799,7 @@ describe('CantonConnectProvider', () => {
       })
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() => expect(result.current.status.isLocked).toBe(true))
@@ -841,7 +838,7 @@ describe('CantonConnectProvider', () => {
       })
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('executed'))
@@ -889,10 +886,10 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
-    // waitFor exhausts its retry window trying to observe the change; rejecting proves it never arrived.
+    // waitFor exhausts its retry window; rejecting proves the change never arrived.
     await expect(
       waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::deadbeef')),
     ).rejects.toThrow()
@@ -1025,7 +1022,7 @@ describe('CantonConnectProvider', () => {
       'bob::2',
     ])
     expect(result.current.party.party?.partyId).toBe('alice::1')
-    // The invariant every later task leans on: party is always parties[0].
+    // The invariant consumers lean on: party is always parties[0].
     expect(result.current.party.party).toEqual(result.current.parties.parties[0])
   })
 
@@ -1058,7 +1055,7 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    // The push is already in flight; dispose now so a failure below can't leak the announce listener.
     wallet.dispose()
 
     await waitFor(() =>
@@ -1620,7 +1617,7 @@ describe('CantonConnectProvider', () => {
       JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
     )
 
-    // Restore's internal check, our restore check, and any (forbidden) post-unmount probe all see a live session.
+    // Restore's check, ours, and any (forbidden) post-unmount probe all see a live session.
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',

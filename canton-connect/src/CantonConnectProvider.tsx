@@ -1,7 +1,3 @@
-// CantonConnectProvider owns the wallet connection lifecycle and exposes it
-// through React context. Hooks (useConnect, useParty, useSignMessage, etc.)
-// are thin readers that subscribe to this context.
-
 import type { WalletPickerEntry, WalletPickerResult } from '@canton-network/core-types'
 import type {
   AccountsChangedEvent,
@@ -60,7 +56,6 @@ export interface CantonConnectContextValue {
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /**
   /** The pending wallet choice, only ever open in `walletSelection: 'in-page'` mode. */
   walletPicker: {
     isOpen: boolean
@@ -106,7 +101,7 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
     adapters.push(
       WalletConnectAdapter.create({
         projectId: config.walletConnectProjectId,
-        // The CAIP-2 chain the wallet must serve is the configured Canton network id, not the SDK's devnet default.
+        // The CAIP-2 chain must be the configured Canton network id, not the SDK's devnet default.
         chainId: networkId,
         metadata: {
           name: config.appName,
@@ -121,7 +116,7 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
   return adapters
 }
 
-// The SDK awaits the picker's promise; the dApp answers later, so we keep the settle pair, not the promise.
+// The SDK awaits the picker's promise; the dApp answers later, so we hold the settle pair.
 interface PendingChoice {
   entries: WalletPickerEntry[]
   resolve: (result: WalletPickerResult) => void
@@ -153,17 +148,17 @@ export const CantonConnectProvider = ({
 
   const networkId = config.networkId ?? 'canton:local'
 
-  // The in-page selection bridge: undefined means no choice is pending, even one offering zero wallets.
+  // undefined means no choice is pending; an open choice offering zero wallets is [].
   const [offeredWallets, setOfferedWallets] = useState<WalletPickerEntry[] | undefined>(undefined)
   const pendingChoiceRef = useRef<PendingChoice | undefined>(undefined)
 
-  // Set while a cancellation is killing the attempt; only a user cancel may run the failure path's recovery.
+  // Set while a cancellation kills the attempt; only a user cancel may run recovery.
   const cancelSourceRef = useRef<CancelSource | undefined>(undefined)
 
   // What the picker chose, held until the attempt actually lands on that wallet's client.
   const chosenWalletRef = useRef<ConnectedWallet | undefined>(undefined)
 
-  // Stable identity: the sdk memo keys on it, so a per-render function would rebuild the SDK every render.
+  // The sdk memo keys on this; a per-render function would rebuild the SDK every render.
   const inPagePicker = useCallback<WalletPickerFn>((entries) => {
     // A choice arriving while a disconnect or unmount kills the attempt must die with it, not pend.
     if (cancelSourceRef.current !== undefined) {
@@ -219,13 +214,13 @@ export const CantonConnectProvider = ({
     ],
   )
 
-  // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().
+  // A client must exist before wiring; this shares that wiring between mount-restore and connect().
   const teardownRef = useRef<(() => void) | undefined>(undefined)
 
   // The in-flight connect; a second call joins it instead of starting a rival attempt.
   const attemptRef = useRef<Promise<void> | undefined>(undefined)
 
-  // The initial read and the accountsChanged push are two doors into the same state; one mapping keeps them from drifting.
+  // The initial read and the accountsChanged push must map identically; one function keeps them so.
   const applyAccounts = useCallback(
     (accounts: AccountsChangedEvent): void => {
       const mapped = toParties(accounts, networkId)
@@ -310,7 +305,7 @@ export const CantonConnectProvider = ({
     setConnectedWallet(undefined)
   }, [])
 
-  // Rejecting starts the in-flight connect()'s failure path; the recorded source tells it who owns the aftermath.
+  // Rejecting starts connect()'s failure path; the recorded source tells it who owns the aftermath.
   const cancelPending = useCallback((source: CancelSource): void => {
     const pending = pendingChoiceRef.current
     if (pending === undefined) {
@@ -381,7 +376,7 @@ export const CantonConnectProvider = ({
   // The instance the mount effect last initialized; a different one arriving marks a replacement.
   const initializedSdkRef = useRef<DappSDK | undefined>(undefined)
 
-  // Status mirror for the mount effect: listing status in its deps would re-init the SDK on every change.
+  // Mirror for the mount effect: status in its deps would re-init the SDK on every change.
   const statusRef = useRef(status)
   useEffect(() => {
     statusRef.current = status
@@ -390,7 +385,7 @@ export const CantonConnectProvider = ({
   useEffect(() => {
     let cancelled = false
 
-    // Keyed on instance identity: StrictMode re-runs this effect on the same instance, and that is no replacement.
+    // StrictMode re-runs this effect on the same instance; only a different instance is a replacement.
     const isReplacementInstance =
       initializedSdkRef.current !== undefined && initializedSdkRef.current !== sdk
     initializedSdkRef.current = sdk
@@ -467,11 +462,11 @@ export const CantonConnectProvider = ({
         throw err
       }
 
-      // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
+      // A cancelled picker fails before the client swap — probe, don't assume the session is gone.
       const restored = await sdk.status().catch(() => undefined)
 
       if (restored === undefined) {
-        // The try above may have wired the swapped-in client; a vanished session must not keep listeners live.
+        // The try may have wired the swapped-in client; a vanished session must not keep listeners.
         teardownWiring()
         resetToDisconnected()
         forgetConnectedWallet()
@@ -494,7 +489,7 @@ export const CantonConnectProvider = ({
     wireEvents,
   ])
 
-  // Not async: an async wrapper re-wraps the shared promise per caller, and a fire-and-forget join would then reject unhandled.
+  // Not async: re-wrapping the shared promise would make a fire-and-forget join reject unhandled.
   const connect = useCallback((): Promise<void> => {
     const inFlight = attemptRef.current
     if (inFlight !== undefined) {
@@ -503,13 +498,13 @@ export const CantonConnectProvider = ({
 
     const attempt = runConnect().finally(() => {
       attemptRef.current = undefined
-      // A condemned source or unconsumed choice outliving its attempt would corrupt the next one's recovery.
+      // A condemned source or unconsumed choice outliving the attempt would corrupt the next recovery.
       cancelSourceRef.current = undefined
       chosenWalletRef.current = undefined
     })
     attemptRef.current = attempt
 
-    // One handler always attached, so a caller that ignores the promise cannot cause an unhandled rejection.
+    // One handler is always attached, so ignoring the promise cannot leak an unhandled rejection.
     void attempt.catch(() => undefined)
 
     return attempt

@@ -1,5 +1,3 @@
-// Mapping a CIP-0103 listAccounts response to the package's Party type.
-
 import type { dappAPI } from '@canton-network/dapp-sdk'
 import type { Party } from './types'
 
@@ -18,7 +16,6 @@ interface RawWalletAccount {
 export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAccount | undefined =>
   accounts.find((a) => a.primary) ?? accounts[0]
 
-// hint becomes name; an account's own networkId outranks the config fallback.
 export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): Party => ({
   partyId: account.partyId,
   networkId: account.networkId ?? fallbackNetworkId,
@@ -30,7 +27,6 @@ export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): P
 const isUsable = (account: RawWalletAccount): boolean =>
   account.status === undefined || account.status === 'allocated'
 
-// Every usable account as a Party: primary first, wallet order otherwise.
 export const toParties = (accounts: RawWalletAccount[], fallbackNetworkId: string): Party[] => {
   const usable = accounts.filter(isUsable)
   const primary = selectPrimaryAccount(usable)
