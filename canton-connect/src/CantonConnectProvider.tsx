@@ -61,11 +61,12 @@ export interface CantonConnectContextValue {
     cancel: () => void
   }
   /**
-   * Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel.
-   * Idempotent while an attempt is in flight: a second call joins the first.
+   * Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel, on
+   * failure, or when a `disconnect()` or unmount kills the attempt. Idempotent while an
+   * attempt is in flight: a second call joins the first.
    */
   connect: () => Promise<void>
-  /** Resets `party`, `parties`, `status`, `isLocked`, `connectError` and `lastTx` even if the SDK's own call fails. */
+  /** Cancels a pending choice, waits for an in-flight connect, then resets local state. */
   disconnect: () => Promise<void>
 }
 
@@ -119,6 +120,9 @@ interface PendingChoice {
   reject: (error: Error) => void
 }
 
+// Who killed the attempt; connect()'s failure path branches on it.
+type CancelSource = 'user' | 'disconnect' | 'unmount'
+
 // Stable identity, so a closed picker never churns consumers' memos.
 const NO_OFFERED_WALLETS: WalletPickerEntry[] = []
 
@@ -144,15 +148,21 @@ export const CantonConnectProvider = ({
   const [offeredWallets, setOfferedWallets] = useState<WalletPickerEntry[] | undefined>(undefined)
   const pendingChoiceRef = useRef<PendingChoice | undefined>(undefined)
 
+  // Set while a cancellation is killing the attempt; only a user cancel may run the failure path's recovery.
+  const cancelSourceRef = useRef<CancelSource | undefined>(undefined)
+
   // Stable identity: the sdk memo keys on it, so a per-render function would rebuild the SDK every render.
-  const inPagePicker = useCallback<WalletPickerFn>(
-    (entries) =>
-      new Promise<WalletPickerResult>((resolve, reject) => {
-        pendingChoiceRef.current = { entries, resolve, reject }
-        setOfferedWallets(entries)
-      }),
-    [],
-  )
+  const inPagePicker = useCallback<WalletPickerFn>((entries) => {
+    // A choice arriving while a disconnect or unmount kills the attempt must die with it, not pend.
+    if (cancelSourceRef.current !== undefined) {
+      return Promise.reject(new UserRejectedError('Wallet selection cancelled'))
+    }
+
+    return new Promise<WalletPickerResult>((resolve, reject) => {
+      pendingChoiceRef.current = { entries, resolve, reject }
+      setOfferedWallets(entries)
+    })
+  }, [])
 
   // An explicit picker is a stronger statement of intent than the mode flag.
   const walletPicker =
@@ -184,6 +194,9 @@ export const CantonConnectProvider = ({
 
   // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().
   const teardownRef = useRef<(() => void) | undefined>(undefined)
+
+  // The in-flight connect; a second call joins it instead of starting a rival attempt.
+  const attemptRef = useRef<Promise<void> | undefined>(undefined)
 
   // The initial read and the accountsChanged push are two doors into the same state; one mapping keeps them from drifting.
   const applyAccounts = useCallback(
@@ -253,6 +266,31 @@ export const CantonConnectProvider = ({
     setStatus('disconnected')
   }, [])
 
+  // Rejecting starts the in-flight connect()'s failure path; the recorded source tells it who owns the aftermath.
+  const cancelPending = useCallback((source: CancelSource): void => {
+    const pending = pendingChoiceRef.current
+    if (pending === undefined) {
+      return
+    }
+
+    pendingChoiceRef.current = undefined
+    cancelSourceRef.current = source
+    setOfferedWallets(undefined)
+    pending.reject(new UserRejectedError('Wallet selection cancelled'))
+  }, [])
+
+  // Kills the whole attempt: rejects an open choice now, and condemns one that has not opened yet.
+  const cancelAttempt = useCallback(
+    (source: CancelSource): void => {
+      if (attemptRef.current !== undefined) {
+        cancelSourceRef.current = source
+      }
+
+      cancelPending(source)
+    },
+    [cancelPending],
+  )
+
   // Never throws: a failed read is contained here, so connect()'s catch keeps its original error.
   const syncFromStatus = useCallback(
     async (restored: StatusEvent): Promise<void> => {
@@ -296,19 +334,16 @@ export const CantonConnectProvider = ({
       .catch((err: unknown) => {
         if (cancelled) return
 
-        // Only init() can land here — syncFromStatus never throws — so nothing was wired yet.
-        setConnectError(err as Error)
-        setStatus('disconnected')
+        // Only init() can land here — syncFromStatus never throws — so nothing was wired or set yet.
+        resetToDisconnected(err as Error)
       })
 
     return () => {
       cancelled = true
+      cancelAttempt('unmount')
       teardownWiring()
     }
-  }, [sdk, additionalAdapters, syncFromStatus, teardownWiring])
-
-  // The in-flight connect; a second call joins it instead of starting a rival attempt.
-  const attemptRef = useRef<Promise<void> | undefined>(undefined)
+  }, [sdk, additionalAdapters, syncFromStatus, teardownWiring, cancelAttempt, resetToDisconnected])
 
   const runConnect = useCallback(async (): Promise<void> => {
     setStatus('connecting')
@@ -328,6 +363,14 @@ export const CantonConnectProvider = ({
       const accounts = await sdk.listAccounts()
       markConnected(accounts)
     } catch (err) {
+      const cancelledBy = cancelSourceRef.current
+      cancelSourceRef.current = undefined
+
+      // A disconnect or an unmount owns the end state; recovery here would overwrite it a tick later.
+      if (cancelledBy === 'disconnect' || cancelledBy === 'unmount') {
+        throw err
+      }
+
       // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
       const restored = await sdk.status().catch(() => undefined)
 
@@ -354,6 +397,8 @@ export const CantonConnectProvider = ({
 
     const attempt = runConnect().finally(() => {
       attemptRef.current = undefined
+      // A condemned source outliving its settled attempt would wrongly mute the next attempt's recovery.
+      cancelSourceRef.current = undefined
     })
     attemptRef.current = attempt
 
@@ -364,13 +409,18 @@ export const CantonConnectProvider = ({
   }, [runConnect])
 
   const disconnect = useCallback(async (): Promise<void> => {
+    cancelAttempt('disconnect')
+
+    // The dying attempt must settle before the reset below, or its failure path races it.
+    await attemptRef.current?.catch(() => undefined)
+
     teardownWiring()
 
     await sdk.disconnect().catch(() => undefined)
 
     resetToDisconnected()
     setLastTx(undefined)
-  }, [sdk, resetToDisconnected, teardownWiring])
+  }, [sdk, cancelAttempt, resetToDisconnected, teardownWiring])
 
   const select = useCallback((providerId: string): void => {
     const pending = pendingChoiceRef.current
@@ -394,15 +444,8 @@ export const CantonConnectProvider = ({
   }, [])
 
   const cancel = useCallback((): void => {
-    const pending = pendingChoiceRef.current
-    if (pending === undefined) {
-      return
-    }
-
-    pendingChoiceRef.current = undefined
-    setOfferedWallets(undefined)
-    pending.reject(new UserRejectedError('Wallet selection cancelled'))
-  }, [])
+    cancelPending('user')
+  }, [cancelPending])
 
   const value = useMemo<CantonConnectContextValue>(
     () => ({

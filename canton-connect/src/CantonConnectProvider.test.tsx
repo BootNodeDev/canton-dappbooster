@@ -1,5 +1,5 @@
 import type { WalletPickerEntry, WalletPickerFn } from '@canton-network/dapp-sdk'
-import { DappSDK } from '@canton-network/dapp-sdk'
+import { DappSDK, UserRejectedError } from '@canton-network/dapp-sdk'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -1143,5 +1143,207 @@ describe('CantonConnectProvider', () => {
     expect(result.current.picker.isOpen).toBe(false)
     expect(result.current.connect.isConnecting).toBe(false)
     expect(result.current.connect.connectError?.message).toContain('not-offered')
+  })
+
+  it('settles the attempt when the user cancels the choice, and a retry then connects', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-cancel',
+      target: 'wallet-cancel',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      // Handler attached before the cancel, so the rejection can never land unhandled.
+      const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+      result.current.picker.cancel()
+      await settled
+    })
+
+    expect(result.current.connect.isConnecting).toBe(false)
+    expect(result.current.connect.connectError).toBeInstanceOf(UserRejectedError)
+    expect(result.current.picker.isOpen).toBe(false)
+
+    // The same provider must be able to try again without a remount.
+    let retry: Promise<void> | undefined
+    act(() => {
+      retry = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      // Announced wallets surface in the picker as browser:ext:<id>.
+      result.current.picker.select('browser:ext:wallet-cancel')
+      await retry
+    })
+
+    wallet.dispose()
+
+    expect(result.current.party.party?.partyId).toBe('alice::1')
+    expect(result.current.connect.connectError).toBe(undefined)
+  })
+
+  it('disconnect() during a pending choice ends disconnected with no error, no party, no open choice', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-disc-choice',
+      target: 'wallet-disc-choice',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    act(() => {
+      // The killed attempt is asserted through state below; the handler keeps its rejection contained.
+      result.current.connect.connect().catch(() => undefined)
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    wallet.dispose()
+
+    // disconnect() owns the end state: the killed attempt must not have written after it finished.
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.connect.connectError).toBe(undefined)
+    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.picker.isOpen).toBe(false)
+  })
+
+  it('ends disconnected when disconnect() lands before the choice has opened', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-early-disc',
+      target: 'wallet-early-disc',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    await act(async () => {
+      // Same synchronous breath: the SDK has not offered the choice yet when disconnect() starts.
+      const attempt = result.current.connect.connect()
+      const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+      await result.current.connect.disconnect()
+      await settled
+    })
+
+    wallet.dispose()
+
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.connect.connectError).toBe(undefined)
+    expect(result.current.picker.isOpen).toBe(false)
+  })
+
+  it('unmounting during a pending choice settles the attempt without an unhandled rejection', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-unmount-choice',
+      target: 'wallet-unmount-choice',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result, unmount } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    // Only the pending choice keeps the attempt alive now — the wallet's part is over.
+    wallet.dispose()
+
+    const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+    unmount()
+    await settled
+  })
+
+  it('runs no recovery when unmounted during a choice on a restored session', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    // Restore's internal check, our restore check, and any (forbidden) post-unmount probe all see a live session.
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      statusResponses: [true, true, true],
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result, unmount } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect()
+    })
+
+    await waitFor(() => expect(result.current.walletPicker.isOpen).toBe(true))
+
+    // Re-wiring after unmount would leak listeners with no teardown left to remove them.
+    const wireSpy = vi.spyOn(result.current.sdk, 'onAccountsChanged')
+
+    const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+    unmount()
+    await settled
+
+    wallet.dispose()
+
+    expect(wireSpy).not.toHaveBeenCalled()
   })
 })
