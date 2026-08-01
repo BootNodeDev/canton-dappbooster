@@ -5,6 +5,8 @@ import {
 } from '@canton-network/core-types'
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 
+const JSON_RPC_METHOD_NOT_FOUND = -32601
+
 export interface FakeWalletAccount {
   partyId: string
   primary?: boolean
@@ -63,13 +65,28 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const buildConnect = (): ConnectResult => ({ isConnected: true, isNetworkConnected: true })
 
   // Thunks, not eager values — calling other methods must not advance the statusResponses sequence.
-  const answer = (method: string): unknown => {
-    const responses: Record<string, () => unknown> = {
-      status: buildStatus,
-      connect: buildConnect,
-      listAccounts: () => accounts,
+  const responses: Record<string, () => unknown> = {
+    status: buildStatus,
+    connect: buildConnect,
+    listAccounts: () => accounts,
+    // The SDK's disconnect() asks the wallet too, and ignores what comes back.
+    disconnect: () => ({}),
+  }
+
+  // An error frame, not a throw: the transport only settles on a response, so throwing here would
+  // leave the caller's request pending forever.
+  const answer = (method: string): Record<string, unknown> => {
+    const handler = responses[method]
+    if (handler === undefined) {
+      return {
+        error: {
+          code: JSON_RPC_METHOD_NOT_FOUND,
+          message: `createFakeWallet does not implement "${method}"`,
+        },
+      }
     }
-    return (responses[method] ?? (() => ({})))()
+
+    return { result: handler() }
   }
 
   const onMessage = (event: MessageEvent): void => {
@@ -104,7 +121,7 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     window.postMessage(
       {
         type: WalletEvent.SPLICE_WALLET_RESPONSE,
-        response: { jsonrpc: '2.0', id: requestId, result: answer(method) },
+        response: { jsonrpc: '2.0', id: requestId, ...answer(method) },
       },
       '*',
     )

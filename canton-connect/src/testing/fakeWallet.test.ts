@@ -16,6 +16,25 @@ describe('createFakeWallet', () => {
     wallet.dispose()
   })
 
+  it('rejects a request for a method it does not implement, naming the method', async () => {
+    const wallet = createFakeWallet({ id: 'test-wallet', target: 'test-wallet' })
+
+    const { ExtensionAdapter } = await import('@canton-network/dapp-sdk')
+    const adapter = new ExtensionAdapter({
+      providerId: 'browser:ext:test-wallet',
+      target: 'test-wallet',
+    })
+    await adapter.detect()
+
+    await expect(
+      adapter.provider().request({ method: 'signMessage' } as never),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('signMessage'),
+    })
+
+    wallet.dispose()
+  })
+
   it('delivers a pushed notification as a provider event', async () => {
     const wallet = createFakeWallet({ id: 'test-wallet', target: 'test-wallet' })
 
