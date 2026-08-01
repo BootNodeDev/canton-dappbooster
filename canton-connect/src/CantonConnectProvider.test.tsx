@@ -4,6 +4,7 @@ import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
+import { clearConnectedWallet, readConnectedWallet, writeConnectedWallet } from './connectedWallet'
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
 import { useLedger } from './hooks/useLedger'
@@ -40,6 +41,7 @@ describe('CantonConnectProvider', () => {
     localStorage.removeItem(DISCOVERY_SESSION_KEY)
     localStorage.removeItem(SUGGESTED_ENTRIES_KEY)
     localStorage.removeItem(RECENT_GATEWAYS_KEY)
+    clearConnectedWallet()
 
     // A prototype spy survives a failed assertion; restoring here keeps it out of later tests.
     vi.restoreAllMocks()
@@ -1299,6 +1301,228 @@ describe('CantonConnectProvider', () => {
     const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
     unmount()
     await settled
+  })
+
+  it('reports the chosen wallet, and still reports it after a remount with the session alive', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-named',
+      name: 'Wallet Named',
+      target: 'wallet-named',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const first = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = first.result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(first.result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      // Announced wallets surface in the picker as browser:ext:<id>.
+      first.result.current.picker.select('browser:ext:wallet-named')
+      await attempt
+    })
+
+    expect(first.result.current.party.wallet).toEqual({
+      providerId: 'browser:ext:wallet-named',
+      name: 'Wallet Named',
+    })
+
+    first.unmount()
+
+    // The second mount restores the session from the SDK's storage; the record names its wallet.
+    const second = renderHook(() => useParty(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(second.result.current.wallet).toBeDefined())
+
+    wallet.dispose()
+
+    expect(second.result.current.wallet).toEqual({
+      providerId: 'browser:ext:wallet-named',
+      name: 'Wallet Named',
+    })
+  })
+
+  it('reports the wallet a supplied walletPicker returns, with no in-page choice opening', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-supplied',
+      name: 'Wallet Supplied',
+      target: 'wallet-supplied',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = {
+      appName: 'test',
+      walletPicker: createAutoPicker('browser:ext:wallet-supplied'),
+    }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    wallet.dispose()
+
+    // The supplied function owns the interaction; wrapping it must not publish a pending choice.
+    expect(result.current.picker.isOpen).toBe(false)
+    expect(result.current.party.wallet).toEqual({
+      providerId: 'browser:ext:wallet-supplied',
+      name: 'Wallet Supplied',
+    })
+  })
+
+  it('forgets the wallet when no session is restored', async () => {
+    writeConnectedWallet({ providerId: 'ghost', name: 'Ghost' })
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useParty(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    // Storage emptying is the observable that proves the mount probe ran and found nothing.
+    await waitFor(() => expect(readConnectedWallet()).toBe(undefined))
+    expect(result.current.wallet).toBe(undefined)
+  })
+
+  it('forgets the wallet on disconnect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-forget',
+      target: 'wallet-forget',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      result.current.picker.select('browser:ext:wallet-forget')
+      await attempt
+    })
+
+    expect(readConnectedWallet()).toEqual({
+      providerId: 'browser:ext:wallet-forget',
+      name: 'wallet-forget',
+    })
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    wallet.dispose()
+
+    expect(result.current.party.wallet).toBe(undefined)
+    expect(readConnectedWallet()).toBe(undefined)
+  })
+
+  it('stores the newly selected wallet when it lands locked, not the previously remembered one', async () => {
+    const walletFirst = createFakeWallet({
+      id: 'wallet-first',
+      name: 'Wallet First',
+      target: 'wallet-first',
+      accounts: [{ partyId: 'alice::1', primary: true, status: 'allocated' }],
+    })
+    // connect()'s own internal status check sees connected; the recovery probe then finds it locked.
+    const walletLocked = createFakeWallet({
+      id: 'wallet-locked',
+      name: 'Wallet Locked',
+      target: 'wallet-locked',
+      statusResponses: [true, false],
+      accounts: [{ partyId: 'bob::2', primary: true, status: 'allocated' }],
+    })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      result.current.picker.select('browser:ext:wallet-first')
+      await attempt
+    })
+
+    expect(readConnectedWallet()).toEqual({
+      providerId: 'browser:ext:wallet-first',
+      name: 'Wallet First',
+    })
+
+    // The account read fails after pairing, forcing the throw-then-probe landing on the locked wallet.
+    vi.spyOn(DappSDK.prototype, 'listAccounts').mockRejectedValue(new Error('read exploded'))
+
+    let retry: Promise<void> | undefined
+    act(() => {
+      retry = result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    await act(async () => {
+      result.current.picker.select('browser:ext:wallet-locked')
+      await expect(retry).rejects.toThrow('read exploded')
+    })
+
+    walletFirst.dispose()
+    walletLocked.dispose()
+
+    // The landing on the locked wallet's client replaced the record, even though the attempt failed.
+    expect(result.current.party.status).toBe('connected')
+    expect(result.current.party.wallet).toEqual({
+      providerId: 'browser:ext:wallet-locked',
+      name: 'Wallet Locked',
+    })
+    expect(readConnectedWallet()).toEqual({
+      providerId: 'browser:ext:wallet-locked',
+      name: 'Wallet Locked',
+    })
   })
 
   it('runs no recovery when unmounted during a choice on a restored session', async () => {
