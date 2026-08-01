@@ -86,10 +86,10 @@ describe('CantonConnectProvider', () => {
       await result.current.connect()
     })
 
+    wallet.dispose()
+
     expect(result.current.party?.partyId).toBe('alice::1220ab')
     expect(result.current.status).toBe('connected')
-
-    wallet.dispose()
   })
 
   it('connects through the mock adapter with no real wallet installed', async () => {
@@ -203,9 +203,10 @@ describe('CantonConnectProvider', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.isLocked).toBe(false))
-
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
     wallet.dispose()
+
+    await waitFor(() => expect(result.current.isLocked).toBe(false))
   })
 
   it('clears isLocked when connect() succeeds after a locked session was restored', async () => {
@@ -239,10 +240,10 @@ describe('CantonConnectProvider', () => {
       await result.current.connect()
     })
 
+    wallet.dispose()
+
     expect(result.current.isLocked).toBe(false)
     expect(result.current.party?.partyId).toBe('alice::1220ab')
-
-    wallet.dispose()
   })
 
   it('lands disconnected, with the wiring gone, when a restored session cannot read accounts', async () => {
@@ -282,12 +283,13 @@ describe('CantonConnectProvider', () => {
       wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     // The wiring went up before the read; rejecting proves it came down when the read failed.
     await expect(
       waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::9')),
     ).rejects.toThrow()
-
-    wallet.dispose()
   })
 
   it('tears down the wiring when the session vanishes between connect() and the account read', async () => {
@@ -366,12 +368,12 @@ describe('CantonConnectProvider', () => {
       await result.current.connect()
     })
 
+    wallet.dispose()
+
     expect(removeSpy).toHaveBeenCalledTimes(1)
     expect(removeSpy.mock.invocationCallOrder[0]).toBeLessThan(
       connectSpy.mock.invocationCallOrder[0],
     )
-
-    wallet.dispose()
   })
 
   it('returns the in-flight attempt instead of starting a second connect', async () => {
@@ -404,10 +406,10 @@ describe('CantonConnectProvider', () => {
       await Promise.all([first, second])
     })
 
+    wallet.dispose()
+
     expect(connectSpy).toHaveBeenCalledTimes(1)
     expect(result.current.party?.partyId).toBe('alice::1')
-
-    wallet.dispose()
   })
 
   it('leaves no orphaned wiring when connect() overlaps an in-flight connect', async () => {
@@ -440,14 +442,15 @@ describe('CantonConnectProvider', () => {
       wallet.push('accountsChanged', [{ partyId: 'carol::9', primary: true, status: 'allocated' }])
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     // Rejecting proves no wiring survived the disconnect — a leaked listener would deliver the push.
     await expect(
       waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::9')),
     ).rejects.toThrow()
 
     expect(result.current.party.party).toBe(undefined)
-
-    wallet.dispose()
   })
 
   it('keeps delivering events to useParty() after a throwing picker rejects connect() on a restored session', async () => {
@@ -497,9 +500,10 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
-
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
     wallet.dispose()
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
   })
 
   it('sets connectError and rejects connect() when the picker throws', async () => {
@@ -655,6 +659,82 @@ describe('CantonConnectProvider', () => {
     expect(initSpy).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps one SDK instance and a single init() across rerenders in in-page mode', async () => {
+    const initSpy = vi.spyOn(DappSDK.prototype, 'init')
+
+    // Config inline on purpose: field-stable but identity-fresh every render, like a real JSX literal.
+    const { result, rerender } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={{ appName: 'test', walletSelection: 'in-page' }}>
+          {children}
+        </CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(initSpy).toHaveBeenCalledTimes(1))
+    const initialSdk = result.current.sdk
+
+    rerender()
+    rerender()
+
+    // Identity pins the sdk memo; the init count pins the mount effect's dependency stability.
+    expect(result.current.sdk).toBe(initialSdk)
+    expect(initSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('resets to disconnected when a rerender with an inline walletPicker replaces the SDK mid-session', async () => {
+    const mock = createMockAdapter({ id: 'mock-swap', accounts: [{ partyId: 'alice::mock1220' }] })
+
+    // walletPicker built inline per render: every rerender swaps in a brand-new SDK instance.
+    const { result, rerender } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider
+          config={{
+            appName: 'test',
+            additionalAdapters: [mock],
+            walletPicker: createAutoPicker('mock-swap'),
+          }}
+        >
+          {children}
+        </CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.status).toBe('connected')
+    const replacedSdk = result.current.sdk
+
+    rerender()
+
+    expect(result.current.sdk).not.toBe(replacedSdk)
+
+    // The replacement instance restores no session; the replaced instance's state must not survive it.
+    await waitFor(() => expect(result.current.status).toBe('disconnected'))
+    expect(result.current.party).toBe(undefined)
+    expect(result.current.wallet).toBe(undefined)
+  })
+
+  it('keeps a StrictMode first mount idle when no session restores', async () => {
+    writeConnectedWallet({ providerId: 'ghost', name: 'Ghost' })
+
+    const config = { appName: 'test', walletSelection: 'in-page' as const }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+      reactStrictMode: true,
+    })
+
+    // The ghost record vanishing proves the mount probe ran and found nothing to restore.
+    await waitFor(() => expect(readConnectedWallet()).toBe(undefined))
+
+    // StrictMode's second effect run hits the same instance — a re-run, never a replacement.
+    expect(result.current.status).toBe('idle')
+  })
+
   it('delivers a pushed accountsChanged event to useParty()', async () => {
     const wallet = createFakeWallet({
       id: 'wallet-a',
@@ -687,10 +767,11 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
     expect(result.current.party.party?.name).toBe('bob')
-
-    wallet.dispose()
   })
 
   it('flips useWalletStatus().isLocked when a statusChanged push reports the wallet disconnected', async () => {
@@ -721,9 +802,10 @@ describe('CantonConnectProvider', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.status.isLocked).toBe(true))
-
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
     wallet.dispose()
+
+    await waitFor(() => expect(result.current.status.isLocked).toBe(true))
   })
 
   it('advances useExecute().lastTx through a pending then executed txChanged push', async () => {
@@ -759,13 +841,14 @@ describe('CantonConnectProvider', () => {
       })
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('executed'))
     expect(result.current.execute.lastTx?.payload).toEqual({
       updateId: 'update-1',
       completionOffset: 42,
     })
-
-    wallet.dispose()
   })
 
   it('stops applying pushed events to the hooks after disconnect()', async () => {
@@ -806,14 +889,15 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     // waitFor exhausts its retry window trying to observe the change; rejecting proves it never arrived.
     await expect(
       waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::deadbeef')),
     ).rejects.toThrow()
 
     expect(result.current.party.party).toBe(undefined)
-
-    wallet.dispose()
   })
 
   it('tears down listeners when the provider unmounts', async () => {
@@ -834,13 +918,13 @@ describe('CantonConnectProvider', () => {
       await result.current.connect()
     })
 
+    wallet.dispose()
+
     const removeSpy = vi.spyOn(result.current.sdk, 'removeOnAccountsChanged')
 
     unmount()
 
     expect(removeSpy).toHaveBeenCalledTimes(1)
-
-    wallet.dispose()
   })
 
   it('useSignMessage throws its not-connected guard before connecting', async () => {
@@ -934,6 +1018,8 @@ describe('CantonConnectProvider', () => {
       await result.current.connect.connect()
     })
 
+    wallet.dispose()
+
     expect(result.current.parties.parties.map((party) => party.partyId)).toEqual([
       'alice::1',
       'bob::2',
@@ -941,8 +1027,6 @@ describe('CantonConnectProvider', () => {
     expect(result.current.party.party?.partyId).toBe('alice::1')
     // The invariant every later task leans on: party is always parties[0].
     expect(result.current.party.party).toEqual(result.current.parties.parties[0])
-
-    wallet.dispose()
   })
 
   it('an accountsChanged push updates useParties(), not only useParty()', async () => {
@@ -974,14 +1058,15 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
+    // The push is already in flight; disposing now keeps a failure below from leaking the announce listener.
+    wallet.dispose()
+
     await waitFor(() =>
       expect(result.current.parties.parties.map((party) => party.partyId)).toEqual([
         'carol::9',
         'dave::8',
       ]),
     )
-
-    wallet.dispose()
   })
 
   it('empties useParties() on disconnect', async () => {
@@ -1010,9 +1095,9 @@ describe('CantonConnectProvider', () => {
       await result.current.connect.disconnect()
     })
 
-    expect(result.current.parties.parties).toEqual([])
-
     wallet.dispose()
+
+    expect(result.current.parties.parties).toEqual([])
   })
 
   it('publishes the offered wallets in in-page mode and connects the one select() picks', async () => {

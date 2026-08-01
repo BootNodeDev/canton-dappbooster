@@ -378,8 +378,22 @@ export const CantonConnectProvider = ({
     ],
   )
 
+  // The instance the mount effect last initialized; a different one arriving marks a replacement.
+  const initializedSdkRef = useRef<DappSDK | undefined>(undefined)
+
+  // Status mirror for the mount effect: listing status in its deps would re-init the SDK on every change.
+  const statusRef = useRef(status)
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
   useEffect(() => {
     let cancelled = false
+
+    // Keyed on instance identity: StrictMode re-runs this effect on the same instance, and that is no replacement.
+    const isReplacementInstance =
+      initializedSdkRef.current !== undefined && initializedSdkRef.current !== sdk
+    initializedSdkRef.current = sdk
 
     // defaultAdapters: [] keeps the SDK's bundled localhost dev gateway out of the picker.
     void sdk
@@ -393,6 +407,11 @@ export const CantonConnectProvider = ({
 
         // The SDK's session is the authority; a record it no longer backs is deleted, not trusted.
         if (restored === undefined) {
+          // A replacement that restores nothing must shed its predecessor's state; idle has none to shed.
+          if (isReplacementInstance && statusRef.current !== 'idle') {
+            resetToDisconnected()
+          }
+
           forgetConnectedWallet()
           return
         }
