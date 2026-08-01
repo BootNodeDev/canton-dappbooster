@@ -20,7 +20,7 @@ export interface CantonConnectConfig {
   appDescription?: string
   /** Defaults to `window.location.origin`. */
   appUrl?: string
-  /** Defaults to `'canton:local'` — also the WalletConnect chain id, so pairing follows it. */
+  /** Defaults to `'canton:local'`; also the WalletConnect chain id, so pairing follows it. */
   networkId?: string
   /** Reown project id. Without it, no WalletConnect entry is offered in the picker. */
   walletConnectProjectId?: string
