@@ -55,27 +55,44 @@ function Dapp() {
   const { execute } = useExecute()
   const { ledgerApi } = useLedger()
 
+  // Rendered in every branch: a rejected connect can land on a still-connected but
+  // locked session, so an error shown only while disconnected would never appear.
+  const error = connectError === undefined ? null : <p>{connectError.message}</p>
+
   if (!isConnected) {
     return (
       <div>
         <button onClick={() => connect().catch(() => undefined)} disabled={isConnecting}>
           Connect
         </button>
-        {connectError !== undefined && <p>{connectError.message}</p>}
+        {error}
       </div>
     )
   }
 
   if (isLocked) {
-    return <p>Wallet locked — unlock it to continue.</p>
+    return (
+      <div>
+        <p>Wallet locked — unlock it to continue.</p>
+        {error}
+      </div>
+    )
   }
 
   // ... your dApp: party.partyId, signMessage(text), execute(params), ledgerApi(params)
 }
 ```
 
-`connect()` opens the SDK's wallet picker — a popup by default. There's no
-mode argument; the picker is what chooses the wallet.
+`connect()` opens the SDK's wallet picker — a popup by default. Set
+`walletSelection: 'in-page'` to skip the popup and render the choice yourself
+through `useWalletPicker()`.
+
+One limitation to know: from outside the SDK, a wallet that *rejected* the
+connect request is indistinguishable from one that is merely *locked* —
+`status()` reports `isConnected: false` for both, and the session persists
+either way. That is why the quickstart renders `connectError` in the locked
+branch too: after a rejection the UI lands on "Wallet locked", and the error
+is the only sign the user declined.
 
 ## Hook reference
 
@@ -84,7 +101,9 @@ Every hook throws if called outside `<CantonConnectProvider>`.
 | Hook | Returns | Notes |
 |---|---|---|
 | `useConnect()` | `{ connect, disconnect, isConnecting, isConnected, connectError }` | `connect()` takes no argument — it opens the wallet picker and connects whatever the picker returns. |
-| `useParty()` | `{ party, status, isConnected }` | `party` (`Party \| undefined`: `partyId`, `networkId`, optional `name`/`publicKey`) updates when the wallet's primary account changes. |
+| `useParty()` | `{ party, status, isConnected, wallet }` | `party` (`Party \| undefined`: `partyId`, `networkId`, optional `name`/`publicKey`) updates when the wallet's primary account changes. `wallet` names the connected wallet — `undefined` in popup mode. |
+| `useParties()` | `{ parties }` | Every usable party the wallet holds, primary first — `party` is always `parties[0]`. Empty while locked or disconnected. |
+| `useWalletPicker()` | `{ isOpen, wallets, select, cancel }` | The pending wallet choice in `walletSelection: 'in-page'` mode. `select(providerId)` answers it; `cancel()` rejects the attempt with `UserRejectedError`. |
 | `useWalletStatus()` | `{ isLocked, isConnected }` | Tracks the wallet's lock/connect events. |
 | `useSignMessage()` | `{ signMessage, signature, isSigning, error, reset }` | `signMessage(message)` resolves with the signature. |
 | `useExecute()` | `{ execute, lastTx, isExecuting, error, reset }` | `execute(params)` wraps the SDK's `prepareExecuteAndWait`. `lastTx` follows the live `txChanged` events (`pending → signed → executed / failed`). |
@@ -92,6 +111,15 @@ Every hook throws if called outside `<CantonConnectProvider>`.
 
 `signMessage`, `execute`, and `ledgerApi` all throw `wallet is not connected —
 call useConnect().connect() first` if called before connecting.
+
+Two limits a consumer will hit:
+
+- The offered wallet list exists only while a connect attempt is running.
+  `useWalletPicker().wallets` fills when `connect()` is waiting on a choice and
+  empties when it settles — wallets cannot be enumerated ahead of time.
+- Popup mode reports no wallet identity: `useParty().wallet` stays `undefined`.
+  By choice — the SDK never says which wallet its own popup selected, and
+  observing that popup would mean depending on the SDK's UI bundle.
 
 ## Configuration
 
@@ -103,8 +131,14 @@ call useConnect().connect() first` if called before connecting.
 | `appDescription`, `appUrl` | unset | also WalletConnect metadata only — inert without `walletConnectProjectId` |
 | `networkId` | `'canton:local'` | the CIP-0103 network id; also the WalletConnect adapter's `chainId` |
 | `walletConnectProjectId` | unset | set to register the SDK's `WalletConnectAdapter` |
-| `walletPicker` | unset | omit for the SDK's built-in popup; inject `createAutoPicker()` in tests, a themed picker later |
+| `walletSelection` | `'popup'` | `'in-page'` skips the SDK popup and publishes the pending choice through `useWalletPicker()` |
+| `walletPicker` | unset | a custom `WalletPickerFn`; wins over `walletSelection` — e.g. `createAutoPicker()` in tests |
 | `additionalAdapters` | `[]` | extra `ProviderAdapter`s to register, e.g. `createMockAdapter()` |
+
+`walletPicker` and `additionalAdapters` are held by identity: a function or
+array written inline in JSX is new on every parent re-render, and each new one
+rebuilds the SDK — dropping any live session. Hoist them to module scope or
+memoize them. A known constraint, deliberately not designed away.
 
 `@walletconnect/sign-client` is declared an optional peer, but `dapp-sdk` 1.4 imports it
 statically at the top of its bundle (`dist/index.js:7`), so it has to be installed whether or not

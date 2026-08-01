@@ -14,12 +14,15 @@ src/
   CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
   hooks/
     useConnect.ts          connect / disconnect lifecycle
-    useParty.ts            active party
+    useParty.ts            active party + the connected-wallet record
+    useParties.ts          every usable party, primary first
+    useWalletPicker.ts     the pending in-page wallet choice
     useWalletStatus.ts     lock / connect status
     useSignMessage.ts      sdk.signMessage lifecycle
     useExecute.ts          sdk.prepareExecuteAndWait + live tx state
     useLedger.ts           sdk.ledgerApi pass-through
-  walletAccount.ts         account normalization + primary selection (selectPrimaryAccount, toParty)
+  walletAccount.ts         account normalization + primary-first ordering (toParties, toParty)
+  connectedWallet.ts       localStorage record of which wallet the session belongs to
   testing/
     fakeWallet.ts          test-only CIP-0103 extension over postMessage (also drives real discovery)
     autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
@@ -56,8 +59,9 @@ flowchart TD
 ### `CantonConnectProvider`
 
 Holds one `DappSDK` instance (`new DappSDK({ walletPicker? })`) and owns all shared state — party,
-connection status, lock status, last-tx snapshot, connect error. Hooks are readers over this context
-(or thin delegators to facade methods). Lifecycle:
+parties, the connected-wallet record, connection status, lock status, last-tx snapshot, connect
+error, and the pending wallet choice. Hooks are readers over this context (or thin delegators to
+facade methods). Lifecycle:
 
 - **mount**: `sdk.init({ additionalAdapters, defaultAdapters: [] })` cold-starts and restores a
   persisted session *without* opening the picker. If a session restores — even a locked one — events
@@ -73,10 +77,16 @@ they leak on the old client. `disconnect()` and unmount also tear down.
 
 ### The wallet picker
 
-`CantonConnectConfig.walletPicker?: WalletPickerFn`. Omitted → the SDK's built-in popup (`pickWallet`,
-from `core-wallet-ui-components`). Injected → a custom picker: `createAutoPicker` (headless, for
-tests/dev) today, and a `canton-theme`-styled picker component later (deferred follow-up). This one
-seam covers production UX, testability, and the future themed UI.
+Three ways to answer the SDK's wallet choice, in precedence order:
+
+- **`CantonConnectConfig.walletPicker?: WalletPickerFn`** — a supplied function owns the whole
+  interaction (`createAutoPicker` in tests/dev). Wins over `walletSelection`.
+- **`walletSelection: 'in-page'`** — the provider registers its own picker function, which publishes
+  the pending choice through context instead of resolving it: `useWalletPicker()` exposes
+  `{ isOpen, wallets, select, cancel }` while `connect()` waits. The dApp's own UI — or later a
+  themed component from the UI kit — consumes those entries and callbacks as props. The kit has no
+  dependency on this package and must not gain one; this context bridge is the seam that keeps it so.
+- **Omitted** — the SDK's built-in popup (`pickWallet`, from `core-wallet-ui-components`).
 
 ### Additional adapters
 
@@ -88,14 +98,16 @@ the SDK's bundled `localhost:3030` dev Wallet Gateway.
 
 `networkId` (`CantonConnectConfig.networkId`, default `'canton:local'`) drives two things from one
 field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId` (set in
-`wireEvents`, via `toParty`).
+`wireEvents`, via `toParties`).
 
 ### Hooks
 
 | Hook | Responsibility |
 |------|----------------|
 | `useConnect` | start/stop the connection; expose error/connecting state |
-| `useParty` | current primary party + connection status |
+| `useParty` | current primary party + connection status + the connected-wallet record |
+| `useParties` | every usable party, primary first (`party` is `parties[0]`) |
+| `useWalletPicker` | the pending in-page wallet choice: entries, `select`, `cancel` |
 | `useWalletStatus` | lock/connect status from wallet events |
 | `useSignMessage` | `sdk.signMessage` as a promise lifecycle |
 | `useExecute` | `sdk.prepareExecuteAndWait` + live tx status |
@@ -110,7 +122,7 @@ field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId`
 ## Deferred
 
 - **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `CantonConnectConfig` (issue #2, reframed; decoupled from #3).
-- **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control. Not yet filed.
+- **Themed wallet picker** — a `canton-theme`-styled component consuming `useWalletPicker()`'s entries and callbacks as props, replacing the SDK popup (issue #50). The in-page bridge it will sit on is already built.
 - **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns (issue #40).
 
 For the full local stack around this package, see the root [`architecture.md`](../architecture.md).
