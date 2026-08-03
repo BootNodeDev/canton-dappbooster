@@ -9,7 +9,7 @@ RUN corepack enable
 # so the install layer caches independently of source changes. pnpm needs all
 # manifests present to reconstruct the workspace tree from the root lockfile.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY canton-connect-kit/package.json canton-connect-kit/
+COPY canton-connect/package.json canton-connect/
 COPY canton-barebones/package.json canton-barebones/
 COPY canton-barebones/wallet-service/package.json canton-barebones/wallet-service/
 COPY dapp/daml/package.json dapp/daml/
@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 ENV HUSKY=0
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY canton-connect-kit/package.json canton-connect-kit/
+COPY canton-connect/package.json canton-connect/
 COPY canton-barebones/package.json canton-barebones/
 COPY canton-barebones/wallet-service/package.json canton-barebones/wallet-service/
 COPY dapp/daml/package.json dapp/daml/

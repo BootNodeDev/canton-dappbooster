@@ -1,23 +1,20 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
-import type { ConnectMode } from '../types'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export interface UseConnectResult {
-  connect: (mode?: ConnectMode) => Promise<void>
+  connect: () => Promise<void>
   disconnect: () => Promise<void>
   isConnecting: boolean
   isConnected: boolean
   connectError: Error | undefined
-  pairingUri: string | undefined
 }
 
 export const useConnect = (): UseConnectResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     connect: ctx.connect,
     disconnect: ctx.disconnect,
     isConnecting: ctx.isConnecting,
     isConnected: ctx.status === 'connected',
     connectError: ctx.connectError,
-    pairingUri: ctx.pairingUri,
   }
 }

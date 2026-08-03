@@ -1,5 +1,5 @@
 packages:
-  - canton-connect-kit
+  - canton-connect
   - canton-dappbooster
   - canton-theme
   - canton-barebones
@@ -7,39 +7,11 @@ packages:
   - dapp/daml
   - dapp/frontend
 
-# @canton-network/* pins. The SDK family ships breaking changes within its ^1.x
-# range (e.g. core-provider-dapp 1.8 drops the injectProvider export that
-# dapp-sdk 1.1 imports), so pnpm's "resolve the newest in range" picks an
-# incompatible set. These pins reproduce the exact, verified tree npm resolved.
-# dapp-sdk stays at 1.1.0 (1.2.0 held back until tested).
+# Pins for wallet-service's wallet-sdk. Held at the versions it was verified against;
+# unpinned, wallet-sdk resolves to 1.4.0 and core-acs-reader to 1.16.0, both untested here.
 overrides:
-  '@canton-network/dapp-sdk': 1.1.0
   '@canton-network/wallet-sdk': 1.3.1
   '@canton-network/core-acs-reader': 1.12.0
-  '@canton-network/core-amulet-service': 1.4.0
-  '@canton-network/core-asyncapi-client': 1.4.0
-  '@canton-network/core-ledger-client': 1.4.0
-  '@canton-network/core-ledger-client-types': 1.4.0
-  '@canton-network/core-ledger-proto': 1.4.0
-  '@canton-network/core-provider-dapp': 1.4.0
-  '@canton-network/core-provider-ledger': 1.4.0
-  '@canton-network/core-rpc-errors': 1.4.0
-  '@canton-network/core-rpc-transport': 1.4.0
-  '@canton-network/core-signing-lib': 1.4.0
-  '@canton-network/core-splice-client': 1.4.0
-  '@canton-network/core-splice-provider': 1.4.0
-  '@canton-network/core-token-standard': 1.4.0
-  '@canton-network/core-token-standard-service': 1.4.0
-  '@canton-network/core-tx-parser': 1.4.0
-  '@canton-network/core-tx-visualizer': 1.4.0
-  '@canton-network/core-types': 1.4.0
-  '@canton-network/core-wallet-auth': 1.4.0
-  '@canton-network/core-wallet-dapp-remote-rpc-client': 1.4.0
-  '@canton-network/core-wallet-dapp-rpc-client': 1.4.0
-  '@canton-network/core-wallet-discovery': 1.4.0
-  '@canton-network/core-wallet-store': 1.5.0
-  '@canton-network/core-wallet-ui-components': 1.6.0
-  '@canton-network/core-wallet-user-rpc-client': 1.5.0
 
 # Dependencies allowed to run install/build scripts (pnpm blocks them by default).
 # esbuild: needed by Vite/tsx. puppeteer (via @mermaid-js/mermaid-cli): blocked so

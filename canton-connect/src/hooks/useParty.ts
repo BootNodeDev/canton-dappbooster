@@ -1,4 +1,4 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 import type { ConnectionStatus, Party } from '../types'
 
 export interface UsePartyResult {
@@ -8,7 +8,7 @@ export interface UsePartyResult {
 }
 
 export const useParty = (): UsePartyResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     party: ctx.party,
     status: ctx.status,

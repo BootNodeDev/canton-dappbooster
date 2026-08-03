@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
 import { DashboardIcon, InboxIcon, PlusCircleIcon } from '@/components/icons'
 import { useParty } from '@/hooks/useParty'
 import { cn } from '@/lib/cn'
@@ -40,7 +40,7 @@ export const Sidebar = (): React.JSX.Element => {
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) =>
+            className={({ isActive }: NavLinkRenderProps) =>
               cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
                 isActive
