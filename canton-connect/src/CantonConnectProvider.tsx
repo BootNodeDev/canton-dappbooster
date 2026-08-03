@@ -64,12 +64,16 @@ export interface CantonConnectContextValue {
     cancel: () => void
   }
   /**
-   * Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel, on
+   * Opens the wallet choice (the SDK's popup, `config.walletPicker`, or the in-page bridge
+   * when `walletSelection: 'in-page'`) and connects the answer. Rejects on cancel, on
    * failure, or when a `disconnect()` or unmount kills the attempt. Idempotent while an
    * attempt is in flight: a second call joins the first.
    */
   connect: () => Promise<void>
-  /** Cancels a pending choice, waits for an in-flight connect, then resets local state. */
+  /**
+   * Cancels a pending choice, settles an in-flight connect (even one a silent wallet would
+   * never settle), then resets local state.
+   */
   disconnect: () => Promise<void>
 }
 
@@ -84,6 +88,7 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
   return ctx
 }
 
+/** Props for {@link CantonConnectProvider}. */
 export interface CantonConnectProviderProps {
   config: CantonConnectConfig
   children: ReactNode
@@ -121,10 +126,20 @@ interface PendingChoice {
   entries: WalletPickerEntry[]
   resolve: (result: WalletPickerResult) => void
   reject: (error: Error) => void
+  // The attempt this choice belongs to; cancelling must doom it, not whichever attempt is current.
+  owner: AttemptState
 }
 
 // Who killed the attempt; connect()'s failure path branches on it.
 type CancelSource = 'user' | 'disconnect' | 'unmount'
+
+// Lives on the attempt itself: a late settlement must read its own fate, not a shared flag a
+// newer attempt may have replaced. `condemn` settles the caller-facing promise in the one case
+// nothing else can: the wallet holds the only pending answer and may never send it.
+interface AttemptState {
+  cancelledBy: CancelSource | undefined
+  condemn: (reason: Error) => void
+}
 
 // Stable identity, so a closed picker never churns consumers' memos.
 const NO_OFFERED_WALLETS: WalletPickerEntry[] = []
@@ -152,21 +167,23 @@ export const CantonConnectProvider = ({
   const [offeredWallets, setOfferedWallets] = useState<WalletPickerEntry[] | undefined>(undefined)
   const pendingChoiceRef = useRef<PendingChoice | undefined>(undefined)
 
-  // Set while a cancellation kills the attempt; only a user cancel may run recovery.
-  const cancelSourceRef = useRef<CancelSource | undefined>(undefined)
+  // The in-flight connect; a second call joins it, and a cancellation condemns it in place.
+  const attemptRef = useRef<{ state: AttemptState; promise: Promise<void> } | undefined>(undefined)
 
   // What the picker chose, held until the attempt actually lands on that wallet's client.
   const chosenWalletRef = useRef<ConnectedWallet | undefined>(undefined)
 
   // The sdk memo keys on this; a per-render function would rebuild the SDK every render.
   const inPagePicker = useCallback<WalletPickerFn>((entries) => {
-    // A choice arriving while a disconnect or unmount kills the attempt must die with it, not pend.
-    if (cancelSourceRef.current !== undefined) {
+    const attempt = attemptRef.current?.state
+    // No live attempt means an abandoned flow reached the picker; a condemned one died already.
+    // Either way the choice must die here, not open over the killer's clean slate.
+    if (attempt === undefined || attempt.cancelledBy !== undefined) {
       return Promise.reject(new UserRejectedError('Wallet selection cancelled'))
     }
 
     return new Promise<WalletPickerResult>((resolve, reject) => {
-      pendingChoiceRef.current = { entries, resolve, reject }
+      pendingChoiceRef.current = { entries, resolve, reject, owner: attempt }
       setOfferedWallets(entries)
     })
   }, [])
@@ -216,9 +233,6 @@ export const CantonConnectProvider = ({
 
   // A client must exist before wiring; this shares that wiring between mount-restore and connect().
   const teardownRef = useRef<(() => void) | undefined>(undefined)
-
-  // The in-flight connect; a second call joins it instead of starting a rival attempt.
-  const attemptRef = useRef<Promise<void> | undefined>(undefined)
 
   // The initial read and the accountsChanged push must map identically; one function keeps them so.
   const applyAccounts = useCallback(
@@ -313,16 +327,25 @@ export const CantonConnectProvider = ({
     }
 
     pendingChoiceRef.current = undefined
-    cancelSourceRef.current = source
+    pending.owner.cancelledBy = source
     setOfferedWallets(undefined)
     pending.reject(new UserRejectedError('Wallet selection cancelled'))
   }, [])
 
-  // Kills the whole attempt: rejects an open choice now, and condemns one that has not opened yet.
+  // Kills the whole attempt: rejects an open choice now, condemns one not yet opened or already
+  // answered. Condemning settles the caller's promise even when the wallet never answers.
   const cancelAttempt = useCallback(
     (source: CancelSource): void => {
-      if (attemptRef.current !== undefined) {
-        cancelSourceRef.current = source
+      const attempt = attemptRef.current
+      if (attempt !== undefined) {
+        attempt.state.cancelledBy = source
+        attempt.state.condemn(
+          new UserRejectedError(
+            pendingChoiceRef.current === undefined
+              ? 'Connect attempt cancelled'
+              : 'Wallet selection cancelled',
+          ),
+        )
       }
 
       cancelPending(source)
@@ -394,11 +417,20 @@ export const CantonConnectProvider = ({
     void sdk
       .init({ additionalAdapters, defaultAdapters: [] })
       .then(async () => {
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         // status() throws when there's nothing to restore — that's normal, not an error.
         const restored = await sdk.status().catch(() => undefined)
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
+
+        // An attempt in flight owns the outcome; a restore landing now must not write beneath it.
+        if (attemptRef.current !== undefined) {
+          return
+        }
 
         // The SDK's session is the authority; a record it no longer backs is deleted, not trusted.
         if (restored === undefined) {
@@ -414,7 +446,9 @@ export const CantonConnectProvider = ({
         await syncFromStatus(restored)
       })
       .catch((err: unknown) => {
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
 
         // Only init() can land here — syncFromStatus never throws — so nothing was wired or set yet.
         resetToDisconnected(err as Error)
@@ -435,74 +469,114 @@ export const CantonConnectProvider = ({
     forgetConnectedWallet,
   ])
 
-  const runConnect = useCallback(async (): Promise<void> => {
-    setStatus('connecting')
-    setConnectError(undefined)
+  const runConnect = useCallback(
+    async (attempt: AttemptState): Promise<void> => {
+      setStatus('connecting')
+      setConnectError(undefined)
 
-    // Remove listeners from the current client before connect() swaps in a new one.
-    teardownWiring()
+      // Remove listeners from the current client before connect() swaps in a new one.
+      teardownWiring()
 
-    try {
-      const result = await sdk.connect() // opens the picker
-      if (!result.isConnected) {
-        throw new Error(result.reason ?? 'Wallet did not connect')
-      }
+      try {
+        const result = await sdk.connect() // opens the picker
+        // A condemned attempt may still get the wallet's answer later; it owns no state by then.
+        if (attempt.cancelledBy !== undefined) {
+          throw new UserRejectedError('Connect attempt cancelled')
+        }
 
-      teardownRef.current = wireEvents()
+        if (!result.isConnected) {
+          throw new Error(result.reason ?? 'Wallet did not connect')
+        }
 
-      const accounts = await sdk.listAccounts()
-      markConnected(accounts)
-      rememberChosenWallet()
-    } catch (err) {
-      const cancelledBy = cancelSourceRef.current
-      cancelSourceRef.current = undefined
+        teardownRef.current = wireEvents()
 
-      // A disconnect or an unmount owns the end state; recovery here would overwrite it a tick later.
-      if (cancelledBy === 'disconnect' || cancelledBy === 'unmount') {
+        const accounts = await sdk.listAccounts()
+        if (attempt.cancelledBy !== undefined) {
+          teardownWiring()
+          throw new UserRejectedError('Connect attempt cancelled')
+        }
+
+        markConnected(accounts)
+        rememberChosenWallet()
+      } catch (err) {
+        // A disconnect or an unmount owns the end state; recovery here would overwrite it a tick later.
+        const killedByOwner = (): boolean =>
+          attempt.cancelledBy === 'disconnect' || attempt.cancelledBy === 'unmount'
+
+        if (killedByOwner()) {
+          throw err
+        }
+
+        // A cancelled picker fails before the client swap — probe, don't assume the session is gone.
+        const restored = await sdk.status().catch(() => undefined)
+
+        // The probe is an await too: an owner landing during it wins over the recovery.
+        if (killedByOwner()) {
+          throw err
+        }
+
+        if (restored === undefined) {
+          // The try may have wired the swapped-in client; a vanished session must not keep listeners.
+          teardownWiring()
+          resetToDisconnected()
+          forgetConnectedWallet()
+        } else {
+          await syncFromStatus(restored)
+
+          if (killedByOwner()) {
+            // syncFromStatus re-wired and re-marked; give the owner back its slate.
+            teardownWiring()
+            resetToDisconnected()
+            forgetConnectedWallet()
+            throw err
+          }
+        }
+
+        // Recorded after recovery so a failed recovery read cannot replace the error the caller catches.
+        setConnectError(err as Error)
         throw err
       }
-
-      // A cancelled picker fails before the client swap — probe, don't assume the session is gone.
-      const restored = await sdk.status().catch(() => undefined)
-
-      if (restored === undefined) {
-        // The try may have wired the swapped-in client; a vanished session must not keep listeners.
-        teardownWiring()
-        resetToDisconnected()
-        forgetConnectedWallet()
-      } else {
-        await syncFromStatus(restored)
-      }
-
-      // Recorded after recovery so a failed recovery read cannot replace the error the caller catches.
-      setConnectError(err as Error)
-      throw err
-    }
-  }, [
-    sdk,
-    markConnected,
-    resetToDisconnected,
-    rememberChosenWallet,
-    forgetConnectedWallet,
-    syncFromStatus,
-    teardownWiring,
-    wireEvents,
-  ])
+    },
+    [
+      sdk,
+      markConnected,
+      resetToDisconnected,
+      rememberChosenWallet,
+      forgetConnectedWallet,
+      syncFromStatus,
+      teardownWiring,
+      wireEvents,
+    ],
+  )
 
   // Not async: re-wrapping the shared promise would make a fire-and-forget join reject unhandled.
   const connect = useCallback((): Promise<void> => {
     const inFlight = attemptRef.current
     if (inFlight !== undefined) {
-      return inFlight
+      return inFlight.promise
     }
 
-    const attempt = runConnect().finally(() => {
-      attemptRef.current = undefined
-      // A condemned source or unconsumed choice outliving the attempt would corrupt the next recovery.
-      cancelSourceRef.current = undefined
-      chosenWalletRef.current = undefined
+    // Deferred so cancelAttempt can settle the attempt when only the wallet could, and it never does.
+    let condemn: (reason: Error) => void = () => undefined
+    const condemnation = new Promise<never>((_, reject) => {
+      condemn = reject
     })
-    attemptRef.current = attempt
+
+    const state: AttemptState = { cancelledBy: undefined, condemn }
+
+    // The guards in runConnect keep a condemned attempt from writing state; its own rejection
+    // still needs a handler once the race has already settled without it.
+    const inner = runConnect(state)
+    void inner.catch(() => undefined)
+
+    const attempt = Promise.race([inner, condemnation]).finally(() => {
+      // Only the current attempt cleans up; one settling late must not evict its successor.
+      if (attemptRef.current?.state === state) {
+        attemptRef.current = undefined
+        chosenWalletRef.current = undefined
+      }
+    })
+    attemptRef.current = { state, promise: attempt }
 
     // One handler is always attached, so ignoring the promise cannot leak an unhandled rejection.
     void attempt.catch(() => undefined)
@@ -513,8 +587,8 @@ export const CantonConnectProvider = ({
   const disconnect = useCallback(async (): Promise<void> => {
     cancelAttempt('disconnect')
 
-    // The dying attempt must settle before the reset below, or its failure path races it.
-    await attemptRef.current?.catch(() => undefined)
+    // Settles now even when the wallet never answers — cancelAttempt condemned it above.
+    await attemptRef.current?.promise.catch(() => undefined)
 
     teardownWiring()
 
