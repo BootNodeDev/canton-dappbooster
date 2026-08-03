@@ -73,7 +73,8 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
 | Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
-| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
+| Shipped output | check-shipped | `pnpm check:shipped` after a build (`scripts/check-shipped.mjs`): every exports entry of each built package resolves, peers stay external (64 kB entry budget), JSDoc survives into `dist`. Its own suite runs via `pnpm test:scripts` |
+| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+check:shipped, test:scripts+test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
 ## Subprojects
@@ -263,7 +264,7 @@ The `issue` skill at `.claude/skills/issue/` applies these labels automatically 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`.
+- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm test:scripts`, `pnpm knip`, `pnpm check:shipped`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
 - For the full end-to-end loop (Canton up → DAR built → DAR deployed → wallet-service → wallet → dApp), follow [`README.md`](README.md) §1–6.

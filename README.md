@@ -159,7 +159,9 @@ Root scripts, run from the repo root:
 | `pnpm typecheck` | `tsc --noEmit` in every TS workspace |
 | `pnpm build` | Build every workspace (`dapp/daml` needs `dpm`) |
 | `pnpm test` | Run each workspace's test suite |
+| `pnpm test:scripts` | Run the root `scripts/` own test suite (node:test) |
 | `pnpm knip` | Dead-code and unused-dependency scan |
+| `pnpm check:shipped` | Verify the built packages: exports entries resolve, peers stay external, JSDoc ships (run after `pnpm build`) |
 
 ### Secret scanning
 
@@ -173,7 +175,8 @@ install CI uses. Accepted non-secret findings (test fixtures, legacy history) ar
 ### Continuous integration
 
 Every pull request runs the [`pr`](.github/workflows/pr.yml) gate: biome, typecheck + build
-+ knip, tests, commitlint (commit range + PR title), and a full-history gitleaks scan. `main`
++ knip + the shipped-package check, script tests + workspace tests, commitlint (commit range +
+PR title), and a full-history gitleaks scan. `main`
 is protected — a PR needs one approval and all checks green to merge. New issues and PRs are
 added to the project board ([`add-to-project`](.github/workflows/add-to-project.yml)) and PRs
 are assigned to their author ([`pr-assign`](.github/workflows/pr-assign.yml)).
