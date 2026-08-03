@@ -65,7 +65,9 @@ facade methods). Lifecycle:
 
 - **mount**: `sdk.init({ additionalAdapters, defaultAdapters: [] })` cold-starts and restores a
   persisted session *without* opening the picker. If a session restores — even a locked one — events
-  are wired immediately so a later unlock push isn't dropped.
+  are wired immediately so a later unlock push isn't dropped. A *different* `DappSDK` instance
+  arriving with nothing to restore sheds the previous instance's state; the same instance
+  re-running `init()` does not.
 - **connect()**: `sdk.connect()` opens the picker and connects the chosen wallet.
 - **events**: `sdk.onAccountsChanged/onStatusChanged/onTxChanged` → React state. Same event names and
   types the SDK's `DappClient` exposes.
