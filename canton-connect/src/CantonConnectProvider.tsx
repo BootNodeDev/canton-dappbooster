@@ -1,12 +1,11 @@
 import type { WalletPickerEntry, WalletPickerResult } from '@canton-network/core-types'
 import type {
   AccountsChangedEvent,
-  ProviderAdapter,
   StatusEvent,
   TxChangedEvent,
   WalletPickerFn,
 } from '@canton-network/dapp-sdk'
-import { DappSDK, UserRejectedError, WalletConnectAdapter } from '@canton-network/dapp-sdk'
+import { DappSDK, UserRejectedError } from '@canton-network/dapp-sdk'
 import {
   createContext,
   type JSX,
@@ -18,64 +17,17 @@ import {
   useRef,
   useState,
 } from 'react'
+import { buildAdditionalAdapters } from './adapters'
 import { clearConnectedWallet, readConnectedWallet, writeConnectedWallet } from './connectedWallet'
-import type { CantonConnectConfig, ConnectedWallet, ConnectionStatus, Party } from './types'
+import type {
+  CantonConnectConfig,
+  CantonConnectContextValue,
+  ConnectedWallet,
+  ConnectionStatus,
+  Party,
+  TxStatusSnapshot,
+} from './types'
 import { toParties } from './walletAccount'
-
-/**
- * Mirrored from the SDK's `txChanged` event as a command moves through
- * pending, signed, executed or failed.
- */
-export interface TxStatusSnapshot {
-  status: TxChangedEvent['status']
-  commandId: TxChangedEvent['commandId']
-  payload?: unknown
-}
-
-/**
- * The full connection state and actions behind every hook in this package.
- * Prefer the narrower hooks (`useConnect`, `useParty`, …); each picks a slice of this.
- */
-export interface CantonConnectContextValue {
-  config: CantonConnectConfig
-  /** One per `CantonConnectProvider`, recreated only when the effective picker changes. */
-  sdk: DappSDK
-  party: Party | undefined
-  /** Every usable party the wallet holds, primary first. `party` is always `parties[0]`. */
-  parties: Party[]
-  /**
-   * The wallet this session belongs to, remembered across page reloads.
-   * `undefined` in the default popup mode by design — the SDK never reports
-   * which wallet its own popup selected, and observing that would mean
-   * depending on the SDK's UI bundle.
-   */
-  wallet: ConnectedWallet | undefined
-  status: ConnectionStatus
-  /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
-  isLocked: boolean
-  connectError: Error | undefined
-  isConnecting: boolean
-  lastTx: TxStatusSnapshot | undefined
-  /** The pending wallet choice, only ever open in `walletSelection: 'in-page'` mode. */
-  walletPicker: {
-    isOpen: boolean
-    wallets: WalletPickerEntry[]
-    select: (providerId: string) => void
-    cancel: () => void
-  }
-  /**
-   * Opens the wallet choice (the SDK's popup, `config.walletPicker`, or the in-page bridge
-   * when `walletSelection: 'in-page'`) and connects the answer. Rejects on cancel, on
-   * failure, or when a `disconnect()` or unmount kills the attempt. Idempotent while an
-   * attempt is in flight: a second call joins the first.
-   */
-  connect: () => Promise<void>
-  /**
-   * Cancels a pending choice, settles an in-flight connect (even one a silent wallet would
-   * never settle), then resets local state.
-   */
-  disconnect: () => Promise<void>
-}
 
 const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
@@ -92,33 +44,6 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
 export interface CantonConnectProviderProps {
   config: CantonConnectConfig
   children: ReactNode
-}
-
-type AdapterConfig = Pick<
-  CantonConnectConfig,
-  'appName' | 'appDescription' | 'appUrl' | 'walletConnectProjectId' | 'additionalAdapters'
->
-
-const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): ProviderAdapter[] => {
-  const adapters: ProviderAdapter[] = [...(config.additionalAdapters ?? [])]
-
-  if (config.walletConnectProjectId !== undefined && config.walletConnectProjectId !== '') {
-    adapters.push(
-      WalletConnectAdapter.create({
-        projectId: config.walletConnectProjectId,
-        // The CAIP-2 chain must be the configured Canton network id, not the SDK's devnet default.
-        chainId: networkId,
-        metadata: {
-          name: config.appName,
-          description: config.appDescription ?? config.appName,
-          url: config.appUrl ?? (typeof window === 'undefined' ? '' : window.location.origin),
-          icons: [],
-        },
-      }),
-    )
-  }
-
-  return adapters
 }
 
 // The SDK awaits the picker's promise; the dApp answers later, so we hold the settle pair.

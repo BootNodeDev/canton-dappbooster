@@ -1,8 +1,4 @@
-export type {
-  CantonConnectContextValue,
-  CantonConnectProviderProps,
-  TxStatusSnapshot,
-} from './CantonConnectProvider'
+export type { CantonConnectProviderProps } from './CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
 export type { UseConnectResult } from './hooks/useConnect'
 export { useConnect } from './hooks/useConnect'
@@ -23,4 +19,11 @@ export { useWalletStatus } from './hooks/useWalletStatus'
 export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from './mock/mockAdapter'
 export { createMockAdapter } from './mock/mockAdapter'
 
-export type { CantonConnectConfig, ConnectedWallet, ConnectionStatus, Party } from './types'
+export type {
+  CantonConnectConfig,
+  CantonConnectContextValue,
+  ConnectedWallet,
+  ConnectionStatus,
+  Party,
+  TxStatusSnapshot,
+} from './types'
