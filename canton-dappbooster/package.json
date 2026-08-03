@@ -16,7 +16,7 @@
   "private": true,
   "sideEffects": false,
   "engines": {
-    "node": ">=24"
+    "node": ">=24.15.0"
   },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -37,7 +37,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "^0.22.14",
