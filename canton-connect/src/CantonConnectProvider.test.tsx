@@ -1353,6 +1353,341 @@ describe('CantonConnectProvider', () => {
     expect(result.current.picker.isOpen).toBe(false)
   })
 
+  // A wallet window closed without answering: the connect RPC stays pending until released.
+  const createSilentWallet = (id: string) => {
+    let release: (() => void) | undefined
+    const adapter = createMockAdapter({ id, accounts: [{ partyId: 'alice::1' }] })
+    // request lives on the provider; the mock's provider() returns the adapter itself.
+    const provider = adapter.provider()
+    const original = provider.request.bind(provider)
+    type MockRequest = typeof original
+
+    provider.request = (args: Parameters<MockRequest>[0]): ReturnType<MockRequest> => {
+      if (args.method === 'connect') {
+        return new Promise<Awaited<ReturnType<MockRequest>>>((resolve) => {
+          release = () => {
+            void original(args).then(resolve)
+          }
+        })
+      }
+
+      return original(args)
+    }
+
+    return { adapter, releaseConnect: () => release?.() }
+  }
+
+  const silentWalletSetup = async (id: string) => {
+    const silent = createSilentWallet(id)
+
+    const config = {
+      appName: 'test',
+      walletSelection: 'in-page' as const,
+      additionalAdapters: [silent.adapter],
+    }
+    const rendered = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = rendered.result.current.connect.connect()
+      attempt?.catch(() => undefined)
+    })
+
+    await waitFor(() => expect(rendered.result.current.picker.isOpen).toBe(true))
+
+    act(() => {
+      rendered.result.current.picker.select(id)
+    })
+
+    await waitFor(() => expect(rendered.result.current.picker.isOpen).toBe(false))
+
+    // biome-ignore lint/style/noNonNullAssertion: assigned synchronously by connect() above
+    return { ...silent, ...rendered, attempt: attempt! }
+  }
+
+  it('disconnect() resolves and resets while a selected wallet never answers', async () => {
+    const { result, attempt } = await silentWalletSetup('wallet-silent')
+
+    // The attempt is parked in the wallet's court; disconnect must not wait for an answer.
+    let outcome: 'settled' | 'hung' | undefined
+    await act(async () => {
+      outcome = await Promise.race([
+        result.current.connect.disconnect().then(() => 'settled' as const),
+        new Promise<'hung'>((resolve) => {
+          setTimeout(() => resolve('hung'), 1_000)
+        }),
+      ])
+    })
+
+    expect(outcome).toBe('settled')
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.connect.connectError).toBe(undefined)
+    expect(result.current.party.party).toBe(undefined)
+
+    await expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+  })
+
+  it('connect() after abandoning a never-answering wallet starts a fresh attempt', async () => {
+    const { result } = await silentWalletSetup('wallet-silent-retry')
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    let secondAttempt: Promise<void> | undefined
+    act(() => {
+      secondAttempt = result.current.connect.connect()
+      secondAttempt?.catch(() => undefined)
+    })
+
+    // A fresh choice opening proves this is a new attempt, not a join of the abandoned one.
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    act(() => {
+      result.current.picker.cancel()
+    })
+
+    await expect(secondAttempt).rejects.toBeInstanceOf(UserRejectedError)
+    expect(result.current.picker.isOpen).toBe(false)
+  })
+
+  it('a late answer from an abandoned attempt writes no state', async () => {
+    const { result, releaseConnect } = await silentWalletSetup('wallet-silent-late')
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    // The wallet finally answers after disconnect already owned the aftermath.
+    await act(async () => {
+      releaseConnect()
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50)
+      })
+    })
+
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.connect.isConnected).toBe(false)
+    expect(result.current.connect.connectError).toBe(undefined)
+  })
+
+  it('a choice arriving after disconnect() killed the attempt never opens', async () => {
+    const adapter = createMockAdapter({ id: 'wallet-ghost', accounts: [{ partyId: 'alice::1' }] })
+    const config = {
+      appName: 'test',
+      walletSelection: 'in-page' as const,
+      additionalAdapters: [adapter],
+    }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    await act(async () => {
+      // Same synchronous breath: the SDK's announce window has not offered the choice yet.
+      const attempt = result.current.connect.connect()
+      const settled = expect(attempt).rejects.toBeInstanceOf(UserRejectedError)
+      await result.current.connect.disconnect()
+      await settled
+    })
+
+    expect(result.current.picker.isOpen).toBe(false)
+
+    // The abandoned flow reaches the picker only after that window; the choice must die there.
+    await expect(
+      waitFor(() => expect(result.current.picker.isOpen).toBe(true), { timeout: 3000 }),
+    ).rejects.toThrow()
+
+    expect(result.current.picker.wallets).toEqual([])
+    expect(result.current.party.status).toBe('disconnected')
+  }, 15_000)
+
+  it('disconnect() landing during cancel-recovery keeps the clean slate', async () => {
+    const adapter = createMockAdapter({
+      id: 'wallet-recovery',
+      accounts: [{ partyId: 'alice::1' }],
+    })
+    // Gate status so the user-cancel recovery probe can be held open while disconnect() lands.
+    const provider = adapter.provider()
+    const original = provider.request.bind(provider)
+    type MockRequest = typeof original
+    let holdStatus = false
+    let releaseStatus: (() => void) | undefined
+
+    provider.request = (args: Parameters<MockRequest>[0]): ReturnType<MockRequest> => {
+      if (args.method === 'status' && holdStatus) {
+        return new Promise<Awaited<ReturnType<MockRequest>>>((resolve) => {
+          releaseStatus = () => {
+            void original(args).then(resolve)
+          }
+        })
+      }
+
+      return original(args)
+    }
+
+    const config = {
+      appName: 'test',
+      walletSelection: 'in-page' as const,
+      additionalAdapters: [adapter],
+    }
+    const { result } = renderHook(
+      () => ({
+        connect: useConnect(),
+        picker: useWalletPicker(),
+        party: useParty(),
+        status: useWalletStatus(),
+      }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    // A live session first, so the cancelled retry has a recovery target to probe.
+    let firstAttempt: Promise<void> | undefined
+    act(() => {
+      firstAttempt = result.current.connect.connect()
+      firstAttempt?.catch(() => undefined)
+    })
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+    act(() => {
+      result.current.picker.select('wallet-recovery')
+    })
+    await waitFor(() => expect(result.current.connect.isConnected).toBe(true))
+
+    let retry: Promise<void> | undefined
+    act(() => {
+      retry = result.current.connect.connect()
+      retry?.catch(() => undefined)
+    })
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+
+    // Cancel starts the user-cancel recovery; wait until its probe is provably held on the gate.
+    holdStatus = true
+    act(() => {
+      result.current.picker.cancel()
+    })
+    await waitFor(() => expect(releaseStatus).toBeDefined(), { timeout: 5_000 })
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    // The wallet answers the probe only after disconnect already owned the end state.
+    await act(async () => {
+      releaseStatus?.()
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50)
+      })
+    })
+
+    // disconnect owns the end state: the recovery must not have written over it.
+    expect(result.current.party.status).toBe('disconnected')
+    expect(result.current.status.isLocked).toBe(false)
+    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.connect.connectError).toBe(undefined)
+  }, 15_000)
+
+  it('a restore resolving during a connect attempt leaves no wiring behind', async () => {
+    const adapter = createMockAdapter({ id: 'wallet-race', accounts: [{ partyId: 'alice::1' }] })
+    const provider = adapter.provider()
+    const original = provider.request.bind(provider)
+    type MockRequest = typeof original
+
+    // Restorable (the shipped mock is not) and connected from the start, so mount finds a session.
+    adapter.restore = async () => provider
+    await original({ method: 'connect' } as Parameters<MockRequest>[0])
+    localStorage.setItem(DISCOVERY_SESSION_KEY, JSON.stringify({ providerId: 'wallet-race' }))
+
+    // Gate status so the mount restore hangs on its probe until released.
+    let holdStatus = true
+    let releaseStatus: (() => void) | undefined
+
+    provider.request = (args: Parameters<MockRequest>[0]): ReturnType<MockRequest> => {
+      if (args.method === 'status' && holdStatus) {
+        return new Promise<Awaited<ReturnType<MockRequest>>>((resolve) => {
+          releaseStatus = () => {
+            void original(args).then(resolve)
+          }
+        })
+      }
+
+      return original(args)
+    }
+
+    const config = {
+      appName: 'test',
+      walletSelection: 'in-page' as const,
+      additionalAdapters: [adapter],
+    }
+    const { result } = renderHook(
+      () => ({ connect: useConnect(), picker: useWalletPicker(), party: useParty() }),
+      {
+        wrapper: ({ children }) => (
+          <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+        ),
+      },
+    )
+
+    await waitFor(() => expect(releaseStatus).toBeDefined(), { timeout: 5_000 })
+
+    // Start the attempt while the restore is parked, then let the restore land mid-attempt.
+    let attempt: Promise<void> | undefined
+    act(() => {
+      attempt = result.current.connect.connect()
+      attempt?.catch(() => undefined)
+    })
+    await act(async () => {
+      holdStatus = false
+      releaseStatus?.()
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50)
+      })
+    })
+
+    await waitFor(() => expect(result.current.picker.isOpen).toBe(true))
+    act(() => {
+      result.current.picker.select('wallet-race')
+    })
+    await waitFor(() => expect(result.current.connect.isConnected).toBe(true))
+
+    await act(async () => {
+      await result.current.connect.disconnect()
+    })
+
+    // If the restore's wiring leaked, this push still reaches applyAccounts.
+    act(() => {
+      adapter.emit('accountsChanged', [
+        {
+          primary: true,
+          partyId: 'mallory::1',
+          status: 'allocated',
+          hint: 'mallory',
+          publicKey: 'pk',
+          namespace: '1',
+          signingProviderId: 'mock',
+        },
+      ])
+    })
+
+    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.party.status).toBe('disconnected')
+  }, 15_000)
+
   it('unmounting during a pending choice settles the attempt without an unhandled rejection', async () => {
     const wallet = createFakeWallet({
       id: 'wallet-unmount-choice',
