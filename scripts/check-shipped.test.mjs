@@ -3,7 +3,37 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
-import { bareImportsOf, checkPackage, entriesOf, packageNameOf, shouldCheck } from './check-shipped.mjs'
+import {
+  bareImportsOf,
+  checkPackage,
+  entriesOf,
+  packageNameOf,
+  shouldCheck,
+  workspaceDirsOf,
+} from './check-shipped.mjs'
+
+describe('workspaceDirsOf', () => {
+  it('collects exactly the packages block, through blanks and comments', () => {
+    const yaml = [
+      'packages:',
+      '  - canton-dappbooster',
+      '',
+      '  # a comment between items',
+      '  - dapp/frontend',
+      '',
+      '# top-level comment ends the block',
+      'overrides:',
+      "  '@scope/pkg': 1.0.0",
+      'someFutureList:',
+      '  - not-a-package',
+    ].join('\n')
+    assert.deepEqual(workspaceDirsOf(yaml), ['canton-dappbooster', 'dapp/frontend'])
+  })
+
+  it('returns nothing without a packages block', () => {
+    assert.deepEqual(workspaceDirsOf('overrides:\n  x: 1\n'), [])
+  })
+})
 
 describe('entriesOf', () => {
   it('wraps a string exports field as the root entry', () => {

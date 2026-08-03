@@ -11,14 +11,28 @@ export const DEFAULT_BUDGET_KB = 64
 
 const NODE_BUILTINS = new Set(builtinModules)
 
-export const workspaceDirs = (root) => {
-  const yaml = readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8')
-  const packagesBlock = yaml.split(/^packages:\s*$/m)[1] ?? ''
+// The packages block ends at the next top-level key; scanning on would absorb list items
+// from unrelated sections (a future top-level list would read as package dirs).
+export const workspaceDirsOf = (workspaceYaml) => {
+  const lines = workspaceYaml.split('\n')
+  const start = lines.findIndex((line) => /^packages:\s*$/.test(line))
+  if (start === -1) {
+    return []
+  }
 
-  return packagesBlock
-    .split('\n')
-    .map((line) => line.match(/^\s+-\s+(\S+)\s*$/)?.[1])
-    .filter((dir) => dir !== undefined)
+  const dirs = []
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) {
+      break
+    }
+
+    const dir = line.match(/^\s+-\s+(\S+)\s*$/)?.[1]
+    if (dir !== undefined) {
+      dirs.push(dir)
+    }
+  }
+
+  return dirs
 }
 
 // A package qualifies when it both declares an exports map and builds an artifact to back it.
@@ -217,7 +231,7 @@ const main = () => {
   const skipped = []
   const checkedCount = { packages: 0, entries: 0 }
 
-  for (const dir of workspaceDirs(root)) {
+  for (const dir of workspaceDirsOf(readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8'))) {
     const manifestPath = join(root, dir, 'package.json')
     if (!existsSync(manifestPath)) {
       continue
