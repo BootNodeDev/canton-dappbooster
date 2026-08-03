@@ -20,7 +20,9 @@
     "typecheck": "pnpm -r run --if-present typecheck",
     "build": "pnpm -r run --if-present build",
     "test": "pnpm -r run --if-present test",
+    "test:scripts": "node --test \"scripts/*.test.mjs\"",
     "knip": "knip",
+    "check:shipped": "node scripts/check-shipped.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

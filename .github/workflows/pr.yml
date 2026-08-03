@@ -44,6 +44,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm -r --filter '!./dapp/daml' run --if-present build
       - run: pnpm knip
+      - name: shipped-package check
+        run: pnpm check:shipped
 
   test:
     name: 3 - test
@@ -57,6 +59,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test:scripts
       - run: pnpm test
 
   commitlint:
