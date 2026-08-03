@@ -103,7 +103,7 @@ Every hook throws if called outside `<CantonConnectProvider>`.
 | `useConnect()` | `{ connect, disconnect, isConnecting, isConnected, connectError }` | `connect()` takes no argument — it opens the wallet picker and connects whatever the picker returns. |
 | `useParty()` | `{ party, status, isConnected, wallet }` | `party` (`Party \| undefined`: `partyId`, `networkId`, optional `name`/`publicKey`) updates when the wallet's primary account changes. `wallet` names the connected wallet — `undefined` in popup mode. |
 | `useParties()` | `{ parties }` | Every usable party the wallet holds, primary first — `party` is always `parties[0]`. Empty while locked or disconnected. |
-| `useWalletPicker()` | `{ isOpen, wallets, select, cancel }` | The pending wallet choice in `walletSelection: 'in-page'` mode. `select(providerId)` answers it; `cancel()` rejects the attempt with `UserRejectedError`. |
+| `useWalletPicker()` | `{ isOpen, wallets, select, cancel }` | The pending wallet choice in `walletSelection: 'in-page'` mode. `select(providerId)` answers it; `cancel()` rejects the attempt with `UserRejectedError`. Closest wagmi counterpart: `useConnectors()`. |
 | `useWalletStatus()` | `{ isLocked, isConnected }` | Tracks the wallet's lock/connect events. |
 | `useSignMessage()` | `{ signMessage, signature, isSigning, error, reset }` | `signMessage(message)` resolves with the signature. |
 | `useExecute()` | `{ execute, lastTx, isExecuting, error, reset }` | `execute(params)` wraps the SDK's `prepareExecuteAndWait`. `lastTx` follows the live `txChanged` events (`pending → signed → executed / failed`). |
