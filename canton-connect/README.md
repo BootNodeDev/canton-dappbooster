@@ -136,9 +136,10 @@ Two limits a consumer will hit:
 | `additionalAdapters` | `[]` | extra `ProviderAdapter`s to register, e.g. `createMockAdapter()` |
 
 `walletPicker` and `additionalAdapters` are held by identity: a function or
-array written inline in JSX is new on every parent re-render, and each new one
-rebuilds the SDK — dropping any live session. Hoist them to module scope or
-memoize them. A known constraint, deliberately not designed away.
+array written inline in JSX is new on every parent re-render. A new `walletPicker`
+rebuilds the SDK, dropping any live session; a new `additionalAdapters` re-runs
+`sdk.init()` on the same instance. Hoist them to module scope or memoize them.
+A known constraint, deliberately not designed away.
 
 `@walletconnect/sign-client` is declared an optional peer, but `dapp-sdk` 1.4 imports it
 statically at the top of its bundle (`dist/index.js:7`), so it has to be installed whether or not
