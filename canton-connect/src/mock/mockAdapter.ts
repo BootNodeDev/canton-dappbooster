@@ -23,12 +23,17 @@ export interface MockAccount {
 }
 
 export interface CreateMockAdapterOptions {
+  /** Defaults to `'mock'`; also what `createAutoPicker` selects by. */
   id?: string
+  /** First entry is the primary. Defaults to one generated account. */
   accounts?: MockAccount[]
+  /** Omit to let `CantonConnectConfig.networkId` apply instead. */
   networkId?: string
 }
 
+/** See `createMockAdapter`. */
 export interface MockAdapter extends ProviderAdapter {
+  /** Simulates the wallet pushing `event` to subscribers of `provider().on(...)`. */
   emit: (event: string, payload: unknown) => void
 }
 
@@ -155,5 +160,10 @@ class MockProviderAdapter implements ProviderAdapter {
   }
 }
 
+/**
+ * Answers the connect flow with canned data, so `CantonConnectProvider` runs with no wallet
+ * installed; pass it via `CantonConnectConfig.additionalAdapters`. Anything outside that flow
+ * throws naming the method; a canned result would be indistinguishable from a real one.
+ */
 export const createMockAdapter = (options: CreateMockAdapterOptions = {}): MockAdapter =>
   new MockProviderAdapter(options)

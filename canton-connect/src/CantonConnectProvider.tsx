@@ -23,27 +23,40 @@ import {
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
+/**
+ * Mirrored from the SDK's `txChanged` event as a command moves through
+ * pending, signed, executed or failed.
+ */
 export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
   commandId: TxChangedEvent['commandId']
   payload?: unknown
 }
 
+/**
+ * The full connection state and actions behind every hook in this package.
+ * Prefer the narrower hooks (`useConnect`, `useParty`, …); each picks a slice of this.
+ */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
+  /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
+  /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
   isLocked: boolean
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
+  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
   connect: () => Promise<void>
+  /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
 const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
+/** Throws if called outside a `CantonConnectProvider`. */
 export const useCantonConnectContext = (): CantonConnectContextValue => {
   const ctx = useContext(CantonConnectContext)
   if (ctx === undefined) {
@@ -84,6 +97,11 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
   return adapters
 }
 
+/**
+ * Owns the connection lifecycle: creates the `DappSDK` from `config`, restores a previous
+ * session on mount, and wires wallet-pushed events into the state the hooks read.
+ * Those hooks mirror wagmi's naming, not its TanStack Query result shapes.
+ */
 export const CantonConnectProvider = ({
   config,
   children,

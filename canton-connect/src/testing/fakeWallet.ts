@@ -15,16 +15,27 @@ export interface FakeWalletAccount {
 }
 
 export interface FakeWalletOptions {
+  /** Provider id announced to `window`, and the postMessage `target` unless `target` is set. */
   id: string
+  /** Defaults to `id`. */
   name?: string
+  /** postMessage target frame id. Defaults to `id`. */
   target?: string
+  /** Defaults to a single account with `id` as its party prefix. */
   accounts?: FakeWalletAccount[]
+  /**
+   * `isConnected` per successive `status` call, the last entry repeating once exhausted;
+   * lets a test restore a connected session, then report it locked.
+   */
   statusResponses?: boolean[]
 }
 
 export interface FakeWallet {
+  /** Re-announces the wallet, as if the extension had just loaded. */
   announce: () => void
+  /** Pushes an unsolicited notification the way a real extension does, e.g. `'statusChanged'`. */
   push: (method: string, params: unknown) => void
+  /** Removes the `window` listeners this fake installed. Call it in test teardown. */
   dispose: () => void
 }
 
@@ -34,6 +45,11 @@ interface IncomingMessage {
   target?: string
 }
 
+/**
+ * A fake CIP-0103 extension wallet for tests. It speaks the real postMessage protocol, so it
+ * exercises the SDK's genuine `ExtensionAdapter` rather than a stub. Answers `connect`,
+ * `status`, `listAccounts` and `disconnect`; anything else rejects naming the method.
+ */
 export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const target = options.target ?? options.id
   const accounts = options.accounts ?? [{ partyId: `${options.id}::1220abcd`, primary: true }]

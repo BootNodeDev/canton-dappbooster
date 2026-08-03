@@ -5,6 +5,10 @@ export interface UseWalletStatusResult {
   isConnected: boolean
 }
 
+/**
+ * Connected-but-locked is a CIP-0103 state wagmi has no equivalent for;
+ * updates reactively, never poll it.
+ */
 export const useWalletStatus = (): UseWalletStatusResult => {
   const ctx = useCantonConnectContext()
   return {

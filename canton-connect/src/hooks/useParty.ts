@@ -7,6 +7,10 @@ export interface UsePartyResult {
   isConnected: boolean
 }
 
+/**
+ * The connected account and status; `party` is `undefined` until `connect()` succeeds.
+ * Wagmi: `useAccount`, with `party.partyId` for `address`.
+ */
 export const useParty = (): UsePartyResult => {
   const ctx = useCantonConnectContext()
   return {
