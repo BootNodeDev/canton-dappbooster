@@ -1,0 +1,68 @@
+{
+  "name": "@bootnodedev/canton-connect",
+  "version": "0.2.0",
+  "description": "wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets",
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1"
+  },
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "development": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@canton-network/core-types": "^1.8.0",
+    "@canton-network/dapp-sdk": "^1.4.0",
+    "@walletconnect/sign-client": "^2.23.9",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@walletconnect/sign-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@canton-network/core-types": "^1.8.0",
+    "@canton-network/dapp-sdk": "^1.4.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "@walletconnect/sign-client": "^2.23.9",
+    "@walletconnect/types": "^2.23.9",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

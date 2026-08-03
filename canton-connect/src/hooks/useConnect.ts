@@ -1,23 +1,25 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
-import type { ConnectMode } from '../types'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 
 export interface UseConnectResult {
-  connect: (mode?: ConnectMode) => Promise<void>
+  connect: () => Promise<void>
+  /** Clears the local party and status even if the wallet's own disconnect call fails. */
   disconnect: () => Promise<void>
   isConnecting: boolean
   isConnected: boolean
   connectError: Error | undefined
-  pairingUri: string | undefined
 }
 
+/**
+ * Connects and disconnects the wallet, and reports that transition.
+ * Wagmi: `useConnect` + `useDisconnect`, bundled because one provider owns the session.
+ */
 export const useConnect = (): UseConnectResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     connect: ctx.connect,
     disconnect: ctx.disconnect,
     isConnecting: ctx.isConnecting,
     isConnected: ctx.status === 'connected',
     connectError: ctx.connectError,
-    pairingUri: ctx.pairingUri,
   }
 }

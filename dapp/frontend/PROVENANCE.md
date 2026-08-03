@@ -42,4 +42,4 @@ Applied on import to fit this repo's conventions and land green **mock-first**:
 
 - The `vesting-lite` DAML package and the party-bootstrap script.
 - The live wallet-service / Canton wiring and the Playwright `e2e` suite.
-- Migration onto `canton-connect-kit` (CIP-0103) — this app keeps its DirectWallet.
+- Migration onto `canton-connect` (CIP-0103) — this app keeps its DirectWallet.

@@ -9,7 +9,7 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "canton-connect-kit/**",
+      "canton-connect/**",
       "canton-dappbooster/**",
       "canton-theme/**",
       "dapp/frontend/**",
@@ -46,7 +46,7 @@
   },
   "overrides": [
     {
-      "includes": ["canton-barebones/**", "canton-connect-kit/test/**", "**/*.d.ts"],
+      "includes": ["canton-barebones/**", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -81,7 +81,7 @@
       }
     },
     {
-      "includes": ["canton-connect-kit/**", "canton-dappbooster/**", "dapp/frontend/**"],
+      "includes": ["canton-connect/**", "canton-dappbooster/**", "dapp/frontend/**"],
       "linter": {
         "rules": {
           "style": {
@@ -102,7 +102,7 @@
     },
     {
       "includes": [
-        "canton-connect-kit/src/**",
+        "canton-connect/src/**",
         "canton-dappbooster/src/**",
         "dapp/frontend/src/**",
         "!**/*.test.ts",

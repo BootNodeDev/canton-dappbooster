@@ -1,4 +1,4 @@
-import { useConnectKitContext } from '../ConnectKitProvider'
+import { useCantonConnectContext } from '../CantonConnectProvider'
 import type { ConnectionStatus, Party } from '../types'
 
 export interface UsePartyResult {
@@ -7,8 +7,12 @@ export interface UsePartyResult {
   isConnected: boolean
 }
 
+/**
+ * The connected account and status; `party` is `undefined` until `connect()` succeeds.
+ * Wagmi: `useAccount`, with `party.partyId` for `address`.
+ */
 export const useParty = (): UsePartyResult => {
-  const ctx = useConnectKitContext()
+  const ctx = useCantonConnectContext()
   return {
     party: ctx.party,
     status: ctx.status,
