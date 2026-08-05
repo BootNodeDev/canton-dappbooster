@@ -3,16 +3,12 @@ import { copyToast } from '@/components/toast'
 
 interface CounterpartyIdProps {
   party: string
-  /** The acting party receives from this counterparty, rather than sending to it. */
   incoming: boolean
-  /** Explorer URL. Optional, and per call site: not every card links its counterparty. */
   href?: string
 }
 
-/**
- * The other party on a grant or proposal: a from/to prefix and the id, copyable. Renders inline, so
- * it needs a block parent to carry the type styles.
- */
+// The other party on a grant or proposal: a from/to prefix and the id, copyable. Renders inline, so
+// it needs a block parent to carry the type styles.
 export const CounterpartyId = ({
   party,
   incoming,

@@ -9,20 +9,21 @@ import { ExplorerLink } from '../ExplorerLink'
 import { anatomy } from './anatomy'
 import { type TruncateOptions, truncateIdentifier } from './truncate'
 
-/** Props for {@link Identifier}. `onCopy` is the clipboard outcome, not the DOM clipboard event. */
+/**
+ * Props for {@link Identifier}. `label` is the accessible noun the controls are named after, and
+ * `onCopy` is the clipboard outcome, not the DOM clipboard event.
+ *
+ * @example
+ * <Identifier value={partyId} label="party id" truncate={{ head: 4, tail: 4 }} />
+ */
 export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'onCopy'> {
-  /** `false` when the consumer announces the copy outcome itself, e.g. through a toast. */
   announce?: boolean
   copy?: boolean
-  /** Explorer URL. Built by the caller; this component composes no URLs. */
   href?: string
-  /** Accessible noun for the controls, e.g. `party id` reads as "Copy party id". */
   label?: string
   onCopy?: (outcome: CopyOutcome) => void
   ref?: Ref<HTMLSpanElement>
-  /** Truncation is the default. `false` renders the value whole; an object overrides the defaults. */
   truncate?: false | TruncateOptions
-  /** The full identifier. Copy always writes this, never the truncated display value. */
   value: string
 }
 
@@ -50,7 +51,12 @@ const SR_ONLY: CSSProperties = {
 
 /**
  * Displays a Canton identifier: truncated for reading, copyable in full, optionally linked to an
- * explorer. Renders a `span`, so it is legal anywhere inline text is.
+ * explorer. Copy always writes the whole value, never the truncated display value. The href is
+ * built by the caller; this component composes no URLs. Renders a `span`, so it is legal anywhere
+ * inline text is.
+ *
+ * @example
+ * <Identifier value={partyId} label="party id" href={explorerLink(partyId)} announce={false} />
  */
 export const Identifier = ({
   value,

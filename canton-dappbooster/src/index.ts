@@ -1,5 +1,3 @@
-// Public barrel for @bootnodedev/canton-dappbooster.
-
 export { ExplorerLink, type ExplorerLinkProps } from './components/ExplorerLink'
 export { Identifier, type IdentifierProps } from './components/Identifier'
 export {

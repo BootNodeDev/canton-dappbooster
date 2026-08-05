@@ -45,7 +45,6 @@
     color: var(--cnc-danger, #a32626);
   }
 
-  /* The link slot is an `<ExplorerLink>`, which brings its own appearance; only the fit is here. */
   .cnc-identifier__copy,
   .cnc-identifier__link {
     flex-shrink: 0;

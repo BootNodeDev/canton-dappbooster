@@ -14,10 +14,8 @@ const isHttpUrl = (value: string): boolean => {
   }
 }
 
-/**
- * Validates the build's environment. Takes the source rather than reading `import.meta.env` so it
- * stays testable; `vite.config.ts` runs it once per build and defines the result back.
- */
+// Validates the build's environment. Takes the source rather than reading `import.meta.env` so it
+// stays testable; `vite.config.ts` runs it once per build and defines the result back.
 export const parseEnv = (source: unknown): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')

@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite'
 import { parseEnv } from './src/lib/env'
 
 // Vite inlines `import.meta.env.VITE_*` as literals, so the environment is a build-time input. It
-// is validated and defaulted here, and defined back so the client ships neither zod nor the check.
+// is validated and defaulted here, and defined back, so the client ships no validation code.
 export default defineConfig(({ mode }) => {
   const env = parseEnv(loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), ''))
 

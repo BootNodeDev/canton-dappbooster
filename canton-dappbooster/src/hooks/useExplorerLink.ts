@@ -1,18 +1,31 @@
 import { useCallback } from 'react'
 import { isPartyId } from '../components/Identifier/truncate'
 
-/** What an identifier points at. `update` is the ledger transaction, which scans label as one. */
+/**
+ * What an identifier points at. `update` is the ledger transaction, which scans label as one.
+ *
+ * @example
+ * getExplorerLink({ explorer, value: contractId, entity: 'contract' })
+ */
 export type ExplorerEntity = 'party' | 'contract' | 'update'
 
 /**
  * Canton has no chain registry and no canonical explorer: scans are per-environment and per-SV,
  * so the app resolves the base url once from its own config and hands it over.
+ *
+ * @example
+ * const explorer: ExplorerConfig = { baseUrl: 'https://scan.example' }
  */
 export interface ExplorerConfig {
   baseUrl: string
 }
 
-/** Arguments for {@link getExplorerLink}. */
+/**
+ * Arguments for {@link getExplorerLink}.
+ *
+ * @example
+ * getExplorerLink({ explorer, value: partyId })
+ */
 export interface GetExplorerLinkParams {
   explorer: ExplorerConfig
   value: string
@@ -31,9 +44,8 @@ const HASH = /^[0-9a-f]{64}$/i
 // the 64-character total, so the two cannot collide.
 const CONTRACT_ID = /^00[0-9a-f]{64,}$/i
 
-// A party id carries a separator.
-// A contract id a discriminator.
-// A bare 64-character hash is read as an update (shape it shares with package and event ids).
+// A party id carries a separator and a contract id a discriminator; a bare 64-character hash is
+// read as an update, a shape it shares with package and event ids.
 const detectEntity = (value: string): ExplorerEntity | undefined => {
   if (isPartyId(value)) return 'party'
   if (HASH.test(value)) return 'update'
@@ -52,20 +64,17 @@ const requireBaseUrl = (baseUrl: string): string => {
 /**
  * Builds an explorer URL for a Canton identifier. Returns `undefined` whenever no link can be made.
  *
- * ```ts
- * const explorer = { baseUrl: 'https://scan.example' }
+ * @throws when `explorer.baseUrl` is empty or blank, which is a misconfigured app rather than a
+ * missing link.
  *
+ * @example
+ * const explorer = { baseUrl: 'https://scan.example' }
  * getExplorerLink({ explorer, value: 'nico::1220df94a1' })
  * // 'https://scan.example/party/nico%3A%3A1220df94a1'
- *
  * getExplorerLink({ explorer, value: '1220df94a1', entity: 'update' })
  * // 'https://scan.example/update/1220df94a1'
- *
  * getExplorerLink({ explorer, value: 'nico' })
- * // undefined — no shape matched, and no entity said otherwise
- * ```
- *
- * @throws when `explorer.baseUrl` is empty or blank — a misconfigured app, not a missing link.
+ * // undefined: no shape matched, and no entity said otherwise
  */
 export const getExplorerLink = ({
   explorer,
@@ -83,20 +92,14 @@ export const getExplorerLink = ({
 
 /**
  * Holds an explorer config so call sites pass only an identifier, and returns
- * {@link getExplorerLink} bound to it.
+ * {@link getExplorerLink} bound to it. An empty `baseUrl` throws on render.
  *
- * An empty `baseUrl` throws on render.
- *
- * ```tsx
+ * @example
  * const explorerLink = useExplorerLink({ baseUrl: 'https://scan.example' })
- *
  * <Identifier value="nico::1220df94a1" href={explorerLink('nico::1220df94a1')} />
  * // href="https://scan.example/party/nico%3A%3A1220df94a1"
- *
  * <Identifier value={cid} href={explorerLink(cid, 'contract')} />
- * // href="https://scan.example/contract/00a3…", or no link at all where the builder returns
- * // undefined, since `href` is optional
- * ```
+ * // href="https://scan.example/contract/00a3…", or no link where the builder returns undefined
  */
 export const useExplorerLink = (
   explorer: ExplorerConfig,
