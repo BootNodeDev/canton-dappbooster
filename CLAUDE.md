@@ -93,7 +93,18 @@ A README may state that a contract exists and link to it. It may not restate it.
 - All source code in English regardless of conversation language.
 - TypeScript preferred over JavaScript across Node subprojects.
 - **No semicolons** in TypeScript / JavaScript across the repo.
-- **Comments are terse and explain *why*, not *what*.** Prefer one line. Do not restate what the code already says, narrate steps, or write multi-line prose where a short clause suffices. If the code needs a paragraph to be understood, simplify the code instead.
+- **Comments are terse and explain *why*, not *what*.** One line. Two only if one genuinely cannot
+  carry it; never more. Do not restate what the code already says or narrate steps. If the code
+  needs a paragraph to be understood, simplify the code instead.
+- **Never annotate members one by one.** No per-property comments on a type, interface, enum, or
+  object literal; no per-rule or per-declaration comments in CSS. A member whose name and type do
+  not explain it gets renamed or retyped, not captioned. A section header grouping a block of
+  tokens or exports is not a member comment and stays allowed.
+- The only exception is a hack, a workaround, or a non-obvious external constraint (browser bug,
+  protocol quirk, load-bearing ordering). Comment that, one line, on the line it applies to.
+- JSDoc is exempt from the line cap but not from terseness: say what the symbol does, and when a
+  caller could reasonably pick a different export, say which. Never restate the type, never
+  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage.
 - Lint and formatting are centralized in the root `biome.json`. Add project-specific rules under `overrides` keyed by path; do not create per-subproject Biome configs.
 
 ## File & Folder Organization
@@ -134,8 +145,9 @@ Placement:
 - A component folder is PascalCase, its entry is `index.tsx`, and its subcomponents are PascalCase
   files beside it.
 - `testing/` holds test-only helpers and doubles, never imported from non-test code.
-- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, and
-  where a caller could reasonably pick a different export, when to reach for it. Do not restate the type.
+- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, where
+  a caller could reasonably pick a different export, when to reach for it, and at least one
+  `@example`. Do not restate the type.
 - Relative imports carry no file extension. `canton-barebones/` is the exception: it runs on
   `NodeNext`, where the extension is load-bearing, so its imports keep `.ts` and lint allows it.
 
