@@ -49,6 +49,15 @@
   --radius-xl: 14px;
 }
 
+/* Tailwind v4 dropped preflight's `cursor: pointer` on buttons; restore it. In `base` so a
+   `cursor-*` utility on the element still wins. */
+@layer base {
+  button:not(:disabled, [aria-disabled="true"]),
+  [role="button"]:not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 * {
   border-color: var(--border);
 }
