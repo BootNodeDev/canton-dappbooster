@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { parseEnv } from './env'
+
+describe('parseEnv', () => {
+  it('returns the parsed variables', () => {
+    expect(parseEnv({ VITE_EXPLORER_URL: 'http://scan.localhost:4000' })).toEqual({
+      VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+    })
+  })
+
+  it('ignores variables the app does not declare', () => {
+    const parsed = parseEnv({ VITE_EXPLORER_URL: 'http://scan.localhost:4000', MODE: 'test' })
+
+    expect(parsed).toEqual({ VITE_EXPLORER_URL: 'http://scan.localhost:4000' })
+  })
+
+  it('names the offending variable when one is missing', () => {
+    expect(() => parseEnv({})).toThrow(/VITE_EXPLORER_URL/)
+  })
+
+  // An unset var in a .env file reaches Vite as an empty string, not as a missing key.
+  it('rejects an empty value', () => {
+    expect(() => parseEnv({ VITE_EXPLORER_URL: '' })).toThrow(/VITE_EXPLORER_URL/)
+  })
+
+  it('rejects a value that is not a url', () => {
+    expect(() => parseEnv({ VITE_EXPLORER_URL: 'scan.localhost' })).toThrow(/VITE_EXPLORER_URL/)
+  })
+
+  it('rejects a source that is not an object', () => {
+    expect(() => parseEnv(undefined)).toThrow()
+  })
+})
