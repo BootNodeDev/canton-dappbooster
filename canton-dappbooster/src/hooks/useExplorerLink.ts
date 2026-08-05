@@ -9,6 +9,7 @@ export type ExplorerEntity = 'party' | 'contract' | 'update'
  */
 export interface ExplorerConfig {
   baseUrl: string
+  /** Templates appended to `baseUrl`, so each must lead with `/`. `null` disables that entity. */
   paths?: Partial<Record<ExplorerEntity, string | null>>
 }
 
@@ -27,7 +28,9 @@ const DEFAULT_PATHS: Record<ExplorerEntity, string> = {
 
 const PARTY_SEPARATOR = '::'
 const HASH = /^[0-9a-f]{64}$/i
-const CONTRACT_ID = /^00[0-9a-f]{65,}$/i
+// 64+ after the `00` discriminator: a suffixless contract id is exactly 64, and HASH already took
+// the 64-character total, so the two cannot collide.
+const CONTRACT_ID = /^00[0-9a-f]{64,}$/i
 
 // A party id carries a separator.
 // A contract id a discriminator.
@@ -62,6 +65,8 @@ const requireBaseUrl = (baseUrl: string): string => {
  * getExplorerLink({ explorer, value: 'nico' })
  * // undefined — no shape matched, and no entity said otherwise
  * ```
+ *
+ * @throws when `explorer.baseUrl` is empty or blank — a misconfigured app, not a missing link.
  */
 export const getExplorerLink = ({
   explorer,
@@ -107,12 +112,12 @@ export const useExplorerLink = (
   const { party, contract, update } = explorer.paths ?? {}
 
   return useCallback(
-    (value: string, entity?: ExplorerEntity) =>
-      getExplorerLink({
-        explorer: { baseUrl, paths: { party, contract, update } },
-        value,
-        entity,
-      }),
+    (value: string, entity?: ExplorerEntity) => {
+      // Typed against the full entity union, so a new entity fails to compile until it is destructured
+      // above and added to the dependency list rather than being silently dropped.
+      const paths: Record<ExplorerEntity, string | null | undefined> = { party, contract, update }
+      return getExplorerLink({ explorer: { baseUrl, paths }, value, entity })
+    },
     [baseUrl, party, contract, update],
   )
 }

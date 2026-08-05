@@ -22,6 +22,14 @@ describe('getExplorerLink', () => {
     )
   })
 
+  // The shortest a contract id gets: the `00` discriminator, a 32-byte hash, and no suffix.
+  it('routes a suffixless contract id to the contract path', () => {
+    const value = `00${'a3'.repeat(32)}`
+    expect(getExplorerLink({ explorer: EXPLORER, value })).toBe(
+      `https://scan.example/contract/${value}`,
+    )
+  })
+
   it('routes a 64-character hex id to the update path', () => {
     expect(getExplorerLink({ explorer: EXPLORER, value: UPDATE })).toBe(
       `https://scan.example/update/${UPDATE}`,

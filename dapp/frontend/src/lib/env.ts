@@ -1,7 +1,17 @@
 import { z } from 'zod'
 
+// The local Splice Scan, so the mock-first app runs from a fresh clone with no `.env`. A declared
+// but blank value is a mistake, not a request for the default, and still fails.
+const DEFAULT_EXPLORER_URL = 'http://scan.localhost:4000'
+
 const schema = z.object({
-  VITE_EXPLORER_URL: z.url('must be a url, e.g. http://scan.localhost:4000'),
+  // Protocol-restricted: the value lands in an `href`, where `javascript:` would be a script sink.
+  VITE_EXPLORER_URL: z
+    .url({
+      protocol: /^https?$/,
+      error: `must be an http(s) url, e.g. ${DEFAULT_EXPLORER_URL}`,
+    })
+    .default(DEFAULT_EXPLORER_URL),
 })
 
 export type Env = z.infer<typeof schema>

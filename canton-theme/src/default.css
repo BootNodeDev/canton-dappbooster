@@ -50,13 +50,22 @@
     color: var(--cnc-danger, #a32626);
   }
 
+  /* Matches the identifier controls, since inside `<Identifier>` it carries both classes. */
   .cnc-explorer-link {
     color: var(--cnc-text-muted, #4b4d60);
+    display: inline-grid;
+    place-items: center;
     transition: color 120ms ease;
   }
 
   .cnc-explorer-link:hover {
     color: var(--cnc-accent, #692581);
+  }
+
+  .cnc-explorer-link:focus-visible {
+    border-radius: var(--cnc-radius, 4px);
+    outline: 2px solid var(--cnc-accent, #692581);
+    outline-offset: 2px;
   }
 
   .cnc-explorer-link > svg {

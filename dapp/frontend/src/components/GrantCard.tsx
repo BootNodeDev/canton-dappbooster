@@ -49,6 +49,8 @@ export const GrantCard = ({
   const isMilestone = curve.kind === 'milestone'
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
+  // Names the copy and explorer controls, which otherwise read the same in both directions.
+  const counterpartyLabel = role === 'receiver' ? 'sender party id' : 'recipient party id'
   const explorerLink = useExplorerLink(EXPLORER)
 
   return (
@@ -73,10 +75,12 @@ export const GrantCard = ({
           )}
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
+          {role === 'receiver' ? 'from' : 'to'}{' '}
           <Identifier
-            className="mt-1 font-mono text-xs text-fg-soft"
+            announce={false}
+            className="text-fg-soft"
             href={explorerLink(counterparty)}
-            label="party id"
+            label={counterpartyLabel}
             onCopy={copyToast('Party id')}
             value={counterparty}
           />

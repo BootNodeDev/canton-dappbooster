@@ -18,7 +18,7 @@ them.
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Projections of the wallet context, one per concern. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts` / `config.ts`, the one pair that is not pure: they parse `import.meta.env` at import and throw on a bad value. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -85,6 +85,12 @@ element it renders the full `<Identifier>` primitive; where it sits inside a `<b
 or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters instead, because
 `<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
 element.
+
+The explorer those ids link to is the app's to supply: Canton has no canonical one, so the kit
+composes URLs only from an `ExplorerConfig`. The app resolves it once in
+[`src/lib/config.ts`](src/lib/config.ts) from `VITE_EXPLORER_URL` and passes it to the kit's
+`useExplorerLink`. Every `<Identifier>` the app renders passes `announce={false}`: the `Toaster` is
+the app's live region, so the kit's own would double-announce.
 
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own

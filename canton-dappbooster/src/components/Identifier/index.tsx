@@ -1,23 +1,28 @@
 import type { CSSProperties, HTMLAttributes, ReactElement, Ref } from 'react'
-import { ExplorerLink } from '../../components/ExplorerLink'
 import {
   type CopyOutcome,
   type CopyState,
   useCopyToClipboard,
 } from '../../hooks/useCopyToClipboard'
 import { CheckIcon, CopyIcon } from '../../icons'
+import { ExplorerLink } from '../ExplorerLink'
 import { anatomy } from './anatomy'
 import { type TruncateOptions, truncateIdentifier } from './truncate'
 
 /** Props for {@link Identifier}. `onCopy` is the clipboard outcome, not the DOM clipboard event. */
 export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'onCopy'> {
+  /** `false` when the consumer announces the copy outcome itself, e.g. through a toast. */
   announce?: boolean
   copy?: boolean
+  /** Explorer URL. Built by the caller; this component composes no URLs. */
   href?: string
+  /** Accessible noun for the controls, e.g. `party id` reads as "Copy party id". */
   label?: string
   onCopy?: (outcome: CopyOutcome) => void
   ref?: Ref<HTMLSpanElement>
+  /** Truncation is the default. `false` renders the value whole; an object overrides the defaults. */
   truncate?: false | TruncateOptions
+  /** The full identifier. Copy always writes this, never the truncated display value. */
   value: string
 }
 
