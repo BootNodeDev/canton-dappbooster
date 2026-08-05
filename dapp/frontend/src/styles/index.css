@@ -47,16 +47,18 @@
   --radius-xl: 14px;
 }
 
-/* Tailwind v4 dropped preflight's `cursor: pointer` on buttons; restore it. In `base` so a
-   `cursor-*` utility on the element still wins. */
+/* App-wide defaults Tailwind v4's preflight no longer sets. In `base` because unlayered they would
+   beat every `border-*` and `cursor-*` utility, whatever the specificity. */
 @layer base {
+  * {
+    border-color: var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
   :is(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
   }
-}
-
-* {
-  border-color: var(--border);
 }
 
 html,
@@ -77,11 +79,6 @@ body {
 
 ::selection {
   background: rgba(198, 112, 229, 0.3);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
