@@ -65,7 +65,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash for canton-barebones scripts |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
-| Node | 24 | Pinned via root `.nvmrc`; inherits to every Node subproject |
+| Node | 24 | Pinned via root `.nvmrc` (24.18.1); inherits to every Node subproject. The four subprojects that declare `engines.node` floor it at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
