@@ -14,12 +14,11 @@ interface CancelGrantDialogProps {
   nowMs: number
   description: string
   successMessage: string
-  // Submits the ledger cancel; the dialog awaits it and closes on success.
   onConfirm: () => Promise<void>
 }
 
-// Cancel-grant confirmation shared by the dashboard and grant-detail pages. Mirrors
-// ClaimDialog: owns the submit/toast/error/submitting lifecycle so the pages don't.
+// Cancel-grant confirmation shared by the dashboard and grant-detail pages. Like ClaimDialog, it
+// owns the submit, toast, error and submitting lifecycle so the pages do not.
 export const CancelGrantDialog = ({
   open,
   onClose,

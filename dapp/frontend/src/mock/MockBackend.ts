@@ -15,10 +15,8 @@ const isStakeholder = (
   receiver: string,
 ): boolean => partyId === provider || partyId === funder || partyId === receiver
 
-// In-memory VestingBackend: the mock-first data layer. Holds grants/proposals/claims
-// in memory and mutates them on each command, so the whole app is explorable with no
-// wallet-service, Canton, or DAR. Swap for LiteBackend by dropping a real
-// vesting-lite-parties.json into /public (see createBackend).
+// In-memory VestingBackend, so the whole app is explorable with no wallet-service, Canton or DAR.
+// Swap it for LiteBackend by dropping a real vesting-lite-parties.json into /public.
 export class MockBackend implements VestingBackend {
   readonly mode: Mode = 'lite'
   private grants: Grant[]

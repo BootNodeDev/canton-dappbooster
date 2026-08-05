@@ -17,14 +17,12 @@ export interface GrantDerived {
   claimed: number
   claimedFraction: number
   unvested: number
-  // Claimable is at or above the re-lock floor, so a claim is worth offering.
   canClaim: boolean
   status: GrantStatus
 }
 
-// Pure projection of a grant at a moment in time. The single source of the
-// vested/claimable numbers shown everywhere. Kept identical across the mock→ledger
-// swap — components read figures only from here / lib/schedule.
+// Pure projection of a grant at a moment in time, and the single source of the vested/claimable
+// numbers: components read figures only from here and lib/schedule.
 export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   const fraction = vestedFraction(grant.schedule, nowMs)
   const vested = grant.totalAmount * fraction
@@ -50,9 +48,6 @@ interface VestingState {
   grants: Grant[]
   proposals: Proposal[]
   claims: VestedClaim[]
-  // Session-local withdraw log: the example surfaced it UI-only and the lite
-  // contracts do not retain history; sourcing it from ledger update events is a
-  // follow-up.
   history: WithdrawEvent[]
   loading: boolean
   error: string | undefined
@@ -81,9 +76,8 @@ interface VestingState {
 
 const uid = (prefix: string): string => `${prefix}-${crypto.randomUUID().slice(0, 8)}`
 
-// Monotonic guard: a party/mode switch fires a new refresh, and only the newest
-// read may commit its result. Without it a slow read for the old party can resolve
-// last and clobber the fresh view (harmless with the mock, real over the network).
+// Only the newest refresh may commit: over the network a slow read for the previous party can
+// resolve last and clobber the fresh view.
 let refreshEpoch = 0
 
 export const useVestingStore = create<VestingState>((set, get) => ({

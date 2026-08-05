@@ -1,8 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
-// A single shared clock so every vested/claimable figure recomputes in lockstep.
-// Ticks once a second; that is plenty for linear accrual on a dashboard. Swapping
-// in a ledger-time source later means changing only this module.
+// A single shared clock so every vested/claimable figure recomputes in lockstep. Swapping in a
+// ledger-time source later means changing only this module.
 
 let nowMs = Date.now()
 const listeners = new Set<() => void>()

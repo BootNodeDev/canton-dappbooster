@@ -15,15 +15,13 @@ const ccFullFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 
 // rounding to 2 dp would mislead — e.g. the exact claimable in a claim dialog.
 export const formatCCFull = (amount: number): string => ccFullFormatter.format(amount)
 
-// The exact claimable as a plain numeric string for an amount input. Flooring to 2 dp
-// strands sub-cent residual (you could never claim it all), so fill the full remaining;
-// toFixed(10) also absorbs float-subtraction noise back to the ledger value.
+// The exact claimable as a plain numeric string for an amount input. Flooring to 2 dp would strand
+// sub-cent residual, and toFixed(10) absorbs float-subtraction noise back to the ledger value.
 export const claimAmountInput = (amount: number): string =>
   amount > 0 ? amount.toFixed(10).replace(/\.?0+$/, '') : ''
 
-// Clamp the user-supplied amount to [0, available] at 10 dp precision before it
-// reaches the ledger. Guards against: amounts typed beyond available (float drift or
-// user error) and more than 10 decimal places (Canton Decimal is ≤10 dp).
+// Clamp to [0, available] at 10 dp before it reaches the ledger: guards amounts typed beyond
+// available and more than 10 decimal places (Canton Decimal is ≤10 dp).
 export const clampClaimAmount = (amount: number, available: number): number =>
   Number(Math.min(amount, available).toFixed(10))
 

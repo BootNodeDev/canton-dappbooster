@@ -30,9 +30,8 @@ const linear = (nowMs: number, startDays: number, endDays: number): VestingSched
   curve: { kind: 'linear', start: at(nowMs, startDays), end: at(nowMs, endDays) },
 })
 
-// Seed dataset relative to `nowMs` so the dashboard shows a live mix of in-cliff,
-// vesting, and fully-vested grants plus a pending proposal and a residual claim —
-// all with no wallet-service, Canton, or DAR.
+// Anchored to `nowMs` so the dashboard always shows a live mix of in-cliff, vesting and
+// fully-vested grants without a wallet-service, Canton or DAR.
 export const seedView = (nowMs: number = now()): VestingView => ({
   grants: [
     {

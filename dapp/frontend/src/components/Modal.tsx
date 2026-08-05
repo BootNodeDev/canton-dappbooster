@@ -25,9 +25,8 @@ export const Modal = ({
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const descId = useId()
-  // Held in a ref so a new onClose identity (callers pass an inline closure, and the
-  // page re-renders each second via useNow) does not re-run the focus-trap effect,
-  // which would otherwise steal focus back to the first focusable every tick.
+  // Held in a ref so a new onClose identity does not re-run the focus-trap effect, which would
+  // steal focus back to the first focusable on every clock tick.
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 

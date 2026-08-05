@@ -1,9 +1,5 @@
-// JSON-Ledger-API v2 command builders + explicit-disclosure shaping + the single
-// curve encode/decode pair. No I/O — unit-tested in commands.test.ts. Salvaged from
-// dapp/frontend's vesting.ts and adapted to the upgraded vest-lite domain:
-//   - claim drops nowMicros (the contract reads on-ledger getTime),
-//   - the schedule carries a VestingCurve variant + ISO cliff,
-//   - adds cancel (Contract_Cancel) and residual withdraw (Claim_Withdraw).
+// JSON-Ledger-API v2 command builders, explicit-disclosure shaping, and the one curve
+// encode/decode pair. No I/O, so it is unit-tested directly in commands.test.ts.
 
 import type { VestingSchedule } from '@/lib/schedule'
 
@@ -45,12 +41,9 @@ export const buildDisclosedContract = (templateId: string, ref: DisclosedRef) =>
 })
 
 // ── Curve variant encoding ────────────────────────────────────────────────────
-// THE ONE GENUINE UNKNOWN. The Daml JSON Ledger API v2 encodes a DAML variant as
-// `{ "tag": "<Constructor>", "value": <fields-record> }`, a tuple `(Time, Decimal)`
-// as a record `{ "_1": <time>, "_2": <decimal> }`, Time as an ISO-8601 string, and
-// Decimal as a string. This is the single place that convention lives; decode is
-// its mirror (decodeSchedule below).
-// VERIFY: curve encoding to be round-trip-confirmed in Phase 6 smoke.
+// The one place the JSON-LF convention lives: a variant is `{tag, value}`, a `(Time, Decimal)`
+// tuple is `{_1, _2}`, Time an ISO-8601 string and Decimal a string. decodeSchedule mirrors it.
+// TODO: round-trip-confirm this encoding against a real ledger.
 
 type EncodedCurve =
   | { tag: 'LinearVesting'; value: { start: string; end: string } }
@@ -77,9 +70,8 @@ export const encodeSchedule = (schedule: VestingSchedule): EncodedSchedule => {
   }
 }
 
-// Mirror of encodeSchedule: parse the JSON-LF variant back into the UI's
-// VestingSchedule. Tolerant of a missing/garbled payload (returns a degenerate
-// but well-typed schedule rather than throwing inside a mapper).
+// Mirror of encodeSchedule. A missing or garbled payload yields a degenerate but well-typed
+// schedule rather than throwing inside a mapper.
 export const decodeSchedule = (raw: unknown): VestingSchedule => {
   const record = (raw ?? {}) as { curve?: unknown; cliff?: unknown }
   const cliff = typeof record.cliff === 'string' ? record.cliff : ''

@@ -1,8 +1,5 @@
-// The backend construction point. With no deployment config (the zero-config
-// default) createBackend builds the in-memory MockBackend; once a real
-// vesting-lite-parties.json is present it builds a LiteBackend against the
-// wallet-service ledgerApi proxy. loadBackendConfig fetches that slim deployment
-// JSON {pkg, operator, rpcUrl} that the bootstrap writes into /public.
+// Backend construction point: no deployment config means the in-memory MockBackend, a real
+// vesting-lite-parties.json means a LiteBackend over the wallet-service ledgerApi proxy.
 
 import { MockBackend } from '@/mock/MockBackend'
 import { seedView } from '@/mock/seed'
@@ -20,8 +17,7 @@ const EMPTY: BackendConfig = { rpcUrl: '', deployment: { pkg: '', operator: '' }
 
 type ConfigFile = { pkg?: string; operator?: string; rpcUrl?: string }
 
-// Load the deployment metadata. Returns an empty/unavailable config when the file
-// is absent or malformed.
+// An absent or malformed config file is not an error: it is what mock-first mode looks like.
 export const loadBackendConfig = async (): Promise<BackendConfig> => {
   try {
     const response = await fetch(CONFIG_FILE)

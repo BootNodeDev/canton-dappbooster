@@ -11,13 +11,11 @@ interface ClaimDialogProps {
   onClose: () => void
   title: string
   available: number
-  // Submits the ledger command; the dialog awaits it and closes on success.
   onConfirm: (amount: number) => Promise<void>
 }
 
-// Amount-entry dialog shared by grant withdraw and residual claim. Enforces the
-// re-lock floor: the remainder must be 0 or >= min. No mock signing — onConfirm is
-// the real ledger submit.
+// Amount-entry dialog shared by grant withdraw and residual claim. Enforces the re-lock floor: the
+// remainder must be zero or at least MIN_GRANT_AMOUNT.
 export const ClaimDialog = ({
   open,
   onClose,
@@ -28,8 +26,8 @@ export const ClaimDialog = ({
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // Seed the max only on the open transition. `available` recomputes each second for
-  // a live-vesting grant, so re-seeding on its change would overwrite what the user types.
+  // Seed the max only on the open transition: `available` reticks each second on a live grant, and
+  // re-seeding would overwrite what the user types.
   const seeded = useRef(false)
   useEffect(() => {
     if (open && !seeded.current) {

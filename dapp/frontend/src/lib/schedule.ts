@@ -1,6 +1,5 @@
-// Vesting math — mirrors the on-ledger Schedule logic so the UI can show live
-// vested / claimable figures and validate the create form before submitting.
-// Keep this in sync with the on-ledger logic.
+// Vesting math mirroring the on-ledger Schedule logic, for live figures and create-form
+// validation. Keep in sync with the DAML.
 
 export type ISO = string
 
@@ -12,7 +11,6 @@ export interface LinearCurve {
 
 export interface MilestonePoint {
   time: ISO
-  // Cumulative fraction in (0, 1]; the last point must be exactly 1.
   fraction: number
 }
 
@@ -34,9 +32,8 @@ export const MIN_GRANT_AMOUNT = 1.0
 const ms = (iso: ISO): number => new Date(iso).getTime()
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x)
 
-// Fraction of the grant vested at `nowMs`, in [0, 1]. Returns 0 before the cliff
-// (true cliff). Linear interpolates start→end; milestone is a step function that
-// jumps to the cumulative fraction of the last reached point.
+// Fraction vested at `nowMs`, in [0, 1]: zero before the cliff, linear interpolates start to end,
+// milestone steps to the cumulative fraction of the last reached point.
 export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number => {
   if (nowMs < ms(schedule.cliff)) {
     return 0
@@ -67,9 +64,8 @@ export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number
 export const vestedAmount = (schedule: VestingSchedule, total: number, nowMs: number): number =>
   total * vestedFraction(schedule, nowMs)
 
-// Mirrors validVestingSchedule: linear needs start < end and start <= cliff <= end;
-// milestone needs strictly ascending times and fractions in (0, 1] ending at 1, with
-// cliff at or before the first point.
+// Mirrors the on-ledger validVestingSchedule: linear needs start < end and start <= cliff <= end;
+// milestone needs ascending times, fractions in (0, 1] ending at 1, cliff at or before point one.
 export const validVestingSchedule = (schedule: VestingSchedule): boolean => {
   const cliff = ms(schedule.cliff)
   if (Number.isNaN(cliff)) {

@@ -7,25 +7,26 @@ import type { VestingSchedule } from '@/lib/schedule'
 // object (`src/wallet/types.ts`), which carries the id plus network metadata.
 export type PartyId = string
 
-// ≙ VestingContract (the live grant). `title` is a UI label only (not on-ledger).
+// ≙ VestingContract (the live grant). `creator` is the DAML funder and `receiver` the
+// beneficiary; `title` is a UI label only, never on-ledger.
 export interface Grant {
   id: string
   title: string
   provider: PartyId
-  creator: PartyId // funder
-  receiver: PartyId // beneficiary
+  creator: PartyId
+  receiver: PartyId
   totalAmount: number
   schedule: VestingSchedule
   alreadyWithdrawn: number
   note?: string
 }
 
-// ≙ VestingProposal (pending offer awaiting receiver Accept).
+// ≙ VestingProposal (pending offer awaiting receiver Accept); the proposer is the funder.
 export interface Proposal {
   id: string
   title: string
   provider: PartyId
-  proposer: PartyId // funder
+  proposer: PartyId
   receiver: PartyId
   totalAmount: number
   schedule: VestingSchedule

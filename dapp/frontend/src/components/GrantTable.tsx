@@ -22,7 +22,7 @@ interface GrantTableProps {
 const statusText = (d: GrantDerived): string =>
   d.status === 'in_cliff' ? 'in cliff' : d.status === 'fully_vested' ? 'vested' : 'vesting'
 
-// Dense, table-driven view (Direction C) for users tracking many grants.
+// Dense, table-driven view for users tracking many grants.
 export const GrantTable = ({
   rows,
   role,
