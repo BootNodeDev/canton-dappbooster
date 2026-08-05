@@ -91,9 +91,11 @@ composes URLs only from an `ExplorerConfig`. [`src/lib/config.ts`](src/lib/confi
 config as a literal baked in at build time from `VITE_EXPLORER_URL`, not parsed at startup, and the
 kit's `useExplorerLink` turns it into hrefs. Counterparty ids go through one component:
 [`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
-the direction-specific label, the copy toast, and the explorer href in one place, and `GrantCard`
-and `ProposalCard` render it. Every `<Identifier>` the app renders passes `announce={false}`: the
-`Toaster` is the app's live region, so the kit's own would double-announce.
+the direction-specific label, and the copy toast, and `GrantCard` and `ProposalCard` render it. The
+href stays a per-call-site decision, the way the kit's own `href` is optional: linking an id to an
+explorer is a choice each surface makes, not something the app does everywhere. Every `<Identifier>`
+the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
+would double-announce.
 
 That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
