@@ -1,9 +1,13 @@
-/* Public --cnc-* theming contract. Consumers load this file or define the properties themselves —
-   with the exception of color-scheme below, which is not a --cnc-* property and so has to be set
-   directly. Naming convention and the rule for adding a token: see ../CLAUDE.md. */
+/*
+  Public --cnc-* theming contract.
+
+  Consumers load this file or define the properties themselves with the exception of color-scheme below, which is not a --cnc-* property and so has to be set directly.
+
+  Naming convention and the rule for adding a token: see ../CLAUDE.md.
+*/
 @layer cnc {
   :root {
-    /* Not a token: makes the browser paint scrollbars, form controls, and the caret to match. */
+    /* Not a token. Makes the browser paint scrollbars, form controls, and the caret to match. */
     color-scheme: light;
 
     /* surface */
@@ -38,8 +42,7 @@
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 
-  /* Keyed on the attribute, not prefers-color-scheme: a mode toggle has to be able to force light on
-     a dark OS, and it cannot override a media query. */
+  /* Dark mode CSS vars */
   [data-theme="dark"] {
     color-scheme: dark;
 
