@@ -97,7 +97,7 @@ export const WalletControl = (): React.JSX.Element | null => {
         <ChevronDownIcon width={15} height={15} className="text-fg-muted" />
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-[var(--shadow-popover)]">
+        <div className="absolute right-0 z-50 mt-2 flex w-72 flex-col gap-3 rounded-xl border border-border bg-surface p-3 shadow-[var(--shadow-popover)]">
           {others.length > 0 && (
             <ul aria-label="Switch party" className="flex max-h-56 flex-col gap-1 overflow-y-auto">
               {others.map((candidate) => (
@@ -120,7 +120,7 @@ export const WalletControl = (): React.JSX.Element | null => {
               disconnect()
               toast.success('Signed out')
             }}
-            className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger/40 bg-surface text-sm font-semibold text-danger transition-colors hover:bg-danger-soft"
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-danger/40 bg-surface text-sm font-semibold text-danger transition-colors hover:bg-danger-soft"
           >
             <LogoutIcon width={15} height={15} />
             Sign out

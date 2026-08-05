@@ -3,7 +3,7 @@
  * either side of the ellipsis, and the segment length below which nothing is cut.
  *
  * @example
- * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 22 })
+ * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 12 })
  */
 export interface TruncateOptions {
   head?: number

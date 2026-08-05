@@ -22,7 +22,7 @@ export type CopyOutcome = { ok: true; value: string } | { ok: false; error: Erro
  * fields fall back to a 1200 ms reset.
  *
  * @example
- * useCopyToClipboard({ resetMs: 500 })
+ * useCopyToClipboard({ resetMs: 4000 }) // hold `copied` long enough to read a toast alongside it
  */
 export interface UseCopyToClipboardOptions {
   resetMs?: number
@@ -33,7 +33,8 @@ export interface UseCopyToClipboardOptions {
  * `<Identifier>` consumes it internally.
  *
  * @example
- * const { state, copy } = useCopyToClipboard()
+ * const clipboard: UseCopyToClipboardResult = useCopyToClipboard()
+ * <CopyButton {...clipboard} value={partyId} />
  */
 export interface UseCopyToClipboardResult {
   state: CopyState
