@@ -18,7 +18,7 @@ them.
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Projections of the wallet context, one per concern. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the zod schema `vite.config.ts` validates the environment against, and `config.ts`, which reads the literals that validation left behind. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, and `config.ts`, which reads the literals that validation left behind. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -99,9 +99,9 @@ would double-announce.
 
 That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
-`VITE_EXPLORER_URL` fails the build rather than the page load and the client ships neither zod nor
-the check. [`src/lib/env.ts`](src/lib/env.ts) is that schema, and the only module under `src/` that
-runs outside the browser.
+`VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
+all. [`src/lib/env.ts`](src/lib/env.ts) holds that contract, and is the only module under `src/`
+that runs outside the browser.
 
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own
