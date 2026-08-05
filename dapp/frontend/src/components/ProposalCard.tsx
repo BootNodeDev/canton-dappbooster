@@ -1,4 +1,5 @@
-import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import { Identifier } from '@bootnodedev/canton-dappbooster'
+import { copyToast } from '@/components/toast'
 import { formatCC, formatDate, relativeTime } from '@/lib/format'
 import { vestedFraction } from '@/lib/schedule'
 import type { Proposal } from '@/store/types'
@@ -8,7 +9,6 @@ import { StatusPill } from './StatusPill'
 
 interface ProposalCardProps {
   proposal: Proposal
-  // 'incoming' — acting party is the receiver (can accept); 'outgoing' — sent as funder.
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept?: (proposal: Proposal) => void
@@ -29,9 +29,12 @@ export const ProposalCard = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h3>
-          <div className="mt-1 font-mono text-xs text-fg-soft">
-            {direction === 'incoming' ? 'from' : 'to'} {truncateIdentifier(counterparty)}
-          </div>
+          <Identifier
+            className="mt-1 font-mono text-xs text-fg-soft"
+            label="party id"
+            onCopy={copyToast('Party id')}
+            value={counterparty}
+          />
         </div>
         <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
           {direction === 'incoming' ? 'Action needed' : 'Awaiting acceptance'}
