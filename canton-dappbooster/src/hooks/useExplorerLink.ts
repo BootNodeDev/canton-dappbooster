@@ -21,9 +21,9 @@ export interface GetExplorerLinkParams {
 
 // Splice Scan's routes. Deployments differ by host, not by path, so the host is the only knob.
 const PATHS: Record<ExplorerEntity, string> = {
-  party: '/party/{id}',
-  contract: '/contract/{id}',
-  update: '/update/{id}',
+  party: '/party',
+  contract: '/contract',
+  update: '/update',
 }
 
 const HASH = /^[0-9a-f]{64}$/i
@@ -78,7 +78,7 @@ export const getExplorerLink = ({
   const resolved = entity ?? detectEntity(value)
   if (resolved === undefined) return undefined
 
-  return `${baseUrl}${PATHS[resolved].replace('{id}', encodeURIComponent(value))}`
+  return `${baseUrl}${PATHS[resolved]}/${encodeURIComponent(value)}`
 }
 
 /**

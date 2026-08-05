@@ -8,6 +8,7 @@ import { StatusPill } from './StatusPill'
 
 interface ProposalCardProps {
   proposal: Proposal
+  // 'incoming' — acting party is the receiver (can accept); 'outgoing' — sent as funder.
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept?: (proposal: Proposal) => void
