@@ -7,6 +7,10 @@ type Listener = (event: MediaQueryListEvent) => void
  * jsdom's `matchMedia` always reports `matches: false` and never fires a change event, so anything
  * reading the OS colour preference has to stub it. Returns a setter that flips the preference and
  * notifies listeners, which is the only way to exercise system mode.
+ *
+ * @example
+ * const setPrefersDark = stubPrefersDark(false)
+ * act(() => setPrefersDark(true))
  */
 export const stubPrefersDark = (initial: boolean): ((next: boolean) => void) => {
   let matches = initial

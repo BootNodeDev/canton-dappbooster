@@ -1,14 +1,17 @@
-/** Overrides for {@link truncateIdentifier}. Omitted fields fall back to the display defaults. */
+/**
+ * Character counts overriding the display defaults of {@link truncateIdentifier}: how much to keep
+ * either side of the ellipsis, and the segment length below which nothing is cut.
+ *
+ * @example
+ * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 22 })
+ */
 export interface TruncateOptions {
-  /** Characters kept from the start of the truncated segment. */
   head?: number
-  /** Characters kept from the end of the truncated segment. */
   tail?: number
-  /** Segments this short are left alone. */
   threshold?: number
 }
 
-/** A party id already shows a readable hint, so its fingerprint needs less head than a bare id. */
+// A party id already shows a readable hint, so its fingerprint needs less head than a bare id.
 const PARTY_HEAD = 6
 const PLAIN_HEAD = 12
 const TAIL = 8
@@ -29,11 +32,15 @@ const middle = (value: string, head: number, tail: number, threshold: number): s
 /**
  * Truncates an identifier for display. A Canton party id is `hint::fingerprint`: the hint is
  * meaningful, so it survives whole and only the fingerprint shrinks. Anything else is
- * middle-truncated as one segment. Output is never longer than the input. Cuts on UTF-16 code
- * units, so a non-ASCII value can split a surrogate pair.
+ * middle-truncated as one segment. Output is never longer than the input, and cuts land on UTF-16
+ * code units, so a non-ASCII value can split a surrogate pair.
  *
  * Reach for this over `<Identifier>` when the value sits inside a sentence, or inside another
- * `<button>` — the component's copy control would nest a button in a button.
+ * `<button>`, where the component's copy control would nest a button in a button.
+ *
+ * @example
+ * truncateIdentifier('nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46')
+ * // 'nico::1220df…0b1cbb46'
  */
 export const truncateIdentifier = (value: string, options?: TruncateOptions): string => {
   const tail = options?.tail ?? TAIL
@@ -54,6 +61,9 @@ export const truncateIdentifier = (value: string, options?: TruncateOptions): st
  * The readable half of a party id. Returns the whole value when there is no separator. Reach for
  * this over {@link truncateIdentifier} where the fingerprint should be dropped rather than
  * shortened, such as a table column or a chart label.
+ *
+ * @example
+ * partyHint('nico::1220df94') // 'nico'
  */
 export const partyHint = (value: string): string => {
   const separator = value.indexOf(PARTY_SEPARATOR)

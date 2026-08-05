@@ -1,5 +1,3 @@
-// Public barrel for @bootnodedev/canton-dappbooster.
-
 export { Identifier, type IdentifierProps } from './components/Identifier'
 export {
   partyHint,
