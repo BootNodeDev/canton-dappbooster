@@ -1,10 +1,5 @@
-/*
-  Public --cnc-* theming contract.
-
-  Consumers load this file or define the properties themselves with the exception of color-scheme below, which is not a --cnc-* property and so has to be set directly.
-
-  Naming convention and the rule for adding a token: see ../CLAUDE.md.
-*/
+/* Public --cnc-* theming contract; consumers load this file or define the properties themselves.
+   Naming convention and the rule for adding a token: see ../CLAUDE.md. */
 @layer cnc {
   :root {
     /* Not a token. Makes the browser paint scrollbars, form controls, and the caret to match. */
@@ -42,7 +37,6 @@
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 
-  /* Dark mode CSS vars */
   [data-theme="dark"] {
     color-scheme: dark;
 
