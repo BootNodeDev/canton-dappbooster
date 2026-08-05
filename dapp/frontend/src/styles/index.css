@@ -100,7 +100,3 @@ body {
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
-
-.gradient-brand {
-  background: var(--gradient-brand);
-}
