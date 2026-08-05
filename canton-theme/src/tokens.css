@@ -37,6 +37,7 @@
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 
+  /* Keyed on the attribute, not prefers-color-scheme: a toggle must force light on a dark OS. */
   [data-theme="dark"] {
     color-scheme: dark;
 

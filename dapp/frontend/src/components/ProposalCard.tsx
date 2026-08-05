@@ -6,6 +6,8 @@ import { Button } from './Button'
 import { Card } from './Card'
 import { StatusPill } from './StatusPill'
 
+// `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
+// funder.
 interface ProposalCardProps {
   proposal: Proposal
   direction: 'incoming' | 'outgoing'
@@ -13,7 +15,6 @@ interface ProposalCardProps {
   onAccept?: (proposal: Proposal) => void
 }
 
-// Incoming means the acting party is the receiver and can accept; outgoing was sent as funder.
 export const ProposalCard = ({
   proposal,
   direction,

@@ -99,7 +99,7 @@ export const WalletControl = (): React.JSX.Element | null => {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-[var(--shadow-popover)]">
           {others.length > 0 && (
-            <ul className="mt-1.5 flex max-h-56 flex-col gap-1 overflow-y-auto">
+            <ul aria-label="Switch party" className="flex max-h-56 flex-col gap-1 overflow-y-auto">
               {others.map((candidate) => (
                 <PartyRow
                   key={candidate.partyId}

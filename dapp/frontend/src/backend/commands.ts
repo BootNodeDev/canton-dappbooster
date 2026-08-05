@@ -43,7 +43,7 @@ export const buildDisclosedContract = (templateId: string, ref: DisclosedRef) =>
 // ── Curve variant encoding ────────────────────────────────────────────────────
 // The one place the JSON-LF convention lives: a variant is `{tag, value}`, a `(Time, Decimal)`
 // tuple is `{_1, _2}`, Time an ISO-8601 string and Decimal a string. decodeSchedule mirrors it.
-// TODO: round-trip-confirm this encoding against a real ledger.
+// Only the mock exercises it so far, so it is unconfirmed against a real ledger.
 
 type EncodedCurve =
   | { tag: 'LinearVesting'; value: { start: string; end: string } }

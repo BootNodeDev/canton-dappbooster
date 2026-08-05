@@ -44,6 +44,7 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   }
 }
 
+// `history` is session-local: the lite contracts retain none, so it does not survive a reload.
 interface VestingState {
   grants: Grant[]
   proposals: Proposal[]

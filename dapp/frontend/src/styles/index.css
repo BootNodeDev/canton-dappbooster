@@ -1,5 +1,6 @@
-/* Must precede the first @import: `cnc` sits above Tailwind's preflight and below `utilities`, so a
-   className on a kit component wins. A layer missing here lands on top; revisit on a Tailwind bump. */
+/* Must precede the first @import: `cnc` sits above preflight, which resets `button { color: inherit }`
+   over the kit copy control, and below `utilities` so a className on a kit component still wins. A
+   layer missing here lands on top; revisit on a Tailwind bump. */
 @layer properties, theme, base, cnc, components, utilities;
 
 @import "tailwindcss";

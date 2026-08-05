@@ -10,7 +10,8 @@ interface ScheduleBarProps {
 const pct = (f: number): string => `${Math.max(0, Math.min(1, f)) * 100}%`
 
 // Stacked bar over fractions of the grant total in [0, 1]: brand gradient is vested, the solid
-// success sub-segment claimable, the remainder unvested. Ticks mark milestone points.
+// success sub-segment claimable, the remainder unvested. Ticks mark milestones, also cumulative
+// fractions.
 export const ScheduleBar = ({
   vestedFraction,
   claimedFraction,
