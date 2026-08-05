@@ -18,7 +18,7 @@ them.
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Projections of the wallet context, one per concern. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts` / `config.ts`, the one pair that is not pure: they parse `import.meta.env` at import and throw on a bad value. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the zod schema `vite.config.ts` validates the environment against, and `config.ts`, which reads the literals that validation left behind. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -87,10 +87,19 @@ or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters ins
 element.
 
 The explorer those ids link to is the app's to supply: Canton has no canonical one, so the kit
-composes URLs only from an `ExplorerConfig`. The app resolves it once in
-[`src/lib/config.ts`](src/lib/config.ts) from `VITE_EXPLORER_URL` and passes it to the kit's
-`useExplorerLink`. Every `<Identifier>` the app renders passes `announce={false}`: the `Toaster` is
-the app's live region, so the kit's own would double-announce.
+composes URLs only from an `ExplorerConfig`. [`src/lib/config.ts`](src/lib/config.ts) holds that
+config as a literal baked in at build time from `VITE_EXPLORER_URL`, not parsed at startup, and the
+kit's `useExplorerLink` turns it into hrefs. Counterparty ids go through one component:
+[`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
+the direction-specific label, the copy toast, and the explorer href in one place, and `GrantCard`
+and `ProposalCard` render it. Every `<Identifier>` the app renders passes `announce={false}`: the
+`Toaster` is the app's live region, so the kit's own would double-announce.
+
+That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
+`parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
+`VITE_EXPLORER_URL` fails the build rather than the page load and the client ships neither zod nor
+the check. [`src/lib/env.ts`](src/lib/env.ts) is that schema, and the only module under `src/` that
+runs outside the browser.
 
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own
