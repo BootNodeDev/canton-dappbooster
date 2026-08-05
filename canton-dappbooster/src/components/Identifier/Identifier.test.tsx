@@ -143,12 +143,11 @@ describe('Identifier', () => {
     expect(part('link')).not.toBeInTheDocument()
   })
 
-  it('renders a safe external link when given an href', () => {
+  // Delegation, not the link's own contract: target, rel and name are pinned in ExplorerLink.test.tsx.
+  it('hands the href to an external link carrying the link part', () => {
     render(<Identifier value={PARTY} label="party id" href="https://scan.example/party/nico" />)
-    const link = screen.getByRole('link', { name: 'View party id in explorer' })
+    const link = screen.getByRole('link')
     expect(link).toHaveClass(anatomy.parts.link)
     expect(link).toHaveAttribute('href', 'https://scan.example/party/nico')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })
