@@ -18,14 +18,11 @@ export type Env = z.infer<typeof schema>
 
 /**
  * Validates the build's environment. Takes the source rather than reading `import.meta.env` so it
- * stays testable; the app parses once in `config.ts`.
+ * stays testable; `vite.config.ts` runs it once per build and defines the result back.
  */
 export const parseEnv = (source: unknown): Env => {
   const result = schema.safeParse(source)
   if (result.success) return result.data
 
-  const detail = result.error.issues
-    .map((issue) => `${issue.path.join('.') || '(root)'} ${issue.message}`)
-    .join('; ')
-  throw new Error(`Invalid environment: ${detail}`)
+  throw new Error(`Invalid environment:\n${z.prettifyError(result.error)}`)
 }

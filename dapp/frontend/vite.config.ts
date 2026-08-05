@@ -1,18 +1,28 @@
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+import { parseEnv } from './src/lib/env'
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+// Vite inlines `import.meta.env.VITE_*` as literals, so the environment is a build-time input. It
+// is validated and defaulted here, and defined back so the client ships neither zod nor the check.
+export default defineConfig(({ mode }) => {
+  const env = parseEnv(loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), ''))
+
+  return {
+    define: Object.fromEntries(
+      Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+    ),
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-  },
-  server: {
-    host: 'localhost',
-    port: 3012,
-    strictPort: true,
-  },
+    server: {
+      host: 'localhost',
+      port: 3012,
+      strictPort: true,
+    },
+  }
 })

@@ -1,11 +1,9 @@
-import { Identifier, useExplorerLink } from '@bootnodedev/canton-dappbooster'
-import { copyToast } from '@/components/toast'
-import { EXPLORER } from '@/lib/config'
 import { formatCC, formatDate, relativeTime } from '@/lib/format'
 import { vestedFraction } from '@/lib/schedule'
 import type { Proposal } from '@/store/types'
 import { Button } from './Button'
 import { Card } from './Card'
+import { CounterpartyId } from './CounterpartyId'
 import { StatusPill } from './StatusPill'
 
 interface ProposalCardProps {
@@ -24,9 +22,6 @@ export const ProposalCard = ({
   const isMilestone = proposal.schedule.curve.kind === 'milestone'
   const startFraction = vestedFraction(proposal.schedule, nowMs)
   const counterparty = direction === 'incoming' ? proposal.proposer : proposal.receiver
-  // Names the copy and explorer controls, which otherwise read the same in both directions.
-  const counterpartyLabel = direction === 'incoming' ? 'sender party id' : 'recipient party id'
-  const explorerLink = useExplorerLink(EXPLORER)
 
   return (
     <Card className="flex flex-col gap-4 p-5">
@@ -34,15 +29,7 @@ export const ProposalCard = ({
         <div className="min-w-0">
           <h3 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h3>
           <div className="mt-1 font-mono text-xs text-fg-soft">
-            {direction === 'incoming' ? 'from' : 'to'}{' '}
-            <Identifier
-              announce={false}
-              className="text-fg-soft"
-              href={explorerLink(counterparty)}
-              label={counterpartyLabel}
-              onCopy={copyToast('Party id')}
-              value={counterparty}
-            />
+            <CounterpartyId party={counterparty} incoming={direction === 'incoming'} />
           </div>
         </div>
         <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>

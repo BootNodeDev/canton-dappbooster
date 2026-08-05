@@ -17,6 +17,9 @@ const ELLIPSIS = '…'
 
 const PARTY_SEPARATOR = '::'
 
+/** The one place the party-id shape is asserted, so the truncator and the link builder agree. */
+export const isPartyId = (value: string): boolean => value.includes(PARTY_SEPARATOR)
+
 const middle = (value: string, head: number, tail: number, threshold: number): string => {
   if (value.length <= threshold) return value
   const start = value.slice(0, Math.max(head, 0))

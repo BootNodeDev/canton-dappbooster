@@ -16,28 +16,23 @@
     white-space: nowrap;
   }
 
-  .cnc-identifier__copy,
-  .cnc-identifier__link {
+  .cnc-identifier__copy {
     background: none;
     border-radius: var(--cnc-radius, 4px);
     border: 0;
     color: var(--cnc-text-muted, #4b4d60);
     cursor: pointer;
     display: inline-grid;
-    flex-shrink: 0;
-    font-size: 0.875em;
     padding: 0;
     place-items: center;
     transition: color 120ms ease;
   }
 
-  .cnc-identifier__copy:hover,
-  .cnc-identifier__link:hover {
+  .cnc-identifier__copy:hover {
     color: var(--cnc-accent, #692581);
   }
 
-  .cnc-identifier__copy:focus-visible,
-  .cnc-identifier__link:focus-visible {
+  .cnc-identifier__copy:focus-visible {
     outline: 2px solid var(--cnc-accent, #692581);
     outline-offset: 2px;
   }
@@ -50,8 +45,15 @@
     color: var(--cnc-danger, #a32626);
   }
 
-  /* Matches the identifier controls, since inside `<Identifier>` it carries both classes. */
+  /* The link slot is an `<ExplorerLink>`, which brings its own appearance; only the fit is here. */
+  .cnc-identifier__copy,
+  .cnc-identifier__link {
+    flex-shrink: 0;
+    font-size: 0.875em;
+  }
+
   .cnc-explorer-link {
+    border-radius: var(--cnc-radius, 4px);
     color: var(--cnc-text-muted, #4b4d60);
     display: inline-grid;
     place-items: center;
@@ -63,12 +65,7 @@
   }
 
   .cnc-explorer-link:focus-visible {
-    border-radius: var(--cnc-radius, 4px);
     outline: 2px solid var(--cnc-accent, #692581);
     outline-offset: 2px;
-  }
-
-  .cnc-explorer-link > svg {
-    display: block;
   }
 }

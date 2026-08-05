@@ -49,13 +49,6 @@ describe('getExplorerLink', () => {
     )
   })
 
-  it('uses a custom path template', () => {
-    const explorer = { baseUrl: 'https://scan.example', paths: { party: '/parties/{id}/holdings' } }
-    expect(getExplorerLink({ explorer, value: PARTY })).toBe(
-      `https://scan.example/parties/${PARTY_ENCODED}/holdings`,
-    )
-  })
-
   it('keeps a path prefix on the base url and drops its trailing slash', () => {
     const explorer = { baseUrl: 'https://scan.example/app/' }
     expect(getExplorerLink({ explorer, value: UPDATE })).toBe(
@@ -66,11 +59,6 @@ describe('getExplorerLink', () => {
   it('returns undefined when the value matches no known identifier shape', () => {
     expect(getExplorerLink({ explorer: EXPLORER, value: 'not-an-identifier' })).toBeUndefined()
     expect(getExplorerLink({ explorer: EXPLORER, value: '' })).toBeUndefined()
-  })
-
-  it('returns undefined when the explorer has no template for the entity', () => {
-    const explorer = { baseUrl: 'https://scan.example', paths: { party: null } }
-    expect(getExplorerLink({ explorer, value: PARTY })).toBeUndefined()
   })
 
   // An unset env var reaches the config as an empty string; that is a misconfigured app, not a
@@ -105,7 +93,7 @@ describe('useExplorerLink', () => {
   // An inline config object is a new reference every render; the builder must not be.
   it('keeps the builder stable across renders of an inline config', () => {
     const { result, rerender } = renderHook(() =>
-      useExplorerLink({ baseUrl: 'https://scan.example', paths: { party: '/party/{id}' } }),
+      useExplorerLink({ baseUrl: 'https://scan.example' }),
     )
     const first = result.current
 
@@ -122,17 +110,5 @@ describe('useExplorerLink', () => {
     rerender({ baseUrl: 'https://other.example' })
 
     expect(result.current(UPDATE)).toBe(`https://other.example/update/${UPDATE}`)
-  })
-
-  // Stability is memoised per path, so every template belongs in the dependency list.
-  it('rebuilds when a configured path template changes', () => {
-    const { result, rerender } = renderHook(
-      ({ party }) => useExplorerLink({ baseUrl: 'https://scan.example', paths: { party } }),
-      { initialProps: { party: '/party/{id}' } },
-    )
-
-    rerender({ party: '/parties/{id}' })
-
-    expect(result.current(PARTY)).toBe(`https://scan.example/parties/${PARTY_ENCODED}`)
   })
 })

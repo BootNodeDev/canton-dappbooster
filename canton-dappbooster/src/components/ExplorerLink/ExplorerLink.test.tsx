@@ -19,8 +19,10 @@ describe('ExplorerLink', () => {
     expect(screen.getByRole('link')).toHaveClass(anatomy.parts.root, 'extra')
   })
 
-  it('opens in a new tab without handing over the opener', () => {
-    render(<ExplorerLink aria-label={LABEL} href={HREF} />)
+  // The types bar a consumer from setting either, so this pins the runtime behind them too.
+  it('opens in a new tab without handing over the opener, whatever the consumer passes', () => {
+    const unsafe = { rel: 'opener', target: '_self' } as Record<string, string>
+    render(<ExplorerLink aria-label={LABEL} href={HREF} {...unsafe} />)
     expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
   })
@@ -34,13 +36,5 @@ describe('ExplorerLink', () => {
   it('forwards unknown props to the link', () => {
     render(<ExplorerLink aria-label={LABEL} data-testid="explorer" href={HREF} />)
     expect(screen.getByRole('link')).toHaveAttribute('data-testid', 'explorer')
-  })
-
-  // The types bar both props; this pins the runtime behind them.
-  it('keeps its own target and rel against a consumer setting them', () => {
-    const unsafe = { rel: 'opener', target: '_self' } as Record<string, string>
-    render(<ExplorerLink aria-label={LABEL} href={HREF} {...unsafe} />)
-    expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })
