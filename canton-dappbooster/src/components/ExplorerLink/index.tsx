@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes, ReactElement } from 'react'
 import { ExternalLinkIcon } from '../../icons'
+import { cx } from '../../utils/cx'
 import { anatomy } from './anatomy'
 
 /**
@@ -30,7 +31,7 @@ export const ExplorerLink = ({ className, href, ...rest }: ExplorerLinkProps): R
     // Spread first: `rel` and `target` are the component's contract, not a consumer's to override.
     <a
       {...rest}
-      className={[anatomy.parts.root, className].filter(Boolean).join(' ')}
+      className={cx(anatomy.parts.root, className)}
       href={href}
       rel="noopener noreferrer"
       target="_blank"

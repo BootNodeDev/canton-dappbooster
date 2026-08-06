@@ -120,7 +120,9 @@ Placement:
 - Colocate by default. A module used by one component lives beside it; promote it only when a second
   consumer appears.
 - Promoted code goes in a kind folder at the src root (`components/`, `hooks/`, `icons/`,
-  `providers/`, `testing/`). Those exist from their first member.
+  `providers/`, `testing/`, `utils/`). Those exist from their first member. `utils/` is the one that
+  never rejects a file, so each of its modules is named for what it holds (`partyId.ts`, `cx.ts`),
+  never `helpers.ts` or an `index.ts` barrel.
 - Components live in `components/`, which is a kind folder like the rest and gets no special case.
   Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
   than a parent composing them.

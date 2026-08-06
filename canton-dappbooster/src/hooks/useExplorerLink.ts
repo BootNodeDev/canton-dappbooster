@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { isPartyId } from '../components/Identifier/truncate'
+import { isPartyId } from '../utils/partyId'
 
 /**
  * What an identifier points at. `update` is the ledger transaction, which scans label as one.

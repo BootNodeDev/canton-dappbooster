@@ -5,6 +5,7 @@ import {
   useCopyToClipboard,
 } from '../../hooks/useCopyToClipboard'
 import { CheckIcon, CopyIcon } from '../../icons'
+import { cx } from '../../utils/cx'
 import { ExplorerLink } from '../ExplorerLink'
 import { anatomy } from './anatomy'
 import { type TruncateOptions, truncateIdentifier } from './truncate'
@@ -73,7 +74,7 @@ export const Identifier = ({
   const display = truncate === false ? value : truncateIdentifier(value, truncate)
 
   return (
-    <span className={[anatomy.parts.root, className].filter(Boolean).join(' ')} {...rest}>
+    <span className={cx(anatomy.parts.root, className)} {...rest}>
       {/* Titled even when untruncated: the theme also ellipsises on overflow, which JS cannot see. */}
       <code className={anatomy.parts.value} title={value}>
         {display}

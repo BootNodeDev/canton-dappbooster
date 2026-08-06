@@ -36,6 +36,7 @@ const files = {
 `,
 
   'index.tsx': `import type { HTMLAttributes, ReactElement } from 'react'
+import { cx } from '../../utils/cx'
 import { anatomy } from './anatomy'
 
 /** Props for {@link ${name}}. */
@@ -43,7 +44,7 @@ export type ${name}Props = HTMLAttributes<HTMLDivElement>
 
 /** TODO: what it does, and when to reach for it over a sibling export. */
 export const ${name} = ({ children, className, ...rest }: ${name}Props): ReactElement => (
-  <div {...rest} className={[anatomy.parts.root, className].filter(Boolean).join(' ')}>
+  <div {...rest} className={cx(anatomy.parts.root, className)}>
     {children}
   </div>
 )

@@ -34,8 +34,9 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
 
 1. **`anatomy.ts`** — declare `parts` (CSS class hooks) and `states` (the `data-*` / `aria-*` values
    the theme styles off). This typed const is what the theme, the tests, and the docs all derive from.
-2. **`index.tsx`** — take class names from `anatomy.parts.*`. No CSS import. Keyboard-heavy widgets
-   hand-roll on Zag prop-getters; display primitives use plain React state.
+2. **`index.tsx`** — take class names from `anatomy.parts.*`, merged with the consumer's `className`
+   through `cx` from `src/utils/cx.ts`; never hand-roll the join. No CSS import. Keyboard-heavy
+   widgets hand-roll on Zag prop-getters; display primitives use plain React state.
 3. **Theme styles** — add the part-class rules to `canton-theme`'s `default.css` (under
    `@layer cnc`, reading `var(--cnc-*)`); add any new tokens to its `tokens.css`.
 4. **Test** — the contract the root rule says to assert against is `anatomy.parts.*` here. A state
