@@ -1,7 +1,7 @@
 # @bootnodedev/canton-dappbooster
 
-Reusable UI components for Canton dApps — identifier display, copy-to-clipboard actions,
-explorer links, and related building blocks.
+Reusable UI components for Canton dApps — reading Canton identifiers (display, truncation,
+copy-to-clipboard, explorer links) and entering them (validated party-id input).
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
 the call site. Authoring rules for new components live in [`CLAUDE.md`](CLAUDE.md).

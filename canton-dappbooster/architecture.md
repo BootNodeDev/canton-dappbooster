@@ -40,10 +40,11 @@ The chosen behavior engine is **Zag** (framework-agnostic interaction state mach
 prop-getters spread onto your own markup). Components are hand-rolled on those prop-getters, never
 dropped in. The anatomy, not the engine, is the public contract.
 
-Zag earns its place at the keyboard-heavy widgets (wallet picker, token select). Display
-primitives — `<Identifier>` (#6), explorer link (#9), hash (#10) — need no state machine and are
-hand-rolled with plain React state. So the `@zag-js/*` dependency lands with the first widget that
-needs it, not before; adding it now would be an unused dependency.
+Zag earns its place where the interaction is one HTML does not supply, such as a listbox with
+roving focus, a popup with dismiss and outside-click, or a composite navigated by arrow keys.
+Holding state is not the trigger; everything else is hand-rolled on plain React state. So the
+`@zag-js/*` dependency lands with the first widget that needs it, not before; adding it now would
+be an unused dependency.
 
 `@zag-js/clipboard` is a genuine fit for `<Identifier>`'s copy control, and it still loses: it
 models copied/not-copied but not a rejected write, which the `onCopy` outcome contract needs, and

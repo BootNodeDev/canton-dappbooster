@@ -80,6 +80,11 @@ computes a vesting figure itself is a bug.
 Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
 holds no truncation or copy-to-clipboard logic of its own.
 
+Entry is the other half and is not yet on the kit: [`CreateGrantPage`](src/features/CreateGrantPage.tsx)
+still validates its receiver field with a local `/.+::.+/`, which accepts a truncated paste. The
+kit's `<PartyIdInput>` and `validatePartyId` replace it, and the seed fingerprints in
+[`src/mock/seed.ts`](src/mock/seed.ts) are full 68-character ones so they survive that check.
+
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
 or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters instead, because
