@@ -154,7 +154,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   name. Two buttons where one looks selected need `aria-pressed`. Never leave this to the consumer.
 - Expose that state on the element as `aria-*` or `data-*`, never through a class name alone, so the
   styling hook and the accessibility state stay one source of truth.
-- `ref` is an ordinary prop (React 19). Do not reach for `forwardRef`.
+- `ref` is an ordinary prop (React 19), so do not reach for `forwardRef`. Do not declare it until a
+  consumer needs one: a published prop is a contract owed forever, and adding it later is
+  non-breaking.
 - Tests assert on roles, accessible names, and whatever contract the component declares. Never on
   styling.
 
