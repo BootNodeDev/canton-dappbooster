@@ -241,6 +241,8 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 onChange={editReceiver}
                 placeholder="bob::1220…"
                 aria-describedby={receiverMessage === undefined ? undefined : 'receiver-error'}
+                // The kit validates the shape; a grant to yourself is a rule only this app knows.
+                aria-invalid={isSelf || undefined}
                 // The kit sets `aria-invalid`; the variants below are what paints it here.
                 className={cn(
                   inputClass,

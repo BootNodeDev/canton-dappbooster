@@ -1,33 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isPartyId, isValidPartyId, PARTY_SEPARATOR, validatePartyId } from './partyId'
+import { isValidPartyId, validatePartyId } from './partyId'
 
 // `1220` plus 64 hex: the 68 characters a live Canton fingerprint has.
 const FINGERPRINT = '1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c'
 const PARTY = `nico::${FINGERPRINT}`
 const PLAIN = 'viewer1-1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2d05fe52e'
-
-describe('isPartyId', () => {
-  it('accepts a party id', () => {
-    expect(isPartyId(PARTY)).toBe(true)
-  })
-
-  it('rejects an identifier with no separator', () => {
-    expect(isPartyId(PLAIN)).toBe(false)
-    expect(isPartyId('')).toBe(false)
-  })
-
-  it('rejects a single colon', () => {
-    expect(isPartyId('nico:1220df94')).toBe(false)
-  })
-
-  it('accepts a separator anywhere, including malformed halves', () => {
-    // Shape classification, not validation: the explorer router only needs party-vs-hash.
-    expect(isPartyId(PARTY_SEPARATOR)).toBe(true)
-    expect(isPartyId('alice::')).toBe(true)
-    expect(isPartyId('::1220df94')).toBe(true)
-    expect(isPartyId('alice::ns::extra')).toBe(true)
-  })
-})
 
 describe('validatePartyId', () => {
   it('accepts a well-formed party id', () => {

@@ -60,13 +60,35 @@ describe('PartyIdInput', () => {
     render(<Harness onReport={onReport} />)
     type('nico')
     expect(onReport).toHaveBeenLastCalledWith('nico', undefined)
-    expect(field()).not.toHaveAttribute('aria-invalid')
+    expect(field()).not.toHaveAttribute(anatomy.states.invalid)
   })
 
   it('flags a malformed value once the field has been blurred', () => {
     render(<Harness initial="nico" />)
     fireEvent.blur(field())
-    expect(field()).toHaveAttribute('aria-invalid', 'true')
+    expect(field()).toHaveAttribute(anatomy.states.invalid, 'true')
+  })
+
+  it('reports the reason on the blur that starts the flagging', () => {
+    // Otherwise the field paints an error the caller was never told about, so nothing explains it.
+    const onReport = vi.fn()
+    render(<Harness initial="nico" onReport={onReport} />)
+    fireEvent.blur(field())
+    expect(onReport).toHaveBeenCalledWith('nico', 'missing-separator')
+  })
+
+  it('trims the whitespace a paste brings with it', () => {
+    const onReport = vi.fn()
+    render(<Harness initial={`  ${VALID}\n`} onReport={onReport} />)
+    fireEvent.blur(field())
+    expect(onReport).toHaveBeenCalledWith(VALID, undefined)
+    expect(field()).toHaveValue(VALID)
+    expect(field()).not.toHaveAttribute(anatomy.states.invalid)
+  })
+
+  it('lets the consumer flag the field for a reason the kit cannot know', () => {
+    render(<Harness initial={VALID} aria-invalid />)
+    expect(field()).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('keeps flagging live after the first blur', () => {
@@ -75,14 +97,14 @@ describe('PartyIdInput', () => {
     fireEvent.blur(field())
     type('nico:1220df94')
     expect(onReport).toHaveBeenLastCalledWith('nico:1220df94', 'missing-separator')
-    expect(field()).toHaveAttribute('aria-invalid', 'true')
+    expect(field()).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('clears the flag as soon as the value becomes well-formed', () => {
     render(<Harness initial="nico" />)
     fireEvent.blur(field())
     type(VALID)
-    expect(field()).not.toHaveAttribute('aria-invalid')
+    expect(field()).not.toHaveAttribute(anatomy.states.invalid)
   })
 
   it('never flags an empty field', () => {
@@ -91,7 +113,7 @@ describe('PartyIdInput', () => {
     fireEvent.blur(field())
     type('')
     expect(onReport).toHaveBeenLastCalledWith('', undefined)
-    expect(field()).not.toHaveAttribute('aria-invalid')
+    expect(field()).not.toHaveAttribute(anatomy.states.invalid)
   })
 
   it('still calls a consumer onBlur', () => {
