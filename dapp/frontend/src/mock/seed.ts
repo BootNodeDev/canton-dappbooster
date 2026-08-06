@@ -2,15 +2,17 @@ import type { PartyRef, VestingView } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
 import type { VestingSchedule } from '@/lib/schedule'
 
-// Not real 68-char fingerprints, but long enough to trip display truncation. Tails differ so the
-// shortened forms stay distinguishable.
-export const MOCK_OPERATOR = 'operator::12205b3e91d7a04c68f2b15e9c37d80a4f6b23e15c98d740a2e63f19'
+// Fake keys, real shape: `1220` (sha256 multihash) plus 64 hex, the 68 characters a live Canton
+// fingerprint has. Anything shorter fails the kit's party-id validation. Tails differ so the
+// truncated forms stay distinguishable.
+export const MOCK_OPERATOR =
+  'operator::12205c09951be5d40dedd05dd52ad7290ecbb75cd5ae0457f0bf3c073b27b0656558'
 
 const PARTY = {
-  alice: 'alice::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb4',
-  bob: 'bob::1220a7c31e08f45a92d6108e37cb2f5019ad4e6b73c8f21d09b5e7a3',
-  carol: 'carol::12204e8a17c93b06d2f5e84a1b7c3d90f6a2e5b8c1d47f30a9e62b1',
-  dave: 'dave::1220c91f37b6d284e05a3c7f18b92d6e4a70c53f81b26d9e04a7f3c2',
+  alice: 'alice::1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c',
+  bob: 'bob::1220a827a5f2086fdb471ae2550c3d8075a7036617685fee3426535398aecebf90e1',
+  carol: 'carol::1220fdb068b8af0d1b58a93756f01c01fbb54d41f23eb652714b6b287316f7d54895',
+  dave: 'dave::1220a79b367e74ccfca039499fed2728eef43a134f8c16354b184eca9475e08c79ac',
 } as const
 
 // The party pool the DirectWallet offers on the landing picker.
