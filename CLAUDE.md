@@ -164,6 +164,8 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   - `pnpm run canton:up` / `canton:down` / `canton:health` / `canton:token`
   - `pnpm run build-dar -- <daml-project>` / `pnpm run deploy-dar -- <dar>`
   - `pnpm run app:dev`
+- `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
+  folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they float on the ranges in its own `package.json` (`dapp-sdk` `^1.4.0`); bump those directly and test the connect flow, not `pnpm-workspace.yaml`.
