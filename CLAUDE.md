@@ -1,4 +1,4 @@
-<!-- starter-kit: v2026.07 -->
+<!-- starter-kit: v2026.08 -->
 
 # Agent Configuration — Canton dApp Booster
 
@@ -247,7 +247,7 @@ GitHub form dropdowns (like the Priority field in issue templates) only work thr
 
 Labels are queryable: `gh issue list --label "priority: high"`.
 
-The `issue` skill at `.claude/skills/issue/` applies these labels automatically when creating issues via CLI.
+The `create-issue` skill at `.claude/skills/create-issue/` applies these labels automatically when creating issues via CLI.
 
 ## Guardrails
 
