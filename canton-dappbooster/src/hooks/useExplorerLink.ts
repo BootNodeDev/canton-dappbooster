@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { isPartyId } from '../utils/partyId'
+import { isValidPartyId } from '../utils/partyId'
 
 /**
  * What an identifier points at. `update` is the ledger transaction, which scans label as one.
@@ -44,10 +44,11 @@ const HASH = /^[0-9a-f]{64}$/i
 // the 64-character total, so the two cannot collide.
 const CONTRACT_ID = /^00[0-9a-f]{64,}$/i
 
-// A party id carries a separator and a contract id a discriminator; a bare 64-character hash is
+// A party id must be well-formed, not merely separator-shaped, or a half-typed one would get a link
+// to a page that cannot exist. A contract id carries a discriminator; a bare 64-character hash is
 // read as an update, a shape it shares with package and event ids.
 const detectEntity = (value: string): ExplorerEntity | undefined => {
-  if (isPartyId(value)) return 'party'
+  if (isValidPartyId(value)) return 'party'
   if (HASH.test(value)) return 'update'
   if (CONTRACT_ID.test(value)) return 'contract'
   return undefined

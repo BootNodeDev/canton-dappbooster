@@ -2,8 +2,9 @@ import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getExplorerLink, useExplorerLink } from './useExplorerLink'
 
-const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
-const PARTY_ENCODED = 'nico%3A%3A1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
+const FINGERPRINT = '1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c'
+const PARTY = `nico::${FINGERPRINT}`
+const PARTY_ENCODED = `nico%3A%3A${FINGERPRINT}`
 const CONTRACT = `00${'a3'.repeat(68)}`
 const UPDATE = 'ab'.repeat(32)
 
@@ -59,6 +60,14 @@ describe('getExplorerLink', () => {
   it('returns undefined when the value matches no known identifier shape', () => {
     expect(getExplorerLink({ explorer: EXPLORER, value: 'not-an-identifier' })).toBeUndefined()
     expect(getExplorerLink({ explorer: EXPLORER, value: '' })).toBeUndefined()
+  })
+
+  // A field mid-entry is separator-shaped long before it is a party; a link to it would 404.
+  it('returns undefined for a half-typed party id', () => {
+    expect(getExplorerLink({ explorer: EXPLORER, value: 'nico::' })).toBeUndefined()
+    expect(
+      getExplorerLink({ explorer: EXPLORER, value: `nico::${FINGERPRINT.slice(0, 40)}` }),
+    ).toBe(undefined)
   })
 
   // An unset env var reaches the config as an empty string; that is a misconfigured app, not a
