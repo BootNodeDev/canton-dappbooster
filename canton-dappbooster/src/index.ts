@@ -5,6 +5,7 @@ export {
   type TruncateOptions,
   truncateIdentifier,
 } from './components/Identifier/truncate'
+export { PartyIdInput, type PartyIdInputProps } from './components/PartyIdInput'
 export {
   type CopyOutcome,
   type CopyState,
