@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stubClipboard } from '../../testing/clipboard'
 import { Identifier } from '.'
@@ -38,10 +37,8 @@ describe('Identifier', () => {
     expect(part('value')).toHaveAttribute('title', SHORT)
   })
 
-  it('forwards a ref and unknown props to the root part', () => {
-    const ref = createRef<HTMLSpanElement>()
-    render(<Identifier value={PARTY} ref={ref} data-testid="acting-party" />)
-    expect(ref.current).toBe(part('root'))
+  it('forwards unknown props to the root part', () => {
+    render(<Identifier value={PARTY} data-testid="acting-party" />)
     expect(part('root')).toHaveAttribute('data-testid', 'acting-party')
   })
 

@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes, ReactElement, Ref } from 'react'
+import type { CSSProperties, HTMLAttributes, ReactElement } from 'react'
 import {
   type CopyOutcome,
   type CopyState,
@@ -22,7 +22,6 @@ export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, '
   href?: string
   label?: string
   onCopy?: (outcome: CopyOutcome) => void
-  ref?: Ref<HTMLSpanElement>
   truncate?: false | TruncateOptions
   value: string
 }
@@ -67,7 +66,6 @@ export const Identifier = ({
   href,
   onCopy,
   className,
-  ref,
   ...rest
 }: IdentifierProps): ReactElement => {
   const { state, copy: writeToClipboard } = useCopyToClipboard()
@@ -75,7 +73,7 @@ export const Identifier = ({
   const display = truncate === false ? value : truncateIdentifier(value, truncate)
 
   return (
-    <span ref={ref} className={[anatomy.parts.root, className].filter(Boolean).join(' ')} {...rest}>
+    <span className={[anatomy.parts.root, className].filter(Boolean).join(' ')} {...rest}>
       {/* Titled even when untruncated: the theme also ellipsises on overflow, which JS cannot see. */}
       <code className={anatomy.parts.value} title={value}>
         {display}
