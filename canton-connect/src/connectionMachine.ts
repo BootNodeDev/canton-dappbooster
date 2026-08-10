@@ -23,9 +23,7 @@ export const connectionMachine = setup({
         onDone: { target: 'connected' },
         onError: {
           target: 'failure',
-          actions: assign({
-            error: ({ event: { error } }) => error,
-          }),
+          actions: assign({ error: ({ event: { error } }) => error }),
         },
       },
       on: {
@@ -33,6 +31,11 @@ export const connectionMachine = setup({
       },
     },
     connected: {},
-    failure: {},
+    failure: {
+      exit: assign({ error: undefined }),
+      on: {
+        connect: { target: 'connecting' },
+      },
+    },
   },
 })

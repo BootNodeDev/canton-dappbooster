@@ -68,4 +68,37 @@ describe('connectionMachine', () => {
     expect(actor.getSnapshot().matches('failure')).toBe(true)
     expect(actor.getSnapshot().context.error).toEqual(new Error('wallet rejected'))
   })
+
+  it('allows connecting again after a failure', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
+      },
+    })
+
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+    actor.send({ type: 'connect' })
+
+    expect(actor.getSnapshot().matches('connecting')).toBe(true)
+  })
+
+  it('drops the previous error when retrying', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
+      },
+    })
+
+    const actor = createActor(machine)
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+    actor.send({ type: 'connect' })
+
+    expect(actor.getSnapshot().context.error).toBeUndefined()
+  })
 })
