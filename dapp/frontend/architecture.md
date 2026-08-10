@@ -80,6 +80,20 @@ computes a vesting figure itself is a bug.
 Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
 holds no truncation or copy-to-clipboard logic of its own.
 
+Entry is the other half. [`CreateGrantPage`](src/features/CreateGrantPage.tsx)'s receiver field is
+the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
+the two can never disagree about what a party id is. Party ids are exact strings here: nothing
+trims, so a stray space is invalid rather than silently stripped on the way to the ledger. The seed
+fingerprints in [`src/mock/seed.ts`](src/mock/seed.ts) are the full 68 characters a real one has,
+because anything shorter now fails that check.
+
+That field is also where the layering is easiest to read. The kit sets `aria-invalid` and hands back
+an error *code*; this app owns the sentence, where it sits, and what it looks like. The wording lives
+in a `Record<PartyIdError, string>` so a new code added upstream fails the build here instead of
+rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rather than
+`canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
+[`src/styles/index.css`](src/styles/index.css)).
+
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
 or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters instead, because

@@ -1,7 +1,7 @@
 # @bootnodedev/canton-dappbooster
 
-Reusable UI components for Canton dApps — identifier display, copy-to-clipboard actions,
-explorer links, and related building blocks.
+Reusable UI components for Canton dApps — reading Canton identifiers (display, truncation,
+copy-to-clipboard, explorer links) and entering them (validated party-id input).
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
 the call site. Authoring rules for new components live in [`CLAUDE.md`](CLAUDE.md).
@@ -23,7 +23,7 @@ source live in dev; `dist` is used for production and publish.
 Consumers resolve source in dev and typecheck (no kit build needed); their production build resolves
 `dist`. Build the kit first, or run `pnpm build` from the repo root, which builds workspaces in order.
 
-React 19 only, peer and dev alike. Components take `ref` as an ordinary prop.
+React 19 only, peer and dev alike.
 
 A consumer whose React resolves to a different copy than the kit's ends up with two Reacts in one
 bundle, where hooks read a null dispatcher and every render throws. Only a production build shows

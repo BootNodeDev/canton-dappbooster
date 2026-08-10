@@ -67,4 +67,41 @@
     outline: 2px solid var(--cnc-accent, #692581);
     outline-offset: 2px;
   }
+
+  .cnc-party-id-input {
+    background: var(--cnc-surface, #ffffff);
+    border-radius: var(--cnc-radius, 4px);
+    border: 1px solid var(--cnc-border, #e2e2ea);
+    color: var(--cnc-text, #2c2d40);
+    font-family: var(--cnc-font-mono, ui-monospace, SFMono-Regular, monospace);
+    font-size: 0.875rem;
+    padding: 0.5rem 0.625rem;
+    /* The field holds one long unbroken token, so it stretches rather than sizing to `size`. */
+    width: 100%;
+  }
+
+  .cnc-party-id-input::placeholder {
+    color: var(--cnc-text-muted, #4b4d60);
+    opacity: 0.7;
+  }
+
+  .cnc-party-id-input:hover {
+    border-color: var(--cnc-border-strong, #ccccd6);
+  }
+
+  .cnc-party-id-input:focus-visible {
+    border-color: var(--cnc-accent, #692581);
+    outline: 2px solid var(--cnc-accent, #692581);
+    outline-offset: 1px;
+  }
+
+  /* Set from the first blur onward, so a half-typed value is never flagged before then. */
+  .cnc-party-id-input[aria-invalid="true"] {
+    background: var(--cnc-danger-subtle, #f6dede);
+    border-color: var(--cnc-danger, #a32626);
+  }
+
+  .cnc-party-id-input[aria-invalid="true"]:focus-visible {
+    outline-color: var(--cnc-danger, #a32626);
+  }
 }

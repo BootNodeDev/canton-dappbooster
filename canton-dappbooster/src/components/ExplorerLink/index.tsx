@@ -1,5 +1,6 @@
-import type { AnchorHTMLAttributes, ReactElement, Ref } from 'react'
+import type { AnchorHTMLAttributes, ReactElement } from 'react'
 import { ExternalLinkIcon } from '../../icons'
+import { cx } from '../../utils/cx'
 import { anatomy } from './anatomy'
 
 /**
@@ -13,7 +14,6 @@ export interface ExplorerLinkProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'rel' | 'target'> {
   'aria-label': string
   href: string
-  ref?: Ref<HTMLAnchorElement>
 }
 
 /**
@@ -26,19 +26,13 @@ export interface ExplorerLinkProps
  * @example
  * <ExplorerLink href="https://scan.example/party/nico" aria-label="View party id in explorer" />
  */
-export const ExplorerLink = ({
-  className,
-  href,
-  ref,
-  ...rest
-}: ExplorerLinkProps): ReactElement => {
+export const ExplorerLink = ({ className, href, ...rest }: ExplorerLinkProps): ReactElement => {
   return (
     // Spread first: `rel` and `target` are the component's contract, not a consumer's to override.
     <a
       {...rest}
-      className={[anatomy.parts.root, className].filter(Boolean).join(' ')}
+      className={cx(anatomy.parts.root, className)}
       href={href}
-      ref={ref}
       rel="noopener noreferrer"
       target="_blank"
     >

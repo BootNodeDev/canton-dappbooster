@@ -1,4 +1,9 @@
-import { partyHint } from '@bootnodedev/canton-dappbooster'
+import {
+  isValidPartyId,
+  type PartyIdError,
+  PartyIdInput,
+  partyHint,
+} from '@bootnodedev/canton-dappbooster'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
@@ -83,6 +88,14 @@ const labelClass = 'block text-xs font-bold uppercase tracking-[0.06em] text-fg-
 const inputClass =
   'mt-1.5 h-11 w-full rounded-xl border border-border bg-bg px-3 text-fg outline-none focus:shadow-[var(--ring)]'
 
+// The kit ships codes, not copy, so the wording is the app's. Exhaustive by construction: a new
+// code stops this compiling rather than rendering nothing.
+const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
+  'missing-separator': 'Use a full party id (hint::fingerprint).',
+  'invalid-hint': 'The hint before :: cannot be blank or contain spaces.',
+  'invalid-fingerprint': 'The fingerprint after :: must be 68 hex characters.',
+}
+
 export const CreateGrantPage = (): React.JSX.Element => {
   const navigate = useNavigate()
   const { party } = useParty()
@@ -92,6 +105,8 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const today = new Date(now())
   const initial = defaultSchedule(today)
   const [receiver, setReceiver] = useState('')
+  // What the field is currently flagging: the kit reports it, this page words and places it.
+  const [receiverError, setReceiverError] = useState<PartyIdError | undefined>(undefined)
   const [amount, setAmount] = useState('')
   const [curveKind, setCurveKind] = useState<CurveKind>('linear')
   const [cliff, setCliff] = useState(initial.cliff)
@@ -105,8 +120,9 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const [demo, setDemo] = useState<DemoPreset | null>(null)
 
   // Editing the grant's identity clears the created panel, restoring the submit button.
-  const editReceiver = (value: string): void => {
+  const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)
+    setReceiverError(error)
     setDisclosedBytes(null)
   }
   const editAmount = (value: string): void => {
@@ -130,11 +146,16 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const amountNum = Number(amount)
   const scheduleValid = validVestingSchedule(schedule)
   const amountValid = Number.isFinite(amountNum) && amountNum >= MIN_GRANT_AMOUNT
-  // Party ids are `hint::fingerprint`; both halves must be present, and a grant
-  // to yourself is rejected (the ledger would refuse a self-vesting).
-  const receiverWellFormed = /.+::.+/.test(receiver.trim())
-  const isSelf = party !== undefined && receiver.trim() === party.partyId
+  const receiverWellFormed = isValidPartyId(receiver)
+  const isSelf = party !== undefined && receiver === party.partyId
   const receiverValid = receiverWellFormed && !isSelf
+
+  const receiverMessage =
+    receiverError !== undefined
+      ? RECEIVER_MESSAGE[receiverError]
+      : isSelf
+        ? 'Cannot grant to your own party.'
+        : undefined
   const valid = scheduleValid && amountValid && receiverValid
 
   // Any manual schedule edit drops the demo flag so the entered dates are used verbatim.
@@ -187,7 +208,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
     try {
       const result = await createVesting(backend, partyId, {
         proposer: partyId,
-        receiver: receiver.trim(),
+        receiver,
         totalAmount: amountNum,
         schedule: finalSchedule,
         title,
@@ -214,18 +235,24 @@ export const CreateGrantPage = (): React.JSX.Element => {
               <label htmlFor="receiver" className={labelClass}>
                 Receiver party id
               </label>
-              <input
+              <PartyIdInput
                 id="receiver"
                 value={receiver}
-                onChange={(e) => editReceiver(e.target.value)}
+                onChange={editReceiver}
                 placeholder="bob::1220…"
-                className={cn(inputClass, 'font-mono text-sm')}
+                aria-describedby={receiverMessage === undefined ? undefined : 'receiver-error'}
+                // The kit validates the shape; a grant to yourself is a rule only this app knows.
+                aria-invalid={isSelf || undefined}
+                // The kit sets `aria-invalid`; the variants below are what paints it here.
+                className={cn(
+                  inputClass,
+                  'font-mono text-sm aria-invalid:border-danger aria-invalid:bg-danger-soft',
+                )}
               />
-              {receiver !== '' && !receiverWellFormed && (
-                <p className="mt-1 text-xs text-danger">Use a full party id (hint::fingerprint).</p>
-              )}
-              {receiver !== '' && receiverWellFormed && isSelf && (
-                <p className="mt-1 text-xs text-danger">Cannot grant to your own party.</p>
+              {receiverMessage !== undefined && (
+                <p id="receiver-error" className="mt-1 text-xs text-danger">
+                  {receiverMessage}
+                </p>
               )}
             </div>
             <div>
