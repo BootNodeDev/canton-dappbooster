@@ -181,7 +181,7 @@
   }
 
   .cnc-token-input__balance[data-state="loading"] {
-    opacity: 0.6;
+    opacity: 0.8;
   }
 
   .cnc-token-input__balance[data-state="error"] {
@@ -191,7 +191,7 @@
   .cnc-token-input__max {
     background: none;
     border: none;
-    border-radius: 0;
+    border-radius: var(--cnc-radius, 8px);
     color: var(--cnc-accent, #692581);
     cursor: pointer;
     flex-shrink: 0;

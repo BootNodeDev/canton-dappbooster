@@ -15,7 +15,12 @@ const TOTAL_DIGITS = 38
  * @example
  * const MESSAGES: Record<TokenAmountError, string> = { 'above-max': 'More than you hold', … }
  */
-export type TokenAmountError = 'not-a-number' | 'too-many-decimals' | 'too-large' | 'above-max'
+export type TokenAmountError =
+  | 'not-a-number'
+  | 'too-many-decimals'
+  | 'too-large'
+  | 'above-max'
+  | 'invalid-max'
 
 // Unsigned, no exponent: a token amount is neither negative nor scientific. A trailing dot passes,
 // because it is a value mid-typing rather than a broken one.
@@ -104,17 +109,18 @@ export const formatAmount = (value: string, locale?: string): string => {
 
 /**
  * Reduces raw field input to a decimal: grouping separators and anything that can never belong to
- * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`.
+ * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`. A sign or an
+ * exponent is kept instead of stripped, so `-5` and `1.5e3` reach {@link validateAmount} as
+ * `not-a-number` rather than being salvaged into an amount nobody entered.
  *
  * @example
  * sanitizeAmountInput('.5') // '0.5'
  */
 export const sanitizeAmountInput = (input: string, locale?: string): string => {
   const { group, decimal } = partsOf(locale)
-  const kept = input
-    .replaceAll(group, '')
-    .replaceAll(decimal, '.')
-    .replace(/[^\d.]/g, '')
+  const mapped = input.replaceAll(group, '').replaceAll(decimal, '.')
+  if (/[eE+-]/.test(mapped)) return mapped
+  const kept = mapped.replace(/[^\d.]/g, '')
   const dot = kept.indexOf('.')
   const int = (dot === -1 ? kept : kept.slice(0, dot)).replace(/^0+(?=\d)/, '')
   if (dot === -1) return int
@@ -135,7 +141,8 @@ export const settleAmount = (value: string): string =>
 /**
  * Checks an amount against the token's precision, the `Numeric 38,10` ceiling, and an optional
  * range. Returns `undefined` when nothing is wrong, including for the empty string: empty is empty,
- * and required-ness belongs to the form.
+ * and required-ness belongs to the form. A `max` that is not itself a decimal returns `invalid-max`
+ * rather than reading as no ceiling, so a malformed balance cannot silently uncap the amount.
  *
  * @example
  * validateAmount('1.5000000001', { max: '1.5' }) // 'above-max'
@@ -152,9 +159,11 @@ export const validateAmount = (
   if (scaled === undefined) return DECIMAL.test(value) ? 'too-many-decimals' : 'not-a-number'
   if (split(value)[0].replace(/^0+/, '').length > TOTAL_DIGITS - precision) return 'too-large'
 
-  // `parseAmount('')` is `undefined`, so an absent `max` reads as no ceiling.
-  const scaledMax = parseAmount(max ?? '', precision)
-  if (scaledMax !== undefined && scaled > scaledMax) return 'above-max'
+  if (max !== undefined && max !== '') {
+    const scaledMax = parseAmount(max, precision)
+    if (scaledMax === undefined) return 'invalid-max'
+    if (scaled > scaledMax) return 'above-max'
+  }
 
   return undefined
 }

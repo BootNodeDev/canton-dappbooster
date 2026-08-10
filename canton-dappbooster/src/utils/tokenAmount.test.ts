@@ -76,9 +76,15 @@ describe('locale round trip', () => {
 describe('sanitizeAmountInput', () => {
   it('drops everything that can never be part of an amount', () => {
     expect(sanitizeAmountInput('1a2')).toBe('12')
-    expect(sanitizeAmountInput('-1')).toBe('1')
     expect(sanitizeAmountInput('1,234.5')).toBe('1234.5')
     expect(sanitizeAmountInput('1..5')).toBe('1.5')
+  })
+
+  it('keeps a sign or an exponent instead of salvaging a different amount', () => {
+    expect(sanitizeAmountInput('-1')).toBe('-1')
+    expect(sanitizeAmountInput('1.5e3')).toBe('1.5e3')
+    expect(validateAmount(sanitizeAmountInput('1.5e3'))).toBe('not-a-number')
+    expect(validateAmount(sanitizeAmountInput('-5'))).toBe('not-a-number')
   })
 
   it('collapses leading zeros and completes a leading dot', () => {
@@ -119,5 +125,12 @@ describe('validateAmount', () => {
 
   it('flags a programmatically set value that is not a decimal', () => {
     expect(validateAmount('abc')).toBe('not-a-number')
+  })
+
+  it('flags a max it cannot read rather than dropping the ceiling', () => {
+    expect(validateAmount('999999', { max: '1,250.50' })).toBe('invalid-max')
+    expect(validateAmount('999999', { max: '1.00000000001' })).toBe('invalid-max')
+    expect(validateAmount('999999')).toBeUndefined()
+    expect(validateAmount('999999', { max: '' })).toBeUndefined()
   })
 })

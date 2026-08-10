@@ -19,3 +19,15 @@ export const caretBeforeDigits = (display: string, digits: number): number => {
   }
   return index
 }
+
+export const dropDigit = (value: string, caret: number, forward: boolean): [string, number] => {
+  let index = caret
+  if (forward) {
+    while (index < value.length && !DIGIT.test(value[index] ?? '')) index += 1
+    if (index === value.length) return [value, caret]
+    return [`${value.slice(0, index)}${value.slice(index + 1)}`, index]
+  }
+  while (index > 0 && !DIGIT.test(value[index - 1] ?? '')) index -= 1
+  if (index === 0) return [value, caret]
+  return [`${value.slice(0, index - 1)}${value.slice(index)}`, index - 1]
+}

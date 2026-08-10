@@ -19,7 +19,7 @@ import {
   validateAmount,
 } from '../../utils/tokenAmount'
 import { anatomy } from './anatomy'
-import { caretBeforeDigits, countDigitsAfter } from './caret'
+import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
 
 /** The token an amount is denominated in. */
 export interface TokenMeta {
@@ -28,9 +28,7 @@ export interface TokenMeta {
   logo?: ReactNode
 }
 
-/**
- * Props for {@link TokenInput} */
-export interface TokenInputProps
+interface TokenInputOwnProps
   extends Omit<
     HTMLAttributes<HTMLDivElement>,
     | 'aria-errormessage'
@@ -47,18 +45,33 @@ export interface TokenInputProps
     | 'spellCheck'
     | 'tabIndex'
   > {
+  /** The party's holding of `token`, exact decimal. Doubles as the ceiling: above it is `above-max`. */
   balance?: string
+  /** Balance read in flight or failed; absent reads as ready. Either one disables Max. */
   balanceState?: 'loading' | 'error'
+  /** Dims the card, and disables the field and Max. */
   disabled?: boolean
+  /** Visible label. Supply this, `aria-label` or `aria-labelledby`. */
   label?: string
   // Declared for the field rather than inherited for the root: they fire from the input.
   onBlur?: FocusEventHandler<HTMLInputElement>
+  /** Fires with the sanitized value and its error on every keystroke, Max, and blur. */
   onChange: (value: string, error: TokenAmountError | undefined) => void
   onFocus?: FocusEventHandler<HTMLInputElement>
+  /** The token the amount is denominated in; its symbol names the field's unit on screen. */
   token: TokenMeta
+  /** Fiat estimate, rendered after the component's own `~$`: pass `'0.10'`, not `'~$0.10'`. */
   usdValue?: string
+  /** The controlled amount, exact decimal. Grouped for display; never reported back grouped. */
   value: string
 }
+
+/**
+ * Props for {@link TokenInput}. One of `label`, `aria-label` or `aria-labelledby` is required: the
+ * field is nothing but digits, so an unnamed one is unusable to a screen reader.
+ */
+export type TokenInputProps = TokenInputOwnProps &
+  ({ label: string } | { 'aria-label': string } | { 'aria-labelledby': string })
 
 /**
  * Component to enter a Canton token amount
@@ -91,7 +104,7 @@ export const TokenInput = ({
   const balanceId = `${fieldId}-balance`
   const tokenId = `${fieldId}-token`
   const fieldRef = useRef<HTMLInputElement>(null)
-  const pendingDigits = useRef<number | null>(null)
+  const pending = useRef<{ digits: number; value: string } | null>(null)
   const bounds = { max: balance }
   const error = validateAmount(value, bounds)
   const display = formatAmount(value)
@@ -106,17 +119,26 @@ export const TokenInput = ({
   // end of the value on every keystroke. Resolved here rather than in the handler because the
   // committed `field.value` is the regrouped string the index has to be counted against.
   useLayoutEffect(() => {
+    const intent = pending.current
+    pending.current = null
     const field = fieldRef.current
-    if (field !== null && pendingDigits.current !== null) {
-      const caret = caretBeforeDigits(field.value, pendingDigits.current)
-      field.setSelectionRange(caret, caret)
-      pendingDigits.current = null
-    }
+    if (field === null || intent === null || intent.value !== value) return
+    const caret = caretBeforeDigits(field.value, intent.digits)
+    field.setSelectionRange(caret, caret)
   })
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    const raw = event.target.value
-    const digitsAfter = countDigitsAfter(raw, event.target.selectionStart ?? raw.length)
+    const typed = event.target.value
+    const typedAt = event.target.selectionStart ?? typed.length
+    const [raw, at] =
+      typed.length < display.length && sanitizeAmountInput(typed) === value
+        ? dropDigit(
+            typed,
+            typedAt,
+            (event.nativeEvent as InputEvent).inputType === 'deleteContentForward',
+          )
+        : [typed, typedAt]
+    const digitsAfter = countDigitsAfter(raw, at)
     const next = sanitizeAmountInput(raw)
 
     if (next === value) {
@@ -127,7 +149,7 @@ export const TokenInput = ({
       event.target.value = display
       event.target.setSelectionRange(caret, caret)
     } else {
-      pendingDigits.current = digitsAfter
+      pending.current = { digits: digitsAfter, value: next }
     }
     onChange(next, validateAmount(next, bounds))
   }
@@ -154,7 +176,7 @@ export const TokenInput = ({
       )}
       <div className={anatomy.parts.row}>
         <input
-          aria-describedby={cx(describedBy, tokenId) || undefined}
+          aria-describedby={cx(describedBy, tokenId, balanceId) || undefined}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           autoComplete="off"
@@ -188,6 +210,7 @@ export const TokenInput = ({
           aria-busy={balanceState === 'loading' || undefined}
           className={anatomy.parts.balance}
           id={balanceId}
+          role="status"
           {...{ [anatomy.states.balance]: balanceState ?? 'ready' }}
         >
           {balanceText}

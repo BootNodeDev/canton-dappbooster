@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caretBeforeDigits, countDigitsAfter } from './caret'
+import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
 
 describe('countDigitsAfter', () => {
   it('counts digits after the caret, ignoring separators', () => {
@@ -28,5 +28,17 @@ describe('caretBeforeDigits', () => {
   it('skips the separator a digit sits behind', () => {
     expect(caretBeforeDigits('1,234', 3)).toBe(2)
     expect(caretBeforeDigits('1,234', 4)).toBe(0)
+  })
+})
+
+describe('dropDigit', () => {
+  it('takes the digit the caret skipped a separator to reach', () => {
+    expect(dropDigit('1,234567', 5, false)).toEqual(['1,23567', 4])
+    expect(dropDigit('1,234567', 5, true)).toEqual(['1,23467', 5])
+  })
+
+  it('leaves a value with no digit on that side alone', () => {
+    expect(dropDigit(',', 0, false)).toEqual([',', 0])
+    expect(dropDigit('1,', 2, true)).toEqual(['1,', 2])
   })
 })
