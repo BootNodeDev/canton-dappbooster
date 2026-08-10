@@ -1,8 +1,10 @@
+import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromPromise } from 'xstate'
 import { connectionMachine } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
 
 describe('connectionMachine', () => {
   it('starts disconnected', () => {
@@ -23,7 +25,12 @@ describe('connectionMachine', () => {
   })
 
   it('reaches connected when the connect attempt resolves', async () => {
-    const actor = createActor(connectionMachine)
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.resolve(connection)),
+      },
+    })
+    const actor = createActor(machine)
 
     actor.start()
     actor.send({ type: 'connect' })
@@ -103,7 +110,12 @@ describe('connectionMachine', () => {
   })
 
   it('allows to disconnect after connection is established', async () => {
-    const actor = createActor(connectionMachine)
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.resolve(connection)),
+      },
+    })
+    const actor = createActor(machine)
 
     actor.start()
     actor.send({ type: 'connect' })
@@ -120,7 +132,7 @@ describe('connectionMachine', () => {
       actors: {
         connect: fromPromise(({ signal }) => {
           signal.addEventListener('abort', onAbort, { once: true })
-          return Promise.resolve()
+          return Promise.resolve(connection)
         }),
       },
     })
@@ -133,5 +145,38 @@ describe('connectionMachine', () => {
 
     expect(actor.getSnapshot().matches('connected')).toBe(true)
     expect(onAbort).not.toHaveBeenCalled()
+  })
+
+  it('stores the connect result in context when the attempt resolves', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.resolve(connection)),
+      },
+    })
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+
+    expect(actor.getSnapshot().matches('connected')).toBe(true)
+    expect(actor.getSnapshot().context.connection).toBe(connection)
+  })
+
+  it('drops connection information on disconnect', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.resolve(connection)),
+      },
+    })
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+    expect(actor.getSnapshot().context.connection).toBe(connection)
+
+    actor.send({ type: 'disconnect' })
+    expect(actor.getSnapshot().context.connection).toBeUndefined()
   })
 })

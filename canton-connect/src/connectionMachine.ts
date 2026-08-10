@@ -1,14 +1,23 @@
+import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { assign, fromPromise, setup } from 'xstate'
 
 export const connectionMachine = setup({
   actors: {
-    connect: fromPromise(() => Promise.resolve()),
+    connect: fromPromise<ConnectResult>(() =>
+      Promise.reject(new Error('connect actor not provided')),
+    ),
   },
   types: {
-    context: {} as { error: unknown },
+    context: {} as {
+      connection: ConnectResult | undefined
+      error: unknown
+    },
   },
 }).createMachine({
-  context: { error: undefined },
+  context: {
+    connection: undefined,
+    error: undefined,
+  },
   id: 'connection',
   initial: 'disconnected',
   states: {
@@ -20,7 +29,10 @@ export const connectionMachine = setup({
     connecting: {
       invoke: {
         src: 'connect',
-        onDone: { target: 'connected' },
+        onDone: {
+          target: 'connected',
+          actions: assign({ connection: ({ event: { output } }) => output }),
+        },
         onError: {
           target: 'failure',
           actions: assign({ error: ({ event: { error } }) => error }),
@@ -31,6 +43,7 @@ export const connectionMachine = setup({
       },
     },
     connected: {
+      exit: assign({ connection: undefined }),
       on: {
         disconnect: { target: 'disconnected' },
       },
