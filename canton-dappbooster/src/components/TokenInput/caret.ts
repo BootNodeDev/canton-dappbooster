@@ -5,8 +5,13 @@
 
 const DIGIT = /\d/
 
-export const countDigitsAfter = (value: string, start: number): number =>
-  (value.slice(start).match(/\d/g) ?? []).length
+export const countDigitsAfter = (value: string, start: number): number => {
+  let digits = 0
+  for (let index = start; index < value.length; index += 1) {
+    if (DIGIT.test(value[index])) digits += 1
+  }
+  return digits
+}
 
 // The rightmost position with `digits` digits after it, so a trailing separator stays behind the
 // caret rather than in front of it. Falls back to the start when the value shrank below that count.
@@ -15,19 +20,17 @@ export const caretBeforeDigits = (display: string, digits: number): number => {
   let index = display.length
   while (seen < digits && index > 0) {
     index -= 1
-    if (DIGIT.test(display[index] ?? '')) seen += 1
+    if (DIGIT.test(display[index])) seen += 1
   }
   return index
 }
 
+// Removes the first digit on `forward`'s side of the caret, skipping the separators in between.
+// Returns the value untouched when that side holds no digit.
 export const dropDigit = (value: string, caret: number, forward: boolean): [string, number] => {
-  let index = caret
-  if (forward) {
-    while (index < value.length && !DIGIT.test(value[index] ?? '')) index += 1
-    if (index === value.length) return [value, caret]
-    return [`${value.slice(0, index)}${value.slice(index + 1)}`, index]
-  }
-  while (index > 0 && !DIGIT.test(value[index - 1] ?? '')) index -= 1
-  if (index === 0) return [value, caret]
-  return [`${value.slice(0, index - 1)}${value.slice(index)}`, index - 1]
+  const step = forward ? 1 : -1
+  let at = forward ? caret : Math.min(caret, value.length) - 1
+  while (at >= 0 && at < value.length && !DIGIT.test(value[at])) at += step
+  if (at < 0 || at >= value.length) return [value, caret]
+  return [`${value.slice(0, at)}${value.slice(at + 1)}`, at]
 }
