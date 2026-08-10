@@ -1,5 +1,28 @@
 /* Under @layer cnc so consumer styles win; token fallbacks keep it usable with no tokens.css. */
 @layer cnc {
+  .cnc-identifier__copy,
+  .cnc-explorer-link,
+  .cnc-token-input__max {
+    background: none;
+    border-radius: var(--cnc-radius, 8px);
+    border: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .cnc-identifier__copy:focus-visible,
+  .cnc-explorer-link:focus-visible,
+  .cnc-token-input__max:focus-visible {
+    outline: 2px solid var(--cnc-accent, #692581);
+    outline-offset: 2px;
+  }
+
+  .cnc-party-id-input::placeholder,
+  .cnc-token-input__field::placeholder {
+    color: var(--cnc-text-muted, #4b4d60);
+    opacity: 0.7;
+  }
+
   .cnc-identifier {
     align-items: center;
     color: var(--cnc-text, #2c2d40);
@@ -17,24 +40,14 @@
   }
 
   .cnc-identifier__copy {
-    background: none;
-    border-radius: var(--cnc-radius, 8px);
-    border: 0;
     color: var(--cnc-text-muted, #4b4d60);
-    cursor: pointer;
     display: inline-grid;
     padding: 0;
     place-items: center;
-    transition: color 120ms ease;
   }
 
   .cnc-identifier__copy:hover {
     color: var(--cnc-accent, #692581);
-  }
-
-  .cnc-identifier__copy:focus-visible {
-    outline: 2px solid var(--cnc-accent, #692581);
-    outline-offset: 2px;
   }
 
   .cnc-identifier__copy[data-state="copied"] {
@@ -52,20 +65,13 @@
   }
 
   .cnc-explorer-link {
-    border-radius: var(--cnc-radius, 8px);
     color: var(--cnc-text-muted, #4b4d60);
     display: inline-grid;
     place-items: center;
-    transition: color 120ms ease;
   }
 
   .cnc-explorer-link:hover {
     color: var(--cnc-accent, #692581);
-  }
-
-  .cnc-explorer-link:focus-visible {
-    outline: 2px solid var(--cnc-accent, #692581);
-    outline-offset: 2px;
   }
 
   .cnc-party-id-input {
@@ -78,11 +84,6 @@
     padding: 0.5rem 0.625rem;
     /* The field holds one long unbroken token, so it stretches rather than sizing to `size`. */
     width: 100%;
-  }
-
-  .cnc-party-id-input::placeholder {
-    color: var(--cnc-text-muted, #4b4d60);
-    opacity: 0.7;
   }
 
   .cnc-party-id-input:hover {
@@ -141,11 +142,6 @@
     padding: 0.5rem 0.75rem;
   }
 
-  .cnc-token-input__field::placeholder {
-    color: var(--cnc-text-muted, #4b4d60);
-    opacity: 0.7;
-  }
-
   /* The field's own border tints, and the wash carries the thickness a11y wants: a detached solid 2px
      ring around a field this wide reads as an error. */
   .cnc-token-input__field:focus-visible {
@@ -189,15 +185,10 @@
   }
 
   .cnc-token-input__max {
-    background: none;
-    border: none;
-    border-radius: var(--cnc-radius, 8px);
     color: var(--cnc-accent, #692581);
-    cursor: pointer;
     flex-shrink: 0;
     font-size: 0.75rem;
     padding: 0.125rem 0.5rem;
-    transition: color 120ms ease;
   }
 
   .cnc-token-input__max:hover:not(:disabled) {
@@ -207,11 +198,6 @@
   .cnc-token-input__max:disabled {
     cursor: not-allowed;
     opacity: 0.5;
-  }
-
-  .cnc-token-input__max:focus-visible {
-    outline: 2px solid var(--cnc-accent, #692581);
-    outline-offset: 2px;
   }
 
   .cnc-token-input[data-disabled] {
