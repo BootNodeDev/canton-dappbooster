@@ -1,36 +1,29 @@
+// Display formatting: amount grouping and relative dates. Identifier truncation lives in
+// the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
+
 import { formatAmount } from '@bootnodedev/canton-dappbooster'
+import { multiplyAmounts, roundAmount } from './amount'
 
-// Display formatting: amount rounding and relative dates. Grouping and identifier truncation both
-// live in the kit (`formatAmount`, `truncateIdentifier`) so every dApp reads amounts and shortens
-// party ids the same way. What stays here is this dApp's own policy: it holds amounts as `number`,
-// so each has to be rounded to a decimal string before the kit can group it exactly.
-
-// Rounds only — `useGrouping: false`, because grouping is the kit's. `toFixed` cannot stand in: it
-// renders the float's exact binary expansion, so 1234567.891 comes back as 1234567.8910000001.
-const rounded = (places: number): Intl.NumberFormat =>
-  new Intl.NumberFormat('en-US', { maximumFractionDigits: places, useGrouping: false })
-
-const cc = rounded(2)
-const ccFull = rounded(10)
+// `Intl.NumberFormat.format` is typed for `number | bigint`, not the decimal strings amounts are
+// here — the kit's `formatAmount` groups the integer part via `BigInt` and carries the fraction as
+// text instead, which is exact where a float would round-trip through IEEE 754 first.
 
 // Canton Coin amount, grouped, up to 2 decimals. No unit suffix (callers add `CC`).
-export const formatCC = (amount: number): string => formatAmount(cc.format(amount), 'en-US')
+export const formatCC = (amount: string): string => formatAmount(roundAmount(amount, 2))
 
-// Full ledger precision (Decimal is ≤10 dp), grouped, no trailing zeros. Use where
-// rounding to 2 dp would mislead — e.g. the exact claimable in a claim dialog.
-export const formatCCFull = (amount: number): string => formatAmount(ccFull.format(amount), 'en-US')
+// Full ledger precision, grouped, no trailing zeros.
+export const formatCCFull = (amount: string): string => formatAmount(roundAmount(amount, 10))
 
-// The exact claimable as a plain numeric string for an amount input. Flooring to 2 dp
-// strands sub-cent residual (you could never claim it all), so fill the full remaining;
-// toFixed(10) also absorbs float-subtraction noise back to the ledger value.
-export const claimAmountInput = (amount: number): string =>
-  amount > 0 ? amount.toFixed(10).replace(/\.?0+$/, '') : ''
+// Pads the fraction to exactly `digits`, the way a fixed-decimal display (e.g. currency) needs —
+// unlike `roundAmount`'s canonical, trailing-zeros-trimmed output.
+const padFraction = (amount: string, digits: number): string => {
+  const [int, frac = ''] = amount.split('.')
+  return `${int}.${frac.padEnd(digits, '0')}`
+}
 
-// Clamp the user-supplied amount to [0, available] at 10 dp precision before it
-// reaches the ledger. Guards against: amounts typed beyond available (float drift or
-// user error) and more than 10 decimal places (Canton Decimal is ≤10 dp).
-export const clampClaimAmount = (amount: number, available: number): number =>
-  Number(Math.min(amount, available).toFixed(10))
+// Exact product, rounded for display only.
+export const formatUsdValue = (amount: string, usdRate: string): string =>
+  `${formatAmount(padFraction(roundAmount(multiplyAmounts(amount, usdRate), 2), 2))}`
 
 export const formatPct = (fraction: number): string => `${(fraction * 100).toFixed(1)}%`
 

@@ -10,6 +10,7 @@ import { GrantCard } from '@/components/GrantCard'
 import { type GrantRow, GrantTable } from '@/components/GrantTable'
 import { KpiCard } from '@/components/KpiCard'
 import { PrivacyNote } from '@/components/PrivacyNote'
+import { addAmounts, isPositive, subtractAmounts } from '@/lib/amount'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { formatCC } from '@/lib/format'
@@ -28,7 +29,7 @@ const filters: { value: Filter; label: string }[] = [
 interface ClaimTarget {
   kind: 'grant' | 'claim'
   id: string
-  available: number
+  available: string
 }
 
 export const DashboardPage = (): React.JSX.Element => {
@@ -59,7 +60,7 @@ export const DashboardPage = (): React.JSX.Element => {
     () =>
       rows.filter(({ grant, derived }) => {
         if (filter === 'claimable') {
-          return derived.claimable > 0
+          return isPositive(derived.claimable)
         }
         if (filter === 'cliff') {
           return derived.status === 'in_cliff'
@@ -78,21 +79,24 @@ export const DashboardPage = (): React.JSX.Element => {
   )
 
   const totals = useMemo(() => {
-    const acc = { total: 0, vested: 0, claimable: 0, claimed: 0, unvested: 0 }
+    const acc = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
     for (const { grant, derived } of rows) {
-      acc.total += grant.totalAmount
-      acc.vested += derived.vested
-      acc.claimable += derived.claimable
-      acc.claimed += derived.claimed
-      acc.unvested += derived.unvested
+      acc.total = addAmounts(acc.total, grant.totalAmount)
+      acc.vested = addAmounts(acc.vested, derived.vested)
+      acc.claimable = addAmounts(acc.claimable, derived.claimable)
+      acc.claimed = addAmounts(acc.claimed, derived.claimed)
+      acc.unvested = addAmounts(acc.unvested, derived.unvested)
     }
     return acc
   }, [rows])
 
-  const residualClaimable = myClaims.reduce((sum, c) => sum + (c.amount - c.withdrawn), 0)
+  const residualClaimable = myClaims.reduce(
+    (sum, c) => addAmounts(sum, subtractAmounts(c.amount, c.withdrawn)),
+    '0',
+  )
   const isEmpty = rows.length === 0 && myClaims.length === 0
 
-  const onConfirmClaim = async (amount: number): Promise<void> => {
+  const onConfirmClaim = async (amount: string): Promise<void> => {
     if (claimTarget === null) {
       return
     }
@@ -115,7 +119,7 @@ export const DashboardPage = (): React.JSX.Element => {
     setClaimTarget({
       kind: 'claim',
       id: claim.id,
-      available: claim.amount - claim.withdrawn,
+      available: subtractAmounts(claim.amount, claim.withdrawn),
     })
   }
 
@@ -146,7 +150,7 @@ export const DashboardPage = (): React.JSX.Element => {
             />
             <KpiCard label="Vested to date" amount={totals.vested} />
             <KpiCard label="Unvested (clawbackable)" amount={totals.unvested} />
-            <KpiCard label="Active grants" amount={rows.length} unit="" />
+            <KpiCard label="Active grants" amount={String(rows.length)} unit="" />
           </>
         )}
       </div>
@@ -231,7 +235,7 @@ export const DashboardPage = (): React.JSX.Element => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold text-fg">Residual claims</h2>
             <span className="font-mono text-xs text-fg-muted">
-              {residualClaimable > 0 ? `${formatCC(residualClaimable)} CC claimable` : ''}
+              {isPositive(residualClaimable) ? `${formatCC(residualClaimable)} CC claimable` : ''}
             </span>
           </div>
           {myClaims.map((claim) => (
@@ -246,7 +250,7 @@ export const DashboardPage = (): React.JSX.Element => {
                     Claimable
                   </div>
                   <AmountDisplay
-                    value={claim.amount - claim.withdrawn}
+                    value={subtractAmounts(claim.amount, claim.withdrawn)}
                     className="text-lg font-semibold text-success"
                   />
                 </div>

@@ -13,10 +13,10 @@ them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (live ledger), and the pure ACS→domain mappers. `createBackend` picks the implementation. |
-| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), and `seed.ts` (the sample dataset, relative to now). |
+| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (the CC `TokenMeta`), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
 | `src/wallet/` | The `Wallet` interface and `StealthWallet`, its live-ledger implementation. |
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
-| `src/hooks/` | Projections of the wallet context, one per concern. |
+| `src/hooks/` | Two kinds. `useBackend`, `useParty`, `useParties`, and `useConnect` are projections of the wallet context, one per concern. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, and `config.ts`, which reads the literals that validation left behind. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
@@ -71,9 +71,25 @@ mock and the ledger must converge on the same observable behaviour.
 
 `deriveGrant` in [`src/store/useVestingStore.ts`](src/store/useVestingStore.ts) is a pure projection
 of a grant at a moment in time — vested, claimable, claimed, status. It and
-[`src/lib/schedule.ts`](src/lib/schedule.ts) are the single source of every figure the UI shows, and
+[`src/lib/schedule.ts`](src/lib/schedule.ts) are the single source of every per-grant figure, and
 they mirror the on-ledger math deliberately, so the mock and the live path agree. A component that
-computes a vesting figure itself is a bug.
+derives a grant's own vesting figures is a bug. Two components legitimately compute on top of that
+projection rather than beside it: `MilestoneTimeline` splits a total across milestone steps for
+display, and `DashboardPage` sums `deriveGrant`'s output into the KPI row. Both take the projection
+as their input; neither re-derives it.
+
+Under both sits [`src/lib/amount.ts`](src/lib/amount.ts), the arithmetic floor. Every add,
+subtract, floor-at-zero, fraction scale, and round in the app goes through it, on scaled `bigint`s,
+and `schedule.ts` builds on it too. Nothing computes an amount any other way.
+
+The invariant it exists to hold: a domain amount is an exact decimal string, never a `number`. A
+double cannot round-trip 10 decimal places past about six integer digits, which is well inside the
+range this app shows. `number` survives only for ratios, chart geometry, and percentages, and
+`toNumber` is the one sanctioned door between the two. Reading an amount into arithmetic through
+any other door is the failure this module was written to prevent, and it fails silently. `isAmount`
+is the door in: `amountOf` in the backend mappers runs every incoming `Numeric` through it, so an
+unparseable string is rejected where it arrives rather than read as zero by the arithmetic
+downstream.
 
 ## The kit seam
 
@@ -93,6 +109,35 @@ in a `Record<PartyIdError, string>` so a new code added upstream fails the build
 rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rather than
 `canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
 [`src/styles/index.css`](src/styles/index.css)).
+
+Amounts run that same split twice more. [`CreateGrantPage`](src/features/CreateGrantPage.tsx)'s
+total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both the kit's
+`<TokenInput>`: the field sets `aria-invalid` and reports an error *code*, and this app words it
+in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
+code added upstream fails the build here.
+
+Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
+`onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
+live-vesting `claimable` that recomputes each second, and a stored code would keep flagging an
+amount the field had already accepted. The field is still the single source of the rule; the app
+just asks it again at render time.
+
+The division of labour underneath is the part neither side announces. The kit owns one amount at
+one precision: parse, format, sanitize a keystroke, validate against the ledger's own limits and a
+`max`. It knows nothing
+about a second amount, so everything that combines two of them is this app's, in
+[`src/lib/amount.ts`](src/lib/amount.ts), built on the kit's `parseAmount` / `formatScaled` pair and
+on nothing else of the kit's. So the field's `balance` is the ceiling, while both floors are the
+app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
+about the *remainder* and so about two amounts at once.
+
+Each form's ceiling comes from a different place. The claim dialog's is the grant's own `claimable`;
+the create form's is what the funder holds, read by
+[`useTokenBalance`](src/hooks/useTokenBalance.ts) — party-scoped, async, and summed exactly across
+holding contracts, since a balance on Canton is a set of them rather than a scalar and the standards
+(CIP-0056, CIP-0112) can mix within one party. While that read is in flight or has failed, no
+`balance` is passed and the field says so through `balanceState`: a gap in the read must not arrive
+as a ceiling of zero.
 
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,

@@ -7,6 +7,8 @@ import type { VestingSchedule } from '@/lib/schedule'
 // object (`src/wallet/types.ts`), which carries the id plus network metadata.
 export type PartyId = string
 
+// Decimal strings: Daml Numeric, and a double loses 10 dp past six integer digits.
+
 // ≙ VestingContract (the live grant). `title` is a UI label only (not on-ledger).
 export interface Grant {
   id: string
@@ -14,9 +16,9 @@ export interface Grant {
   provider: PartyId
   creator: PartyId // funder
   receiver: PartyId // beneficiary
-  totalAmount: number
+  totalAmount: string
   schedule: VestingSchedule
-  alreadyWithdrawn: number
+  alreadyWithdrawn: string
   note?: string
 }
 
@@ -27,7 +29,7 @@ export interface Proposal {
   provider: PartyId
   proposer: PartyId // funder
   receiver: PartyId
-  totalAmount: number
+  totalAmount: string
   schedule: VestingSchedule
   note?: string
 }
@@ -39,8 +41,8 @@ export interface VestedClaim {
   provider: PartyId
   creator: PartyId
   receiver: PartyId
-  amount: number
-  withdrawn: number
+  amount: string
+  withdrawn: string
   note?: string
 }
 
@@ -50,6 +52,6 @@ export type Role = 'receiver' | 'funder'
 export interface WithdrawEvent {
   id: string
   grantId: string
-  amount: number
+  amount: string
   at: string
 }
