@@ -30,7 +30,11 @@ export const connectionMachine = setup({
         cancel: { target: 'disconnected' },
       },
     },
-    connected: {},
+    connected: {
+      on: {
+        disconnect: { target: 'disconnected' },
+      },
+    },
     failure: {
       exit: assign({ error: undefined }),
       on: {

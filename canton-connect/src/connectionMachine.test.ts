@@ -101,4 +101,16 @@ describe('connectionMachine', () => {
 
     expect(actor.getSnapshot().context.error).toBeUndefined()
   })
+
+  it('allows to disconnect after connection is established', async () => {
+    const actor = createActor(connectionMachine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+
+    actor.send({ type: 'disconnect' })
+
+    expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+  })
 })
