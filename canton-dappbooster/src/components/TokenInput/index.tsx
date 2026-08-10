@@ -26,7 +26,6 @@ const ZERO = formatAmount('0.00')
 /** The token an amount is denominated in. */
 export interface TokenMeta {
   symbol: string
-  name?: string
   logo?: ReactNode
 }
 
