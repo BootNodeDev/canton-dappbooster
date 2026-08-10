@@ -38,7 +38,7 @@ const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => 
 // `change` event carrying the appended raw value, which is what a real cursor-at-end keystroke
 // sends.
 const typeAtEnd = (field: HTMLInputElement, char: string): void => {
-  fireEvent.change(field, { target: { value: field.value + char } })
+  fireEvent.input(field, { inputType: 'insertText', target: { value: field.value + char } })
 }
 
 // A real keystroke splices one character in at the live caret and leaves the caret one past it, so
@@ -48,7 +48,10 @@ const type = (field: HTMLInputElement, keys: string): void => {
   for (const key of keys.replaceAll('.', DECIMAL)) {
     const at = field.selectionStart ?? field.value.length
     const raw = `${field.value.slice(0, at)}${key}${field.value.slice(at)}`
-    fireEvent.change(field, { target: { value: raw, selectionStart: at + 1 } })
+    fireEvent.input(field, {
+      inputType: 'insertText',
+      target: { value: raw, selectionStart: at + 1 },
+    })
   }
 }
 
@@ -57,7 +60,10 @@ const backspace = (field: HTMLInputElement, times: number): void => {
     const at = field.selectionStart ?? field.value.length
     if (at === 0) continue
     const raw = `${field.value.slice(0, at - 1)}${field.value.slice(at)}`
-    fireEvent.change(field, { target: { value: raw, selectionStart: at - 1 } })
+    fireEvent.input(field, {
+      inputType: 'deleteContentBackward',
+      target: { value: raw, selectionStart: at - 1 },
+    })
   }
 }
 

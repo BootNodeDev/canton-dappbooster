@@ -25,8 +25,6 @@ export const caretBeforeDigits = (display: string, digits: number): number => {
   return index
 }
 
-// Removes the first digit on `forward`'s side of the caret, skipping the separators in between.
-// Returns the value untouched when that side holds no digit.
 export const dropDigit = (value: string, caret: number, forward: boolean): [string, number] => {
   const step = forward ? 1 : -1
   let at = forward ? caret : Math.min(caret, value.length) - 1

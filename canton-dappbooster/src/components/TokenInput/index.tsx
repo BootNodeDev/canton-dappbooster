@@ -130,16 +130,14 @@ export const TokenInput = ({
   const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const typed = event.target.value
     const typedAt = event.target.selectionStart ?? typed.length
-    const [raw, at] =
-      typed.length < display.length && sanitizeAmountInput(typed) === value
-        ? dropDigit(
-            typed,
-            typedAt,
-            (event.nativeEvent as InputEvent).inputType === 'deleteContentForward',
-          )
-        : [typed, typedAt]
+    const inputType = (event.nativeEvent as Partial<InputEvent>).inputType ?? ''
+    const sanitized = sanitizeAmountInput(typed)
+    const stalled = inputType.startsWith('delete') && sanitized === value
+    const [raw, at] = stalled
+      ? dropDigit(typed, typedAt, inputType.endsWith('Forward'))
+      : [typed, typedAt]
     const digitsAfter = countDigitsAfter(raw, at)
-    const next = sanitizeAmountInput(raw)
+    const next = stalled ? sanitizeAmountInput(raw) : sanitized
 
     if (next === value) {
       // A rejected keystroke leaves `value` untouched, so React sees no change and would not rewrite
