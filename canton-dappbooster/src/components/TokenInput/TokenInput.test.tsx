@@ -17,8 +17,21 @@ const DECIMAL = LOCALE_PARTS.find((part) => part.type === 'decimal')?.value ?? '
 
 const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => {
   const onChange = vi.fn()
-  render(<TokenInput label="Amount" onChange={onChange} token={CC} value="" {...props} />)
-  return { field: screen.getByLabelText<HTMLInputElement>('Amount'), onChange }
+  render(
+    <TokenInput
+      data-testid="root"
+      label="Amount"
+      onChange={onChange}
+      token={CC}
+      value=""
+      {...props}
+    />,
+  )
+  return {
+    field: screen.getByLabelText<HTMLInputElement>('Amount'),
+    onChange,
+    root: screen.getByTestId('root'),
+  }
 }
 
 // No `@testing-library/user-event` in this package; a keystroke at the end of the field is a
@@ -62,17 +75,8 @@ const controlled = (initial = ''): HTMLInputElement => {
 
 describe('TokenInput', () => {
   it('renders the root part and appends a consumer class', () => {
-    render(
-      <TokenInput
-        className="extra"
-        data-testid="ti"
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value=""
-      />,
-    )
-    expect(screen.getByTestId('ti')).toHaveClass(anatomy.parts.root, 'extra')
+    const { root } = setup({ className: 'extra' })
+    expect(root).toHaveClass(anatomy.parts.root, 'extra')
   })
 
   it('associates the label with the field and shows the symbol', () => {
@@ -188,18 +192,9 @@ describe('TokenInput', () => {
   })
 
   it('flags an invalid value on the field and the root', () => {
-    render(
-      <TokenInput
-        balance="1.5"
-        data-testid="ti"
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value="9"
-      />,
-    )
-    expect(screen.getByLabelText('Amount')).toHaveAttribute(anatomy.states.invalid, 'true')
-    expect(screen.getByTestId('ti')).toHaveAttribute(anatomy.states.rootInvalid, 'true')
+    const { field, root } = setup({ balance: '1.5', value: '9' })
+    expect(field).toHaveAttribute(anatomy.states.invalid, 'true')
+    expect(root).toHaveAttribute(anatomy.states.rootInvalid, 'true')
   })
 
   it('lets a consumer-supplied aria-invalid survive with no internal error', () => {
@@ -208,17 +203,8 @@ describe('TokenInput', () => {
   })
 
   it('leaves data-invalid absent from the root when aria-invalid is explicitly false', () => {
-    render(
-      <TokenInput
-        aria-invalid={false}
-        data-testid="ti"
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value="1"
-      />,
-    )
-    expect(screen.getByTestId('ti')).not.toHaveAttribute(anatomy.states.rootInvalid)
+    const { root } = setup({ 'aria-invalid': false, value: '1' })
+    expect(root).not.toHaveAttribute(anatomy.states.rootInvalid)
   })
 
   it('lets aria-label name the field with no visible label', () => {
@@ -262,17 +248,8 @@ describe('TokenInput', () => {
   })
 
   it('marks the root disabled so the theme can dim it', () => {
-    render(
-      <TokenInput
-        data-testid="ti"
-        disabled
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value=""
-      />,
-    )
-    expect(screen.getByTestId('ti')).toHaveAttribute(anatomy.states.disabled, 'true')
+    const { root } = setup({ disabled: true })
+    expect(root).toHaveAttribute(anatomy.states.disabled, 'true')
   })
 
   it('marks the balance readout busy while loading', () => {
