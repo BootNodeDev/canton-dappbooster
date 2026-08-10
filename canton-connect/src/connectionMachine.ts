@@ -18,6 +18,9 @@ export const connectionMachine = setup({
         src: 'connect',
         onDone: { target: 'connected' },
       },
+      on: {
+        cancel: { target: 'disconnected' },
+      },
     },
     connected: {},
   },
