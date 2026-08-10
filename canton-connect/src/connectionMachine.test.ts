@@ -51,4 +51,21 @@ describe('connectionMachine', () => {
     expect(actor.getSnapshot().matches('disconnected')).toBe(true)
     expect(onAbort).toHaveBeenCalledOnce()
   })
+
+  it('lands in failure with the reason when the connect attempt rejects', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
+      },
+    })
+
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+
+    expect(actor.getSnapshot().matches('failure')).toBe(true)
+    expect(actor.getSnapshot().context.error).toEqual(new Error('wallet rejected'))
+  })
 })
