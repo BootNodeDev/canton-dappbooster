@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { toNumber } from './amount'
 import {
   MIN_GRANT_AMOUNT,
+  meetsRelockFloor,
   nextMilestone,
   type VestingSchedule,
   validVestingSchedule,
@@ -53,7 +55,7 @@ describe('vestedFraction', () => {
 
 describe('vestedAmount', () => {
   it('scales the fraction by the total', () => {
-    expect(vestedAmount(linear, 120_000, ms('2025-07-01T00:00:00Z'))).toBeCloseTo(
+    expect(toNumber(vestedAmount(linear, '120000', ms('2025-07-01T00:00:00Z')))).toBeCloseTo(
       (120_000 * 181) / 365,
       2,
     )
@@ -199,6 +201,38 @@ describe('nextMilestone', () => {
 
 describe('MIN_GRANT_AMOUNT', () => {
   it('matches the on-ledger floor', () => {
-    expect(MIN_GRANT_AMOUNT).toBe(1.0)
+    expect(MIN_GRANT_AMOUNT).toBe('1')
+  })
+})
+
+describe('meetsRelockFloor', () => {
+  it('accepts an exact full claim (remainder 0)', () => {
+    expect(meetsRelockFloor('100', '100')).toBe(true)
+  })
+
+  it('accepts a partial claim leaving more than the floor', () => {
+    expect(meetsRelockFloor('100', '50')).toBe(true)
+  })
+
+  it('rejects a partial claim leaving less than the floor', () => {
+    expect(meetsRelockFloor('100', '99.5')).toBe(false)
+  })
+
+  it('accepts a partial claim leaving exactly the floor', () => {
+    expect(meetsRelockFloor('100', '99')).toBe(true)
+  })
+
+  it('accepts fully draining an available amount that is itself below the floor', () => {
+    expect(meetsRelockFloor('0.5', '0.5')).toBe(true)
+  })
+
+  it('rejects a partial claim from a sub-floor available that leaves dust', () => {
+    expect(meetsRelockFloor('0.5', '0.2')).toBe(false)
+  })
+
+  // The remainder is one unit at the 10th decimal place — float subtraction of two
+  // numbers this close in magnitude would lose that digit entirely.
+  it('rejects a full-precision remainder of one unit at the 10th decimal place', () => {
+    expect(meetsRelockFloor('8421337.1234567891', '8421337.1234567890')).toBe(false)
   })
 })

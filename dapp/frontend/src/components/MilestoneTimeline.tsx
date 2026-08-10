@@ -1,10 +1,11 @@
+import { multiplyByFraction } from '@/lib/amount'
 import { cn } from '@/lib/cn'
 import { formatCC, formatDate } from '@/lib/format'
 import type { VestingSchedule } from '@/lib/schedule'
 
 interface MilestoneTimelineProps {
   schedule: VestingSchedule
-  total: number
+  total: string
   nowMs: number
 }
 
@@ -24,7 +25,7 @@ export const MilestoneTimeline = ({
       {points.map((point, i) => {
         const reached = new Date(point.time).getTime() <= nowMs
         const prevFraction = i === 0 ? 0 : points[i - 1].fraction
-        const unlocked = (point.fraction - prevFraction) * total
+        const unlocked = multiplyByFraction(total, point.fraction - prevFraction)
         const isLast = i === points.length - 1
         return (
           <li key={point.time} className="flex gap-3">

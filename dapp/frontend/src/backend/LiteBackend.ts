@@ -154,7 +154,7 @@ export class LiteBackend implements VestingBackend {
     await this.submit(args.receiver, buildAcceptCommand(this.proposalTid, args.proposalCid))
   }
 
-  async withdraw(args: { receiver: string; contractCid: string; amount: number }): Promise<void> {
+  async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {
     await this.submit(
       args.receiver,
       buildClaimCommand(this.contractTid, args.contractCid, args.amount),
@@ -165,7 +165,7 @@ export class LiteBackend implements VestingBackend {
     await this.submit(args.creator, buildCancelCommand(this.contractTid, args.contractCid))
   }
 
-  async claimResidual(args: { receiver: string; claimCid: string; amount: number }): Promise<void> {
+  async claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void> {
     await this.submit(
       args.receiver,
       buildClaimResidualCommand(this.claimTid, args.claimCid, args.amount),

@@ -120,7 +120,7 @@ describe('command builders', () => {
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
       beneficiary: 'B',
-      total: 1000,
+      total: '1000',
       schedule: linear,
       note: 'Title\nbody',
     })
@@ -144,14 +144,14 @@ describe('command builders', () => {
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
       beneficiary: 'B',
-      total: 1,
+      total: '1',
       schedule: linear,
     })
     expect((cmd.ExerciseCommand.choiceArgument as { note: unknown }).note).toBeNull()
   })
 
-  it('buildClaimCommand stringifies amount and carries no nowMicros (getTime)', () => {
-    expect(buildClaimCommand('TID', 'cid', 100)).toEqual({
+  it('buildClaimCommand carries amount and no nowMicros (getTime)', () => {
+    expect(buildClaimCommand('TID', 'cid', '100')).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'cid',
@@ -183,8 +183,8 @@ describe('command builders', () => {
     })
   })
 
-  it('buildClaimResidualCommand targets Claim_Withdraw and stringifies withdrawAmount', () => {
-    expect(buildClaimResidualCommand('TID', 'rcid', 50)).toEqual({
+  it('buildClaimResidualCommand targets Claim_Withdraw and carries withdrawAmount', () => {
+    expect(buildClaimResidualCommand('TID', 'rcid', '50')).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'rcid',
@@ -192,5 +192,26 @@ describe('command builders', () => {
         choiceArgument: { withdrawAmount: '50' },
       },
     })
+  })
+
+  it('canonicalizes a trailing-dot amount before it reaches the payload', () => {
+    // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
+    const cmd = buildCreateVestingCommand('TID', 'fcid', {
+      proposer: 'P',
+      beneficiary: 'B',
+      total: '1000.',
+      schedule: linear,
+    })
+    expect((cmd.ExerciseCommand.choiceArgument as { total: string }).total).toBe('1000')
+    expect(buildClaimCommand('TID', 'cid', '100.').ExerciseCommand.choiceArgument.amount).toBe(
+      '100',
+    )
+    expect(
+      buildClaimResidualCommand('TID', 'rcid', '50.').ExerciseCommand.choiceArgument.withdrawAmount,
+    ).toBe('50')
+  })
+
+  it('rejects a malformed amount rather than sending it to the ledger', () => {
+    expect(() => buildClaimCommand('TID', 'cid', 'not-a-number')).toThrow()
   })
 })

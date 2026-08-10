@@ -49,8 +49,12 @@
   --radius-xl: 14px;
 }
 
-* {
-  border-color: var(--border);
+/* In `base`, not unlayered: this only restores Tailwind v3's default border colour for app markup,
+   and unlayered it also outranked every `cnc` rule that picks its own border colour. */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }
 
 html,

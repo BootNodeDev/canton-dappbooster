@@ -3,18 +3,27 @@ import {
   type PartyIdError,
   PartyIdInput,
   partyHint,
+  TokenInput,
+  validateAmount,
 } from '@bootnodedev/canton-dappbooster'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { FieldError } from '@/components/FieldError'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
 import { useParty } from '@/hooks/useParty'
+import { useToken } from '@/hooks/useToken'
+import { useTokenBalance } from '@/hooks/useTokenBalance'
+import { useTokenPrice } from '@/hooks/useTokenPrice'
+import { compareAmounts } from '@/lib/amount'
+import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
+import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
@@ -101,6 +110,14 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const { party } = useParty()
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
+  const token = useToken()
+  const { usdRate } = useTokenPrice(token)
+  const {
+    balance,
+    isLoading: balanceLoading,
+    error: balanceError,
+  } = useTokenBalance(party?.partyId, token)
+  const balanceState = balanceLoading ? 'loading' : balanceError !== undefined ? 'error' : undefined
 
   const today = new Date(now())
   const initial = defaultSchedule(today)
@@ -126,7 +143,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
     setDisclosedBytes(null)
   }
   const editAmount = (value: string): void => {
-    setAmount(value.replace(/[^0-9.]/g, ''))
+    setAmount(value)
     setDisclosedBytes(null)
   }
 
@@ -143,9 +160,18 @@ export const CreateGrantPage = (): React.JSX.Element => {
     }
   }, [curveKind, cliff, start, end, milestones])
 
-  const amountNum = Number(amount)
   const scheduleValid = validVestingSchedule(schedule)
-  const amountValid = Number.isFinite(amountNum) && amountNum >= MIN_GRANT_AMOUNT
+  // The same bounds the field validates against, recomputed here rather than stored from the last
+  // keystroke, so the message can never outlive the value that produced it.
+  const amountError = validateAmount(amount, { max: balance?.total })
+  const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
+  const amountValid = amountError === undefined && aboveFloor
+  const amountMessage =
+    amountError !== undefined
+      ? AMOUNT_ERROR_TEXT[amountError]
+      : amount !== '' && !aboveFloor
+        ? `Minimum ${MIN_GRANT_AMOUNT} CC.`
+        : undefined
   const receiverWellFormed = isValidPartyId(receiver)
   const isSelf = party !== undefined && receiver === party.partyId
   const receiverValid = receiverWellFormed && !isSelf
@@ -209,7 +235,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
       const result = await createVesting(backend, partyId, {
         proposer: partyId,
         receiver,
-        totalAmount: amountNum,
+        totalAmount: amount,
         schedule: finalSchedule,
         title,
         note: trimmedNote === '' ? undefined : trimmedNote,
@@ -230,56 +256,50 @@ export const CreateGrantPage = (): React.JSX.Element => {
       <div className="flex flex-col gap-5">
         <Card className="p-6">
           <h2 className="text-sm font-extrabold text-fg">Receiver &amp; amount</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+          <div className="mt-4 flex gap-4 flex-col">
+            <div>
               <label htmlFor="receiver" className={labelClass}>
                 Receiver party id
               </label>
               <PartyIdInput
-                id="receiver"
-                value={receiver}
-                onChange={editReceiver}
-                placeholder="bob::1220…"
                 aria-describedby={receiverMessage === undefined ? undefined : 'receiver-error'}
-                // The kit validates the shape; a grant to yourself is a rule only this app knows.
                 aria-invalid={isSelf || undefined}
-                // The kit sets `aria-invalid`; the variants below are what paints it here.
                 className={cn(
                   inputClass,
                   'font-mono text-sm aria-invalid:border-danger aria-invalid:bg-danger-soft',
                 )}
+                id="receiver"
+                onChange={editReceiver}
+                placeholder="bob::1220…"
+                value={receiver}
               />
               {receiverMessage !== undefined && (
-                <p id="receiver-error" className="mt-1 text-xs text-danger">
-                  {receiverMessage}
-                </p>
+                <FieldError id="receiver-error" message={receiverMessage} className="mt-1" />
               )}
             </div>
             <div>
-              <label htmlFor="amount" className={labelClass}>
-                Total amount (CC)
-              </label>
-              <input
+              <TokenInput
+                aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
+                balance={balance?.total}
+                balanceState={balanceState}
+                className={'w-full'}
                 id="amount"
-                inputMode="decimal"
+                label="Total amount"
+                onChange={editAmount}
+                usdValue={
+                  usdRate === undefined || amount === ''
+                    ? undefined
+                    : formatUsdValue(amount, usdRate)
+                }
+                token={token}
                 value={amount}
-                onChange={(e) => editAmount(e.target.value)}
-                placeholder="0"
-                className={cn(inputClass, 'font-mono')}
               />
-              {!amountValid && amount !== '' && (
-                <p className="mt-1 text-xs text-danger">Minimum {MIN_GRANT_AMOUNT} CC.</p>
+              {amountMessage !== undefined && (
+                <FieldError id="amount-error" message={amountMessage} className="mt-1" />
               )}
-            </div>
-            <div className="sm:col-span-2">
-              <span className={labelClass}>Funding</span>
-              <p className="mt-1 text-xs text-fg-muted">
-                Grants are unfunded — the amount is a plain on-ledger figure with no balance check.
-              </p>
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold text-fg">Schedule</h2>
@@ -478,7 +498,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
           <h2 className="text-sm font-extrabold text-fg">Preview</h2>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-xs text-fg-muted">Total</span>
-            <AmountDisplay value={amountValid ? amountNum : 0} className="text-xl font-semibold" />
+            <AmountDisplay value={amountValid ? amount : '0'} className="text-xl font-semibold" />
           </div>
           <div className="mt-1 flex items-baseline justify-between">
             <span className="text-xs text-fg-muted">Receiver</span>

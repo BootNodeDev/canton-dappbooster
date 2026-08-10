@@ -2,7 +2,7 @@ import { cn } from '@/lib/cn'
 import { formatCC } from '@/lib/format'
 
 interface AmountDisplayProps {
-  value: number
+  value: string
   // Token unit, default CC.
   unit?: string
   className?: string

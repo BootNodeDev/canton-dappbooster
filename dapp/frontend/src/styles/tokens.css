@@ -61,5 +61,5 @@
 
 :root {
   --cnc-font-mono: var(--font-mono);
-  --cnc-radius: var(--radius-md);
+  --cnc-radius: var(--radius-lg);
 }
