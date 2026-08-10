@@ -84,13 +84,15 @@ describe('connectionMachine', () => {
     })
 
     const actor = createActor(machine)
+    const states: StateValueFrom<typeof machine>[] = []
+    actor.subscribe(({ value }) => states.push(value))
 
     actor.start()
     actor.send({ type: 'connect' })
     await pause(0)
     actor.send({ type: 'connect' })
 
-    expect(actor.getSnapshot().matches('connecting')).toBe(true)
+    expect(states).toEqual<typeof states>(['disconnected', 'connecting', 'failure', 'connecting'])
   })
 
   it('drops the previous error when retrying', async () => {
@@ -99,14 +101,18 @@ describe('connectionMachine', () => {
         connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
       },
     })
-
     const actor = createActor(machine)
+    const states: StateValueFrom<typeof machine>[] = []
+    actor.subscribe(({ value }) => states.push(value))
+
     actor.start()
     actor.send({ type: 'connect' })
     await pause(0)
     actor.send({ type: 'connect' })
 
     expect(actor.getSnapshot().context.error).toBeUndefined()
+
+    expect(states).toEqual<typeof states>(['disconnected', 'connecting', 'failure', 'connecting'])
   })
 
   it('allows to disconnect after connection is established', async () => {
@@ -116,6 +122,8 @@ describe('connectionMachine', () => {
       },
     })
     const actor = createActor(machine)
+    const states: StateValueFrom<typeof machine>[] = []
+    actor.subscribe(({ value }) => states.push(value))
 
     actor.start()
     actor.send({ type: 'connect' })
@@ -123,7 +131,12 @@ describe('connectionMachine', () => {
 
     actor.send({ type: 'disconnect' })
 
-    expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+    expect(states).toEqual<typeof states>([
+      'disconnected',
+      'connecting',
+      'connected',
+      'disconnected',
+    ])
   })
 
   it('ignores a cancel request if connection is settled', async () => {
