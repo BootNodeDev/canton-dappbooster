@@ -10,4 +10,13 @@ describe('connectionMachine', () => {
 
     expect(actor.getSnapshot().matches('disconnected')).toBe(true)
   })
+
+  it('moves to connecting on connect', () => {
+    const actor = createActor(connectionMachine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+
+    expect(actor.getSnapshot().matches('connecting')).toBe(true)
+  })
 })

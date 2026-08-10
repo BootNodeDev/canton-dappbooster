@@ -4,6 +4,11 @@ export const connectionMachine = setup({}).createMachine({
   id: 'connection',
   initial: 'disconnected',
   states: {
-    disconnected: {},
+    disconnected: {
+      on: {
+        connect: { target: 'connecting' },
+      },
+    },
+    connecting: {},
   },
 })
