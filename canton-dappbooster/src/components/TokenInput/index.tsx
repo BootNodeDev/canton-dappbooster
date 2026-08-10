@@ -110,7 +110,7 @@ export const TokenInput = ({
   const error = validateAmount(value, bounds)
   const display = formatAmount(value)
   const invalid = ariaInvalid ?? (error !== undefined || undefined)
-  const rootInvalid = invalid !== undefined && invalid !== false && invalid !== 'false'
+  const rootInvalid = Boolean(invalid) && invalid !== 'false'
   const scaledBalance = parseAmount(balance ?? '')
 
   const balanceText =
