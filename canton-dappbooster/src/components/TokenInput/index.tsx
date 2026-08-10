@@ -1,13 +1,10 @@
 import {
-  type ChangeEvent,
   type FocusEvent,
   type FocusEventHandler,
   type HTMLAttributes,
   type ReactElement,
   type ReactNode,
   useId,
-  useLayoutEffect,
-  useRef,
 } from 'react'
 import { cx } from '../../utils/cx'
 import { resolveInvalid } from '../../utils/invalid'
@@ -20,7 +17,7 @@ import {
   validateAmount,
 } from '../../utils/tokenAmount'
 import { anatomy } from './anatomy'
-import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
+import { useFormattedField } from './useFormattedField'
 
 const ZERO = formatAmount('0.00')
 
@@ -105,11 +102,8 @@ export const TokenInput = ({
   const fieldId = id ?? generatedId
   const balanceId = `${fieldId}-balance`
   const tokenId = `${fieldId}-token`
-  const fieldRef = useRef<HTMLInputElement>(null)
-  const pending = useRef<{ digits: number; value: string } | null>(null)
   const bounds = { max: balance }
   const error = validateAmount(value, bounds)
-  const display = formatAmount(value)
   const [invalid, flagged] = resolveInvalid(ariaInvalid, error !== undefined)
   const noBalance = !parseAmount(balance ?? '')
 
@@ -118,42 +112,12 @@ export const TokenInput = ({
       ? 'Balance: N/A'
       : `Balance: ${balance === undefined ? ZERO : formatAmount(balance)}`
 
-  // Applied after the regrouped display is committed, or the browser would leave the caret at the
-  // end of the value on every keystroke. Resolved here rather than in the handler because the
-  // committed `field.value` is the regrouped string the index has to be counted against.
-  useLayoutEffect(() => {
-    const intent = pending.current
-    pending.current = null
-    const field = fieldRef.current
-    if (field === null || intent === null || intent.value !== value) return
-    const caret = caretBeforeDigits(field.value, intent.digits)
-    field.setSelectionRange(caret, caret)
+  const field = useFormattedField({
+    format: formatAmount,
+    onChange: (next) => onChange(next, validateAmount(next, bounds)),
+    sanitize: sanitizeAmountInput,
+    value,
   })
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    const typed = event.target.value
-    const typedAt = event.target.selectionStart ?? typed.length
-    const inputType = (event.nativeEvent as Partial<InputEvent>).inputType ?? ''
-    const sanitized = sanitizeAmountInput(typed)
-    const stalled = inputType.startsWith('delete') && sanitized === value
-    const [raw, at] = stalled
-      ? dropDigit(typed, typedAt, inputType.endsWith('Forward'))
-      : [typed, typedAt]
-    const digitsAfter = countDigitsAfter(raw, at)
-    const next = stalled ? sanitizeAmountInput(raw) : sanitized
-
-    if (next === value) {
-      // A rejected keystroke leaves `value` untouched, so React sees no change and would not rewrite
-      // the DOM: the rejected character would stay on screen. Put the display back by hand, and
-      // place the caret here since no re-render is coming to run the layout effect for us.
-      const caret = caretBeforeDigits(display, digitsAfter)
-      event.target.value = display
-      event.target.setSelectionRange(caret, caret)
-    } else {
-      pending.current = { digits: digitsAfter, value: next }
-    }
-    onChange(next, validateAmount(next, bounds))
-  }
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>): void => {
     const settled = settleAmount(value)
@@ -187,13 +151,13 @@ export const TokenInput = ({
           id={fieldId}
           inputMode="decimal"
           onBlur={handleBlur}
-          onChange={handleChange}
+          onChange={field.onChange}
           onFocus={onFocus}
           placeholder={ZERO}
-          ref={fieldRef}
+          ref={field.ref}
           spellCheck={false}
           type="text"
-          value={display}
+          value={field.value}
         />
         <span className={anatomy.parts.token} id={tokenId}>
           {token.logo}
