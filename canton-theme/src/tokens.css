@@ -33,7 +33,7 @@
     --cnc-danger-subtle: #f6dede;
 
     /* shape — mode-independent, so no dark counterpart */
-    --cnc-radius: 4px;
+    --cnc-radius: 8px;
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 

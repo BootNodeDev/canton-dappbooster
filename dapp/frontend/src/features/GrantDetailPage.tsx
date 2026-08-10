@@ -21,7 +21,7 @@ const Stat = ({
   tone,
 }: {
   label: string
-  amount: number
+  amount: string
   tone?: string
 }): React.JSX.Element => (
   <div className="rounded-xl border border-border bg-bg/40 p-4">

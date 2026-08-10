@@ -1,10 +1,12 @@
-import type { CSSProperties, HTMLAttributes, ReactElement, Ref } from 'react'
+import type { CSSProperties, HTMLAttributes, ReactElement } from 'react'
 import {
   type CopyOutcome,
   type CopyState,
   useCopyToClipboard,
 } from '../../hooks/useCopyToClipboard'
-import { CheckIcon, CopyIcon, ExternalLinkIcon } from '../../icons'
+import { CheckIcon, CopyIcon } from '../../icons'
+import { cx } from '../../utils/cx'
+import { ExplorerLink } from '../ExplorerLink'
 import { anatomy } from './anatomy'
 import { type TruncateOptions, truncateIdentifier } from './truncate'
 
@@ -16,14 +18,13 @@ import { type TruncateOptions, truncateIdentifier } from './truncate'
  * <Identifier value={partyId} label="party id" truncate={{ head: 4, tail: 4 }} />
  */
 export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'onCopy'> {
-  value: string
-  label?: string
-  truncate?: false | TruncateOptions
-  copy?: boolean
   announce?: boolean
+  copy?: boolean
   href?: string
+  label?: string
   onCopy?: (outcome: CopyOutcome) => void
-  ref?: Ref<HTMLSpanElement>
+  truncate?: false | TruncateOptions
+  value: string
 }
 
 const DEFAULT_LABEL = 'identifier'
@@ -50,11 +51,12 @@ const SR_ONLY: CSSProperties = {
 
 /**
  * Displays a Canton identifier: truncated for reading, copyable in full, optionally linked to an
- * explorer. Copy always writes the whole value, never the truncated display value. Renders a
- * `span`, so it is legal anywhere inline text is.
+ * explorer. Copy always writes the whole value, never the truncated display value. The href is
+ * built by the caller; this component composes no URLs. Renders a `span`, so it is legal anywhere
+ * inline text is.
  *
  * @example
- * <Identifier value={partyId} label="party id" href={explorerUrl} announce={false} />
+ * <Identifier value={partyId} label="party id" href={explorerLink(partyId)} announce={false} />
  */
 export const Identifier = ({
   value,
@@ -65,7 +67,6 @@ export const Identifier = ({
   href,
   onCopy,
   className,
-  ref,
   ...rest
 }: IdentifierProps): ReactElement => {
   const { state, copy: writeToClipboard } = useCopyToClipboard()
@@ -73,7 +74,7 @@ export const Identifier = ({
   const display = truncate === false ? value : truncateIdentifier(value, truncate)
 
   return (
-    <span ref={ref} className={[anatomy.parts.root, className].filter(Boolean).join(' ')} {...rest}>
+    <span className={cx(anatomy.parts.root, className)} {...rest}>
       {/* Titled even when untruncated: the theme also ellipsises on overflow, which JS cannot see. */}
       <code className={anatomy.parts.value} title={value}>
         {display}
@@ -98,15 +99,11 @@ export const Identifier = ({
         </>
       )}
       {href !== undefined && (
-        <a
+        <ExplorerLink
+          aria-label={`View ${label} in explorer`}
           className={anatomy.parts.link}
           href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`View ${label} in explorer`}
-        >
-          <ExternalLinkIcon />
-        </a>
+        />
       )}
     </span>
   )

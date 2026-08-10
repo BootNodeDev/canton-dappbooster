@@ -6,7 +6,6 @@
 @import "tailwindcss";
 @import "@fontsource-variable/manrope";
 @import "@fontsource-variable/jetbrains-mono";
-@import "@bootnodedev/canton-theme/tokens.css";
 @import "@bootnodedev/canton-theme/default.css";
 @import "./tokens.css";
 
@@ -48,7 +47,7 @@
 }
 
 /* App-wide defaults Tailwind v4's preflight no longer sets. In `base` because unlayered they would
-   beat every `border-*` and `cursor-*` utility, whatever the specificity. */
+   outrank every `border-*` and `cursor-*` utility and every `cnc` rule, whatever the specificity. */
 @layer base {
   * {
     border-color: var(--border);

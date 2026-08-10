@@ -1,6 +1,7 @@
 // The backend seam: the UI depends only on this interface and the domain types, never on DAML or
 // transport details. The mappers below turn active-contract rows into those domain types.
 
+import { isAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
 import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
 import { decodeSchedule } from './commands'
@@ -18,7 +19,7 @@ export interface VestingView {
 export interface CreateVestInput {
   proposer: string
   receiver: string
-  totalAmount: number
+  totalAmount: string
   schedule: VestingSchedule
   title: string
   note?: string
@@ -30,9 +31,9 @@ export interface VestingBackend {
   viewAs(partyId: string): Promise<VestingView>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
-  withdraw(args: { receiver: string; contractCid: string; amount: number }): Promise<void>
+  withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
-  claimResidual(args: { receiver: string; claimCid: string; amount: number }): Promise<void>
+  claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────
@@ -47,7 +48,17 @@ type AcsRow = {
   }
 }
 
-const num = (value: unknown): number => Number(value ?? 0)
+// A Daml Numeric arrives as a string over the JSON Ledger API — carried through unparsed to keep
+// exact ledger precision. Throws rather than silently zeroing: a shape surprise on an amount field
+// must not fold into a figure that looks like a real zero balance. The value is checked as well as
+// the shape, because a string this app cannot parse (`'1e3'`, `'-5'`, `''`) folds to zero all the
+// same once it reaches `lib/amount.ts`.
+const amountOf = (value: unknown, field: string, contractId: string): string => {
+  if (typeof value !== 'string' || !isAmount(value)) {
+    throw new Error(`Contract ${contractId} field '${field}' is not a Numeric string: ${value}`)
+  }
+  return value
+}
 
 const shortCid = (contractId: string): string => contractId.slice(0, 8)
 
@@ -113,7 +124,7 @@ export const rowToProposal = (row: AcsRow): Proposal | undefined => {
     provider: base.provider,
     proposer: base.funder,
     receiver: base.receiver,
-    totalAmount: num(base.arg.total),
+    totalAmount: amountOf(base.arg.total, 'total', base.id),
     schedule: decodeSchedule(base.arg.schedule),
     note: base.note,
   }
@@ -130,9 +141,9 @@ export const rowToGrant = (row: AcsRow): Grant | undefined => {
     provider: base.provider,
     creator: base.funder,
     receiver: base.receiver,
-    totalAmount: num(base.arg.total),
+    totalAmount: amountOf(base.arg.total, 'total', base.id),
     schedule: decodeSchedule(base.arg.schedule),
-    alreadyWithdrawn: num(base.arg.claimed),
+    alreadyWithdrawn: amountOf(base.arg.claimed, 'claimed', base.id),
     note: base.note,
   }
 }
@@ -148,8 +159,8 @@ export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
     provider: base.provider,
     creator: base.funder,
     receiver: base.receiver,
-    amount: num(base.arg.amount),
-    withdrawn: num(base.arg.withdrawn),
+    amount: amountOf(base.arg.amount, 'amount', base.id),
+    withdrawn: amountOf(base.arg.withdrawn, 'withdrawn', base.id),
     note: base.note,
   }
 }

@@ -23,7 +23,9 @@ pnpm run app:dev   # → http://localhost:3012
 ```
 
 Pick any party on the landing screen to "connect" (the DirectWallet just chooses
-which party you act as; it is remembered in `localStorage`). No env vars needed.
+which party you act as; it is remembered in `localStorage`). No env vars needed:
+the one knob, the explorer party ids link to, defaults to the local Splice Scan.
+Override it by copying [`.env.example`](.env.example) to `.env.local`.
 
 ## Going live (deferred)
 

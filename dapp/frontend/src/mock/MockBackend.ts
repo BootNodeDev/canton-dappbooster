@@ -1,4 +1,5 @@
 import type { CreateVestInput, Mode, VestingBackend, VestingView } from '@/backend/VestingBackend'
+import { addAmounts, compareAmounts, isPositive, subtractAmounts } from '@/lib/amount'
 import { now } from '@/lib/clock'
 import { MIN_GRANT_AMOUNT, vestedAmount } from '@/lib/schedule'
 import type { Grant, Proposal, VestedClaim } from '@/store/types'
@@ -44,7 +45,7 @@ export class MockBackend implements VestingBackend {
   }
 
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
-    if (args.totalAmount < MIN_GRANT_AMOUNT) {
+    if (compareAmounts(args.totalAmount, MIN_GRANT_AMOUNT) < 0) {
       throw new Error(`Grant total must be at least ${MIN_GRANT_AMOUNT} CC`)
     }
     const proposal: Proposal = {
@@ -76,7 +77,7 @@ export class MockBackend implements VestingBackend {
         receiver: proposal.receiver,
         totalAmount: proposal.totalAmount,
         schedule: proposal.schedule,
-        alreadyWithdrawn: 0,
+        alreadyWithdrawn: '0',
         note: proposal.note,
       },
       ...this.grants,
@@ -89,22 +90,22 @@ export class MockBackend implements VestingBackend {
   }: {
     receiver: string
     contractCid: string
-    amount: number
+    amount: string
   }): Promise<void> {
     const grant = this.grants.find((g) => g.id === contractCid)
     if (grant === undefined) {
       return
     }
     // Mirror Contract_Claim: never claim past the vested, unclaimed balance.
-    const claimable = Math.max(
-      0,
-      vestedAmount(grant.schedule, grant.totalAmount, now()) - grant.alreadyWithdrawn,
+    const claimable = subtractAmounts(
+      vestedAmount(grant.schedule, grant.totalAmount, now()),
+      grant.alreadyWithdrawn,
     )
-    if (amount > claimable + 1e-9) {
+    if (compareAmounts(amount, claimable) > 0) {
       throw new Error('Claim exceeds the vested, unclaimed balance')
     }
     this.grants = this.grants.map((g) =>
-      g.id === contractCid ? { ...g, alreadyWithdrawn: g.alreadyWithdrawn + amount } : g,
+      g.id === contractCid ? { ...g, alreadyWithdrawn: addAmounts(g.alreadyWithdrawn, amount) } : g,
     )
   }
 
@@ -114,11 +115,11 @@ export class MockBackend implements VestingBackend {
       return
     }
     this.grants = this.grants.filter((g) => g.id !== contractCid)
-    const residual = Math.max(
-      0,
-      vestedAmount(grant.schedule, grant.totalAmount, now()) - grant.alreadyWithdrawn,
+    const residual = subtractAmounts(
+      vestedAmount(grant.schedule, grant.totalAmount, now()),
+      grant.alreadyWithdrawn,
     )
-    if (residual <= 0) {
+    if (!isPositive(residual)) {
       return
     }
     this.claims = [
@@ -129,7 +130,7 @@ export class MockBackend implements VestingBackend {
         creator: grant.creator,
         receiver: grant.receiver,
         amount: residual,
-        withdrawn: 0,
+        withdrawn: '0',
         note: grant.note,
       },
       ...this.claims,
@@ -142,18 +143,19 @@ export class MockBackend implements VestingBackend {
   }: {
     receiver: string
     claimCid: string
-    amount: number
+    amount: string
   }): Promise<void> {
     const claim = this.claims.find((c) => c.id === claimCid)
     if (claim === undefined) {
       return
     }
     // Mirror Claim_Withdraw: never withdraw past the residual balance.
-    if (amount > claim.amount - claim.withdrawn + 1e-9) {
+    const available = subtractAmounts(claim.amount, claim.withdrawn)
+    if (compareAmounts(amount, available) > 0) {
       throw new Error('Withdrawal exceeds the residual balance')
     }
     this.claims = this.claims
-      .map((c) => (c.id === claimCid ? { ...c, withdrawn: c.withdrawn + amount } : c))
-      .filter((c) => c.withdrawn < c.amount - 1e-9)
+      .map((c) => (c.id === claimCid ? { ...c, withdrawn: addAmounts(c.withdrawn, amount) } : c))
+      .filter((c) => isPositive(subtractAmounts(c.amount, c.withdrawn)))
   }
 }

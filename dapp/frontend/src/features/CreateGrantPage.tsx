@@ -1,15 +1,29 @@
-import { partyHint } from '@bootnodedev/canton-dappbooster'
+import {
+  isValidPartyId,
+  type PartyIdError,
+  PartyIdInput,
+  partyHint,
+  TokenInput,
+  validateAmount,
+} from '@bootnodedev/canton-dappbooster'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { FieldError } from '@/components/FieldError'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
 import { useParty } from '@/hooks/useParty'
+import { useToken } from '@/hooks/useToken'
+import { useTokenBalance } from '@/hooks/useTokenBalance'
+import { useTokenPrice } from '@/hooks/useTokenPrice'
+import { compareAmounts } from '@/lib/amount'
+import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
+import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
@@ -82,15 +96,33 @@ const labelClass = 'block text-xs font-bold uppercase tracking-[0.06em] text-fg-
 const inputClass =
   'mt-1.5 h-11 w-full rounded-xl border border-border bg-bg px-3 text-fg outline-none focus:shadow-[var(--ring)]'
 
+// The kit ships codes, not copy, so the wording is the app's. Exhaustive by construction: a new
+// code stops this compiling rather than rendering nothing.
+const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
+  'missing-separator': 'Use a full party id (hint::fingerprint).',
+  'invalid-hint': 'The hint before :: cannot be blank or contain spaces.',
+  'invalid-fingerprint': 'The fingerprint after :: must be 68 hex characters.',
+}
+
 export const CreateGrantPage = (): React.JSX.Element => {
   const navigate = useNavigate()
   const { party } = useParty()
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
+  const token = useToken()
+  const { usdRate } = useTokenPrice(token)
+  const {
+    balance,
+    isLoading: balanceLoading,
+    error: balanceError,
+  } = useTokenBalance(party?.partyId, token)
+  const balanceState = balanceLoading ? 'loading' : balanceError !== undefined ? 'error' : undefined
 
   const today = new Date(now())
   const initial = defaultSchedule(today)
   const [receiver, setReceiver] = useState('')
+  // What the field is currently flagging: the kit reports it, this page words and places it.
+  const [receiverError, setReceiverError] = useState<PartyIdError | undefined>(undefined)
   const [amount, setAmount] = useState('')
   const [curveKind, setCurveKind] = useState<CurveKind>('linear')
   const [cliff, setCliff] = useState(initial.cliff)
@@ -104,12 +136,13 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const [demo, setDemo] = useState<DemoPreset | null>(null)
 
   // Editing the grant's identity clears the created panel, restoring the submit button.
-  const editReceiver = (value: string): void => {
+  const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)
+    setReceiverError(error)
     setDisclosedBytes(null)
   }
   const editAmount = (value: string): void => {
-    setAmount(value.replace(/[^0-9.]/g, ''))
+    setAmount(value)
     setDisclosedBytes(null)
   }
 
@@ -126,13 +159,28 @@ export const CreateGrantPage = (): React.JSX.Element => {
     }
   }, [curveKind, cliff, start, end, milestones])
 
-  const amountNum = Number(amount)
   const scheduleValid = validVestingSchedule(schedule)
-  const amountValid = Number.isFinite(amountNum) && amountNum >= MIN_GRANT_AMOUNT
-  // Party ids are `hint::fingerprint`, and the ledger would refuse a self-vesting anyway.
-  const receiverWellFormed = /.+::.+/.test(receiver.trim())
-  const isSelf = party !== undefined && receiver.trim() === party.partyId
+  // The same bounds the field validates against, recomputed here rather than stored from the last
+  // keystroke, so the message can never outlive the value that produced it.
+  const amountError = validateAmount(amount, { max: balance?.total })
+  const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
+  const amountValid = amountError === undefined && aboveFloor
+  const amountMessage =
+    amountError !== undefined
+      ? AMOUNT_ERROR_TEXT[amountError]
+      : amount !== '' && !aboveFloor
+        ? `Minimum ${MIN_GRANT_AMOUNT} CC.`
+        : undefined
+  const receiverWellFormed = isValidPartyId(receiver)
+  const isSelf = party !== undefined && receiver === party.partyId
   const receiverValid = receiverWellFormed && !isSelf
+
+  const receiverMessage =
+    receiverError !== undefined
+      ? RECEIVER_MESSAGE[receiverError]
+      : isSelf
+        ? 'Cannot grant to your own party.'
+        : undefined
   const valid = scheduleValid && amountValid && receiverValid
 
   // Any manual schedule edit drops the demo flag so the entered dates are used verbatim.
@@ -185,8 +233,8 @@ export const CreateGrantPage = (): React.JSX.Element => {
     try {
       const result = await createVesting(backend, partyId, {
         proposer: partyId,
-        receiver: receiver.trim(),
-        totalAmount: amountNum,
+        receiver,
+        totalAmount: amount,
         schedule: finalSchedule,
         title,
         note: trimmedNote === '' ? undefined : trimmedNote,
@@ -207,50 +255,50 @@ export const CreateGrantPage = (): React.JSX.Element => {
       <div className="flex flex-col gap-5">
         <Card className="p-6">
           <h2 className="text-sm font-extrabold text-fg">Receiver &amp; amount</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+          <div className="mt-4 flex gap-4 flex-col">
+            <div>
               <label htmlFor="receiver" className={labelClass}>
                 Receiver party id
               </label>
-              <input
+              <PartyIdInput
+                aria-describedby={receiverMessage === undefined ? undefined : 'receiver-error'}
+                aria-invalid={isSelf || undefined}
+                className={cn(
+                  inputClass,
+                  'font-mono text-sm aria-invalid:border-danger aria-invalid:bg-danger-soft',
+                )}
                 id="receiver"
-                value={receiver}
-                onChange={(e) => editReceiver(e.target.value)}
+                onChange={editReceiver}
                 placeholder="bob::1220…"
-                className={cn(inputClass, 'font-mono text-sm')}
+                value={receiver}
               />
-              {receiver !== '' && !receiverWellFormed && (
-                <p className="mt-1 text-xs text-danger">Use a full party id (hint::fingerprint).</p>
-              )}
-              {receiver !== '' && receiverWellFormed && isSelf && (
-                <p className="mt-1 text-xs text-danger">Cannot grant to your own party.</p>
+              {receiverMessage !== undefined && (
+                <FieldError id="receiver-error" message={receiverMessage} className="mt-1" />
               )}
             </div>
             <div>
-              <label htmlFor="amount" className={labelClass}>
-                Total amount (CC)
-              </label>
-              <input
+              <TokenInput
+                aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
+                balance={balance?.total}
+                balanceState={balanceState}
+                className={'w-full'}
                 id="amount"
-                inputMode="decimal"
+                label="Total amount"
+                onChange={editAmount}
+                usdValue={
+                  usdRate === undefined || amount === ''
+                    ? undefined
+                    : formatUsdValue(amount, usdRate)
+                }
+                token={token}
                 value={amount}
-                onChange={(e) => editAmount(e.target.value)}
-                placeholder="0"
-                className={cn(inputClass, 'font-mono')}
               />
-              {!amountValid && amount !== '' && (
-                <p className="mt-1 text-xs text-danger">Minimum {MIN_GRANT_AMOUNT} CC.</p>
+              {amountMessage !== undefined && (
+                <FieldError id="amount-error" message={amountMessage} className="mt-1" />
               )}
-            </div>
-            <div className="sm:col-span-2">
-              <span className={labelClass}>Funding</span>
-              <p className="mt-1 text-xs text-fg-muted">
-                Grants are unfunded — the amount is a plain on-ledger figure with no balance check.
-              </p>
             </div>
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold text-fg">Schedule</h2>
@@ -448,7 +496,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
           <h2 className="text-sm font-extrabold text-fg">Preview</h2>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-xs text-fg-muted">Total</span>
-            <AmountDisplay value={amountValid ? amountNum : 0} className="text-xl font-semibold" />
+            <AmountDisplay value={amountValid ? amount : '0'} className="text-xl font-semibold" />
           </div>
           <div className="mt-1 flex items-baseline justify-between">
             <span className="text-xs text-fg-muted">Receiver</span>

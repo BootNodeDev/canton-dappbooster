@@ -1,9 +1,11 @@
+import { PARTY_SEPARATOR } from '../../utils/partyId'
+
 /**
  * Character counts overriding the display defaults of {@link truncateIdentifier}: how much to keep
  * either side of the ellipsis, and the segment length below which nothing is cut.
  *
  * @example
- * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 12 })
+ * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 22 })
  */
 export interface TruncateOptions {
   head?: number
@@ -17,8 +19,6 @@ const PLAIN_HEAD = 12
 const TAIL = 8
 const THRESHOLD = 22
 const ELLIPSIS = '…'
-
-const PARTY_SEPARATOR = '::'
 
 const middle = (value: string, head: number, tail: number, threshold: number): string => {
   if (value.length <= threshold) return value

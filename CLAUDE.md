@@ -85,7 +85,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`. Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
@@ -133,7 +133,9 @@ Placement:
 - Colocate by default. A module used by one component lives beside it; promote it only when a second
   consumer appears.
 - Promoted code goes in a kind folder at the src root (`components/`, `hooks/`, `icons/`,
-  `providers/`, `testing/`). Those exist from their first member.
+  `providers/`, `testing/`, `utils/`). Those exist from their first member. `utils/` is the one that
+  never rejects a file, so each of its modules is named for what it holds (`partyId.ts`, `cx.ts`),
+  never `helpers.ts` or an `index.ts` barrel.
 - Components live in `components/`, which is a kind folder like the rest and gets no special case.
   Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
   than a parent composing them.
@@ -166,7 +168,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   name. Two buttons where one looks selected need `aria-pressed`. Never leave this to the consumer.
 - Expose that state on the element as `aria-*` or `data-*`, never through a class name alone, so the
   styling hook and the accessibility state stay one source of truth.
-- `ref` is an ordinary prop (React 19). Do not reach for `forwardRef`.
+- `ref` is an ordinary prop (React 19), so do not reach for `forwardRef`. Do not declare it until a
+  consumer needs one: a published prop is a contract owed forever, and adding it later is
+  non-breaking.
 - Tests assert on roles, accessible names, and whatever contract the component declares. Never on
   styling.
 
@@ -178,6 +182,8 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   - `pnpm run canton:up` / `canton:down` / `canton:health` / `canton:token`
   - `pnpm run build-dar -- <daml-project>` / `pnpm run deploy-dar -- <dar>`
   - `pnpm run app:dev`
+- `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
+  folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they float on the ranges in its own `package.json` (`dapp-sdk` `^1.4.0`); bump those directly and test the connect flow, not `pnpm-workspace.yaml`.

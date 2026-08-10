@@ -1,6 +1,7 @@
 // JSON-Ledger-API v2 command builders, explicit-disclosure shaping, and the one curve
 // encode/decode pair. No I/O, so it is unit-tested directly in commands.test.ts.
 
+import { canonicalAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
 
 export type DisclosedRef = {
@@ -106,7 +107,7 @@ export const decodeSchedule = (raw: unknown): VestingSchedule => {
 type CreateVestingArgs = {
   proposer: string
   beneficiary: string
-  total: number
+  total: string
   schedule: VestingSchedule
   note?: string
 }
@@ -123,7 +124,7 @@ export const buildCreateVestingCommand = (
     choiceArgument: {
       proposer: args.proposer,
       beneficiary: args.beneficiary,
-      total: String(args.total),
+      total: canonicalAmount(args.total),
       schedule: encodeSchedule(args.schedule),
       note: args.note ?? null,
     },
@@ -140,12 +141,12 @@ export const buildAcceptCommand = (templateId: string, proposalCid: string) => (
 })
 
 // No nowMicros: VestingContract.Contract_Claim reads on-ledger getTime.
-export const buildClaimCommand = (templateId: string, contractCid: string, amount: number) => ({
+export const buildClaimCommand = (templateId: string, contractCid: string, amount: string) => ({
   ExerciseCommand: {
     templateId,
     contractId: contractCid,
     choice: 'Contract_Claim',
-    choiceArgument: { amount: String(amount) },
+    choiceArgument: { amount: canonicalAmount(amount) },
   },
 })
 
@@ -161,12 +162,12 @@ export const buildCancelCommand = (templateId: string, contractCid: string) => (
 export const buildClaimResidualCommand = (
   templateId: string,
   claimCid: string,
-  withdrawAmount: number,
+  withdrawAmount: string,
 ) => ({
   ExerciseCommand: {
     templateId,
     contractId: claimCid,
     choice: 'Claim_Withdraw',
-    choiceArgument: { withdrawAmount: String(withdrawAmount) },
+    choiceArgument: { withdrawAmount: canonicalAmount(withdrawAmount) },
   },
 })

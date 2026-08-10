@@ -52,7 +52,8 @@ describe('rowToProposal', () => {
       provider: 'OP',
       proposer: 'funder',
       receiver: 'receiver',
-      totalAmount: 1000,
+      // Passed through unparsed: a Daml Numeric arrives as a string, verbatim ledger padding included.
+      totalAmount: '1000.0000000000',
       schedule: {
         cliff: '2026-01-01T00:00:00Z',
         curve: { kind: 'linear', start: '2026-01-01T00:00:00Z', end: '2027-01-01T00:00:00Z' },
@@ -83,9 +84,39 @@ describe('rowToGrant', () => {
     expect(grant?.title).toBe('Core grant')
     expect(grant?.creator).toBe('funder')
     expect(grant?.receiver).toBe('receiver')
-    expect(grant?.totalAmount).toBe(1000)
-    expect(grant?.alreadyWithdrawn).toBe(250)
+    expect(grant?.totalAmount).toBe('1000')
+    expect(grant?.alreadyWithdrawn).toBe('250')
     expect(grant?.note).toBeUndefined()
+  })
+
+  it('throws naming the field rather than folding a non-string amount to zero', () => {
+    expect(() =>
+      rowToGrant(
+        row('c2', {
+          provider: 'OP',
+          proposer: 'funder',
+          beneficiary: 'receiver',
+          total: '1000',
+          claimed: 250, // wrong shape: a Daml Numeric always arrives as a string
+          schedule: linearEncoded,
+        }),
+      ),
+    ).toThrow(/c2.*claimed/)
+  })
+
+  it('throws on a string that is not a decimal, which would parse to zero downstream', () => {
+    expect(() =>
+      rowToGrant(
+        row('c3', {
+          provider: 'OP',
+          proposer: 'funder',
+          beneficiary: 'receiver',
+          total: '1e3', // right shape, unparseable value
+          claimed: '250',
+          schedule: linearEncoded,
+        }),
+      ),
+    ).toThrow(/c3.*total/)
   })
 })
 
@@ -107,8 +138,8 @@ describe('rowToClaim', () => {
       provider: 'OP',
       creator: 'funder',
       receiver: 'receiver',
-      amount: 500,
-      withdrawn: 100,
+      amount: '500',
+      withdrawn: '100',
       note: 'from cancelled grant',
     })
   })

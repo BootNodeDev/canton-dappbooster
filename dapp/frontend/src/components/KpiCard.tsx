@@ -3,7 +3,7 @@ import { AmountDisplay } from './AmountDisplay'
 
 interface KpiCardProps {
   label: string
-  amount: number
+  amount: string
   unit?: string
   sub?: string
   subTone?: 'muted' | 'success'

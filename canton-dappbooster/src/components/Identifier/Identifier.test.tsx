@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stubClipboard } from '../../testing/clipboard'
 import { Identifier } from '.'
@@ -38,10 +37,8 @@ describe('Identifier', () => {
     expect(part('value')).toHaveAttribute('title', SHORT)
   })
 
-  it('forwards a ref and unknown props to the root part', () => {
-    const ref = createRef<HTMLSpanElement>()
-    render(<Identifier value={PARTY} ref={ref} data-testid="acting-party" />)
-    expect(ref.current).toBe(part('root'))
+  it('forwards unknown props to the root part', () => {
+    render(<Identifier value={PARTY} data-testid="acting-party" />)
     expect(part('root')).toHaveAttribute('data-testid', 'acting-party')
   })
 
@@ -143,12 +140,17 @@ describe('Identifier', () => {
     expect(part('link')).not.toBeInTheDocument()
   })
 
-  it('renders a safe external link when given an href', () => {
+  // Delegation, not the link's own contract: target and rel are pinned in ExplorerLink.test.tsx.
+  it('hands the href to an external link carrying the link part', () => {
     render(<Identifier value={PARTY} label="party id" href="https://scan.example/party/nico" />)
-    const link = screen.getByRole('link', { name: 'View party id in explorer' })
+    const link = screen.getByRole('link')
     expect(link).toHaveClass(anatomy.parts.link)
     expect(link).toHaveAttribute('href', 'https://scan.example/party/nico')
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  // Composing the name off `label` is this component's own job, not the link's.
+  it('names the link after the label', () => {
+    render(<Identifier value={PARTY} label="party id" href="https://scan.example/party/nico" />)
+    expect(screen.getByRole('link', { name: 'View party id in explorer' })).toBeInTheDocument()
   })
 })

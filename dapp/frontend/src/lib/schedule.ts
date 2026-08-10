@@ -1,6 +1,8 @@
 // Vesting math mirroring the on-ledger Schedule logic, for live figures and create-form
 // validation. Keep in sync with the DAML.
 
+import { compareAmounts, isZero, multiplyByFraction, subtractAmounts } from './amount'
+
 export type ISO = string
 
 export interface LinearCurve {
@@ -27,7 +29,18 @@ export interface VestingSchedule {
 }
 
 // Enforced floor for new grants and for re-lock remainders.
-export const MIN_GRANT_AMOUNT = 1.0
+export const MIN_GRANT_AMOUNT = '1'
+
+/**
+ * Whether claiming `amount` from `available` leaves a remainder that respects the re-lock floor:
+ * exactly zero, or at/above `MIN_GRANT_AMOUNT` — never a dust amount below it. `subtractAmounts`
+ * floors at zero, so an `amount` above `available` reads here as a full claim (remainder 0); that
+ * combination is rejected separately, by the field's own `max`, not by this check.
+ */
+export const meetsRelockFloor = (available: string, amount: string): boolean => {
+  const remainder = subtractAmounts(available, amount)
+  return isZero(remainder) || compareAmounts(remainder, MIN_GRANT_AMOUNT) >= 0
+}
 
 const ms = (iso: ISO): number => new Date(iso).getTime()
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x)
@@ -61,8 +74,8 @@ export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number
   return clamp01(fraction)
 }
 
-export const vestedAmount = (schedule: VestingSchedule, total: number, nowMs: number): number =>
-  total * vestedFraction(schedule, nowMs)
+export const vestedAmount = (schedule: VestingSchedule, total: string, nowMs: number): string =>
+  multiplyByFraction(total, vestedFraction(schedule, nowMs))
 
 // Mirrors the on-ledger validVestingSchedule: linear needs start < end and start <= cliff <= end;
 // milestone needs ascending times, fractions in (0, 1] ending at 1, cliff at or before point one.

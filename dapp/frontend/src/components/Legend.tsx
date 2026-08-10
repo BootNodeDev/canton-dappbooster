@@ -3,7 +3,7 @@ import { formatCC } from '@/lib/format'
 
 export interface LegendItem {
   label: string
-  value: number
+  value: string
   swatch: string
 }
 

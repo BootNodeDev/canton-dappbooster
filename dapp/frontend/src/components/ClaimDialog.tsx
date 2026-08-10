@@ -1,8 +1,13 @@
+import { TokenInput, validateAmount } from '@bootnodedev/canton-dappbooster'
 import { useEffect, useRef, useState } from 'react'
+import { useToken } from '@/hooks/useToken'
+import { isPositive } from '@/lib/amount'
+import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { errorText } from '@/lib/errorText'
-import { claimAmountInput, clampClaimAmount, formatCC, formatCCFull } from '@/lib/format'
-import { MIN_GRANT_AMOUNT } from '@/lib/schedule'
+import { formatCC, formatCCFull } from '@/lib/format'
+import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/lib/schedule'
 import { Button } from './Button'
+import { FieldError } from './FieldError'
 import { Modal } from './Modal'
 import { toast } from './toast'
 
@@ -10,8 +15,8 @@ interface ClaimDialogProps {
   open: boolean
   onClose: () => void
   title: string
-  available: number
-  onConfirm: (amount: number) => Promise<void>
+  available: string
+  onConfirm: (amount: string) => Promise<void>
 }
 
 // Amount-entry dialog shared by grant withdraw and residual claim. Enforces the re-lock floor: the
@@ -23,6 +28,7 @@ export const ClaimDialog = ({
   available,
   onConfirm,
 }: ClaimDialogProps): React.JSX.Element => {
+  const token = useToken()
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -32,16 +38,26 @@ export const ClaimDialog = ({
   useEffect(() => {
     if (open && !seeded.current) {
       seeded.current = true
-      setRaw(claimAmountInput(available))
+      setRaw(available)
     } else if (!open) {
       seeded.current = false
     }
   }, [open, available])
 
-  const amount = Number(raw)
-  const remainder = available - amount
-  const validFloor = remainder <= 1e-9 || remainder >= MIN_GRANT_AMOUNT
-  const valid = Number.isFinite(amount) && amount > 0 && amount <= available + 1e-9 && validFloor
+  // Recomputed from `available` rather than stored from the last keystroke: it drops each second
+  // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
+  // already accepted (and vice versa) until the user typed again. Same bounds the field uses.
+  const amountError = validateAmount(raw, { max: available })
+  const floorOk = meetsRelockFloor(available, raw)
+  // The kit's error wins when both apply, so the two sentences are never shown at once.
+  const message =
+    amountError !== undefined
+      ? AMOUNT_ERROR_TEXT[amountError]
+      : !floorOk && isPositive(raw)
+        ? `Remainder must be 0 or at least ${MIN_GRANT_AMOUNT} CC (re-lock floor).`
+        : undefined
+
+  const valid = amountError === undefined && isPositive(raw) && floorOk
 
   const submit = async (): Promise<void> => {
     if (!valid) {
@@ -49,9 +65,8 @@ export const ClaimDialog = ({
     }
     setSubmitting(true)
     try {
-      const claimed = clampClaimAmount(amount, available)
-      await onConfirm(claimed)
-      toast.success(`Claimed ${formatCC(claimed)} CC`)
+      await onConfirm(raw)
+      toast.success(`Claimed ${formatCC(raw)} CC`)
       onClose()
     } catch (err) {
       toast.error(errorText(err))
@@ -67,33 +82,17 @@ export const ClaimDialog = ({
       title={title}
       description={`Available to claim: ${formatCCFull(available)} CC`}
     >
-      <label
-        htmlFor="claim-amount"
-        className="block text-xs font-semibold uppercase tracking-[0.06em] text-fg-muted"
-      >
-        Amount (CC)
-      </label>
-      <div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-bg px-3 focus-within:shadow-[var(--ring)]">
-        <input
-          id="claim-amount"
-          inputMode="decimal"
-          value={raw}
-          onChange={(e) => setRaw(e.target.value.replace(/[^0-9.]/g, ''))}
-          className="h-11 w-full bg-transparent font-mono text-lg text-fg outline-none"
-          placeholder="0"
-        />
-        <button
-          type="button"
-          onClick={() => setRaw(claimAmountInput(available))}
-          className="shrink-0 rounded-lg border border-border-strong px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-fg-muted transition-colors hover:border-primary hover:text-primary"
-        >
-          Max
-        </button>
-      </div>
-      {!validFloor && amount > 0 && (
-        <p className="mt-2 text-xs text-danger">
-          Remainder must be 0 or at least {MIN_GRANT_AMOUNT} CC (re-lock floor).
-        </p>
+      <TokenInput
+        aria-describedby={message === undefined ? undefined : 'claim-amount-error'}
+        balance={available}
+        id="claim-amount"
+        label="Amount"
+        onChange={(next) => setRaw(next)}
+        token={token}
+        value={raw}
+      />
+      {message !== undefined && (
+        <FieldError id="claim-amount-error" message={message} className="mt-2" />
       )}
       <div className="mt-6 flex justify-end gap-2.5">
         <Button variant="secondary" size="sm" onClick={onClose} disabled={submitting}>

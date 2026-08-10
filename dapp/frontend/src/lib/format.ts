@@ -1,29 +1,29 @@
 // Display formatting: amount grouping and relative dates. Identifier truncation lives in
 // the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
 
-const ccFormatter = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
+import { formatAmount } from '@bootnodedev/canton-dappbooster'
+import { multiplyAmounts, roundAmount } from './amount'
+
+// `Intl.NumberFormat.format` is typed for `number | bigint`, not the decimal strings amounts are
+// here — the kit's `formatAmount` groups the integer part via `BigInt` and carries the fraction as
+// text instead, which is exact where a float would round-trip through IEEE 754 first.
 
 // Canton Coin amount, grouped, up to 2 decimals. No unit suffix (callers add `CC`).
-export const formatCC = (amount: number): string => ccFormatter.format(amount)
+export const formatCC = (amount: string): string => formatAmount(roundAmount(amount, 2))
 
-const ccFullFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 10 })
+// Full ledger precision, grouped, no trailing zeros.
+export const formatCCFull = (amount: string): string => formatAmount(roundAmount(amount, 10))
 
-// Full ledger precision (Decimal is ≤10 dp), grouped, no trailing zeros. Use where
-// rounding to 2 dp would mislead — e.g. the exact claimable in a claim dialog.
-export const formatCCFull = (amount: number): string => ccFullFormatter.format(amount)
+// Pads the fraction to exactly `digits`, the way a fixed-decimal display (e.g. currency) needs —
+// unlike `roundAmount`'s canonical, trailing-zeros-trimmed output.
+const padFraction = (amount: string, digits: number): string => {
+  const [int, frac = ''] = amount.split('.')
+  return `${int}.${frac.padEnd(digits, '0')}`
+}
 
-// The exact claimable as a plain numeric string for an amount input. Flooring to 2 dp would strand
-// sub-cent residual, and toFixed(10) absorbs float-subtraction noise back to the ledger value.
-export const claimAmountInput = (amount: number): string =>
-  amount > 0 ? amount.toFixed(10).replace(/\.?0+$/, '') : ''
-
-// Clamp to [0, available] at 10 dp before it reaches the ledger: guards amounts typed beyond
-// available and more than 10 decimal places (Canton Decimal is ≤10 dp).
-export const clampClaimAmount = (amount: number, available: number): number =>
-  Number(Math.min(amount, available).toFixed(10))
+// Exact product, rounded for display only.
+export const formatUsdValue = (amount: string, usdRate: string): string =>
+  `${formatAmount(padFraction(roundAmount(multiplyAmounts(amount, usdRate), 2), 2))}`
 
 export const formatPct = (fraction: number): string => `${(fraction * 100).toFixed(1)}%`
 

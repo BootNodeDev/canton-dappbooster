@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { useBackend } from '@/hooks/useBackend'
 import { useParty } from '@/hooks/useParty'
+import { compareAmounts, multiplyByFraction, subtractAmounts, toNumber } from '@/lib/amount'
 import { now } from '@/lib/clock'
 import { errorText } from '@/lib/errorText'
 import { MIN_GRANT_AMOUNT, vestedFraction } from '@/lib/schedule'
@@ -12,11 +13,11 @@ export type GrantStatus = 'in_cliff' | 'vesting' | 'fully_vested'
 
 export interface GrantDerived {
   fraction: number
-  vested: number
-  claimable: number
-  claimed: number
+  vested: string
+  claimable: string
+  claimed: string
   claimedFraction: number
-  unvested: number
+  unvested: string
   canClaim: boolean
   status: GrantStatus
 }
@@ -25,11 +26,13 @@ export interface GrantDerived {
 // numbers: components read figures only from here and lib/schedule.
 export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   const fraction = vestedFraction(grant.schedule, nowMs)
-  const vested = grant.totalAmount * fraction
+  const vested = multiplyByFraction(grant.totalAmount, fraction)
   const claimed = grant.alreadyWithdrawn
-  const claimable = Math.max(0, vested - claimed)
-  const unvested = Math.max(0, grant.totalAmount - vested)
-  const claimedFraction = grant.totalAmount === 0 ? 0 : claimed / grant.totalAmount
+  const claimable = subtractAmounts(vested, claimed)
+  const unvested = subtractAmounts(grant.totalAmount, vested)
+  // A ratio for a progress bar, so a float is the right type here.
+  const total = toNumber(grant.totalAmount)
+  const claimedFraction = total === 0 ? 0 : toNumber(claimed) / total
   const status: GrantStatus =
     fraction <= 0 ? 'in_cliff' : fraction >= 1 ? 'fully_vested' : 'vesting'
   return {
@@ -39,7 +42,7 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
     claimed,
     claimedFraction,
     unvested,
-    canClaim: claimable >= MIN_GRANT_AMOUNT,
+    canClaim: compareAmounts(claimable, MIN_GRANT_AMOUNT) >= 0,
     status,
   }
 }
@@ -64,14 +67,14 @@ interface VestingState {
     backend: VestingBackend,
     partyId: string,
     contractCid: string,
-    amount: number,
+    amount: string,
   ) => Promise<void>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
     partyId: string,
     claimCid: string,
-    amount: number,
+    amount: string,
   ) => Promise<void>
 }
 
