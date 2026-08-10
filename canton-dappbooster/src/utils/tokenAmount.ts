@@ -94,8 +94,8 @@ export const formatScaled = (scaled: bigint, precision: number = DEFAULT_PRECISI
 /**
  * Groups the integer part for reading and leaves the fraction verbatim, so a value still being
  * typed (`1.`, `1.50`) survives. `Intl` is handed the string unparsed, which formats it exactly
- * where the float would drift. The grouping and decimal separators are the locale's, so a caller
- * reading the result back has to read it with the same locale.
+ * where the float would drift. The grouping and decimal separators are the locale's, so
+ * {@link sanitizeAmountInput} has to read the result back under the same locale.
  *
  * @example
  * formatAmount('8421337.1234567891') // '8,421,337.1234567891'
@@ -113,6 +113,9 @@ export const formatAmount = (value: string, locale?: string): string => {
  * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`. A sign or an
  * exponent is kept instead of stripped, so `-5` and `1.5e3` reach {@link validateAmount} as
  * `not-a-number` rather than being salvaged into an amount nobody entered.
+ *
+ * The inverse of {@link formatAmount}, and it must be passed the same `locale`: under a
+ * comma-decimal locale a mismatched pair reads a value a thousand times too small.
  *
  * @example
  * sanitizeAmountInput('.5') // '0.5'

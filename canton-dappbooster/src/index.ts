@@ -30,6 +30,7 @@ export {
   formatAmount,
   formatScaled,
   parseAmount,
+  sanitizeAmountInput,
   type TokenAmountError,
   validateAmount,
 } from './utils/tokenAmount'
