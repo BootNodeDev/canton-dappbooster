@@ -1,7 +1,5 @@
-// LiteBackend: the VestingBackend over the vesting-lite DAML on the fast local
-// stack, via the wallet-service ledgerApi proxy. Implements the VestingBackend
-// interface against vesting-lite templates (residual claims, getTime,
-// value-preserving cancel).
+// The VestingBackend over the vesting-lite DAML templates, reached through the wallet-service
+// ledgerApi proxy.
 
 import type { DisclosedContract, LedgerCommand, Wallet } from '@/wallet/Wallet'
 import {
@@ -45,8 +43,7 @@ export class LiteBackend implements VestingBackend {
     this.claimTid = `${deployment.pkg}:Vesting:VestedClaim`
   }
 
-  // Reachable if the ledger end responds. Pinging is enough; the bootstrap
-  // guarantees the operator factory exists.
+  // Pinging the ledger end is enough: the bootstrap guarantees the operator factory exists.
   async isAvailable(): Promise<boolean> {
     try {
       await this.ledgerEnd()
@@ -108,8 +105,7 @@ export class LiteBackend implements VestingBackend {
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
-    // One ledger-end fetch for all three reads: fewer round-trips and a single,
-    // consistent snapshot offset instead of three near-simultaneous ones.
+    // One ledger-end fetch for all three reads, so they share a consistent snapshot offset.
     const offset = await this.ledgerEnd()
     const [proposalRows, contractRows, claimRows] = await Promise.all([
       this.readAcs(partyId, this.proposalTid, offset),
@@ -128,9 +124,8 @@ export class LiteBackend implements VestingBackend {
     return { proposals, grants, claims }
   }
 
-  // The proposer is not a stakeholder of the operator's factory, so it is delivered
-  // via explicit disclosure. Returns the disclosed blob size so the UI can surface
-  // the mechanic.
+  // The proposer is not a stakeholder of the operator's factory, so it arrives by explicit
+  // disclosure; the returned blob size lets the UI surface that mechanic.
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
     const factoryRows = await this.readAcs(this.operator, this.factoryTid, await this.ledgerEnd())
     const ref = factoryRows

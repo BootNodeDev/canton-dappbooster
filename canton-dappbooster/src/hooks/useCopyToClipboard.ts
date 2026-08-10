@@ -1,25 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-/** Transient result of the last copy, for styling an affordance. Returns to `idle` on a timer. */
+/**
+ * Transient result of the last copy, for styling an affordance. Returns to `idle` on a timer.
+ *
+ * @example
+ * <button data-state={state}>{state === 'copied' ? <CheckIcon /> : <CopyIcon />}</button>
+ */
 export type CopyState = 'idle' | 'copied' | 'error'
 
-/** Result of one copy call. A rejected clipboard write is an outcome, not a thrown error. */
+/**
+ * Result of one copy call. A rejected clipboard write is an outcome, not a thrown error.
+ *
+ * @example
+ * const outcome = await copy(partyId)
+ * if (!outcome.ok) toast.error(outcome.error.message)
+ */
 export type CopyOutcome = { ok: true; value: string } | { ok: false; error: Error }
 
-/** Overrides for {@link useCopyToClipboard}. Omitted fields fall back to a 1200 ms reset. */
+/**
+ * How long {@link useCopyToClipboard} holds `copied`/`error` before returning to `idle`. Omitted
+ * fields fall back to a 1200 ms reset.
+ *
+ * @example
+ * useCopyToClipboard({ resetMs: 4000 }) // hold `copied` long enough to read a toast alongside it
+ */
 export interface UseCopyToClipboardOptions {
-  /** How long `state` stays on `copied`/`error` before returning to `idle`. */
   resetMs?: number
 }
 
 /**
  * Return shape of {@link useCopyToClipboard}, held by callers rendering their own copy control.
  * `<Identifier>` consumes it internally.
+ *
+ * @example
+ * const clipboard: UseCopyToClipboardResult = useCopyToClipboard()
+ * <CopyButton {...clipboard} value={partyId} />
  */
 export interface UseCopyToClipboardResult {
-  /** Drives affordance styling. For one-off feedback use `copy`'s outcome instead. */
   state: CopyState
-  /** Writes `value` to the clipboard. Never rejects; the outcome is the resolved value. */
   copy: (value: string) => Promise<CopyOutcome>
 }
 
@@ -31,6 +49,10 @@ const RESET_MS = 1200
  *
  * Reach for this over `<Identifier>` when the copy control must be a sibling of the value rather
  * than a child of it.
+ *
+ * @example
+ * const { state, copy } = useCopyToClipboard({ resetMs: 500 })
+ * <button onClick={() => void copy(partyId)} data-state={state}>Copy</button>
  */
 export const useCopyToClipboard = (
   options?: UseCopyToClipboardOptions,

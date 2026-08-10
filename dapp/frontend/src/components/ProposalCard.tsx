@@ -6,9 +6,10 @@ import { Card } from './Card'
 import { CounterpartyId } from './CounterpartyId'
 import { StatusPill } from './StatusPill'
 
+// `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
+// funder.
 interface ProposalCardProps {
   proposal: Proposal
-  // 'incoming' — acting party is the receiver (can accept); 'outgoing' — sent as funder.
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept?: (proposal: Proposal) => void

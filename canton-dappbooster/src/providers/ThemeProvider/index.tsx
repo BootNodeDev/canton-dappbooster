@@ -30,13 +30,15 @@ const readMode = (storageKey: string): ThemeMode => {
   }
 }
 
-/** Props for {@link ThemeProvider}. */
+/**
+ * Props for {@link ThemeProvider}. `storageKey` isolates two apps sharing an origin; it is read on
+ * mount, so changing it later moves where writes go without re-reading the new key.
+ *
+ * @example
+ * <ThemeProvider storageKey="vesting-theme">{children}</ThemeProvider>
+ */
 export interface ThemeProviderProps {
   children: ReactNode
-  /**
-   * Where the mode is persisted, for isolating two apps sharing an origin. Read on mount, so
-   * changing it later moves where writes go without re-reading the new key.
-   */
   storageKey?: string
 }
 
@@ -50,6 +52,13 @@ export interface ThemeProviderProps {
  *
  * Client-only: it reads the OS preference while picking its initial state, so a server render
  * throws. There is no ambient default to render instead that would not hydrate to a mismatch.
+ *
+ * @example
+ * createRoot(el).render(
+ *   <ThemeProvider>
+ *     <App />
+ *   </ThemeProvider>,
+ * )
  */
 export const ThemeProvider = ({
   children,

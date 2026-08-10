@@ -1,18 +1,17 @@
 import { cn } from '@/lib/cn'
 
 interface ScheduleBarProps {
-  // Fractions of the grant total, in [0, 1].
   vestedFraction: number
   claimedFraction: number
-  // Optional milestone marks (cumulative fractions) drawn as ticks.
   milestones?: number[]
   className?: string
 }
 
 const pct = (f: number): string => `${Math.max(0, Math.min(1, f)) * 100}%`
 
-// Stacked bar: brand gradient = vested, solid success sub-segment = claimable
-// (vested minus claimed), remainder = unvested. Ticks mark milestone points.
+// Stacked bar over fractions of the grant total in [0, 1]: brand gradient is vested, the solid
+// success sub-segment claimable, the remainder unvested. Ticks mark milestones, also cumulative
+// fractions.
 export const ScheduleBar = ({
   vestedFraction,
   claimedFraction,

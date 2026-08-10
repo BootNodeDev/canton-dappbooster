@@ -1,6 +1,5 @@
-// Vesting math — mirrors the on-ledger Schedule logic so the UI can show live
-// vested / claimable figures and validate the create form before submitting.
-// Keep this in sync with the on-ledger logic.
+// Vesting math mirroring the on-ledger Schedule logic, for live figures and create-form
+// validation. Keep in sync with the DAML.
 
 import { compareAmounts, isZero, multiplyByFraction, subtractAmounts } from './amount'
 
@@ -14,7 +13,6 @@ export interface LinearCurve {
 
 export interface MilestonePoint {
   time: ISO
-  // Cumulative fraction in (0, 1]; the last point must be exactly 1.
   fraction: number
 }
 
@@ -33,12 +31,9 @@ export interface VestingSchedule {
 // Enforced floor for new grants and for re-lock remainders.
 export const MIN_GRANT_AMOUNT = '1'
 
-/**
- * Whether claiming `amount` from `available` leaves a remainder that respects the re-lock floor:
- * exactly zero, or at/above `MIN_GRANT_AMOUNT` — never a dust amount below it. `subtractAmounts`
- * floors at zero, so an `amount` above `available` reads here as a full claim (remainder 0); that
- * combination is rejected separately, by the field's own `max`, not by this check.
- */
+// Whether claiming `amount` leaves a remainder of zero or at least `MIN_GRANT_AMOUNT`, never dust
+// between the two. An `amount` above `available` reads here as a full claim; the field's own `max`
+// is what rejects that.
 export const meetsRelockFloor = (available: string, amount: string): boolean => {
   const remainder = subtractAmounts(available, amount)
   return isZero(remainder) || compareAmounts(remainder, MIN_GRANT_AMOUNT) >= 0
@@ -47,9 +42,8 @@ export const meetsRelockFloor = (available: string, amount: string): boolean => 
 const ms = (iso: ISO): number => new Date(iso).getTime()
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x)
 
-// Fraction of the grant vested at `nowMs`, in [0, 1]. Returns 0 before the cliff
-// (true cliff). Linear interpolates start→end; milestone is a step function that
-// jumps to the cumulative fraction of the last reached point.
+// Fraction vested at `nowMs`, in [0, 1]: zero before the cliff, linear interpolates start to end,
+// milestone steps to the cumulative fraction of the last reached point.
 export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number => {
   if (nowMs < ms(schedule.cliff)) {
     return 0
@@ -80,9 +74,8 @@ export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number
 export const vestedAmount = (schedule: VestingSchedule, total: string, nowMs: number): string =>
   multiplyByFraction(total, vestedFraction(schedule, nowMs))
 
-// Mirrors validVestingSchedule: linear needs start < end and start <= cliff <= end;
-// milestone needs strictly ascending times and fractions in (0, 1] ending at 1, with
-// cliff at or before the first point.
+// Mirrors the on-ledger validVestingSchedule: linear needs start < end and start <= cliff <= end;
+// milestone needs ascending times, fractions in (0, 1] ending at 1, cliff at or before point one.
 export const validVestingSchedule = (schedule: VestingSchedule): boolean => {
   const cliff = ms(schedule.cliff)
   if (Number.isNaN(cliff)) {

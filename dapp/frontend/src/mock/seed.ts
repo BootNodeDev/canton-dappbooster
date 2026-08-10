@@ -2,9 +2,8 @@ import type { PartyRef, VestingView } from '@/backend/VestingBackend'
 import { now } from '@/lib/clock'
 import type { VestingSchedule } from '@/lib/schedule'
 
-// Fake keys, real shape: `1220` (sha256 multihash) plus 64 hex, the 68 characters a live Canton
-// fingerprint has. Anything shorter fails the kit's party-id validation. Tails differ so the
-// truncated forms stay distinguishable.
+// Fake keys, real shape: `1220` (sha256 multihash) plus 64 hex, or the kit's party-id validation
+// rejects them. Tails differ so the truncated forms stay distinguishable.
 export const MOCK_OPERATOR =
   'operator::12205c09951be5d40dedd05dd52ad7290ecbb75cd5ae0457f0bf3c073b27b0656558'
 
@@ -32,9 +31,8 @@ const linear = (nowMs: number, startDays: number, endDays: number): VestingSched
   curve: { kind: 'linear', start: at(nowMs, startDays), end: at(nowMs, endDays) },
 })
 
-// Seed dataset relative to `nowMs` so the dashboard shows a live mix of in-cliff,
-// vesting, and fully-vested grants plus a pending proposal and a residual claim —
-// all with no wallet-service, Canton, or DAR.
+// Anchored to `nowMs` so the dashboard always shows a live mix of in-cliff, vesting and
+// fully-vested grants without a wallet-service, Canton or DAR.
 export const seedView = (nowMs: number = now()): VestingView => ({
   grants: [
     {

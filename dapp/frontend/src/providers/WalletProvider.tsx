@@ -15,9 +15,8 @@ import { MOCK_OPERATOR } from '@/mock/seed'
 import { StealthWallet } from '@/wallet/StealthWallet'
 import type { Wallet } from '@/wallet/Wallet'
 
-// DirectWalletProvider. Talks to the ledger through the active VestingBackend.
-// "Connecting" is just choosing which party to act as; the party is remembered in
-// localStorage so a reload lands back in the same session.
+// "Connecting" is only choosing which party to act as; the choice is remembered in localStorage so
+// a reload lands back in the same session.
 
 const STORAGE_KEY = 'vesting-ui:session'
 
@@ -68,13 +67,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }): React.JSX
     createBackend({ rpcUrl: '', deployment: { pkg: '', operator: '' } }, new MockWallet()),
   )
 
-  // Monotonically-increasing counter: each loadBackend call captures its own epoch
-  // and bails out of all setState calls if a newer call has started by the time
-  // any await resolves — prevents stale responses from overwriting newer state.
+  // Each loadBackend call captures its own epoch and bails out of every setState if a newer call
+  // started while an await was pending.
   const loadEpoch = useRef(0)
 
-  // Load the pool + availability, rehydrating the acting party from the persisted
-  // session only when it is still in the freshly-loaded pool.
+  // Rehydrates the acting party only when it is still in the freshly-loaded pool.
   const loadBackend = useCallback(async (rememberedPartyId?: string): Promise<void> => {
     const epoch = ++loadEpoch.current
     setIsConnecting(true)
@@ -89,7 +86,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }): React.JSX
       setBackend(nextBackend)
       const operatorId = deployed ? config.deployment.operator : MOCK_OPERATOR
       setOperator(operatorId)
-      // Independent reads — run them together to save a round-trip in deployed mode.
+      // Independent reads, run together to save a round-trip in deployed mode.
       const [accounts, available] = await Promise.all([
         wallet.listParties().catch(() => [] as PartyRef[]),
         nextBackend.isAvailable(),
@@ -106,15 +103,13 @@ export const WalletProvider = ({ children }: { children: ReactNode }): React.JSX
           : nextPool.find((candidate) => candidate.partyId === rememberedPartyId)
       setParty(remembered)
     } finally {
-      // Only the winning epoch clears the loading flag; a superseded call must
-      // not reset it because the newer call already set its own isConnecting=true.
+      // Only the winning epoch clears the flag: the newer call already set its own.
       if (epoch === loadEpoch.current) {
         setIsConnecting(false)
       }
     }
   }, [])
 
-  // Initial load, rehydrating the remembered party.
   useEffect(() => {
     void loadBackend(initial.partyId)
   }, [loadBackend, initial.partyId])

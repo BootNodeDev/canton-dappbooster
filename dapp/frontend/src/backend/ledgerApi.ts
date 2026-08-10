@@ -1,6 +1,5 @@
-// JSON-RPC client for the wallet-service ledgerApi proxy. Salvaged verbatim from
-// the working dapp/frontend direct/disclosure stack — framework-agnostic, no I/O
-// beyond fetch, so it ports unchanged.
+// JSON-RPC client for the wallet-service ledgerApi proxy. Framework-agnostic, with no I/O beyond
+// fetch.
 
 export interface JsonRpcErrorObject {
   code: number

@@ -4,7 +4,13 @@ import { resolveInvalid } from '../../utils/invalid'
 import { type PartyIdError, validatePartyId } from '../../utils/partyId'
 import { anatomy } from './anatomy'
 
-/** Props for {@link PartyIdInput} */
+/**
+ * Props for {@link PartyIdInput}. `onChange` reports the reason alongside the value, so the app can
+ * word the message and place it where it wants.
+ *
+ * @example
+ * <PartyIdInput value={receiver} onChange={(next, error) => { setReceiver(next); setError(error) }} />
+ */
 export interface PartyIdInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value'> {
   onChange: (value: string, error: PartyIdError | undefined) => void

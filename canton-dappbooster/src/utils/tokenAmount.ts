@@ -2,7 +2,13 @@
 // there is no ERC-20 scaling factor: `precision` caps decimal places and `bigint` only makes
 // comparisons exact.
 
-/** Decimal places Daml `Decimal` (`Numeric 10`) accepts. */
+/**
+ * Decimal places Daml `Decimal` (`Numeric 10`) accepts. Pass a smaller one where a token's own
+ * precision is tighter.
+ *
+ * @example
+ * parseAmount('1.5', DEFAULT_PRECISION)
+ */
 export const DEFAULT_PRECISION = 10
 
 // `Numeric 38,10`: 38 significant digits total, so 28 integer digits at precision 10.

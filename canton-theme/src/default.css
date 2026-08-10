@@ -29,6 +29,7 @@
 
   .cnc-identifier {
     align-items: center;
+    /* On the root, not the value, so a consumer utility class can override it. */
     color: var(--cnc-text);
     display: inline-flex;
     gap: 0.375rem;
@@ -36,6 +37,7 @@
     min-width: 0;
   }
 
+  /* Declares no font-size on purpose: the primitive inherits it inside a heading, row, or cell. */
   .cnc-identifier__value {
     font-family: var(--cnc-font-mono);
     overflow: hidden;

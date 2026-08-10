@@ -65,7 +65,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash for canton-barebones scripts |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
-| Node | >=24.15.0 | Pinned to `24.18.1` via root `.nvmrc`; every Node subproject declares the same `engines.node` floor |
+| Node | 24 | Pinned via root `.nvmrc` (24.18.1); inherits to every Node subproject. The four subprojects that declare `engines.node` floor it at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
@@ -93,7 +93,20 @@ A README may state that a contract exists and link to it. It may not restate it.
 - All source code in English regardless of conversation language.
 - TypeScript preferred over JavaScript across Node subprojects.
 - **No semicolons** in TypeScript / JavaScript across the repo.
-- **Comments are terse and explain *why*, not *what*.** Prefer one line. Do not restate what the code already says, narrate steps, or write multi-line prose where a short clause suffices. If the code needs a paragraph to be understood, simplify the code instead.
+- **Comments are terse and explain *why*, not *what*.** One sentence, wrapped to the line width.
+  Two only if one genuinely cannot carry it; never more. Do not restate what the code already says
+  or narrate steps. If the code needs a paragraph to be understood, simplify the code instead.
+- **Never annotate members one by one.** No per-property comments on a type, interface, enum, or
+  object literal; no per-rule or per-declaration comments in CSS. A member whose name and type do
+  not explain it gets renamed or retyped, not captioned. A section header grouping a block of
+  tokens or exports is not a member comment and stays allowed.
+- The only exception is something the code cannot carry: a hack, a workaround, a non-obvious
+  external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate *omission*,
+  or a rejected alternative. Comment that, one line, on the line it applies to. Before deleting a
+  comment, check the code still carries the fact — an absence and a road not taken never do.
+- JSDoc is exempt from the line cap but not from terseness: say what the symbol does, and when a
+  caller could reasonably pick a different export, say which. Never restate the type, never
+  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage.
 - Lint and formatting are centralized in the root `biome.json`. Add project-specific rules under `overrides` keyed by path; do not create per-subproject Biome configs.
 
 ## File & Folder Organization
@@ -136,8 +149,9 @@ Placement:
 - A component folder is PascalCase, its entry is `index.tsx`, and its subcomponents are PascalCase
   files beside it.
 - `testing/` holds test-only helpers and doubles, never imported from non-test code.
-- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, and
-  where a caller could reasonably pick a different export, when to reach for it. Do not restate the type.
+- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, where
+  a caller could reasonably pick a different export, when to reach for it, and at least one
+  `@example`. Do not restate the type.
 - Relative imports carry no file extension. `canton-barebones/` is the exception: it runs on
   `NodeNext`, where the extension is load-bearing, so its imports keep `.ts` and lint allows it.
 

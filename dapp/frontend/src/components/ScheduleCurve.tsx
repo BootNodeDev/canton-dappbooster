@@ -73,7 +73,6 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
             <stop offset="100%" stopColor="var(--pink)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        {/* gridlines */}
         {[0, 0.5, 1].map((f) => (
           <line
             key={f}
@@ -85,7 +84,6 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
             strokeWidth="0.3"
           />
         ))}
-        {/* cliff marker */}
         <line
           x1={cliffX}
           x2={cliffX}
@@ -100,7 +98,6 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
         {milestonePoints.map((p) => (
           <circle key={`${p.x}-${p.y}`} cx={p.x} cy={p.y} r="1.1" fill="var(--pink)" />
         ))}
-        {/* now marker */}
         <line x1={nowX} x2={nowX} y1={PAD} y2={H - PAD} stroke="var(--primary)" strokeWidth="0.5" />
         <circle
           cx={nowX}

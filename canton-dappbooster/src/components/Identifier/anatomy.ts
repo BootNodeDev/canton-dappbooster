@@ -5,7 +5,6 @@ export const anatomy = {
     value: 'cnc-identifier__value',
     copy: 'cnc-identifier__copy',
     link: 'cnc-identifier__link',
-    /** Live region carrying the copy outcome. Hidden by the component, not the theme. */
     status: 'cnc-identifier__status',
   },
   states: { copy: 'data-state' },

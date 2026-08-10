@@ -1,13 +1,10 @@
-/* The app's Tailwind-facing colour names, mapped in styles/index.css via `@theme inline`.
-   Most point at the kit's `--cnc-*` tokens, which already carry both modes, so a pointer needs no
-   dark counterpart. What is spelled out here is app-only: brand hues, gradients, shadows, glow.
-   Light = :root, Dark = [data-theme="dark"]. `data-theme` is set on <html> by ThemeProvider. */
+/* The app's Tailwind-facing colour names, mapped in styles/index.css via `@theme inline`. A name
+   pointing at a `--cnc-*` token needs no dark counterpart; only app-only values are spelled out. */
 
 :root {
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
-  /* Two names for one role; both resolve to the same grey. Kept apart because nine components
-     already pick one or the other. */
+  /* Two names for one grey, kept apart because nine components already pick one or the other. */
   --surface-2: var(--cnc-surface-muted);
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);

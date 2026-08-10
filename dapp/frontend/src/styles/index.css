@@ -1,7 +1,6 @@
-/* Must precede the first @import. `cnc` sits above Tailwind's preflight, which resets
-   `button { color: inherit }` over the copy control, and below `utilities` so a className on a kit
-   component still wins. Any Tailwind layer missing from this list lands on top, `properties`
-   included, so revisit on a Tailwind upgrade. */
+/* Must precede the first @import: `cnc` sits above preflight, which resets `button { color: inherit }`
+   over the kit copy control, and below `utilities` so a className on a kit component still wins. A
+   layer missing here lands on top; revisit on a Tailwind bump. */
 @layer properties, theme, base, cnc, components, utilities;
 
 @import "tailwindcss";
@@ -10,9 +9,8 @@
 @import "@bootnodedev/canton-theme/default.css";
 @import "./tokens.css";
 
-/* Map semantic CSS variables to Tailwind utilities. `inline` keeps the
-   generated utilities pointing at the live var, so [data-theme] switching
-   works without recompiling. */
+/* `inline` keeps the generated utilities pointing at the live var, so [data-theme] switching works
+   without recompiling. */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -48,11 +46,17 @@
   --radius-xl: 14px;
 }
 
-/* In `base`, not unlayered: this only restores Tailwind v3's default border colour for app markup,
-   and unlayered it also outranked every `cnc` rule that picks its own border colour. */
+/* App-wide defaults Tailwind v4's preflight no longer sets. In `base` because unlayered they would
+   outrank every `border-*` and `cursor-*` utility and every `cnc` rule, whatever the specificity. */
 @layer base {
   * {
     border-color: var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  :is(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
   }
 }
 
@@ -76,12 +80,6 @@ body {
   background: rgba(198, 112, 229, 0.3);
 }
 
-/* Thin scrollbars that match the surface */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -97,8 +95,4 @@ body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-}
-
-.gradient-brand {
-  background: var(--gradient-brand);
 }

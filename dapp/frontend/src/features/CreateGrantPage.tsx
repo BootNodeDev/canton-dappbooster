@@ -31,7 +31,7 @@ type CurveKind = 'linear' | 'milestone'
 
 interface MilestoneInput {
   id: string
-  date: string // full ISO; the date input edits only the calendar-day part
+  date: string
   pct: string
 }
 
@@ -41,9 +41,8 @@ interface DemoPreset {
   durationMs: number
 }
 
-// Schedule timestamps are full ISO strings so demo presets can build sub-day
-// (seconds/minutes) windows; the date inputs bind to the day part and reset the
-// time to midnight when edited.
+// Schedule timestamps are full ISO so demo presets can build sub-day windows; the date inputs bind
+// to the calendar-day part and reset the time to midnight when edited.
 const dateOf = (iso: string): string => iso.slice(0, 10)
 const atMidnight = (date: string): string => `${date}T00:00:00.000Z`
 const relIso = (msFromNow: number): string => new Date(now() + msFromNow).toISOString()
@@ -67,8 +66,8 @@ const defaultSchedule = (
   ],
 })
 
-// Isolates the 1s clock to the preview marker so typing in the form doesn't
-// reconcile the whole page each tick.
+// Isolates the clock to the preview marker so typing in the form does not reconcile the whole page
+// each tick.
 const LiveScheduleCurve = ({ schedule }: { schedule: VestingSchedule }): React.JSX.Element => (
   <ScheduleCurve schedule={schedule} nowMs={useNow()} />
 )
@@ -222,8 +221,8 @@ export const CreateGrantPage = (): React.JSX.Element => {
     if (!valid || party === undefined) {
       return
     }
-    // Re-anchor a demo preset to NOW so its short window starts at submit, not when
-    // the preset was clicked (otherwise it is mostly vested before the receiver accepts).
+    // Re-anchor a demo preset to now, or its short window is mostly vested before the receiver
+    // accepts.
     const finalSchedule = demo === null ? schedule : buildDemoSchedule(demo, now())
     const trimmedNote = note.trim()
     const title =
@@ -492,7 +491,6 @@ export const CreateGrantPage = (): React.JSX.Element => {
         </Card>
       </div>
 
-      {/* preview */}
       <div className="lg:sticky lg:top-24 lg:self-start">
         <Card className="p-6">
           <h2 className="text-sm font-extrabold text-fg">Preview</h2>

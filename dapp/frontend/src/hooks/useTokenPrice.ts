@@ -1,7 +1,7 @@
 import type { TokenMeta } from '@bootnodedev/canton-dappbooster'
 import { CC } from '@/mock/tokens'
 
-/** CoinGecko `canton-network`, 2026-08-07. Refresh by hand, or swap this body for a fetch. */
+// CoinGecko `canton-network`, 2026-08-07. Refresh by hand, or swap this body for a fetch.
 export const CC_USD_RATE = '0.091012'
 
 export interface UseTokenPriceResult {

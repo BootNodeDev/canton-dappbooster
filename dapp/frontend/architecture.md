@@ -174,3 +174,7 @@ pre-paint script sits in `index.html`, are the kit's call:
 `@layer properties, theme, base, cnc, components, utilities` is declared before the first `@import`,
 which is what puts the kit theme's `cnc` layer above Tailwind's preflight and below the app's
 utilities. Moving that line below an import silently reorders the cascade.
+
+The app carries its own preflight restorations in `base` too, currently `cursor: pointer` on enabled
+buttons, which Tailwind v4's preflight dropped. `base` is the right layer for them because
+`utilities` comes later in the list, so a `cursor-*` utility on the element still wins.

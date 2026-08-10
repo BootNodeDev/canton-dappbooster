@@ -125,7 +125,6 @@ export const DashboardPage = (): React.JSX.Element => {
 
   return (
     <div className="flex flex-col gap-7">
-      {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {role === 'receiver' ? (
           <>
@@ -155,7 +154,6 @@ export const DashboardPage = (): React.JSX.Element => {
         )}
       </div>
 
-      {/* toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {filters.map((f) => (
@@ -191,7 +189,6 @@ export const DashboardPage = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* grants */}
       {filtered.length === 0 ? (
         <>
           <EmptyState
@@ -229,7 +226,6 @@ export const DashboardPage = (): React.JSX.Element => {
         <GrantTable rows={filtered} role={role} onClaim={openClaim} onCancel={setCancelTarget} />
       )}
 
-      {/* residual claims (receiver) */}
       {role === 'receiver' && myClaims.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">

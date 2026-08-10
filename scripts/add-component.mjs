@@ -39,10 +39,20 @@ const files = {
 import { cx } from '../../utils/cx'
 import { anatomy } from './anatomy'
 
-/** Props for {@link ${name}}. */
+/**
+ * Props for {@link ${name}}.
+ *
+ * @example
+ * <${name} className="…" />
+ */
 export type ${name}Props = HTMLAttributes<HTMLDivElement>
 
-/** TODO: what it does, and when to reach for it over a sibling export. */
+/**
+ * TODO: what it does, and when to reach for it over a sibling export.
+ *
+ * @example
+ * <${name}>…</${name}>
+ */
 export const ${name} = ({ children, className, ...rest }: ${name}Props): ReactElement => (
   <div {...rest} className={cx(anatomy.parts.root, className)}>
     {children}
@@ -86,7 +96,7 @@ export { ${name}, type ${name}Props } from './components/${name}'
 process.stdout.write(section('2. Paste into canton-theme/src/default.css, inside @layer cnc:'))
 process.stdout.write(`
   .${rootPart} {
-    color: var(--cnc-text, #2c2d40);
+    color: var(--cnc-text);
   }
 `)
 

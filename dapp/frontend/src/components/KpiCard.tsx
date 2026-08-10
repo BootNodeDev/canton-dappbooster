@@ -7,7 +7,6 @@ interface KpiCardProps {
   unit?: string
   sub?: string
   subTone?: 'muted' | 'success'
-  // Aurora hero treatment for the headline metric (Claimable now).
   hero?: boolean
 }
 

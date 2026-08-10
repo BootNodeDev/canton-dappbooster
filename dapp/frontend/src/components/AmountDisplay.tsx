@@ -3,10 +3,8 @@ import { formatCC } from '@/lib/format'
 
 interface AmountDisplayProps {
   value: string
-  // Token unit, default CC.
   unit?: string
   className?: string
-  // Render with the brand gradient text clip (hero figures).
   gradient?: boolean
 }
 

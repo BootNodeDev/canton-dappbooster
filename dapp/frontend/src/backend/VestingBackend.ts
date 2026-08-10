@@ -1,7 +1,5 @@
-// The backend seam. The UI depends only on this interface + the domain types
-// (@/store/types) — never on DAML/transport details. LiteBackend implements it
-// against the vesting-lite DAML via the wallet-service ledgerApi proxy. The pure
-// mappers here turn JSON-Ledger-API active-contract rows into Grant/Proposal/VestedClaim.
+// The backend seam: the UI depends only on this interface and the domain types, never on DAML or
+// transport details. The mappers below turn active-contract rows into those domain types.
 
 import { isAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
@@ -39,12 +37,8 @@ export interface VestingBackend {
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────
-// On-ledger `note` carries `"${title}\n${note}"`; we split on the FIRST newline →
-// title (fallback `Vesting ${shortCid}`) + note. `id` = contractId. The DAML
-// `proposer` is the UI `creator`/`proposer` (funder); DAML `beneficiary` is the UI
-// `receiver`. Decimals arrive as strings; the schedule curve as a JSON-LF variant
-// (decodeSchedule). Each mapper tolerates a missing createArgument (returns
-// undefined) so a stray row never crashes a view.
+// On-ledger `note` is `"${title}\n${note}"`, decimals arrive as strings, and the curve as a
+// JSON-LF variant. A row missing its createArgument maps to undefined so it never crashes a view.
 
 type AcsRow = {
   contractEntry?: {
@@ -54,11 +48,8 @@ type AcsRow = {
   }
 }
 
-// A Daml Numeric arrives as a string over the JSON Ledger API — carried through unparsed to keep
-// exact ledger precision. Throws rather than silently zeroing: a shape surprise on an amount field
-// must not fold into a figure that looks like a real zero balance. The value is checked as well as
-// the shape, because a string this app cannot parse (`'1e3'`, `'-5'`, `''`) folds to zero all the
-// same once it reaches `lib/amount.ts`.
+// A Daml Numeric arrives as a string and is carried through unparsed, so ledger precision survives.
+// Throws rather than let a surprise here fold into what looks like a real zero balance downstream.
 const amountOf = (value: unknown, field: string, contractId: string): string => {
   if (typeof value !== 'string' || !isAmount(value)) {
     throw new Error(`Contract ${contractId} field '${field}' is not a Numeric string: ${value}`)
@@ -90,9 +81,7 @@ export const splitNote = (
   return { title: title === '' ? `Vesting ${shortCid(contractId)}` : title, note }
 }
 
-// Shared decode: guard the row, split the note, and pull the fields every template
-// carries the same way (id, title/note, provider, funder=proposer, receiver=beneficiary).
-// Each mapper layers its template-specific fields on top.
+// The fields every template carries alike; each mapper layers its own on top.
 type DecodedBase = {
   arg: Record<string, unknown>
   id: string
