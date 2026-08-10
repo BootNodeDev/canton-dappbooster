@@ -35,7 +35,7 @@ the Carpincho user.
 
 Prerequisites:
 
-- Node.js 24.15.0 or newer (the repo pins 24.18.1 through `.nvmrc`)
+- Node.js 24.15.0 or newer (the exact version is pinned in `.nvmrc`)
 - pnpm (via Corepack: `corepack enable`; the repo pins pnpm 11 through `packageManager`)
 - Docker with about 8 GB memory available
 - `dpm` on `PATH` (DAML SDK 3.4.11), required for building DARs
