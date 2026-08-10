@@ -1,18 +1,16 @@
 import { type ChangeEvent, type RefObject, useLayoutEffect, useRef } from 'react'
 import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
 
+// `format` and `sanitize` must be inverses under the same locale, or a keystroke reads back as a
+// different amount.
 export interface FormattedFieldOptions {
-  /** Groups the raw value for display. */
   format: (value: string) => string
-  /** Fires with the sanitized value whenever an edit changes it. */
   onChange: (next: string) => void
-  /** Reduces what the field now holds back to a raw value. */
   sanitize: (input: string) => string
-  /** The controlled raw value, ungrouped. */
   value: string
 }
 
-/** Spread onto the `<input>`: the formatted value, the change handler, and the ref the caret needs. */
+// Spread onto the `<input>`, `ref` included: the caret is repositioned imperatively.
 export interface FormattedField {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void
   ref: RefObject<HTMLInputElement | null>

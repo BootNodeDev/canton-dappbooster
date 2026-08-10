@@ -22,11 +22,9 @@ const MOCK_HOLDINGS: Record<PartyId, Holding[]> = {
   [PARTY.dave]: [{ cid: 'hold-dave-1', amount: '96500.25', standard: 'cip-0112' }],
 }
 
-/**
- * The whole simulated read, delay included, so swapping in a real one replaces this function and
- * leaves the hook above it alone. Delayed so the loading path shows on every party switch, not only
- * against a ledger. Resolves `undefined` for a party with no record at all.
- */
+// The whole simulated read, delay included, so a real one replaces this function and leaves the
+// hook above it alone. Delayed so the loading path shows on every party switch, not only against a
+// ledger.
 export const readHoldings = (partyId: PartyId): Promise<Holding[] | undefined> =>
   new Promise((resolve) => {
     setTimeout(() => resolve(MOCK_HOLDINGS[partyId]), 400)

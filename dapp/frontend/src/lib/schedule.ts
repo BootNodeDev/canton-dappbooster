@@ -31,12 +31,9 @@ export interface VestingSchedule {
 // Enforced floor for new grants and for re-lock remainders.
 export const MIN_GRANT_AMOUNT = '1'
 
-/**
- * Whether claiming `amount` from `available` leaves a remainder that respects the re-lock floor:
- * exactly zero, or at/above `MIN_GRANT_AMOUNT` — never a dust amount below it. `subtractAmounts`
- * floors at zero, so an `amount` above `available` reads here as a full claim (remainder 0); that
- * combination is rejected separately, by the field's own `max`, not by this check.
- */
+// Whether claiming `amount` leaves a remainder of zero or at least `MIN_GRANT_AMOUNT`, never dust
+// between the two. An `amount` above `available` reads here as a full claim; the field's own `max`
+// is what rejects that.
 export const meetsRelockFloor = (available: string, amount: string): boolean => {
   const remainder = subtractAmounts(available, amount)
   return isZero(remainder) || compareAmounts(remainder, MIN_GRANT_AMOUNT) >= 0

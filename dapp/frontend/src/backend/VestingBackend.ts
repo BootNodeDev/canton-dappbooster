@@ -48,11 +48,8 @@ type AcsRow = {
   }
 }
 
-// A Daml Numeric arrives as a string over the JSON Ledger API — carried through unparsed to keep
-// exact ledger precision. Throws rather than silently zeroing: a shape surprise on an amount field
-// must not fold into a figure that looks like a real zero balance. The value is checked as well as
-// the shape, because a string this app cannot parse (`'1e3'`, `'-5'`, `''`) folds to zero all the
-// same once it reaches `lib/amount.ts`.
+// A Daml Numeric arrives as a string and is carried through unparsed, so ledger precision survives.
+// Throws rather than let a surprise here fold into what looks like a real zero balance downstream.
 const amountOf = (value: unknown, field: string, contractId: string): string => {
   if (typeof value !== 'string' || !isAmount(value)) {
     throw new Error(`Contract ${contractId} field '${field}' is not a Numeric string: ${value}`)

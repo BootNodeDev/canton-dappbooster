@@ -21,7 +21,12 @@ import { useFormattedField } from './useFormattedField'
 
 const ZERO = formatAmount('0.00')
 
-/** The token an amount is denominated in. */
+/**
+ * The token an amount is denominated in.
+ *
+ * @example
+ * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
+ */
 export interface TokenMeta {
   symbol: string
   logo?: ReactNode
@@ -44,30 +49,28 @@ interface TokenInputOwnProps
     | 'spellCheck'
     | 'tabIndex'
   > {
-  /** The party's holding of `token`, exact decimal. Doubles as the ceiling: above it is `above-max`. */
   balance?: string
-  /** Balance read in flight or failed; absent reads as ready. Either one disables Max. */
   balanceState?: 'loading' | 'error'
-  /** Dims the card, and disables the field and Max. */
   disabled?: boolean
-  /** Visible label. Supply this, `aria-label` or `aria-labelledby`. */
   label?: string
-  // Declared for the field rather than inherited for the root: they fire from the input.
   onBlur?: FocusEventHandler<HTMLInputElement>
-  /** Fires with the sanitized value and its error on every keystroke, Max, and blur. */
   onChange: (value: string, error: TokenAmountError | undefined) => void
   onFocus?: FocusEventHandler<HTMLInputElement>
-  /** The token the amount is denominated in; its symbol names the field's unit on screen. */
   token: TokenMeta
-  /** Fiat estimate, rendered after the component's own `~$`: pass `'0.10'`, not `'~$0.10'`. */
   usdValue?: string
-  /** The controlled amount, exact decimal. Grouped for display; never reported back grouped. */
   value: string
 }
 
 /**
  * Props for {@link TokenInput}. One of `label`, `aria-label` or `aria-labelledby` is required: the
- * field is nothing but digits, so an unnamed one is unusable to a screen reader.
+ * field is nothing but digits, so an unnamed one is unusable to a screen reader. `value` and
+ * `balance` are exact decimals, grouped for display but never reported back grouped; `balance`
+ * doubles as the ceiling `above-max` is measured against, and `usdValue` is rendered after the
+ * component's own `~$`. A `balanceState` of either kind disables Max.
+ *
+ * @example
+ * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
+ *   usdValue="0.10" onChange={(next, error) => { setAmount(next); setError(error) }} />
  */
 export type TokenInputProps = TokenInputOwnProps &
   ({ label: string } | { 'aria-label': string } | { 'aria-labelledby': string })
