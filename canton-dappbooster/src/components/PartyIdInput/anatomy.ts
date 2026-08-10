@@ -2,5 +2,5 @@ export const anatomy = {
   parts: {
     root: 'cnc-party-id-input',
   },
-  states: { invalid: 'aria-invalid' },
+  states: { invalid: 'data-invalid' },
 } as const

@@ -185,7 +185,7 @@ describe('TokenInput', () => {
 
   it('flags a balance it cannot read rather than dropping the cap', () => {
     const { field, onChange } = setup({ balance: `1${GROUP}250${DECIMAL}50`, value: '1' })
-    expect(field).toHaveAttribute(anatomy.states.invalid, 'true')
+    expect(field).toHaveAttribute('aria-invalid', 'true')
     typeAtEnd(field, '9')
     expect(onChange).toHaveBeenLastCalledWith('19', 'invalid-max')
   })
@@ -198,18 +198,19 @@ describe('TokenInput', () => {
 
   it('flags an invalid value on the field and the root', () => {
     const { field, root } = setup({ balance: '1.5', value: '9' })
-    expect(field).toHaveAttribute(anatomy.states.invalid, 'true')
-    expect(root).toHaveAttribute(anatomy.states.rootInvalid, 'true')
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(root).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('lets a consumer-supplied aria-invalid survive with no internal error', () => {
-    const { field } = setup({ 'aria-invalid': true, value: '1' })
-    expect(field).toHaveAttribute(anatomy.states.invalid, 'true')
+    const { field, root } = setup({ 'aria-invalid': true, value: '1' })
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(root).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('leaves data-invalid absent from the root when aria-invalid is explicitly false', () => {
     const { root } = setup({ 'aria-invalid': false, value: '1' })
-    expect(root).not.toHaveAttribute(anatomy.states.rootInvalid)
+    expect(root).not.toHaveAttribute(anatomy.states.invalid)
   })
 
   it('lets aria-label name the field with no visible label', () => {

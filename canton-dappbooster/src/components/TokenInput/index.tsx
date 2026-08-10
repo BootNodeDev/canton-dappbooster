@@ -10,6 +10,7 @@ import {
   useRef,
 } from 'react'
 import { cx } from '../../utils/cx'
+import { resolveInvalid } from '../../utils/invalid'
 import {
   formatAmount,
   parseAmount,
@@ -109,8 +110,7 @@ export const TokenInput = ({
   const bounds = { max: balance }
   const error = validateAmount(value, bounds)
   const display = formatAmount(value)
-  const invalid = ariaInvalid ?? (error !== undefined || undefined)
-  const rootInvalid = Boolean(invalid) && invalid !== 'false'
+  const [invalid, flagged] = resolveInvalid(ariaInvalid, error !== undefined)
   const noBalance = !parseAmount(balance ?? '')
 
   const balanceText =
@@ -166,7 +166,7 @@ export const TokenInput = ({
       className={cx(anatomy.parts.root, className)}
       {...rest}
       {...{
-        [anatomy.states.rootInvalid]: rootInvalid || undefined,
+        [anatomy.states.invalid]: flagged || undefined,
         [anatomy.states.disabled]: disabled || undefined,
       }}
     >
@@ -178,6 +178,7 @@ export const TokenInput = ({
       <div className={anatomy.parts.row}>
         <input
           aria-describedby={cx(describedBy, tokenId, balanceId) || undefined}
+          aria-invalid={invalid}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
           autoComplete="off"
@@ -193,7 +194,6 @@ export const TokenInput = ({
           spellCheck={false}
           type="text"
           value={display}
-          {...{ [anatomy.states.invalid]: invalid }}
         />
         <span className={anatomy.parts.token} id={tokenId}>
           {token.logo}

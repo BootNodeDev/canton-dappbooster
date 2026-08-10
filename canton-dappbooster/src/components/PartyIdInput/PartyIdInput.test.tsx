@@ -66,6 +66,7 @@ describe('PartyIdInput', () => {
   it('flags a malformed value once the field has been blurred', () => {
     render(<Harness initial="nico" />)
     fireEvent.blur(field())
+    expect(field()).toHaveAttribute('aria-invalid', 'true')
     expect(field()).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
@@ -88,6 +89,7 @@ describe('PartyIdInput', () => {
 
   it('lets the consumer flag the field for a reason the kit cannot know', () => {
     render(<Harness initial={VALID} aria-invalid />)
+    expect(field()).toHaveAttribute('aria-invalid', 'true')
     expect(field()).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
