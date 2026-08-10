@@ -120,12 +120,11 @@ export const sanitizeAmountInput = (input: string, locale?: string): string => {
   const { group, decimal } = partsOf(locale)
   const mapped = input.replaceAll(group, '').replaceAll(decimal, '.')
   if (/[eE+-]/.test(mapped)) return mapped
-  const kept = mapped.replace(/[^\d.]/g, '')
-  const dot = kept.indexOf('.')
-  const int = (dot === -1 ? kept : kept.slice(0, dot)).replace(/^0+(?=\d)/, '')
-  if (dot === -1) return int
-  // A second separator is dropped, not treated as a new one.
-  return `${int === '' ? '0' : int}.${kept.slice(dot + 1).replace(/\./g, '')}`
+  // Everything past the first separator joins one fraction, so a second is dropped rather than
+  // treated as a new one.
+  const [int, ...frac] = mapped.replace(/[^\d.]/g, '').split('.')
+  const head = int.replace(/^0+(?=\d)/, '')
+  return frac.length === 0 ? head : `${head === '' ? '0' : head}.${frac.join('')}`
 }
 
 /**
