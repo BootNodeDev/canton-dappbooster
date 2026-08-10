@@ -113,4 +113,25 @@ describe('connectionMachine', () => {
 
     expect(actor.getSnapshot().matches('disconnected')).toBe(true)
   })
+
+  it('ignores a cancel request if connection is settled', async () => {
+    const onAbort = vi.fn()
+    const machine = connectionMachine.provide({
+      actors: {
+        connect: fromPromise(({ signal }) => {
+          signal.addEventListener('abort', onAbort, { once: true })
+          return Promise.resolve()
+        }),
+      },
+    })
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'connect' })
+    await pause(0)
+    actor.send({ type: 'cancel' })
+
+    expect(actor.getSnapshot().matches('connected')).toBe(true)
+    expect(onAbort).not.toHaveBeenCalled()
+  })
 })
