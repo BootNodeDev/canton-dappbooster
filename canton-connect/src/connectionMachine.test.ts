@@ -1,6 +1,6 @@
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { createActor, fromPromise } from 'xstate'
+import { createActor, fromPromise, type StateValueFrom } from 'xstate'
 import { connectionMachine } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -178,5 +178,70 @@ describe('connectionMachine', () => {
 
     actor.send({ type: 'disconnect' })
     expect(actor.getSnapshot().context.connection).toBeUndefined()
+  })
+
+  it('moves to restoring on restore', () => {
+    const actor = createActor(connectionMachine)
+
+    actor.start()
+    actor.send({ type: 'restore' })
+
+    expect(actor.getSnapshot().matches('restoring')).toBe(true)
+  })
+
+  it('restores an existing session to connected', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        restore: fromPromise(() => Promise.resolve(connection)),
+      },
+    })
+    const actor = createActor(machine)
+
+    actor.start()
+    actor.send({ type: 'restore' })
+    await pause(0)
+
+    expect(actor.getSnapshot().matches('connected')).toBe(true)
+    expect(actor.getSnapshot().context.connection).toBe(connection)
+  })
+
+  it('returns to disconnected when there is no session to restore', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        restore: fromPromise<ConnectResult>(() =>
+          Promise.resolve({ isConnected: false, isNetworkConnected: false }),
+        ),
+      },
+    })
+    const actor = createActor(machine)
+    const states: StateValueFrom<typeof machine>[] = []
+    actor.subscribe(({ value }) => states.push(value))
+
+    actor.start()
+    actor.send({ type: 'restore' })
+    await pause(0)
+
+    expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+    expect(actor.getSnapshot().context.connection).toBeUndefined()
+    expect(actor.getSnapshot().context.error).toBeUndefined()
+  })
+
+  it('returns to disconnected quietly when restore fails', async () => {
+    const machine = connectionMachine.provide({
+      actors: {
+        restore: fromPromise(() => Promise.reject('failed to restore session')),
+      },
+    })
+    const actor = createActor(machine)
+    const states: StateValueFrom<typeof machine>[] = []
+    actor.subscribe(({ value }) => states.push(value))
+
+    actor.start()
+    actor.send({ type: 'restore' })
+    await pause(0)
+
+    expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+    expect(actor.getSnapshot().context.connection).toBeUndefined()
+    expect(actor.getSnapshot().context.error).toBeUndefined()
   })
 })

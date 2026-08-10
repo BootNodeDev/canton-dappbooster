@@ -6,6 +6,12 @@ export const connectionMachine = setup({
     connect: fromPromise<ConnectResult>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
+    restore: fromPromise<ConnectResult>(() =>
+      Promise.reject(new Error('restore actor not provided')),
+    ),
+  },
+  guards: {
+    sessionRestored: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
   },
   types: {
     context: {} as {
@@ -24,6 +30,7 @@ export const connectionMachine = setup({
     disconnected: {
       on: {
         connect: { target: 'connecting' },
+        restore: { target: 'restoring' },
       },
     },
     connecting: {
@@ -52,6 +59,23 @@ export const connectionMachine = setup({
       exit: assign({ error: undefined }),
       on: {
         connect: { target: 'connecting' },
+      },
+    },
+    restoring: {
+      invoke: {
+        src: 'restore',
+        onDone: [
+          {
+            guard: {
+              type: 'sessionRestored',
+              params: ({ event: { output } }) => ({ connection: output }),
+            },
+            target: 'connected',
+            actions: assign({ connection: ({ event: { output } }) => output }),
+          },
+          { target: 'disconnected' },
+        ],
+        onError: { target: 'disconnected' },
       },
     },
   },
