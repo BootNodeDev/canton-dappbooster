@@ -1,5 +1,6 @@
-import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import { useExplorerLink } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
+import { EXPLORER } from '@/lib/config'
 import { formatDate, formatPct, relativeTime } from '@/lib/format'
 import { nextMilestone } from '@/lib/schedule'
 import type { Grant, Role } from '@/store/types'
@@ -7,6 +8,7 @@ import type { GrantDerived } from '@/store/useVestingStore'
 import { AmountDisplay } from './AmountDisplay'
 import { Button } from './Button'
 import { Card } from './Card'
+import { CounterpartyId } from './CounterpartyId'
 import { LockIcon } from './icons'
 import { Legend } from './Legend'
 import { ScheduleBar } from './ScheduleBar'
@@ -47,7 +49,7 @@ export const GrantCard = ({
   const isMilestone = curve.kind === 'milestone'
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
-  const counterpartyLabel = role === 'receiver' ? 'from' : 'to'
+  const explorerLink = useExplorerLink(EXPLORER)
 
   return (
     <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
@@ -71,7 +73,11 @@ export const GrantCard = ({
           )}
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
-          {counterpartyLabel} {truncateIdentifier(counterparty)}
+          <CounterpartyId
+            party={counterparty}
+            incoming={role === 'receiver'}
+            href={explorerLink(counterparty)}
+          />
         </div>
       </div>
 

@@ -18,7 +18,7 @@ them.
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Projections of the wallet context, one per concern. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, and `config.ts`, which reads the literals that validation left behind. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -85,6 +85,23 @@ element it renders the full `<Identifier>` primitive; where it sits inside a `<b
 or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters instead, because
 `<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
 element.
+
+The explorer those ids link to is the app's to supply: Canton has no canonical one, so the kit
+composes URLs only from an `ExplorerConfig`. [`src/lib/config.ts`](src/lib/config.ts) holds that
+config as a literal baked in at build time from `VITE_EXPLORER_URL`, not parsed at startup, and the
+kit's `useExplorerLink` turns it into hrefs. Counterparty ids go through one component:
+[`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
+the direction-specific label, and the copy toast, and `GrantCard` and `ProposalCard` render it. The
+href stays a per-call-site decision, the way the kit's own `href` is optional: linking an id to an
+explorer is a choice each surface makes, not something the app does everywhere. Every `<Identifier>`
+the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
+would double-announce.
+
+That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
+`parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
+`VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
+all. [`src/lib/env.ts`](src/lib/env.ts) holds that contract, and is the only module under `src/`
+that runs outside the browser.
 
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own

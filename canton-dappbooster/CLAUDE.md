@@ -16,7 +16,7 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 - `anatomy.ts` is a fixed, contractual filename inside a component folder, not a stylistic choice.
   It is the single source of truth for theme selectors, test assertions, and docs.
 - Part classes are kebab-case regardless of the folder's casing: `Identifier/` renders
-  `.cnc-identifier`, a future `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
+  `.cnc-identifier`, `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
 - `src/index.ts` is the public API. Nothing else is importable by consumers.
 - Nothing in `src/providers/` renders DOM of its own, so those folders have no `anatomy.ts` and no
   theme rules: there is no markup to style. The authoring steps below are for components that render.
