@@ -41,11 +41,12 @@ const localeCache = new Map<string, LocaleNumbers>()
 const partsOf = (locale?: string): LocaleNumbers => {
   const cached = localeCache.get(locale ?? '')
   if (cached !== undefined) return cached
-  const parts = new Intl.NumberFormat(locale, { numberingSystem: 'latn' }).formatToParts(12345.6)
+  const grouper = new Intl.NumberFormat(locale, { numberingSystem: 'latn' })
+  const parts = grouper.formatToParts(12345.6)
   const entry: LocaleNumbers = {
     group: parts.find((part) => part.type === 'group')?.value ?? ',',
     decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
-    grouper: new Intl.NumberFormat(locale, { maximumFractionDigits: 0, numberingSystem: 'latn' }),
+    grouper,
   }
   localeCache.set(locale ?? '', entry)
   return entry
