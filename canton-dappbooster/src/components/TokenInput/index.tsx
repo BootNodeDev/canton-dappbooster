@@ -111,7 +111,7 @@ export const TokenInput = ({
   const display = formatAmount(value)
   const invalid = ariaInvalid ?? (error !== undefined || undefined)
   const rootInvalid = Boolean(invalid) && invalid !== 'false'
-  const scaledBalance = parseAmount(balance ?? '')
+  const noBalance = !parseAmount(balance ?? '')
 
   const balanceText =
     balanceState === 'error'
@@ -220,12 +220,7 @@ export const TokenInput = ({
           // Every Max on a page is named "Max"; the balance it fills is what tells them apart.
           aria-describedby={balanceId}
           className={anatomy.parts.max}
-          disabled={
-            disabled ||
-            balanceState !== undefined ||
-            scaledBalance === undefined ||
-            scaledBalance === 0n
-          }
+          disabled={disabled || balanceState !== undefined || noBalance}
           onClick={() => {
             if (balance !== undefined) onChange(balance, validateAmount(balance, bounds))
           }}
