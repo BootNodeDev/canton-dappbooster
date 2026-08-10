@@ -73,7 +73,8 @@ exactly the case the attribute exists for.
 
 ## Writing default.css
 
-- Every `var()` carries a fallback. `default.css` must render standalone when `tokens.css` is absent.
+- No `var()` fallbacks. `default.css` opens by importing `tokens.css`, so every default is declared
+  once; a fallback would be a second copy that drifts and that nothing checks.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
 

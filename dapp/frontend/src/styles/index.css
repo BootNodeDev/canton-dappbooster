@@ -7,7 +7,6 @@
 @import "tailwindcss";
 @import "@fontsource-variable/manrope";
 @import "@fontsource-variable/jetbrains-mono";
-@import "@bootnodedev/canton-theme/tokens.css";
 @import "@bootnodedev/canton-theme/default.css";
 @import "./tokens.css";
 
