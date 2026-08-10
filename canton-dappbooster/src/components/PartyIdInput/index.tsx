@@ -1,5 +1,6 @@
 import { type FocusEvent, type InputHTMLAttributes, type ReactElement, useState } from 'react'
 import { cx } from '../../utils/cx'
+import { resolveInvalid } from '../../utils/invalid'
 import { type PartyIdError, validatePartyId } from '../../utils/partyId'
 import { anatomy } from './anatomy'
 
@@ -34,6 +35,7 @@ export const PartyIdInput = ({
 }: PartyIdInputProps): ReactElement => {
   const [touched, setTouched] = useState(false)
   const shownError = touched ? errorOf(value) : undefined
+  const [invalid, flagged] = resolveInvalid(ariaInvalid, shownError !== undefined)
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>): void => {
     setTouched(true)
@@ -51,7 +53,8 @@ export const PartyIdInput = ({
       autoCorrect="off"
       spellCheck={false}
       {...rest}
-      {...{ [anatomy.states.invalid]: ariaInvalid ?? (shownError !== undefined || undefined) }}
+      aria-invalid={invalid}
+      {...{ [anatomy.states.invalid]: flagged || undefined }}
       className={cx(anatomy.parts.root, className)}
       onBlur={handleBlur}
       onChange={(event) => {

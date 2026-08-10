@@ -1,32 +1,50 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { formatAmount } from '../../utils/tokenAmount'
 import { TokenInput, type TokenMeta } from '.'
 import { anatomy } from './anatomy'
 
 const CC: TokenMeta = { symbol: 'CC' }
 
+// Derived through `formatAmount`, so the test agrees with the component rather than with a
+// hardcoded `1,234` or its own copy of the Intl lookup.
+const GROUP = formatAmount('1234567').replace(/\d/g, '').slice(0, 1) || ','
+const DECIMAL = formatAmount('1.1').replace(/\d/g, '') || '.'
+
 const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => {
   const onChange = vi.fn()
-  render(<TokenInput label="Amount" onChange={onChange} token={CC} value="" {...props} />)
-  return { field: screen.getByLabelText<HTMLInputElement>('Amount'), onChange }
+  render(
+    <TokenInput
+      data-testid="root"
+      label="Amount"
+      onChange={onChange}
+      token={CC}
+      value=""
+      {...props}
+    />,
+  )
+  return {
+    field: screen.getByLabelText<HTMLInputElement>('Amount'),
+    onChange,
+    root: screen.getByTestId('root'),
+  }
 }
 
-// No `@testing-library/user-event` in this package; a keystroke at the end of the field is a
-// `change` event carrying the appended raw value, which is what a real cursor-at-end keystroke
-// sends.
+// No `@testing-library/user-event` in this package, so keystrokes are hand-built input events.
 const typeAtEnd = (field: HTMLInputElement, char: string): void => {
-  fireEvent.change(field, { target: { value: field.value + char } })
+  fireEvent.input(field, { inputType: 'insertText', target: { value: field.value + char } })
 }
 
-// A real keystroke splices one character in at the live caret and leaves the caret one past it, so
-// the next keystroke starts wherever the component just put it. Appending to `field.value` instead
-// would make every sequence a same-position append and hide any caret bug by construction.
+// Splices at the live caret, not at the end: appending would hide any caret bug by construction.
 const type = (field: HTMLInputElement, keys: string): void => {
-  for (const key of keys) {
+  for (const key of keys.replaceAll('.', DECIMAL)) {
     const at = field.selectionStart ?? field.value.length
     const raw = `${field.value.slice(0, at)}${key}${field.value.slice(at)}`
-    fireEvent.change(field, { target: { value: raw, selectionStart: at + 1 } })
+    fireEvent.input(field, {
+      inputType: 'insertText',
+      target: { value: raw, selectionStart: at + 1 },
+    })
   }
 }
 
@@ -35,12 +53,14 @@ const backspace = (field: HTMLInputElement, times: number): void => {
     const at = field.selectionStart ?? field.value.length
     if (at === 0) continue
     const raw = `${field.value.slice(0, at - 1)}${field.value.slice(at)}`
-    fireEvent.change(field, { target: { value: raw, selectionStart: at - 1 } })
+    fireEvent.input(field, {
+      inputType: 'deleteContentBackward',
+      target: { value: raw, selectionStart: at - 1 },
+    })
   }
 }
 
-// Typing needs a real reformat-and-recaret cycle, which requires the parent to actually update
-// `value` on report; `setup`'s fixed `value` never does.
+// Typing needs the parent to feed `value` back, which `setup`'s fixed `value` never does.
 const Controlled = ({ initial }: { initial: string }) => {
   const [value, setValue] = useState(initial)
   return <TokenInput label="Amount" onChange={(next) => setValue(next)} token={CC} value={value} />
@@ -53,8 +73,8 @@ const controlled = (initial = ''): HTMLInputElement => {
 
 describe('TokenInput', () => {
   it('renders the root part and appends a consumer class', () => {
-    render(<TokenInput className="extra" data-testid="ti" onChange={vi.fn()} token={CC} value="" />)
-    expect(screen.getByTestId('ti')).toHaveClass(anatomy.parts.root, 'extra')
+    const { root } = setup({ className: 'extra' })
+    expect(root).toHaveClass(anatomy.parts.root, 'extra')
   })
 
   it('associates the label with the field and shows the symbol', () => {
@@ -65,7 +85,7 @@ describe('TokenInput', () => {
 
   it('groups the displayed value and reports the sanitized one', () => {
     const { field, onChange } = setup({ value: '1234' })
-    expect(field).toHaveValue('1,234')
+    expect(field).toHaveValue(formatAmount('1234'))
     typeAtEnd(field, '5')
     expect(onChange).toHaveBeenLastCalledWith('12345', undefined)
   })
@@ -79,12 +99,13 @@ describe('TokenInput', () => {
 
   it('anchors the caret to the digits already typed, not to the end', () => {
     const field = controlled('1234')
-    // A '5' typed after '1,2' in the displayed '1,234': the raw '1,2534' regroups to '12,534', a
-    // different string, so React does rewrite the DOM here and jsdom would otherwise park the
-    // caret at the end — this is the case that actually exercises the caret apparatus, unlike a
-    // raw value that happens to already equal its own regrouped form.
-    fireEvent.change(field, { target: { value: '1,2534', selectionStart: 4 } })
-    expect(field).toHaveValue('12,534')
+    // '1,2534' regroups to '12,534', so React rewrites the DOM and jsdom would park the caret at
+    // the end. A raw value already equal to its regrouped form would not exercise this.
+    const display = field.value
+    fireEvent.change(field, {
+      target: { value: `${display.slice(0, 3)}5${display.slice(3)}`, selectionStart: 4 },
+    })
+    expect(field).toHaveValue(formatAmount('12534'))
     expect(field.selectionStart).toBe(4)
   })
 
@@ -92,12 +113,12 @@ describe('TokenInput', () => {
     ['100.25', '100.25'],
     ['0.5', '0.5'],
     ['.5', '0.5'],
-    ['1234.5', '1,234.5'],
-    ['1000000', '1,000,000'],
+    ['1234.5', '1234.5'],
+    ['1000000', '1000000'],
   ])('types %s left to right', (keys, expected) => {
     const field = controlled()
     type(field, keys)
-    expect(field).toHaveValue(expected)
+    expect(field).toHaveValue(formatAmount(expected))
   })
 
   it('deletes back through a separator to an empty field', () => {
@@ -107,16 +128,40 @@ describe('TokenInput', () => {
     expect(field).toHaveValue('')
   })
 
+  it('deletes the digit a group separator sits against instead of stalling', () => {
+    const field = controlled('1234567')
+    const at = field.value.lastIndexOf(GROUP) + 1
+    field.setSelectionRange(at, at)
+    backspace(field, 1)
+    expect(field).toHaveValue(formatAmount('123567'))
+    backspace(field, 1)
+    expect(field).toHaveValue(formatAmount('12567'))
+  })
+
+  it('deletes forward past a group separator', () => {
+    const field = controlled('1234567')
+    const at = field.value.lastIndexOf(GROUP)
+    field.setSelectionRange(at, at)
+    fireEvent.input(field, {
+      inputType: 'deleteContentForward',
+      target: {
+        value: `${field.value.slice(0, at)}${field.value.slice(at + 1)}`,
+        selectionStart: at,
+      },
+    })
+    expect(field).toHaveValue(formatAmount('123467'))
+  })
+
   it('places the caret correctly when a rejected keystroke is undone mid-string', () => {
     const { field, onChange } = setup({ value: '1234' })
-    // A stray 'x' inserted after '1,2' in the displayed '1,234': sanitizing strips it entirely, so
-    // `next` comes back equal to `value` and the keystroke is rejected — but unlike the DOM value
-    // (which React's own controlled-input restore would fix regardless), nothing but this
-    // component's own code places the caret back where the removed character was typed rather
-    // than at the end of the restored '1,234'.
-    fireEvent.change(field, { target: { value: '1,2x34', selectionStart: 4 } })
+    // Sanitizing strips the 'x', so `next` equals `value` and no re-render comes. React would
+    // restore the DOM value anyway; only the component restores the caret.
+    const display = field.value
+    fireEvent.change(field, {
+      target: { value: `${display.slice(0, 3)}x${display.slice(3)}`, selectionStart: 4 },
+    })
     expect(onChange).toHaveBeenLastCalledWith('1234', undefined)
-    expect(field).toHaveValue('1,234')
+    expect(field).toHaveValue(display)
     expect(field.selectionStart).toBe(3)
   })
 
@@ -126,38 +171,34 @@ describe('TokenInput', () => {
     expect(onChange).toHaveBeenLastCalledWith('19', 'above-max')
   })
 
+  it('flags a balance it cannot read rather than dropping the cap', () => {
+    const { field, onChange } = setup({ balance: `1${GROUP}250${DECIMAL}50`, value: '1' })
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    typeAtEnd(field, '9')
+    expect(onChange).toHaveBeenLastCalledWith('19', 'invalid-max')
+  })
+
+  it('reports a pasted exponent as invalid instead of salvaging a number from it', () => {
+    const { field, onChange } = setup({ value: '' })
+    fireEvent.change(field, { target: { value: `1${DECIMAL}5e3` } })
+    expect(onChange).toHaveBeenLastCalledWith('1.5e3', 'not-a-number')
+  })
+
   it('flags an invalid value on the field and the root', () => {
-    render(
-      <TokenInput
-        balance="1.5"
-        data-testid="ti"
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value="9"
-      />,
-    )
-    expect(screen.getByLabelText('Amount')).toHaveAttribute(anatomy.states.invalid, 'true')
-    expect(screen.getByTestId('ti')).toHaveAttribute(anatomy.states.rootInvalid, 'true')
+    const { field, root } = setup({ balance: '1.5', value: '9' })
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(root).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('lets a consumer-supplied aria-invalid survive with no internal error', () => {
-    const { field } = setup({ 'aria-invalid': true, value: '1' })
-    expect(field).toHaveAttribute(anatomy.states.invalid, 'true')
+    const { field, root } = setup({ 'aria-invalid': true, value: '1' })
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    expect(root).toHaveAttribute(anatomy.states.invalid, 'true')
   })
 
   it('leaves data-invalid absent from the root when aria-invalid is explicitly false', () => {
-    render(
-      <TokenInput
-        aria-invalid={false}
-        data-testid="ti"
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value="1"
-      />,
-    )
-    expect(screen.getByTestId('ti')).not.toHaveAttribute(anatomy.states.rootInvalid)
+    const { root } = setup({ 'aria-invalid': false, value: '1' })
+    expect(root).not.toHaveAttribute(anatomy.states.invalid)
   })
 
   it('lets aria-label name the field with no visible label', () => {
@@ -179,10 +220,16 @@ describe('TokenInput', () => {
     expect(onChange).toHaveBeenLastCalledWith('8421337.1234567891', undefined)
   })
 
-  it('renders the balance readout and describes the field with the token', () => {
+  it('renders the balance readout and describes the field with the token and the balance', () => {
     const { field } = setup({ balance: '1250.5' })
-    expect(screen.getByText(/1,250.5/)).toHaveClass(anatomy.parts.balance)
-    expect(field).toHaveAttribute('aria-describedby', screen.getByText('CC').id)
+    const balance = screen.getByText(`Balance: ${formatAmount('1250.5')}`)
+    expect(balance).toHaveClass(anatomy.parts.balance)
+    expect(field).toHaveAttribute('aria-describedby', `${screen.getByText('CC').id} ${balance.id}`)
+  })
+
+  it('announces the balance as it settles', () => {
+    setup({ balance: '5' })
+    expect(screen.getByRole('status')).toHaveClass(anatomy.parts.balance)
   })
 
   it('describes Max with the balance it fills', () => {
@@ -195,22 +242,16 @@ describe('TokenInput', () => {
   })
 
   it('marks the root disabled so the theme can dim it', () => {
-    render(
-      <TokenInput
-        data-testid="ti"
-        disabled
-        label="Amount"
-        onChange={vi.fn()}
-        token={CC}
-        value=""
-      />,
-    )
-    expect(screen.getByTestId('ti')).toHaveAttribute(anatomy.states.disabled, 'true')
+    const { root } = setup({ disabled: true })
+    expect(root).toHaveAttribute(anatomy.states.disabled, 'true')
   })
 
   it('marks the balance readout busy while loading', () => {
     setup({ balanceState: 'loading' })
-    expect(screen.getByText('Balance: 0.00')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText(`Balance: ${formatAmount('0.00')}`)).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
   })
 
   it('reads a failed balance as N/A', () => {
@@ -220,7 +261,7 @@ describe('TokenInput', () => {
 
   it('reads an absent balance as zero rather than as a missing figure', () => {
     setup()
-    expect(screen.getByText('Balance: 0.00')).toHaveClass(anatomy.parts.balance)
+    expect(screen.getByText(`Balance: ${formatAmount('0.00')}`)).toHaveClass(anatomy.parts.balance)
   })
 
   it.each([
@@ -233,8 +274,9 @@ describe('TokenInput', () => {
     expect(screen.getByRole('button', { name: 'Max' })).toBeDisabled()
   })
 
-  it('renders the fiat value', () => {
-    setup({ usdValue: '~$0.10' })
-    expect(screen.getByText('~$0.10')).toHaveClass(anatomy.parts.usdValue)
+  it('renders the fiat value the consumer passed, with the component supplying the mark', () => {
+    setup({ usdValue: '0.10' })
+    expect(screen.getByText('0.10')).toHaveClass(anatomy.parts.usdValue)
+    expect(screen.getByText('0.10').parentElement).toHaveTextContent(/^~\$0\.10/)
   })
 })

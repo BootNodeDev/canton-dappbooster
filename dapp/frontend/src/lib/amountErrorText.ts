@@ -6,4 +6,6 @@ export const AMOUNT_ERROR_TEXT: Record<TokenAmountError, string> = {
   'too-many-decimals': 'At most 10 decimal places.',
   'too-large': 'That amount is too large for the ledger.',
   'above-max': 'More than is available.',
+  // Not user error: the balance we passed as `max` was malformed, so the ceiling is unknown.
+  'invalid-max': 'Balance unavailable, try again.',
 }

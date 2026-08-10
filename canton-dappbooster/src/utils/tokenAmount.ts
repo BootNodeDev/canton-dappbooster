@@ -1,6 +1,6 @@
-// Canton amounts are already fixed-point: Daml `Decimal` is `Numeric 10`, and the JSON Ledger API
-// carries it as a decimal string. There is no ERC-20 scaling factor, so `precision` caps decimal
-// places and `bigint` exists here only to make comparisons exact.
+// Canton amounts are already fixed-point (Daml `Decimal` is `Numeric 10`, carried as a string), so
+// there is no ERC-20 scaling factor: `precision` caps decimal places and `bigint` only makes
+// comparisons exact.
 
 /** Decimal places Daml `Decimal` (`Numeric 10`) accepts. */
 export const DEFAULT_PRECISION = 10
@@ -15,7 +15,12 @@ const TOTAL_DIGITS = 38
  * @example
  * const MESSAGES: Record<TokenAmountError, string> = { 'above-max': 'More than you hold', … }
  */
-export type TokenAmountError = 'not-a-number' | 'too-many-decimals' | 'too-large' | 'above-max'
+export type TokenAmountError =
+  | 'not-a-number'
+  | 'too-many-decimals'
+  | 'too-large'
+  | 'above-max'
+  | 'invalid-max'
 
 // Unsigned, no exponent: a token amount is neither negative nor scientific. A trailing dot passes,
 // because it is a value mid-typing rather than a broken one.
@@ -27,20 +32,20 @@ interface LocaleNumbers {
   grouper: Intl.NumberFormat
 }
 
-// Constructing an `Intl.NumberFormat` costs far more than formatting with one, and a field formats
-// its value and its balance on every keystroke, so both live here per locale.
+// A field formats on every keystroke, and construction costs far more than formatting.
 const localeCache = new Map<string, LocaleNumbers>()
 
-// Latin digits are forced: a locale whose default numbering system is not `latn` would render
-// digits `BigInt` and the sanitizer cannot read back.
+// Latin digits are forced: another numbering system renders digits `BigInt` and the sanitizer
+// cannot read back.
 const partsOf = (locale?: string): LocaleNumbers => {
   const cached = localeCache.get(locale ?? '')
   if (cached !== undefined) return cached
-  const parts = new Intl.NumberFormat(locale, { numberingSystem: 'latn' }).formatToParts(12345.6)
+  const grouper = new Intl.NumberFormat(locale, { numberingSystem: 'latn' })
+  const parts = grouper.formatToParts(12345.6)
   const entry: LocaleNumbers = {
     group: parts.find((part) => part.type === 'group')?.value ?? ',',
     decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
-    grouper: new Intl.NumberFormat(locale, { maximumFractionDigits: 0, numberingSystem: 'latn' }),
+    grouper,
   }
   localeCache.set(locale ?? '', entry)
   return entry
@@ -88,8 +93,8 @@ export const formatScaled = (scaled: bigint, precision: number = DEFAULT_PRECISI
 /**
  * Groups the integer part for reading and leaves the fraction verbatim, so a value still being
  * typed (`1.`, `1.50`) survives. `Intl` is handed the string unparsed, which formats it exactly
- * where the float would drift. The grouping and decimal separators are the locale's, so a caller
- * reading the result back has to read it with the same locale.
+ * where the float would drift. The grouping and decimal separators are the locale's, so
+ * {@link sanitizeAmountInput} has to read the result back under the same locale.
  *
  * @example
  * formatAmount('8421337.1234567891') // '8,421,337.1234567891'
@@ -104,22 +109,25 @@ export const formatAmount = (value: string, locale?: string): string => {
 
 /**
  * Reduces raw field input to a decimal: grouping separators and anything that can never belong to
- * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`.
+ * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`. A sign or an
+ * exponent is kept instead of stripped, so `-5` and `1.5e3` reach {@link validateAmount} as
+ * `not-a-number` rather than being salvaged into an amount nobody entered.
+ *
+ * The inverse of {@link formatAmount}, and it must be passed the same `locale`: under a
+ * comma-decimal locale a mismatched pair reads a value a thousand times too small.
  *
  * @example
  * sanitizeAmountInput('.5') // '0.5'
  */
 export const sanitizeAmountInput = (input: string, locale?: string): string => {
   const { group, decimal } = partsOf(locale)
-  const kept = input
-    .replaceAll(group, '')
-    .replaceAll(decimal, '.')
-    .replace(/[^\d.]/g, '')
-  const dot = kept.indexOf('.')
-  const int = (dot === -1 ? kept : kept.slice(0, dot)).replace(/^0+(?=\d)/, '')
-  if (dot === -1) return int
-  // A second separator is dropped, not treated as a new one.
-  return `${int === '' ? '0' : int}.${kept.slice(dot + 1).replace(/\./g, '')}`
+  const mapped = input.replaceAll(group, '').replaceAll(decimal, '.')
+  if (/[eE+-]/.test(mapped)) return mapped
+  // Everything past the first separator joins one fraction, so a second is dropped rather than
+  // treated as a new one.
+  const [int, ...frac] = mapped.replace(/[^\d.]/g, '').split('.')
+  const head = int.replace(/^0+(?=\d)/, '')
+  return frac.length === 0 ? head : `${head === '' ? '0' : head}.${frac.join('')}`
 }
 
 /**
@@ -135,7 +143,8 @@ export const settleAmount = (value: string): string =>
 /**
  * Checks an amount against the token's precision, the `Numeric 38,10` ceiling, and an optional
  * range. Returns `undefined` when nothing is wrong, including for the empty string: empty is empty,
- * and required-ness belongs to the form.
+ * and required-ness belongs to the form. A `max` that is not itself a decimal returns `invalid-max`
+ * rather than reading as no ceiling, so a malformed balance cannot silently uncap the amount.
  *
  * @example
  * validateAmount('1.5000000001', { max: '1.5' }) // 'above-max'
@@ -152,9 +161,11 @@ export const validateAmount = (
   if (scaled === undefined) return DECIMAL.test(value) ? 'too-many-decimals' : 'not-a-number'
   if (split(value)[0].replace(/^0+/, '').length > TOTAL_DIGITS - precision) return 'too-large'
 
-  // `parseAmount('')` is `undefined`, so an absent `max` reads as no ceiling.
-  const scaledMax = parseAmount(max ?? '', precision)
-  if (scaledMax !== undefined && scaled > scaledMax) return 'above-max'
+  if (max !== undefined && max !== '') {
+    const scaledMax = parseAmount(max, precision)
+    if (scaledMax === undefined) return 'invalid-max'
+    if (scaled > scaledMax) return 'above-max'
+  }
 
   return undefined
 }

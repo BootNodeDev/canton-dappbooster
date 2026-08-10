@@ -26,12 +26,18 @@ style with the default theme, their own CSS, or nothing.
 ## The anatomy.ts contract
 
 Each component declares its contract as code — a typed const of `parts` (CSS class hooks) and
-`states` (the `data-*` / `aria-*` attributes the component writes, whether the theme styles off
-them, assistive tech reads them, or both). One boolean can need two entries: `TokenInput` puts
-`aria-invalid` on the field for assistive tech and mirrors it to `data-invalid` on the root, which
-is the one the theme selects. It is the single source of truth: theme
-selectors, test assertions, and docs all derive from it, so the behavior engine underneath can
-change without breaking consumers. See `src/components/Identifier/anatomy.ts` for the reference shape.
+`states` (the `data-*` attributes the theme selects on). A `states` key names the role, never the
+attribute: `invalid` is `data-invalid` in every component, whichever element ends up carrying it.
+It is the single source of truth: theme selectors, test assertions, and docs all derive from it, so
+the behavior engine underneath can change without breaking consumers. See
+`src/components/Identifier/anatomy.ts` for the reference shape.
+
+The `aria-*` a component writes is **not** an anatomy entry. It is placed for assistive tech, and
+where a component puts it on an inner element while the theme needs the root, the two would collide
+in one key. So the component writes both and only the `data-*` is the contract: `TokenInput` puts
+`aria-invalid` on its field and `data-invalid` on its root, `PartyIdInput` puts both on the input
+that is its root, and one `resolveInvalid` in `src/utils/invalid.ts` decides them together so the
+pair cannot drift.
 
 The class strings live in `anatomy.ts`; the theme (a separate package) selects the same strings.
 Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
@@ -78,11 +84,8 @@ the form that has it. Each of the three stays addable later without a break.
 
 - **Parts** are semantic classes: `.cnc-<component>*`, BEM `__` for sub-parts (e.g.
   `.cnc-identifier`, `.cnc-identifier__copy`).
-- **State** is the `aria-*` / `data-state` already on the element, so the styling hook and the
-  accessibility state are one source of truth. Where the attribute assistive tech needs sits on an
-  inner element and the theme needs a hook on the root, the component mirrors it up as a root
-  `data-*` (`TokenInput`'s `data-invalid`, `data-disabled`), declared as its own anatomy entry for
-  the reason the contract section above gives.
+- **State** is a `data-*` on the element the theme styles, written from the same value as the
+  `aria-*` the component exposes to assistive tech, so the two cannot disagree.
 - **One exception to zero styling:** visually hiding a live region is functional, not decorative —
   a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
   the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way
