@@ -26,9 +26,18 @@ style with the default theme, their own CSS, or nothing.
 ## The anatomy.ts contract
 
 Each component declares its contract as code — a typed const of `parts` (CSS class hooks) and
-`states` (the `data-*` / `aria-*` values styled off). It is the single source of truth: theme
-selectors, test assertions, and docs all derive from it, so the behavior engine underneath can
-change without breaking consumers. See `src/components/Identifier/anatomy.ts` for the reference shape.
+`states` (the `data-*` attributes the theme selects on). A `states` key names the role, never the
+attribute: `invalid` is `data-invalid` in every component, whichever element ends up carrying it.
+It is the single source of truth: theme selectors, test assertions, and docs all derive from it, so
+the behavior engine underneath can change without breaking consumers. See
+`src/components/Identifier/anatomy.ts` for the reference shape.
+
+The `aria-*` a component writes is **not** an anatomy entry. It is placed for assistive tech, and
+where a component puts it on an inner element while the theme needs the root, the two would collide
+in one key. So the component writes both and only the `data-*` is the contract: `TokenInput` puts
+`aria-invalid` on its field and `data-invalid` on its root, `PartyIdInput` puts both on the input
+that is its root, and one `resolveInvalid` in `src/utils/invalid.ts` decides them together so the
+pair cannot drift.
 
 The class strings live in `anatomy.ts`; the theme (a separate package) selects the same strings.
 Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
@@ -53,12 +62,30 @@ would pay for. Because the anatomy is the contract, the swap stays available: it
 `src/hooks/useCopyToClipboard.ts` and touch neither the parts, the props, the theme, nor the tests.
 A real tooltip in place of the `title` attribute would flip that verdict immediately.
 
+`@zag-js/number-input` is the same call for `<TokenInput>`, and loses on three counts. It implements
+the WAI-ARIA spinbutton pattern, so the field would carry `role="spinbutton"` plus stepping and
+pointer scrubbing, none of which belong on an amount nothing steps. Its callbacks and clamping run
+on `valueAsNumber`, a double, which reintroduces exactly the precision loss the component exists to
+avoid. And it rounds silently through `formatOptions.maximumFractionDigits`, where this component
+flags instead. Zag lands with the token selector (issue #11) instead: a combobox and a dialog are
+the real mistake to hand-roll.
+
+## What `<TokenInput>` does not take
+
+Three props a token field usually has are deliberately absent. **Precision** is not configurable
+because on Canton it is not a token property: Daml `Decimal` is `Numeric 10` for every instrument,
+so there is no ERC-20-style `decimals` to read and `DEFAULT_PRECISION` is the whole answer. The
+**ceiling** is `balance` rather than a separate `max`, because `balance` is what Max fills — a cap
+that differed from it would make the button lie. And there is no **floor**: a minimum is a rule
+about what a particular form will accept, not about what the field can express, so it stays with
+the form that has it. Each of the three stays addable later without a break.
+
 ## Styling hooks
 
 - **Parts** are semantic classes: `.cnc-<component>*`, BEM `__` for sub-parts (e.g.
   `.cnc-identifier`, `.cnc-identifier__copy`).
-- **State** is the `aria-*` / `data-state` already on the element, so the styling hook and the
-  accessibility state are one source of truth.
+- **State** is a `data-*` on the element the theme styles, written from the same value as the
+  `aria-*` the component exposes to assistive tech, so the two cannot disagree.
 - **One exception to zero styling:** visually hiding a live region is functional, not decorative —
   a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
   the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way

@@ -1,19 +1,24 @@
-// Display formatting: amount grouping and relative dates. Identifier truncation lives in
-// the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
+import { formatAmount } from '@bootnodedev/canton-dappbooster'
 
-const ccFormatter = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
+// Display formatting: amount rounding and relative dates. Grouping and identifier truncation both
+// live in the kit (`formatAmount`, `truncateIdentifier`) so every dApp reads amounts and shortens
+// party ids the same way. What stays here is this dApp's own policy: it holds amounts as `number`,
+// so each has to be rounded to a decimal string before the kit can group it exactly.
+
+// Rounds only — `useGrouping: false`, because grouping is the kit's. `toFixed` cannot stand in: it
+// renders the float's exact binary expansion, so 1234567.891 comes back as 1234567.8910000001.
+const rounded = (places: number): Intl.NumberFormat =>
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: places, useGrouping: false })
+
+const cc = rounded(2)
+const ccFull = rounded(10)
 
 // Canton Coin amount, grouped, up to 2 decimals. No unit suffix (callers add `CC`).
-export const formatCC = (amount: number): string => ccFormatter.format(amount)
-
-const ccFullFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 10 })
+export const formatCC = (amount: number): string => formatAmount(cc.format(amount), 'en-US')
 
 // Full ledger precision (Decimal is ≤10 dp), grouped, no trailing zeros. Use where
 // rounding to 2 dp would mislead — e.g. the exact claimable in a claim dialog.
-export const formatCCFull = (amount: number): string => ccFullFormatter.format(amount)
+export const formatCCFull = (amount: number): string => formatAmount(ccFull.format(amount), 'en-US')
 
 // The exact claimable as a plain numeric string for an amount input. Flooring to 2 dp
 // strands sub-cent residual (you could never claim it all), so fill the full remaining;

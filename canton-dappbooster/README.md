@@ -1,7 +1,9 @@
 # @bootnodedev/canton-dappbooster
 
 Reusable UI components for Canton dApps — reading Canton identifiers (display, truncation,
-copy-to-clipboard, explorer links) and entering them (validated party-id input).
+copy-to-clipboard, explorer links) and entering them (validated party-id input). Amounts are the
+other half: a token-amount field, plus the exact-decimal utilities under it, because a `number`
+cannot carry a Canton amount without losing digits.
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
 the call site. Authoring rules for new components live in [`CLAUDE.md`](CLAUDE.md).

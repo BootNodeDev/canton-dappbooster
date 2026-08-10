@@ -1,27 +1,26 @@
 # @bootnodedev/canton-theme
 
 Plain-CSS theme (L3) for [`@bootnodedev/canton-dappbooster`](../canton-dappbooster) components. Zero
-JavaScript, zero runtime. Two independently consumable artifacts:
+JavaScript, zero runtime. Two consumable artifacts:
 
 | Export | What it is |
 | --- | --- |
 | `@bootnodedev/canton-theme/tokens.css` | `--cnc-*` custom properties — the theming + dark-mode contract |
-| `@bootnodedev/canton-theme/default.css` | prestyled defaults selecting on component part classes |
+| `@bootnodedev/canton-theme/default.css` | prestyled defaults selecting on component part classes; imports `tokens.css` |
 
 ## Usage
 
 Components ship no styling; import the theme once at your app entry:
 
 ```ts
-import '@bootnodedev/canton-theme/tokens.css'
 import '@bootnodedev/canton-theme/default.css'
 ```
 
-- `default.css` carries token fallbacks, so it renders standalone. Load `tokens.css` too (or
-  define the `--cnc-*` properties yourself) to theme and to support dark mode. Defining them
-  yourself also means setting `color-scheme` directly, one explicit value per mode: it is not a
-  `--cnc-*` property, so skipping it leaves the browser painting scrollbars, form controls, and the
-  caret in the wrong mode.
+- `default.css` imports `tokens.css`, so that one line is the whole theme. Import `tokens.css` alone
+  to take the contract without the prestyled defaults. Defining the `--cnc-*` properties yourself
+  instead means setting `color-scheme` directly, one explicit value per mode: it is not a `--cnc-*`
+  property, so skipping it leaves the browser painting scrollbars, form controls, and the caret in
+  the wrong mode.
 - Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, as early as you can:
   applied after first paint it flashes. It deliberately does not follow `prefers-color-scheme` by
   itself, so that a mode toggle can override the OS preference in both directions.

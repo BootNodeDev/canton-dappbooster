@@ -32,8 +32,10 @@ accessibility and markup semantics. The styling contract they defer to is this:
 `node scripts/add-component.mjs <Name>` from the repo root writes steps 1, 2, and 4 as stubs and
 prints the two it will not edit for you, 3 and 5. It decides nothing below; it only saves the typing.
 
-1. **`anatomy.ts`** — declare `parts` (CSS class hooks) and `states` (the `data-*` / `aria-*` values
-   the theme styles off). This typed const is what the theme, the tests, and the docs all derive from.
+1. **`anatomy.ts`** — declare `parts` (CSS class hooks) and `states` (the `data-*` the theme selects
+   on, keyed by role: `invalid`, not `rootInvalid`). This typed const is what the theme, the tests,
+   and the docs all derive from. An `aria-*` is placed by the component but is never an entry; write
+   it from the same value as its `data-*` so they cannot disagree (`src/utils/invalid.ts`).
 2. **`index.tsx`** — take class names from `anatomy.parts.*`, merged with the consumer's `className`
    through `cx` from `src/utils/cx.ts`; never hand-roll the join. No CSS import. Keyboard-heavy
    widgets hand-roll on Zag prop-getters; display primitives use plain React state.
