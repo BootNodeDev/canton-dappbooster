@@ -37,9 +37,8 @@ export const useFormattedField = ({
   const pending = useRef<{ digits: number; value: string } | null>(null)
   const display = format(value)
 
-  // Applied after the regrouped display is committed, or the browser would leave the caret at the
-  // end of the value on every keystroke. Resolved here rather than in the handler because the
-  // committed `field.value` is the regrouped string the index has to be counted against.
+  // After commit, not in the handler: the index has to be counted against the regrouped
+  // `field.value`, and without this the browser parks the caret at the end on every keystroke.
   useLayoutEffect(() => {
     const intent = pending.current
     pending.current = null
@@ -63,9 +62,8 @@ export const useFormattedField = ({
       const next = stalled ? sanitize(raw) : sanitized
 
       if (next === value) {
-        // A rejected keystroke leaves `value` untouched, so React sees no change and would not
-        // rewrite the DOM: the rejected character would stay on screen. Put the display back by
-        // hand, and place the caret here since no re-render is coming to run the layout effect.
+        // A rejected keystroke leaves `value` untouched, so no re-render comes to run the effect:
+        // restore the display and the caret by hand or the rejected character stays on screen.
         const caret = caretBeforeDigits(display, digitsAfter)
         event.target.value = display
         event.target.setSelectionRange(caret, caret)

@@ -7,10 +7,8 @@ import { anatomy } from './anatomy'
 
 const CC: TokenMeta = { symbol: 'CC' }
 
-// The component formats with the ambient locale, so every expectation is derived rather than
-// spelled out: hardcoding `1,234` would fail under a comma-decimal locale. Derived through
-// `formatAmount` rather than through `Intl` directly, so the test agrees with the component instead
-// of with its own copy of the lookup.
+// Derived through `formatAmount`, so the test agrees with the component rather than with a
+// hardcoded `1,234` or its own copy of the Intl lookup.
 const GROUP = formatAmount('1234567').replace(/\d/g, '').slice(0, 1) || ','
 const DECIMAL = formatAmount('1.1').replace(/\d/g, '') || '.'
 
@@ -33,16 +31,12 @@ const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => 
   }
 }
 
-// No `@testing-library/user-event` in this package; a keystroke at the end of the field is a
-// `change` event carrying the appended raw value, which is what a real cursor-at-end keystroke
-// sends.
+// No `@testing-library/user-event` in this package, so keystrokes are hand-built input events.
 const typeAtEnd = (field: HTMLInputElement, char: string): void => {
   fireEvent.input(field, { inputType: 'insertText', target: { value: field.value + char } })
 }
 
-// A real keystroke splices one character in at the live caret and leaves the caret one past it, so
-// the next keystroke starts wherever the component just put it. Appending to `field.value` instead
-// would make every sequence a same-position append and hide any caret bug by construction.
+// Splices at the live caret, not at the end: appending would hide any caret bug by construction.
 const type = (field: HTMLInputElement, keys: string): void => {
   for (const key of keys.replaceAll('.', DECIMAL)) {
     const at = field.selectionStart ?? field.value.length
@@ -66,8 +60,7 @@ const backspace = (field: HTMLInputElement, times: number): void => {
   }
 }
 
-// Typing needs a real reformat-and-recaret cycle, which requires the parent to actually update
-// `value` on report; `setup`'s fixed `value` never does.
+// Typing needs the parent to feed `value` back, which `setup`'s fixed `value` never does.
 const Controlled = ({ initial }: { initial: string }) => {
   const [value, setValue] = useState(initial)
   return <TokenInput label="Amount" onChange={(next) => setValue(next)} token={CC} value={value} />
@@ -106,10 +99,8 @@ describe('TokenInput', () => {
 
   it('anchors the caret to the digits already typed, not to the end', () => {
     const field = controlled('1234')
-    // A '5' typed after the first two digits of the displayed '1,234': the raw '1,2534' regroups to
-    // '12,534', a different string, so React does rewrite the DOM here and jsdom would otherwise
-    // park the caret at the end — this is the case that actually exercises the caret apparatus,
-    // unlike a raw value that happens to already equal its own regrouped form.
+    // '1,2534' regroups to '12,534', so React rewrites the DOM and jsdom would park the caret at
+    // the end. A raw value already equal to its regrouped form would not exercise this.
     const display = field.value
     fireEvent.change(field, {
       target: { value: `${display.slice(0, 3)}5${display.slice(3)}`, selectionStart: 4 },
@@ -163,11 +154,8 @@ describe('TokenInput', () => {
 
   it('places the caret correctly when a rejected keystroke is undone mid-string', () => {
     const { field, onChange } = setup({ value: '1234' })
-    // A stray 'x' inserted after the first two digits of the displayed '1,234': sanitizing strips it
-    // entirely, so `next` comes back equal to `value` and the keystroke is rejected — but unlike the
-    // DOM value (which React's own controlled-input restore would fix regardless), nothing but this
-    // component's own code places the caret back where the removed character was typed rather
-    // than at the end of the restored '1,234'.
+    // Sanitizing strips the 'x', so `next` equals `value` and no re-render comes. React would
+    // restore the DOM value anyway; only the component restores the caret.
     const display = field.value
     fireEvent.change(field, {
       target: { value: `${display.slice(0, 3)}x${display.slice(3)}`, selectionStart: 4 },

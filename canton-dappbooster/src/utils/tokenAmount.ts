@@ -1,6 +1,6 @@
-// Canton amounts are already fixed-point: Daml `Decimal` is `Numeric 10`, and the JSON Ledger API
-// carries it as a decimal string. There is no ERC-20 scaling factor, so `precision` caps decimal
-// places and `bigint` exists here only to make comparisons exact.
+// Canton amounts are already fixed-point (Daml `Decimal` is `Numeric 10`, carried as a string), so
+// there is no ERC-20 scaling factor: `precision` caps decimal places and `bigint` only makes
+// comparisons exact.
 
 /** Decimal places Daml `Decimal` (`Numeric 10`) accepts. */
 export const DEFAULT_PRECISION = 10
@@ -32,12 +32,11 @@ interface LocaleNumbers {
   grouper: Intl.NumberFormat
 }
 
-// Constructing an `Intl.NumberFormat` costs far more than formatting with one, and a field formats
-// its value and its balance on every keystroke, so both live here per locale.
+// A field formats on every keystroke, and construction costs far more than formatting.
 const localeCache = new Map<string, LocaleNumbers>()
 
-// Latin digits are forced: a locale whose default numbering system is not `latn` would render
-// digits `BigInt` and the sanitizer cannot read back.
+// Latin digits are forced: another numbering system renders digits `BigInt` and the sanitizer
+// cannot read back.
 const partsOf = (locale?: string): LocaleNumbers => {
   const cached = localeCache.get(locale ?? '')
   if (cached !== undefined) return cached
