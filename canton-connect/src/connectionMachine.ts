@@ -1,6 +1,10 @@
-import { setup } from 'xstate'
+import { fromPromise, setup } from 'xstate'
 
-export const connectionMachine = setup({}).createMachine({
+export const connectionMachine = setup({
+  actors: {
+    connect: fromPromise(() => Promise.resolve()),
+  },
+}).createMachine({
   id: 'connection',
   initial: 'disconnected',
   states: {
@@ -9,6 +13,12 @@ export const connectionMachine = setup({}).createMachine({
         connect: { target: 'connecting' },
       },
     },
-    connecting: {},
+    connecting: {
+      invoke: {
+        src: 'connect',
+        onDone: { target: 'connected' },
+      },
+    },
+    connected: {},
   },
 })
