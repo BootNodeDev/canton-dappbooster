@@ -8,7 +8,7 @@ import type { VestingSchedule } from '@/lib/schedule'
 export const MOCK_OPERATOR =
   'operator::12205c09951be5d40dedd05dd52ad7290ecbb75cd5ae0457f0bf3c073b27b0656558'
 
-const PARTY = {
+export const PARTY = {
   alice: 'alice::1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c',
   bob: 'bob::1220a827a5f2086fdb471ae2550c3d8075a7036617685fee3426535398aecebf90e1',
   carol: 'carol::1220fdb068b8af0d1b58a93756f01c01fbb54d41f23eb652714b6b287316f7d54895',
