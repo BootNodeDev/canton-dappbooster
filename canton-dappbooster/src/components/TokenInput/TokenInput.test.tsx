@@ -8,12 +8,11 @@ import { anatomy } from './anatomy'
 const CC: TokenMeta = { symbol: 'CC' }
 
 // The component formats with the ambient locale, so every expectation is derived rather than
-// spelled out: hardcoding `1,234` would fail under a comma-decimal locale.
-const LOCALE_PARTS = new Intl.NumberFormat(undefined, { numberingSystem: 'latn' }).formatToParts(
-  12345.6,
-)
-const GROUP = LOCALE_PARTS.find((part) => part.type === 'group')?.value ?? ','
-const DECIMAL = LOCALE_PARTS.find((part) => part.type === 'decimal')?.value ?? '.'
+// spelled out: hardcoding `1,234` would fail under a comma-decimal locale. Derived through
+// `formatAmount` rather than through `Intl` directly, so the test agrees with the component instead
+// of with its own copy of the lookup.
+const GROUP = formatAmount('1234567').replace(/\d/g, '').slice(0, 1) || ','
+const DECIMAL = formatAmount('1.1').replace(/\d/g, '') || '.'
 
 const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => {
   const onChange = vi.fn()
