@@ -21,6 +21,8 @@ import {
 import { anatomy } from './anatomy'
 import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
 
+const ZERO = formatAmount('0.00')
+
 /** The token an amount is denominated in. */
 export interface TokenMeta {
   symbol: string
@@ -113,7 +115,9 @@ export const TokenInput = ({
   const scaledBalance = parseAmount(balance ?? '')
 
   const balanceText =
-    balanceState === 'error' ? 'Balance: N/A' : `Balance: ${formatAmount(balance ?? '0.00')}`
+    balanceState === 'error'
+      ? 'Balance: N/A'
+      : `Balance: ${balance === undefined ? ZERO : formatAmount(balance)}`
 
   // Applied after the regrouped display is committed, or the browser would leave the caret at the
   // end of the value on every keystroke. Resolved here rather than in the handler because the
@@ -185,7 +189,7 @@ export const TokenInput = ({
           onBlur={handleBlur}
           onChange={handleChange}
           onFocus={onFocus}
-          placeholder={formatAmount('0.00')}
+          placeholder={ZERO}
           ref={fieldRef}
           spellCheck={false}
           type="text"
