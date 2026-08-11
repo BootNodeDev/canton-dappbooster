@@ -5,6 +5,7 @@
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
   --border-strong: var(--cnc-border-strong);
+  --scrim: var(--cnc-overlay);
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
