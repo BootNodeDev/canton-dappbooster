@@ -61,6 +61,15 @@ A machine is instantiated only while its widget is mounted. The token select ren
 it opens, so a field whose picker is never opened pays for no machine, no scope and no dismiss
 listeners.
 
+The trigger pays for that. Mounting *is* the open state, so the machine lives inside the dialog and
+`<TokenInput>`'s symbol button cannot spread `api.getTriggerProps()`; it hand-rolls `aria-haspopup`,
+`aria-expanded`, `aria-controls` and the click. It is therefore not the machine's registered trigger,
+which costs two things: no `data-state` for the theme to style an open trigger with, and absence from
+the dismiss layer's `exclude` list, harmless only because that layer blocks pointer events outside
+itself while open. Lifting the machine into `<TokenInput>` buys the prop-getter back and charges
+every field for a machine it may never open; the aria contract is duplicated instead, and drift
+against Zag's on upgrade is the accepted risk.
+
 `@zag-js/clipboard` is a genuine fit for `<Identifier>`'s copy control, and it still loses: it
 models copied/not-copied but not a rejected write, which the `onCopy` outcome contract needs, and
 it takes the value as machine config rather than per call, which a list of per-row copy controls
