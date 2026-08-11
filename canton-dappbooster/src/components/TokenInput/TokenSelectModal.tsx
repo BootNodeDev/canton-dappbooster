@@ -1,32 +1,38 @@
 import * as dialog from '@zag-js/dialog'
 import { normalizeProps, Portal, useMachine } from '@zag-js/react'
-import { type ReactElement, useId } from 'react'
+import { type ReactElement, type RefObject, useId, useRef } from 'react'
 import { CloseIcon } from '../../icons'
 import { modalAnatomy as anatomy } from './anatomy'
 
 interface TokenSelectModalProps {
-  onOpenChange: (open: boolean) => void
+  contentId: string
+  onClose: () => void
   open: boolean
+  returnFocusTo: RefObject<HTMLElement | null>
 }
 
-/**
- * The dialog `<TokenInput>`'s token button opens
- *
- * @example
- * <TokenSelectModal open={open} onOpenChange={setOpen} />
- */
-export const TokenSelectModal = ({
-  onOpenChange,
-  open,
-}: TokenSelectModalProps): ReactElement | null => {
+const TokenSelect = ({
+  contentId,
+  onClose,
+  returnFocusTo,
+}: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
+  const searchRef = useRef<HTMLInputElement>(null)
   const service = useMachine(dialog.machine, {
+    finalFocusEl: () => returnFocusTo.current,
     id: useId(),
-    onOpenChange: (details) => onOpenChange(details.open),
-    open,
+    ids: { content: contentId },
+    initialFocusEl: () => searchRef.current,
+    // Zag's dismiss layer only calls preventDefault on Escape, so an enclosing dialog listening on
+    // the document would close along with this one.
+    onEscapeKeyDown: (event) => event.stopPropagation(),
+    onOpenChange: (details) => {
+      if (!details.open) onClose()
+    },
+    open: true,
   })
   const api = dialog.connect(service, normalizeProps)
 
-  return api.open ? (
+  return (
     <Portal>
       <div {...api.getBackdropProps()} className={anatomy.parts.backdrop} />
       <div {...api.getPositionerProps()} className={anatomy.parts.positioner}>
@@ -48,6 +54,7 @@ export const TokenSelectModal = ({
             autoComplete="off"
             className={anatomy.parts.search}
             placeholder="Search by name or symbol"
+            ref={searchRef}
             spellCheck={false}
             type="search"
           />
@@ -56,5 +63,19 @@ export const TokenSelectModal = ({
         </div>
       </div>
     </Portal>
-  ) : null
+  )
 }
+
+/**
+ * The dialog `<TokenInput>`'s token button opens
+ *
+ * Mounting is the open state: the machine only exists while the dialog does, so a field whose
+ * picker is never opened pays nothing for it. Focus returns to `returnFocusTo` on close, and
+ * `contentId` is what the trigger points `aria-controls` at.
+ *
+ * @example
+ * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} open={open}
+ *   returnFocusTo={triggerRef} />
+ */
+export const TokenSelectModal = ({ open, ...rest }: TokenSelectModalProps): ReactElement | null =>
+  open ? <TokenSelect {...rest} /> : null

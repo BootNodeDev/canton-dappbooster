@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { formatAmount } from '../../utils/tokenAmount'
@@ -246,17 +246,53 @@ describe('TokenInput', () => {
     expect(root).toHaveAttribute(anatomy.states.disabled, 'true')
   })
 
-  // The dialog machine settles the controlled open outside React's commit, so it lands a tick late.
-  it('opens the token select on the symbol button', async () => {
+  it('leaves the symbol inert with no handler to change the token', () => {
     setup()
+    expect(screen.queryByRole('button', { name: 'CC' })).not.toBeInTheDocument()
+    expect(screen.getByText('CC')).toHaveClass(anatomy.parts.token)
+  })
+
+  it('opens the token select on the symbol button', () => {
+    setup({ onTokenSelect: vi.fn() })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'CC' }))
-    expect(await screen.findByRole('dialog', { name: 'Select a token' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Select a token' })).toBeInTheDocument()
+  })
+
+  it('reports the open state on the trigger and points it at the dialog', () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).not.toHaveAttribute('aria-controls')
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveAttribute('aria-controls', dialog.id)
+  })
+
+  it('returns focus to the trigger when the token select closes', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    fireEvent.click(trigger)
+    // The focus trap arms a frame after the dialog mounts; a close before that returns nothing.
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('describes the field with the symbol rather than with the trigger', () => {
+    const { field } = setup({ onTokenSelect: vi.fn() })
+    const [tokenId] = (field.getAttribute('aria-describedby') ?? '').split(' ')
+    expect(document.getElementById(tokenId)).toHaveTextContent('CC')
+    expect(screen.getByRole('button', { name: 'CC' })).not.toHaveAttribute('id', tokenId)
   })
 
   it('disables the token select while the field is disabled', () => {
-    setup({ disabled: true })
-    expect(screen.getByRole('button', { name: 'CC' })).toBeDisabled()
+    setup({ disabled: true, onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    expect(trigger).toBeDisabled()
+    fireEvent.click(trigger)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('marks the balance readout busy while loading', () => {
