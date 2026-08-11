@@ -12,6 +12,7 @@ It is browser-only.
 ```
 src/
   CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
+  connectionMachine.ts        connection lifecycle statechart (xstate v5); internal, not yet wired (#84/#85)
   hooks/
     useConnect.ts          connect / disconnect lifecycle
     useParty.ts            active party
@@ -93,7 +94,7 @@ field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId`
 ### Hooks
 
 | Hook | Responsibility |
-|------|----------------|
+| ------ | ---------------- |
 | `useConnect` | start/stop the connection; expose error/connecting state |
 | `useParty` | current primary party + connection status |
 | `useWalletStatus` | lock/connect status from wallet events |
