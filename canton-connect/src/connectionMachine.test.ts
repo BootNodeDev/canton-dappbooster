@@ -263,6 +263,29 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('returns to disconnected when restore is cancelled in-flight', () => {
+      const onAbort = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise(({ signal }) => {
+            signal.addEventListener('abort', onAbort, { once: true })
+            return new Promise(() => {})
+          }),
+        },
+      })
+      const actor = createActor(machine)
+      const states = recordStates(actor)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      actor.send({ type: 'cancel' })
+
+      expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+      expect(onAbort).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
   })
 
   describe('races', () => {

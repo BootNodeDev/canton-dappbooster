@@ -82,6 +82,9 @@ export const connectionMachine = setup({
         ],
         onError: { target: 'disconnected' },
       },
+      on: {
+        cancel: { target: 'disconnected' },
+      },
     },
   },
 })
