@@ -43,7 +43,7 @@ The class strings live in `anatomy.ts`; the theme (a separate package) selects t
 Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
 tooling, not MVP scope.
 
-## Behavior: Zag, hand-rolled — deferred until needed
+## Behavior: Zag, hand-rolled — one widget at a time
 
 The chosen behavior engine is **Zag** (framework-agnostic interaction state machines exposed as
 prop-getters spread onto your own markup). Components are hand-rolled on those prop-getters, never
@@ -51,9 +51,15 @@ dropped in. The anatomy, not the engine, is the public contract.
 
 Zag earns its place where the interaction is one HTML does not supply, such as a listbox with
 roving focus, a popup with dismiss and outside-click, or a composite navigated by arrow keys.
-Holding state is not the trigger; everything else is hand-rolled on plain React state. So the
-`@zag-js/*` dependency lands with the first widget that needs it, not before; adding it now would
-be an unused dependency.
+Holding state is not the trigger; everything else is hand-rolled on plain React state. So a
+`@zag-js/*` dependency lands with the widget that needs it, never ahead of it: `@zag-js/dialog` and
+`@zag-js/react` arrived with `<TokenInput>`'s token select and are the only two so far. The React
+adapter's `Portal` renders through `react-dom`, which is why `react-dom` joins `react` as a peer
+dependency; a consumer already has it, so nothing new is asked of them.
+
+A machine is instantiated only while its widget is mounted. The token select renders nothing until
+it opens, so a field whose picker is never opened pays for no machine, no scope and no dismiss
+listeners.
 
 `@zag-js/clipboard` is a genuine fit for `<Identifier>`'s copy control, and it still loses: it
 models copied/not-copied but not a rejected write, which the `onCopy` outcome contract needs, and
@@ -67,7 +73,7 @@ the WAI-ARIA spinbutton pattern, so the field would carry `role="spinbutton"` pl
 pointer scrubbing, none of which belong on an amount nothing steps. Its callbacks and clamping run
 on `valueAsNumber`, a double, which reintroduces exactly the precision loss the component exists to
 avoid. And it rounds silently through `formatOptions.maximumFractionDigits`, where this component
-flags instead. Zag lands with the token selector (issue #11) instead: a combobox and a dialog are
+flags instead. Zag landed with the token selector (issue #11) instead: a combobox and a dialog are
 the real mistake to hand-roll.
 
 ## What `<TokenInput>` does not take

@@ -187,6 +187,7 @@ they would outrank every utility and every `cnc` rule whatever the specificity.
 `@theme inline` in the entry turns into utilities. `inline` is what keeps those utilities pointing at
 the live custom property, so flipping `data-theme` reskins the page with no recompile. A name
 pointing at a `--cnc-*` token inherits the kit's dark value and so needs no counterpart in the
-`[data-theme="dark"]` block; only app-only values are spelled out in both. `--surface-2` and
-`--muted` resolve to the same grey and stay separate names because components already pick one or
-the other.
+`[data-theme="dark"]` block; an app-only value is spelled out in both unless it is mode-independent
+by construction, which the brand hues (`--accent`, `--pink`, `--gradient-brand`) are. `--surface-2`
+and `--muted` resolve to the same grey and stay separate names because components already pick one
+or the other.
