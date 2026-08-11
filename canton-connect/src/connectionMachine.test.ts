@@ -267,4 +267,65 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().context.error).toBeUndefined()
     })
   })
+
+  describe('races', () => {
+    it('ignores a re-entrant connect while connecting', () => {
+      const actorStarted = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise(() => {
+            actorStarted()
+            return new Promise(() => {})
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect' })
+
+      expect(actor.getSnapshot().matches('connecting')).toBe(true)
+      expect(actorStarted).toHaveBeenCalledOnce()
+    })
+
+    it('ignores a disconnect while connecting', () => {
+      const actorStarted = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise(() => {
+            actorStarted()
+            return new Promise(() => {})
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'disconnect' })
+
+      expect(actor.getSnapshot().matches('connecting')).toBe(true)
+      expect(actorStarted).toHaveBeenCalledOnce()
+    })
+
+    it('aborts the in-flight attempt when the actor is stopped', () => {
+      const onAbort = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise(({ signal }) => {
+            signal.addEventListener('abort', onAbort, { once: true })
+            return new Promise(() => {})
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      actor.stop()
+
+      expect(onAbort).toHaveBeenCalledOnce()
+    })
+  })
 })
