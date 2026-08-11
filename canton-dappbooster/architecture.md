@@ -54,8 +54,9 @@ roving focus, a popup with dismiss and outside-click, or a composite navigated b
 Holding state is not the trigger; everything else is hand-rolled on plain React state. So a
 `@zag-js/*` dependency lands with the widget that needs it, never ahead of it: `@zag-js/dialog` and
 `@zag-js/react` arrived with `<TokenInput>`'s token select and are the only two so far. The React
-adapter's `Portal` renders through `react-dom`, which is why `react-dom` joins `react` as a peer
-dependency; a consumer already has it, so nothing new is asked of them.
+adapter reaches for `react-dom` from `useMachine` down, not only from `Portal`, and declares it a
+peer of its own, which is why `react-dom` joins `react` as a peer dependency here; a consumer
+already has it, so nothing new is asked of them.
 
 A machine is instantiated only while its widget is mounted. The token select renders nothing until
 it opens, so a field whose picker is never opened pays for no machine, no scope and no dismiss
