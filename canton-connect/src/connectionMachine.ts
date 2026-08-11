@@ -18,6 +18,11 @@ export const connectionMachine = setup({
       connection: ConnectResult | undefined
       error: unknown
     },
+    events: {} as
+      | { type: 'connect' }
+      | { type: 'cancel' }
+      | { type: 'disconnect' }
+      | { type: 'restore' },
   },
 }).createMachine({
   context: {
