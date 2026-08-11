@@ -1,9 +1,19 @@
+// @vitest-environment node
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromPromise, type StateValueFrom } from 'xstate'
 import { connectionMachine } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMachine>>) => {
+  const states: StateValueFrom<typeof connectionMachine>[] = []
+
+  actor.subscribe(({ value }) => states.push(value))
+
+  return states
+}
+
 const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
 
 describe('connectionMachine', () => {
@@ -13,6 +23,8 @@ describe('connectionMachine', () => {
     actor.start()
 
     expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+
+    actor.stop()
   })
 
   describe('connect attempt', () => {
@@ -23,21 +35,8 @@ describe('connectionMachine', () => {
       actor.send({ type: 'connect' })
 
       expect(actor.getSnapshot().matches('connecting')).toBe(true)
-    })
 
-    it('reaches connected when the attempt resolves', async () => {
-      const machine = connectionMachine.provide({
-        actors: {
-          connect: fromPromise(() => Promise.resolve(connection)),
-        },
-      })
-      const actor = createActor(machine)
-
-      actor.start()
-      actor.send({ type: 'connect' })
-      await pause(0) // queue ordering
-
-      expect(actor.getSnapshot().matches('connected')).toBe(true)
+      actor.stop()
     })
 
     it('stores the connect result in context', async () => {
@@ -54,6 +53,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('connected')).toBe(true)
       expect(actor.getSnapshot().context.connection).toBe(connection)
+
+      actor.stop()
     })
   })
 
@@ -76,6 +77,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
       expect(onAbort).toHaveBeenCalledOnce()
+
+      actor.stop()
     })
 
     it('is ignored once the connection settled', async () => {
@@ -97,6 +100,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('connected')).toBe(true)
       expect(onAbort).not.toHaveBeenCalled()
+
+      actor.stop()
     })
   })
 
@@ -116,25 +121,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('failure')).toBe(true)
       expect(actor.getSnapshot().context.error).toEqual(new Error('wallet rejected'))
-    })
 
-    it('allows connecting again', async () => {
-      const machine = connectionMachine.provide({
-        actors: {
-          connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
-        },
-      })
-
-      const actor = createActor(machine)
-      const states: StateValueFrom<typeof machine>[] = []
-      actor.subscribe(({ value }) => states.push(value))
-
-      actor.start()
-      actor.send({ type: 'connect' })
-      await pause(0)
-      actor.send({ type: 'connect' })
-
-      expect(states).toEqual<typeof states>(['disconnected', 'connecting', 'failure', 'connecting'])
+      actor.stop()
     })
 
     it('drops the previous error when retrying', async () => {
@@ -144,8 +132,7 @@ describe('connectionMachine', () => {
         },
       })
       const actor = createActor(machine)
-      const states: StateValueFrom<typeof machine>[] = []
-      actor.subscribe(({ value }) => states.push(value))
+      const states = recordStates(actor)
 
       actor.start()
       actor.send({ type: 'connect' })
@@ -153,8 +140,9 @@ describe('connectionMachine', () => {
       actor.send({ type: 'connect' })
 
       expect(actor.getSnapshot().context.error).toBeUndefined()
-
       expect(states).toEqual<typeof states>(['disconnected', 'connecting', 'failure', 'connecting'])
+
+      actor.stop()
     })
   })
 
@@ -166,8 +154,7 @@ describe('connectionMachine', () => {
         },
       })
       const actor = createActor(machine)
-      const states: StateValueFrom<typeof machine>[] = []
-      actor.subscribe(({ value }) => states.push(value))
+      const states = recordStates(actor)
 
       actor.start()
       actor.send({ type: 'connect' })
@@ -181,6 +168,8 @@ describe('connectionMachine', () => {
         'connected',
         'disconnected',
       ])
+
+      actor.stop()
     })
 
     it('drops the connection information', async () => {
@@ -198,6 +187,8 @@ describe('connectionMachine', () => {
 
       actor.send({ type: 'disconnect' })
       expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.stop()
     })
   })
 
@@ -209,6 +200,8 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
 
       expect(actor.getSnapshot().matches('restoring')).toBe(true)
+
+      actor.stop()
     })
 
     it('restores an existing session to connected', async () => {
@@ -225,6 +218,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('connected')).toBe(true)
       expect(actor.getSnapshot().context.connection).toBe(connection)
+
+      actor.stop()
     })
 
     it('returns to disconnected when there is no session to restore', async () => {
@@ -236,8 +231,7 @@ describe('connectionMachine', () => {
         },
       })
       const actor = createActor(machine)
-      const states: StateValueFrom<typeof machine>[] = []
-      actor.subscribe(({ value }) => states.push(value))
+      const states = recordStates(actor)
 
       actor.start()
       actor.send({ type: 'restore' })
@@ -246,6 +240,8 @@ describe('connectionMachine', () => {
       expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
       expect(actor.getSnapshot().context.connection).toBeUndefined()
       expect(actor.getSnapshot().context.error).toBeUndefined()
+
+      actor.stop()
     })
 
     it('returns to disconnected quietly when restore fails', async () => {
@@ -255,8 +251,7 @@ describe('connectionMachine', () => {
         },
       })
       const actor = createActor(machine)
-      const states: StateValueFrom<typeof machine>[] = []
-      actor.subscribe(({ value }) => states.push(value))
+      const states = recordStates(actor)
 
       actor.start()
       actor.send({ type: 'restore' })
@@ -265,6 +260,8 @@ describe('connectionMachine', () => {
       expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
       expect(actor.getSnapshot().context.connection).toBeUndefined()
       expect(actor.getSnapshot().context.error).toBeUndefined()
+
+      actor.stop()
     })
   })
 
@@ -287,6 +284,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('connecting')).toBe(true)
       expect(actorStarted).toHaveBeenCalledOnce()
+
+      actor.stop()
     })
 
     it('ignores a disconnect while connecting', () => {
@@ -307,6 +306,8 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches('connecting')).toBe(true)
       expect(actorStarted).toHaveBeenCalledOnce()
+
+      actor.stop()
     })
 
     it('aborts the in-flight attempt when the actor is stopped', () => {
