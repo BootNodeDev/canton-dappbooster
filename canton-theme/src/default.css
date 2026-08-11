@@ -322,7 +322,8 @@
   }
 
   .cnc-token-select-modal__list {
-    min-height: 14rem;
+    flex: 1 1 14rem;
+    min-height: 0;
     overflow-y: auto;
   }
 }
