@@ -5,6 +5,7 @@ import {
   type ReactElement,
   type ReactNode,
   useId,
+  useState,
 } from 'react'
 import { cx } from '../../utils/cx'
 import { resolveInvalid } from '../../utils/invalid'
@@ -17,12 +18,13 @@ import {
   validateAmount,
 } from '../../utils/tokenAmount'
 import { anatomy } from './anatomy'
+import { TokenSelectModal } from './TokenSelectModal'
 import { useFormattedField } from './useFormattedField'
 
 const ZERO = formatAmount('0.00')
 
 /**
- * The token an amount is denominated in.
+ * The token an amount is denominated in
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
@@ -62,11 +64,7 @@ interface TokenInputOwnProps
 }
 
 /**
- * Props for {@link TokenInput}. One of `label`, `aria-label` or `aria-labelledby` is required: the
- * field is nothing but digits, so an unnamed one is unusable to a screen reader. `value` and
- * `balance` are exact decimals, grouped for display but never reported back grouped; `balance`
- * doubles as the ceiling `above-max` is measured against, and `usdValue` is rendered after the
- * component's own `~$`. A `balanceState` of either kind disables Max.
+ * Props for {@link TokenInput}
  *
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
@@ -108,6 +106,7 @@ export const TokenInput = ({
   const bounds = { max: balance }
   const error = validateAmount(value, bounds)
   const [invalid, flagged] = resolveInvalid(ariaInvalid, error !== undefined)
+  const [selectOpen, setSelectOpen] = useState(false)
   const noBalance = !parseAmount(balance ?? '')
 
   const balanceText =
@@ -162,10 +161,17 @@ export const TokenInput = ({
           type="text"
           value={field.value}
         />
-        <span className={anatomy.parts.token} id={tokenId}>
+        <button
+          aria-haspopup="dialog"
+          className={anatomy.parts.token}
+          disabled={disabled}
+          id={tokenId}
+          onClick={() => setSelectOpen(true)}
+          type="button"
+        >
           {token.logo}
           {token.symbol}
-        </span>
+        </button>
       </div>
       <div className={anatomy.parts.meta}>
         ~$
@@ -196,6 +202,7 @@ export const TokenInput = ({
           Max
         </button>
       </div>
+      <TokenSelectModal onOpenChange={setSelectOpen} open={selectOpen} />
     </div>
   )
 }

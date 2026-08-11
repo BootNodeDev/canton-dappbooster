@@ -246,6 +246,19 @@ describe('TokenInput', () => {
     expect(root).toHaveAttribute(anatomy.states.disabled, 'true')
   })
 
+  // The dialog machine settles the controlled open outside React's commit, so it lands a tick late.
+  it('opens the token select on the symbol button', async () => {
+    setup()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    expect(await screen.findByRole('dialog', { name: 'Select a token' })).toBeInTheDocument()
+  })
+
+  it('disables the token select while the field is disabled', () => {
+    setup({ disabled: true })
+    expect(screen.getByRole('button', { name: 'CC' })).toBeDisabled()
+  })
+
   it('marks the balance readout busy while loading', () => {
     setup({ balanceState: 'loading' })
     expect(screen.getByText(`Balance: ${formatAmount('0.00')}`)).toHaveAttribute(

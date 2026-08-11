@@ -77,6 +77,11 @@ exactly the case the attribute exists for.
   once; a fallback would be a second copy that drifts and that nothing checks.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
+- `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
+  above the page instead of in it. Everything else stacks in document order; a second value here
+  means two components can fight over depth, so treat adding one as a contract decision.
+- Comments: root [`../CLAUDE.md`](../CLAUDE.md) allows only section separators. A stylesheet fact
+  worth keeping is written into this file instead, under the section that owns it.
 
 ## Validation
 

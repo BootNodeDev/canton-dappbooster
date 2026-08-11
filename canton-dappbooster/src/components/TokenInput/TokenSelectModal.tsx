@@ -26,9 +26,7 @@ export const TokenSelectModal = ({
   })
   const api = dialog.connect(service, normalizeProps)
 
-  if (!api.open) return null
-
-  return (
+  return api.open ? (
     <Portal>
       <div {...api.getBackdropProps()} className={anatomy.parts.backdrop} />
       <div {...api.getPositionerProps()} className={anatomy.parts.positioner}>
@@ -58,5 +56,5 @@ export const TokenSelectModal = ({
         </div>
       </div>
     </Portal>
-  )
+  ) : null
 }
