@@ -1,10 +1,6 @@
-/* The app's Tailwind-facing colour names, mapped in styles/index.css via `@theme inline`. A name
-   pointing at a `--cnc-*` token needs no dark counterpart; only app-only values are spelled out. */
-
 :root {
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
-  /* Two names for one grey, kept apart because nine components already pick one or the other. */
   --surface-2: var(--cnc-surface-muted);
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
@@ -26,11 +22,12 @@
   --danger: var(--cnc-danger);
   --danger-soft: var(--cnc-danger-subtle);
 
-  /* Brand hues, mode-independent by construction, so no dark counterpart. */
+  /* brand */
   --accent: #c670e5;
   --pink: #e71d73;
   --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
 
+  /* effects */
   --gradient-text: linear-gradient(120deg, #692581, #c670e5 55%, #e71d73);
   --glow: 0 10px 26px rgba(198, 112, 229, 0.35);
   --shadow-card: 0 12px 28px -16px rgba(28, 29, 46, 0.18);

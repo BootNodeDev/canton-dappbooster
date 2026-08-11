@@ -77,6 +77,15 @@ exactly the case the attribute exists for.
   once; a fallback would be a second copy that drifts and that nothing checks.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
+- Put colour on the root part, never on the inner value part, so a consumer's utility class on the
+  root still wins.
+- Never declare `font-size` on a primitive that can sit inside a heading, a row, or a table cell.
+  Let it inherit, and size sub-parts in `em` so they scale with whatever they land in.
+- A field nested in a card takes `--cnc-border-strong`: it shares the card's surface, so the card's
+  own border colour on it reads as the card edge rather than as a field.
+- A wide field shows focus and invalidity by tinting its own border under a translucent wash, not by
+  adding a detached solid ring. The wash carries the thickness contrast needs; a 2px ring standing
+  off a field that wide reads as an error even when nothing is wrong.
 - `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
   above the page instead of in it. Everything else stacks in document order; a second value here
   means two components can fight over depth, so treat adding one as a contract decision.

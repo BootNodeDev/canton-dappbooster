@@ -173,8 +173,20 @@ pre-paint script sits in `index.html`, are the kit's call:
 [`src/styles/index.css`](src/styles/index.css) is the single entry. Its leading
 `@layer properties, theme, base, cnc, components, utilities` is declared before the first `@import`,
 which is what puts the kit theme's `cnc` layer above Tailwind's preflight and below the app's
-utilities. Moving that line below an import silently reorders the cascade.
+utilities: above preflight because preflight resets `button { color: inherit }` over the kit's copy
+control, below `utilities` so a `className` on a kit component still wins. Moving that line under an
+import silently reorders the cascade, and a layer left off the list lands on top of every layer that
+is on it, so the list is worth rereading on a Tailwind major bump.
 
 The app carries its own preflight restorations in `base` too, currently `cursor: pointer` on enabled
 buttons, which Tailwind v4's preflight dropped. `base` is the right layer for them because
-`utilities` comes later in the list, so a `cursor-*` utility on the element still wins.
+`utilities` comes later in the list, so a `cursor-*` utility on the element still wins; unlayered
+they would outrank every utility and every `cnc` rule whatever the specificity.
+
+[`src/styles/tokens.css`](src/styles/tokens.css) holds the app's Tailwind-facing colour names, which
+`@theme inline` in the entry turns into utilities. `inline` is what keeps those utilities pointing at
+the live custom property, so flipping `data-theme` reskins the page with no recompile. A name
+pointing at a `--cnc-*` token inherits the kit's dark value and so needs no counterpart in the
+`[data-theme="dark"]` block; only app-only values are spelled out in both. `--surface-2` and
+`--muted` resolve to the same grey and stay separate names because components already pick one or
+the other.
