@@ -22,9 +22,6 @@ const TokenSelect = ({
     id: useId(),
     ids: { content: contentId },
     initialFocusEl: () => searchRef.current,
-    // Zag's dismiss layer only calls preventDefault on Escape, so an enclosing dialog listening on
-    // the document would close along with this one.
-    onEscapeKeyDown: (event) => event.stopPropagation(),
     onOpenChange: (details) => {
       if (!details.open) onClose()
     },

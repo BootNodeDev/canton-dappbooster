@@ -1,11 +1,10 @@
 @import "./tokens.css";
 
 @layer cnc {
-  /* Shared across every part below */
+  /* Button-like parts */
   .cnc-identifier__copy,
   .cnc-explorer-link,
   .cnc-token-input__max,
-  .cnc-token-input__token,
   .cnc-token-select-modal__close {
     background: none;
     border-radius: var(--cnc-radius);
@@ -17,7 +16,7 @@
   .cnc-identifier__copy:focus-visible,
   .cnc-explorer-link:focus-visible,
   .cnc-token-input__max:focus-visible,
-  .cnc-token-input__token:focus-visible,
+  .cnc-token-input__token[data-interactive]:focus-visible,
   .cnc-token-select-modal__close:focus-visible {
     outline: 2px solid var(--cnc-accent);
     outline-offset: 2px;
@@ -166,8 +165,18 @@
     padding: 0.375rem 0.625rem;
   }
 
-  .cnc-token-input__token:hover:not(:disabled) {
+  .cnc-token-input__token[data-interactive] {
+    border: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .cnc-token-input__token[data-interactive]:hover:not(:disabled) {
     color: var(--cnc-accent);
+  }
+
+  .cnc-token-input__token[data-interactive]:disabled {
+    cursor: not-allowed;
   }
 
   .cnc-token-input__meta {
@@ -208,10 +217,6 @@
   .cnc-token-input__max:disabled {
     cursor: not-allowed;
     opacity: 0.5;
-  }
-
-  .cnc-token-input__token:disabled {
-    cursor: not-allowed;
   }
 
   .cnc-token-input[data-disabled] {
@@ -315,10 +320,6 @@
   .cnc-token-select-modal__list {
     background: var(--cnc-surface-muted);
     border-radius: var(--cnc-radius);
-  }
-
-  .cnc-token-select-modal__favorites {
-    min-height: 2.75rem;
   }
 
   .cnc-token-select-modal__list {

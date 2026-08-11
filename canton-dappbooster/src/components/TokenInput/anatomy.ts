@@ -15,6 +15,8 @@ export const anatomy = {
     invalid: 'data-invalid',
     disabled: 'data-disabled',
     balance: 'data-state',
+    // The token part renders as a span or as a picker button, so the theme needs the two apart.
+    interactive: 'data-interactive',
   },
 } as const
 
@@ -31,8 +33,5 @@ export const modalAnatomy = {
     search: 'cnc-token-select-modal__search',
     favorites: 'cnc-token-select-modal__favorites',
     list: 'cnc-token-select-modal__list',
-  },
-  states: {
-    open: 'data-state',
   },
 } as const

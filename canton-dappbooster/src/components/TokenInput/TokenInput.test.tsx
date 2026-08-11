@@ -252,6 +252,21 @@ describe('TokenInput', () => {
     expect(screen.getByText('CC')).toHaveClass(anatomy.parts.token)
   })
 
+  // One part class covers both renderings, so this attribute is all the theme has to keep the
+  // button's cursor and hover off the inert span.
+  it('leaves the inert symbol unmarked so the theme does not style it as a button', () => {
+    setup()
+    expect(screen.getByText('CC')).not.toHaveAttribute(anatomy.states.interactive)
+  })
+
+  it('marks the symbol interactive when it opens the token select', () => {
+    setup({ onTokenSelect: vi.fn() })
+    expect(screen.getByRole('button', { name: 'CC' })).toHaveAttribute(
+      anatomy.states.interactive,
+      'true',
+    )
+  })
+
   it('opens the token select on the symbol button', () => {
     setup({ onTokenSelect: vi.fn() })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -268,6 +283,25 @@ describe('TokenInput', () => {
     const dialog = screen.getByRole('dialog')
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(trigger).toHaveAttribute('aria-controls', dialog.id)
+  })
+
+  it('clears the open state from the trigger once the dialog is gone', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).not.toHaveAttribute('aria-controls')
+  })
+
+  it('closes the token select on Escape', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    // Zag arms the dismiss listeners a frame after the dialog mounts.
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+    fireEvent.keyDown(screen.getByLabelText('Search tokens'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('returns focus to the trigger when the token select closes', async () => {

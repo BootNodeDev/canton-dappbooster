@@ -187,6 +187,7 @@ export const TokenInput = ({
             onClick={() => setSelectOpen(true)}
             ref={triggerRef}
             type="button"
+            {...{ [anatomy.states.interactive]: true }}
           >
             {token.logo}
             {/* The field's description targets the symbol, so it must not be the button itself. */}

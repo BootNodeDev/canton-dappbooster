@@ -71,32 +71,41 @@ describe('TokenSelectModal', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
-  it('keeps the Escape it consumed from reaching an enclosing dialog', async () => {
+  // Fired from inside the dialog, not on the document, so Zag's capture listener runs ahead of the
+  // enclosing one the way it does in a browser rather than in registration order.
+  it('marks the Escape it consumed so an enclosing dialog can let it pass', async () => {
     const outer = vi.fn()
     document.addEventListener('keydown', outer)
-    const { onClose } = setup()
-    await armDismiss()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    await waitFor(() => expect(onClose).toHaveBeenCalled())
-    document.removeEventListener('keydown', outer)
-    expect(outer).not.toHaveBeenCalled()
+    try {
+      const { onClose } = setup()
+      await armDismiss()
+      fireEvent.keyDown(screen.getByLabelText('Search tokens'), { key: 'Escape' })
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
+      expect(outer).toHaveBeenCalledOnce()
+      expect(outer.mock.calls[0][0].defaultPrevented).toBe(true)
+    } finally {
+      document.removeEventListener('keydown', outer)
+    }
   })
 
   it('returns focus to the element it was opened from', async () => {
     const trigger = document.createElement('button')
     document.body.append(trigger)
-    const { unmount } = render(
-      <TokenSelectModal
-        contentId="token-select"
-        onClose={vi.fn()}
-        open={true}
-        returnFocusTo={{ current: trigger }}
-      />,
-    )
-    await armDismiss()
-    unmount()
-    await waitFor(() => expect(trigger).toHaveFocus())
-    trigger.remove()
+    try {
+      const { unmount } = render(
+        <TokenSelectModal
+          contentId="token-select"
+          onClose={vi.fn()}
+          open={true}
+          returnFocusTo={{ current: trigger }}
+        />,
+      )
+      await armDismiss()
+      unmount()
+      await waitFor(() => expect(trigger).toHaveFocus())
+    } finally {
+      trigger.remove()
+    }
   })
 
   // Two behaviours stay untested here because jsdom cannot carry them: dismissal on an outside
