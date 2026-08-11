@@ -69,10 +69,6 @@ const TokenSelect = ({
 /**
  * The dialog `<TokenInput>`'s token button opens
  *
- * Mounting is the open state: the machine only exists while the dialog does, so a field whose
- * picker is never opened pays nothing for it. Focus returns to `returnFocusTo` on close, and
- * `contentId` is what the trigger points `aria-controls` at.
- *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} open={open}
  *   returnFocusTo={triggerRef} />
