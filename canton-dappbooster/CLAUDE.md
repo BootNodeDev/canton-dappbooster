@@ -61,7 +61,8 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
   `unstubGlobals`, and `vitest.setup.ts` clears `localStorage` and the `data-theme` attribute after
   every test, so no stub, spy, or attribute from the test before it is ever load-bearing.
 - `src/testing/` holds the helpers that install that state: `stubPrefersDark` for the OS colour
-  preference, `stubClipboard` for `navigator.clipboard`.
+  preference, `stubClipboard` for `navigator.clipboard`, `stubViewport` for the element height and
+  `ResizeObserver` a windowed list has to measure against, which jsdom supplies neither of.
 
 ## Validation Checklist
 
