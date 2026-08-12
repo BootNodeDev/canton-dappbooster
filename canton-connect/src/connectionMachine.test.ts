@@ -481,5 +481,35 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('makes a wallet login visible immediately', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() =>
+            Promise.resolve({
+              connection: { ...connection, isConnected: false },
+              session,
+            }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+
+      const freshSession: WalletStatus['session'] = { accessToken: 'fresh-token', userId: 'user' }
+      actor.send({ type: 'wallet.statusChanged', status: { connection, session: freshSession } })
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.connection).toBe(connection)
+      expect(actor.getSnapshot().context.session).toBe(freshSession)
+
+      actor.stop()
+    })
   })
 })

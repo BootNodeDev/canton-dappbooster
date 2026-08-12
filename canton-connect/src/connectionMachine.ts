@@ -69,7 +69,17 @@ export const connectionMachine = setup({
           },
           exit: assign({ connection: undefined }),
         },
-        unauthenticated: {},
+        unauthenticated: {
+          on: {
+            'wallet.statusChanged': {
+              target: 'authenticated',
+              actions: assign(({ event: { status } }) => ({
+                connection: status.connection,
+                session: status.session,
+              })),
+            },
+          },
+        },
       },
       exit: assign({ session: undefined }),
       on: {
