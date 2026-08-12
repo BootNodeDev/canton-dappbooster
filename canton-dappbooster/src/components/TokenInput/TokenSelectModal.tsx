@@ -30,6 +30,13 @@ const TokenSelect = ({
     id: useId(),
     ids: { content: contentId },
     initialFocusEl: () => searchRef.current,
+    onEscapeKeyDown: (event) => {
+      // `input[type="search"]` clears on Escape, and the dialog dismisses on the same keydown, so
+      // the field takes it first rather than a keypress meant to clear the query losing the dialog.
+      if (query === '' || document.activeElement !== searchRef.current) return
+      event.preventDefault()
+      setQuery('')
+    },
     onOpenChange: (details) => {
       if (!details.open) onClose()
     },
@@ -57,6 +64,7 @@ const TokenSelect = ({
           <TokenSearch onChange={setQuery} ref={searchRef} value={query} />
           <div className={anatomy.parts.favorites} />
           <TokenList
+            // Closed through the machine, not by unmounting, so the trigger gets its focus back.
             onSelect={(token) => {
               onSelect(token)
               api.setOpen(false)
@@ -71,7 +79,9 @@ const TokenSelect = ({
 }
 
 /**
- * The dialog `<TokenInput>`'s token button opens
+ * The dialog `<TokenInput>`'s token button opens. Lists what a `<TokenListProvider>` above it
+ * supplies, filters it on its own search field, and closes itself on a pick, so `onSelect` only
+ * has to record the choice.
  *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}

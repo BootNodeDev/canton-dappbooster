@@ -35,9 +35,10 @@ export const modalAnatomy = {
     rowSymbol: 'cnc-token-select-modal__row-symbol',
     rowText: 'cnc-token-select-modal__row-text',
     search: 'cnc-token-select-modal__search',
+    searchField: 'cnc-token-select-modal__search-field',
     searchIcon: 'cnc-token-select-modal__search-icon',
-    searchInput: 'cnc-token-select-modal__search-input',
     sizer: 'cnc-token-select-modal__sizer',
+    status: 'cnc-token-select-modal__status',
     title: 'cnc-token-select-modal__title',
   },
   states: {

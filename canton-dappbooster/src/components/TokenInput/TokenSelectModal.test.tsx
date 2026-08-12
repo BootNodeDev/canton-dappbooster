@@ -133,6 +133,30 @@ describe('TokenSelectModal', () => {
     }
   })
 
+  // `input[type="search"]` clears on Escape, so the same keydown would otherwise take the dialog.
+  it('clears a query on Escape from the search field rather than closing', async () => {
+    const { onClose } = setup()
+    await armDismiss()
+    const search = screen.getByLabelText('Search tokens')
+    fireEvent.change(search, { target: { value: 'usd' } })
+    search.focus()
+    fireEvent.keyDown(search, { key: 'Escape' })
+    await armDismiss()
+
+    expect(search).toHaveValue('')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('asks to close on Escape once the search field is empty', async () => {
+    const { onClose } = setup()
+    await armDismiss()
+    const search = screen.getByLabelText('Search tokens')
+    search.focus()
+    fireEvent.keyDown(search, { key: 'Escape' })
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
   it('returns focus to the element it was opened from', async () => {
     const trigger = document.createElement('button')
     document.body.append(trigger)

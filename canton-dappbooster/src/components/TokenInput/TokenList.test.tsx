@@ -157,14 +157,21 @@ describe('TokenList', () => {
   })
 
   it('announces that nothing matches instead of listing rows', () => {
-    setup(undefined, 'nothing')
+    const { container } = setup(undefined, 'nothing')
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
+    expect(container.querySelector(`.${anatomy.parts.empty}`)).toHaveTextContent('No tokens found')
   })
 
-  it('keeps the announcement mounted and silent while the list has rows', () => {
-    setup()
+  it('announces how far the query narrowed the list', () => {
+    setup(undefined, 'TK7')
+    expect(screen.getByRole('status')).toHaveTextContent('11 tokens found')
+  })
+
+  it('keeps the announcement mounted and silent until a query narrows the list', () => {
+    const { container } = setup()
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(container.querySelector(`.${anatomy.parts.empty}`)).not.toBeInTheDocument()
   })
 
   it('restores the whole list when the query is cleared', () => {
@@ -182,5 +189,34 @@ describe('TokenList', () => {
 
     expect(scroller.scrollTop).toBe(0)
     expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(1)])
+  })
+
+  // The rewound scroll fires no scroll event, so the window has to be told rather than left to hear.
+  it('renders the matches from the top after a query change scrolled the list back', () => {
+    const { scroller, search } = setup()
+    scrollTo(scroller, ROW * 90)
+    search('Token 1')
+
+    expect(scroller.scrollTop).toBe(0)
+    expect(rows().map((node) => node.getAttribute('aria-label'))).toEqual([
+      'Token 1 TK1',
+      ...Array.from({ length: 10 }, (_, index) => `Token 1${index} TK1${index}`),
+    ])
+  })
+
+  it('holds the tab stop and the scroll through a provider handing over an equal list', () => {
+    stubViewport(VIEWPORT)
+    const list = (given: Token[]): ReactElement => (
+      <TokenListProvider tokens={given}>
+        <TokenList onSelect={vi.fn()} />
+      </TokenListProvider>
+    )
+    const { container, rerender } = render(list(tokens))
+    const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
+    scrollTo(scroller, ROW * 40)
+    rerender(list([...tokens]))
+
+    expect(scroller.scrollTop).toBe(ROW * 40)
+    expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(0)])
   })
 })

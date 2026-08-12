@@ -23,6 +23,15 @@ describe('filterTokens', () => {
     expect(filterTokens(tokens, '0xbbb2')).toEqual([weth])
   })
 
+  it('leaves an id the query only appears inside alone', () => {
+    expect(filterTokens(tokens, 'bbb')).toEqual([])
+  })
+
+  it('ranks what the caller can read ahead of an id prefix', () => {
+    const decoy: Token = { id: 'cc99', name: 'Decoy', symbol: 'DEC' }
+    expect(filterTokens([decoy, cc], 'cc')).toEqual([cc, decoy])
+  })
+
   it('matches case-insensitively and partially', () => {
     expect(filterTokens(tokens, 'eTH')).toEqual([weth])
   })

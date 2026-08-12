@@ -15,14 +15,14 @@ interface TokenSearchProps {
  * <TokenSearch onChange={setQuery} ref={searchRef} value={query} />
  */
 export const TokenSearch = ({ onChange, ref, value }: TokenSearchProps): ReactElement => (
-  <div className={anatomy.parts.search}>
+  <div className={anatomy.parts.searchField}>
     <span className={anatomy.parts.searchIcon}>
       <SearchIcon />
     </span>
     <input
       aria-label="Search tokens"
       autoComplete="off"
-      className={anatomy.parts.searchInput}
+      className={anatomy.parts.search}
       onChange={(event) => onChange(event.target.value)}
       placeholder="Search by name or symbol"
       ref={ref}

@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes, ReactElement } from 'react'
+import type { HTMLAttributes, ReactElement } from 'react'
 import {
   type CopyOutcome,
   type CopyState,
@@ -6,6 +6,7 @@ import {
 } from '../../hooks/useCopyToClipboard'
 import { CheckIcon, CopyIcon } from '../../icons'
 import { cx } from '../../utils/cx'
+import { SR_ONLY } from '../../utils/srOnly'
 import { ExplorerLink } from '../ExplorerLink'
 import { anatomy } from './anatomy'
 import { type TruncateOptions, truncateIdentifier } from './truncate'
@@ -34,19 +35,6 @@ const statusText = (state: CopyState, label: string): string => {
   if (state === 'copied') return `Copied ${label}`
   if (state === 'error') return `Could not copy ${label}`
   return ''
-}
-
-// Inline rather than themed: without CSS loaded, the outcome would land in the consumer's layout.
-const SR_ONLY: CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  margin: -1,
-  padding: 0,
-  overflow: 'hidden',
-  whiteSpace: 'nowrap',
-  border: 0,
-  clipPath: 'inset(50%)',
 }
 
 /**
