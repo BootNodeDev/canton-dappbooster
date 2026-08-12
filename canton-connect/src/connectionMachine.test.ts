@@ -264,7 +264,7 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('returns to disconnected when restore is cancelled in-flight', () => {
+    it('aborts the in-flight restore', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
