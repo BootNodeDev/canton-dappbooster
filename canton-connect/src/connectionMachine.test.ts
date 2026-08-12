@@ -511,5 +511,65 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('stays authenticated when a push still says logged in', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+
+      const freshConnection: ConnectResult = { isConnected: true, isNetworkConnected: false }
+      const freshSession: WalletStatus['session'] = { accessToken: 'fresh-token', userId: 'user' }
+      actor.send({
+        type: 'wallet.statusChanged',
+        status: { connection: freshConnection, session: freshSession },
+      })
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.connection).toBe(freshConnection)
+      expect(actor.getSnapshot().context.session).toBe(freshSession)
+
+      actor.stop()
+    })
+
+    it('stays logged out when a push still says logged out', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() =>
+            Promise.resolve({
+              connection: { ...connection, isConnected: false },
+              session,
+            }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+
+      actor.send({
+        type: 'wallet.statusChanged',
+        status: { connection: { ...connection, isConnected: false } },
+      })
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+      expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.stop()
+    })
   })
 })

@@ -65,13 +65,29 @@ export const connectionMachine = setup({
       states: {
         authenticated: {
           on: {
-            'wallet.statusChanged': { target: 'unauthenticated' },
+            'wallet.statusChanged': [
+              {
+                guard: {
+                  type: 'isAuthenticated',
+                  params: ({ event: { status } }) => ({ connection: status.connection }),
+                },
+                actions: assign(({ event: { status } }) => ({
+                  connection: status.connection,
+                  session: status.session,
+                })),
+              },
+              { target: 'unauthenticated' },
+            ],
           },
           exit: assign({ connection: undefined }),
         },
         unauthenticated: {
           on: {
             'wallet.statusChanged': {
+              guard: {
+                type: 'isAuthenticated',
+                params: ({ event: { status } }) => ({ connection: status.connection }),
+              },
               target: 'authenticated',
               actions: assign(({ event: { status } }) => ({
                 connection: status.connection,
