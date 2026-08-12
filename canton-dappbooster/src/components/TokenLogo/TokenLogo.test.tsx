@@ -15,6 +15,14 @@ describe('TokenLogo', () => {
     expect(logo).toHaveAttribute(anatomy.states.fallback)
   })
 
+  it('falls back the same way when the logo is null', () => {
+    const { container } = render(<TokenLogo logo={null} symbol="USDC" />)
+    const logo = rendered(container)
+    expect(logo).toHaveTextContent('USDC')
+    expect(logo).toHaveAttribute(anatomy.states.fallback)
+    expect(logo.style.getPropertyValue('--cnc-token-hue')).toBe(String(hueOf('USDC')))
+  })
+
   it('hands the theme the hue to paint the fallback with', () => {
     const { container } = render(<TokenLogo symbol="USDC" />)
     expect(rendered(container).style.getPropertyValue('--cnc-token-hue')).toBe(

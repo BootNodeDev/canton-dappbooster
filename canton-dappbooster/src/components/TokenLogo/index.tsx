@@ -19,13 +19,17 @@ const hueStyle = (symbol: string): CSSProperties =>
  * @example
  * <TokenLogo logo={token.logo} symbol={token.symbol} />
  */
-export const TokenLogo = ({ className, logo, symbol }: TokenLogoProps): ReactElement => (
-  <span
-    aria-hidden
-    className={cx(anatomy.parts.root, className)}
-    style={logo === undefined ? hueStyle(symbol) : undefined}
-    {...{ [anatomy.states.fallback]: logo === undefined || undefined }}
-  >
-    {logo ?? symbol}
-  </span>
-)
+export const TokenLogo = ({ className, logo, symbol }: TokenLogoProps): ReactElement => {
+  const fallback = logo === undefined || logo === null
+
+  return (
+    <span
+      aria-hidden
+      className={cx(anatomy.parts.root, className)}
+      style={fallback ? hueStyle(symbol) : undefined}
+      {...{ [anatomy.states.fallback]: fallback || undefined }}
+    >
+      {fallback ? symbol : logo}
+    </span>
+  )
+}
