@@ -18,6 +18,7 @@ import {
   type TokenAmountError,
   validateAmount,
 } from '../../utils/tokenAmount'
+import { TokenLogo } from '../TokenLogo'
 import { anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 import { useFormattedField } from './useFormattedField'
@@ -25,12 +26,14 @@ import { useFormattedField } from './useFormattedField'
 const ZERO = formatAmount('0.00')
 
 /**
- * The token an amount is denominated in
+ * The token an amount is denominated in. A `Token` off the list provider satisfies it, and `id` is
+ * what the picker marks the current row by, so a display-only field can leave it out.
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
  */
 export interface TokenMeta {
+  id?: string
   symbol: string
   logo?: ReactNode
 }
@@ -71,8 +74,8 @@ interface TokenInputOwnProps
  * `balance` are exact decimals, grouped for display but never reported back grouped; `balance`
  * doubles as the ceiling `above-max` is measured against, and `usdValue` is rendered after the
  * component's own `~$`. A `balanceState` of either kind disables Max. `onTokenSelect` is what turns
- * the symbol into a button opening the token picker; the picker holds placeholders so far, so
- * nothing calls it yet.
+ * the symbol into a button opening the token picker, which needs a `<TokenListProvider>` above the
+ * field to have anything to list.
  *
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
@@ -174,7 +177,7 @@ export const TokenInput = ({
         />
         {onTokenSelect === undefined ? (
           <span className={anatomy.parts.token} id={tokenId}>
-            {token.logo}
+            <TokenLogo logo={token.logo} symbol={token.symbol} />
             {token.symbol}
           </span>
         ) : (
@@ -189,7 +192,7 @@ export const TokenInput = ({
             type="button"
             {...{ [anatomy.states.interactive]: true }}
           >
-            {token.logo}
+            <TokenLogo logo={token.logo} symbol={token.symbol} />
             {/* The field's description targets the symbol, so it must not be the button itself. */}
             <span id={tokenId}>{token.symbol}</span>
           </button>
@@ -224,12 +227,16 @@ export const TokenInput = ({
           Max
         </button>
       </div>
-      <TokenSelectModal
-        contentId={selectId}
-        onClose={() => setSelectOpen(false)}
-        open={selectOpen}
-        returnFocusTo={triggerRef}
-      />
+      {onTokenSelect !== undefined && (
+        <TokenSelectModal
+          contentId={selectId}
+          onClose={() => setSelectOpen(false)}
+          onSelect={onTokenSelect}
+          open={selectOpen}
+          returnFocusTo={triggerRef}
+          selectedId={token.id}
+        />
+      )}
     </div>
   )
 }
