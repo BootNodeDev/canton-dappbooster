@@ -116,6 +116,14 @@ total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both 
 in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
+Both fields also open the kit's token picker, and on both the pick is deliberately display-only: it
+relabels the field and nothing else. Everything around it is still Canton Coin — the balance and the
+`max` behind it, the USD rate, the re-lock floor's wording, the claim toast, and the grant that gets
+created. `useTokenBalance` reads no holdings for a symbol other than `CC`, so choosing another token
+empties the balance and Max rather than showing a wrong one; the rest of the CC wording stays put
+and will read as a mismatch until per-token balances land. The picker is wired ahead of them on
+purpose, so the mock exercises the list.
+
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
 live-vesting `claimable` that recomputes each second, and a stored code would keep flagging an
