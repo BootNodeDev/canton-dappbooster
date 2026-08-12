@@ -28,7 +28,7 @@ export const ClaimDialog = ({
   available,
   onConfirm,
 }: ClaimDialogProps): React.JSX.Element => {
-  const token = useToken()
+  const [token, setToken] = useToken()
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -88,7 +88,7 @@ export const ClaimDialog = ({
         id="claim-amount"
         label="Amount"
         onChange={(next) => setRaw(next)}
-        onTokenSelect={() => {}}
+        onTokenSelect={setToken}
         token={token}
         value={raw}
       />

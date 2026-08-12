@@ -109,7 +109,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const { party } = useParty()
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
-  const token = useToken()
+  const [token, setToken] = useToken()
   const { usdRate } = useTokenPrice(token)
   const {
     balance,
@@ -285,7 +285,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
-                onTokenSelect={() => {}}
+                onTokenSelect={setToken}
                 usdValue={
                   usdRate === undefined || amount === ''
                     ? undefined
