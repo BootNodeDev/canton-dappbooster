@@ -1,14 +1,14 @@
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { assign, fromPromise, setup } from 'xstate'
 
-export type RestoreAnswer = Pick<StatusEvent, 'connection' | 'network' | 'session'>
+export type WalletStatus = Pick<StatusEvent, 'connection' | 'network' | 'session'>
 
 export const connectionMachine = setup({
   actors: {
     connect: fromPromise<ConnectResult>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
-    restore: fromPromise<RestoreAnswer>(() =>
+    restore: fromPromise<WalletStatus>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
   },
@@ -19,14 +19,15 @@ export const connectionMachine = setup({
   types: {
     context: {} as {
       connection: ConnectResult | undefined
-      session: RestoreAnswer['session']
+      session: WalletStatus['session']
       error: unknown
     },
     events: {} as
       | { type: 'connect' }
       | { type: 'cancel' }
       | { type: 'disconnect' }
-      | { type: 'restore' },
+      | { type: 'restore' }
+      | { type: 'wallet.statusChanged'; status: WalletStatus },
   },
 }).createMachine({
   context: {
@@ -63,6 +64,9 @@ export const connectionMachine = setup({
       initial: 'unauthenticated',
       states: {
         authenticated: {
+          on: {
+            'wallet.statusChanged': { target: 'unauthenticated' },
+          },
           exit: assign({ connection: undefined }),
         },
         unauthenticated: {},

@@ -2,7 +2,7 @@
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine, type RestoreAnswer } from './connectionMachine'
+import { connectionMachine, type WalletStatus } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -15,7 +15,7 @@ const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMach
 }
 
 const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
-const session: RestoreAnswer['session'] = { accessToken: 'token', userId: 'user' }
+const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionMachine', () => {
   it('starts disconnected', () => {
@@ -195,7 +195,7 @@ describe('connectionMachine', () => {
     it('drops the session data on disconnect', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<RestoreAnswer>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -223,7 +223,7 @@ describe('connectionMachine', () => {
     it('drops the session data on disconnect from a logged-out session', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<RestoreAnswer>(() =>
+          restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({
               connection: { ...connection, isConnected: false },
               session,
@@ -287,7 +287,7 @@ describe('connectionMachine', () => {
     it('returns to disconnected when there is no session to restore', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<RestoreAnswer>(() =>
+          restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: { isConnected: false, isNetworkConnected: false } }),
           ),
         },
@@ -352,7 +352,7 @@ describe('connectionMachine', () => {
     it('keeps a logged-out session, waiting for login', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<RestoreAnswer>(() =>
+          restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({
               connection: { isConnected: false, isNetworkConnected: true },
               session,
@@ -375,7 +375,7 @@ describe('connectionMachine', () => {
     it('keeps the restored session data in context', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<RestoreAnswer>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -452,6 +452,34 @@ describe('connectionMachine', () => {
       actor.stop()
 
       expect(onAbort).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('wallet pushes', () => {
+    it('makes a wallet logout visible immediately', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+
+      actor.send({
+        type: 'wallet.statusChanged',
+        status: { connection: { ...connection, isConnected: false }, session },
+      })
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+      expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.stop()
     })
   })
 })
