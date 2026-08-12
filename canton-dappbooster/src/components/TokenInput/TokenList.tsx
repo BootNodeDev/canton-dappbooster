@@ -1,14 +1,23 @@
-import { type KeyboardEvent, type ReactElement, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
 import { modalAnatomy as anatomy } from './anatomy'
 import { ROW_HEIGHT_REM } from './constants'
+import { filterTokens } from './filterTokens'
 import { TokenRow } from './TokenRow'
 import { useRemPx } from './useRemPx'
 import { useVirtualRows } from './useVirtualRows'
 
 interface TokenListProps {
   onSelect: (token: Token) => void
+  query?: string
   selectedId?: string
 }
 
@@ -38,9 +47,10 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
  * @example
  * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} selectedId={token.id} />
  */
-export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElement => {
+export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { tokens } = useTokenList()
+  const { tokens: all } = useTokenList()
+  const tokens = useMemo(() => filterTokens(all, query), [all, query])
   const rowHeight = useRemPx(ROW_HEIGHT_REM)
   const { end, offset, start, totalHeight } = useVirtualRows({
     count: tokens.length,
@@ -48,15 +58,26 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
     scrollRef,
   })
 
-  const [active, setActive] = useState(() =>
+  const [moved, setActive] = useState(() =>
     Math.max(
       0,
       tokens.findIndex((token) => token.id === selectedId),
     ),
   )
+  // The reset below lands a render later, so this one still holds an index the new list may not have.
+  const active = Math.min(moved, Math.max(0, tokens.length - 1))
   // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
+
+  // A new list makes the old tab stop and scroll offset meaningless, so both go back to the top.
+  const [shown, setShown] = useState(tokens)
+  const rewind = useRef(false)
+  if (shown !== tokens) {
+    setShown(tokens)
+    setActive(0)
+    rewind.current = true
+  }
 
   const focusActive = (): void => {
     scrollRef.current?.querySelector<HTMLElement>(`.${anatomy.parts.row}[tabindex="0"]`)?.focus()
@@ -68,6 +89,10 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
   useLayoutEffect(() => {
     const node = scrollRef.current
     if (node === null) return
+    if (rewind.current) {
+      rewind.current = false
+      node.scrollTop = 0
+    }
     if (pullFocus.current || (hadFocus.current && document.activeElement === document.body)) {
       pullFocus.current = false
       focusActive()
@@ -129,6 +154,10 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
 
   return (
     <section aria-label="Tokens" className={anatomy.parts.list} ref={scrollRef}>
+      {/* Mounted while the list has rows: a live region must precede the change it announces. */}
+      <p className={anatomy.parts.empty} role="status">
+        {tokens.length === 0 ? 'No tokens found' : ''}
+      </p>
       <div className={anatomy.parts.sizer} style={{ height: totalHeight }}>
         {active < start && stray}
         <div className={anatomy.parts.rows} style={{ transform: `translateY(${offset}px)` }}>

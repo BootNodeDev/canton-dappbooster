@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
@@ -17,16 +18,17 @@ const tokens: Token[] = Array.from({ length: 100 }, (_, index) => ({
   symbol: `TK${index}`,
 }))
 
-const setup = (selectedId?: string) => {
+const setup = (selectedId?: string, query?: string) => {
   stubViewport(VIEWPORT)
   const onSelect = vi.fn()
-  const { container } = render(
+  const list = (next?: string): ReactElement => (
     <TokenListProvider tokens={tokens}>
-      <TokenList onSelect={onSelect} selectedId={selectedId} />
-    </TokenListProvider>,
+      <TokenList onSelect={onSelect} query={next} selectedId={selectedId} />
+    </TokenListProvider>
   )
+  const { container, rerender } = render(list(query))
   const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
-  return { container, onSelect, scroller }
+  return { container, onSelect, scroller, search: (next?: string) => rerender(list(next)) }
 }
 
 const rows = (): HTMLElement[] => screen.getAllByRole('button')
@@ -137,5 +139,48 @@ describe('TokenList', () => {
     const { scroller } = setup()
     scrollTo(scroller, ROW * 40)
     expect(document.body).toHaveFocus()
+  })
+
+  it('renders only the tokens the query matches', () => {
+    setup(undefined, 'TK7')
+    expect(rows().map((node) => node.getAttribute('aria-label'))).toEqual([
+      'Token 7 TK7',
+      ...Array.from({ length: 10 }, (_, index) => `Token 7${index} TK7${index}`),
+    ])
+  })
+
+  it('reserves only the height of the tokens the query matches', () => {
+    const { container } = setup(undefined, 'TK7')
+    expect(container.querySelector(`.${anatomy.parts.sizer}`)).toHaveStyle({
+      height: `${11 * ROW}px`,
+    })
+  })
+
+  it('announces that nothing matches instead of listing rows', () => {
+    setup(undefined, 'nothing')
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
+  })
+
+  it('keeps the announcement mounted and silent while the list has rows', () => {
+    setup()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('restores the whole list when the query is cleared', () => {
+    const { search } = setup(undefined, 'TK7')
+    search('')
+    expect(row(0)).toBeInTheDocument()
+    expect(rows()).toHaveLength(13)
+  })
+
+  it('returns the tab stop and the scroll to the top when the query changes', () => {
+    const { scroller, search } = setup()
+    row(0).focus()
+    fireEvent.keyDown(row(0), { key: 'End' })
+    search('Token 1')
+
+    expect(scroller.scrollTop).toBe(0)
+    expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(1)])
   })
 })

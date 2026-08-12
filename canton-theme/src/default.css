@@ -349,6 +349,19 @@
     overflow-y: auto;
   }
 
+  .cnc-token-select-modal__empty {
+    color: var(--cnc-text-muted);
+    display: grid;
+    min-height: 100%;
+    padding: 1rem;
+    place-items: center;
+    text-align: center;
+  }
+
+  .cnc-token-select-modal__empty:empty {
+    display: none;
+  }
+
   .cnc-token-select-modal__sizer {
     position: relative;
   }

@@ -97,6 +97,9 @@ exactly the case the attribute exists for.
   because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
   inside a modal must not start scrolling the page behind it, which the user cannot see moving.
+- The token select's "no tokens found" part stays mounted while the list has rows, because a live
+  region has to precede the change it announces. `:empty { display: none }` is what keeps the
+  padding of that idle element out of the list.
 - `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
   above the page instead of in it. Everything else stacks in document order; a second value here
   means two components can fight over depth, so treat adding one as a contract decision.

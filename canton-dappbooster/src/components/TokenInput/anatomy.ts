@@ -23,6 +23,7 @@ export const modalAnatomy = {
     backdrop: 'cnc-token-select-modal__backdrop',
     close: 'cnc-token-select-modal__close',
     content: 'cnc-token-select-modal',
+    empty: 'cnc-token-select-modal__empty',
     favorites: 'cnc-token-select-modal__favorites',
     header: 'cnc-token-select-modal__header',
     list: 'cnc-token-select-modal__list',

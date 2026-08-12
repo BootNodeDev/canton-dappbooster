@@ -63,6 +63,20 @@ describe('TokenSelectModal', () => {
     expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
   })
 
+  it('filters the list to what the search field holds', () => {
+    setup()
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'usd' } })
+
+    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Canton Coin CC' })).not.toBeInTheDocument()
+  })
+
+  it('reports a search that matches nothing', () => {
+    setup()
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'zzz' } })
+    expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
+  })
+
   it('marks the row of the token it was given', () => {
     const onClose = vi.fn()
     const onSelect = vi.fn()

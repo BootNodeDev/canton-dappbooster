@@ -1,10 +1,11 @@
 import * as dialog from '@zag-js/dialog'
 import { normalizeProps, Portal, useMachine } from '@zag-js/react'
-import { type ReactElement, type RefObject, useId, useRef } from 'react'
+import { type ReactElement, type RefObject, useId, useRef, useState } from 'react'
 import { CloseIcon } from '../../icons'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenList } from './TokenList'
+import { TokenSearch } from './TokenSearch'
 
 interface TokenSelectModalProps {
   contentId: string
@@ -23,6 +24,7 @@ const TokenSelect = ({
   selectedId,
 }: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
   const searchRef = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
   const service = useMachine(dialog.machine, {
     finalFocusEl: () => returnFocusTo.current,
     id: useId(),
@@ -52,22 +54,14 @@ const TokenSelect = ({
               <CloseIcon />
             </button>
           </header>
-          <input
-            aria-label="Search tokens"
-            autoComplete="off"
-            className={anatomy.parts.search}
-            placeholder="Search by name or symbol"
-            ref={searchRef}
-            spellCheck={false}
-            type="search"
-          />
+          <TokenSearch onChange={setQuery} ref={searchRef} value={query} />
           <div className={anatomy.parts.favorites} />
           <TokenList
-            // Closed through the machine, not by unmounting, so the trigger gets its focus back.
             onSelect={(token) => {
               onSelect(token)
               api.setOpen(false)
             }}
+            query={query}
             selectedId={selectedId}
           />
         </div>
@@ -77,8 +71,7 @@ const TokenSelect = ({
 }
 
 /**
- * The dialog `<TokenInput>`'s token button opens. Lists what a `<TokenListProvider>` above it
- * supplies, and closes itself on a pick, so `onSelect` only has to record the choice.
+ * The dialog `<TokenInput>`'s token button opens
  *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}
