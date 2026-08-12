@@ -4,8 +4,8 @@ import { TokenListProvider } from '.'
 import type { Token } from './context'
 import { useTokenList } from './useTokenList'
 
-const CC: Token = { decimals: 10, id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
-const USDC: Token = { decimals: 6, id: 'usdc', name: 'USD Coin', symbol: 'USDC' }
+const CC: Token = { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
+const USDC: Token = { id: 'usdc', name: 'USD Coin', symbol: 'USDC' }
 
 const Probe = (): React.JSX.Element => {
   const { byId, tokens } = useTokenList()

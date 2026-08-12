@@ -10,8 +10,8 @@ import { anatomy } from './anatomy'
 const CC: TokenMeta = { symbol: 'CC' }
 
 const TOKENS: Token[] = [
-  { decimals: 10, id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { decimals: 6, id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
+  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
+  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
 ]
 
 // Derived through `formatAmount`, so the test agrees with the component rather than with a

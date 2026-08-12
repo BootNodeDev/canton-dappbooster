@@ -7,8 +7,8 @@ import { modalAnatomy as anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 
 const TOKENS: Token[] = [
-  { decimals: 10, id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { decimals: 6, id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
+  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
+  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
 ]
 
 const modal = (

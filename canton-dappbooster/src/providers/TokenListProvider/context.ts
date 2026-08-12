@@ -6,10 +6,9 @@ import { type Context, createContext } from 'react'
  * straight to `<TokenInput token={...}>` without a mapping step.
  *
  * @example
- * const cc: Token = { decimals: 10, id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
+ * const cc: Token = { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
  */
 export interface Token {
-  decimals: number
   id: string
   logo?: ReactNode
   name: string
