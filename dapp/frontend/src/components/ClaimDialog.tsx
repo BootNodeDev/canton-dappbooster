@@ -88,6 +88,7 @@ export const ClaimDialog = ({
         id="claim-amount"
         label="Amount"
         onChange={(next) => setRaw(next)}
+        onTokenSelect={() => {}}
         token={token}
         value={raw}
       />
