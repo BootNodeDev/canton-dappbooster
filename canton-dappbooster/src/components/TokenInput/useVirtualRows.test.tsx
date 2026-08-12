@@ -1,17 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
-import { ROW_HEIGHT } from './constants'
+import { describe, expect, it } from 'vitest'
+import { stubViewport } from '../../testing/viewport'
 import { useVirtualRows } from './useVirtualRows'
 
+const ROW = 52
 // Four rows of viewport: jsdom lays nothing out, so the height every row reads from is stubbed.
-const VIEWPORT = ROW_HEIGHT * 4
+const VIEWPORT = ROW * 4
 
 const Probe = ({ count }: { count: number }): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { end, offset, start, totalHeight } = useVirtualRows({
     count,
-    rowHeight: ROW_HEIGHT,
+    rowHeight: ROW,
     scrollRef,
   })
   return (
@@ -27,9 +28,9 @@ const shown = (id: 'window' | 'offset' | 'total'): string | null =>
   screen.getByTestId(id).textContent
 
 const mount = (count: number) => {
-  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(VIEWPORT)
+  const resize = stubViewport(VIEWPORT)
   render(<Probe count={count} />)
-  return screen.getByTestId('scroller')
+  return { resize, scroller: screen.getByTestId('scroller') }
 }
 
 const scrollTo = (scroller: HTMLElement, top: number): void => {
@@ -46,25 +47,25 @@ describe('useVirtualRows', () => {
 
   it('reserves the full height whatever it renders', () => {
     mount(100)
-    expect(shown('total')).toBe(String(100 * ROW_HEIGHT))
+    expect(shown('total')).toBe(String(100 * ROW))
   })
 
   it('moves the window and the offset with the scroll', () => {
-    const scroller = mount(100)
-    scrollTo(scroller, ROW_HEIGHT * 10)
+    const { scroller } = mount(100)
+    scrollTo(scroller, ROW * 10)
     expect(shown('window')).toBe('6-19')
-    expect(shown('offset')).toBe(String(ROW_HEIGHT * 6))
+    expect(shown('offset')).toBe(String(ROW * 6))
   })
 
   it('stops the window at the end of the list', () => {
-    const scroller = mount(20)
-    scrollTo(scroller, ROW_HEIGHT * 18)
+    const { scroller } = mount(20)
+    scrollTo(scroller, ROW * 18)
     expect(shown('window')).toBe('14-20')
   })
 
   it('renders the tail of a list that shrank under a scrolled viewport', () => {
-    const scroller = mount(3)
-    scrollTo(scroller, ROW_HEIGHT * 10)
+    const { scroller } = mount(3)
+    scrollTo(scroller, ROW * 10)
     expect(shown('window')).toBe('0-3')
   })
 
@@ -72,5 +73,12 @@ describe('useVirtualRows', () => {
     mount(0)
     expect(shown('window')).toBe('0-0')
     expect(shown('total')).toBe('0')
+  })
+
+  // The list is a flex item under a capped card, so it resizes with the window untouched.
+  it('rewindows when the scroller itself is resized', () => {
+    const { resize } = mount(100)
+    act(() => resize(VIEWPORT * 2))
+    expect(shown('window')).toBe('0-17')
   })
 })

@@ -1,28 +1,43 @@
-import type { ReactElement } from 'react'
+import type { KeyboardEvent, ReactElement } from 'react'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { TokenLogo } from '../TokenLogo'
 import { modalAnatomy as anatomy } from './anatomy'
-import { ROW_HEIGHT } from './constants'
+import { ROW_HEIGHT_REM } from './constants'
 
 interface TokenRowProps {
+  onFocus: () => void
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onSelect: (token: Token) => void
   selected: boolean
+  tabbable: boolean
   token: Token
 }
 
 /**
- * One row of the token select's list.
+ * One row of the token select's list. `tabbable` is the list's roving tab stop, so exactly one row
+ * carries it.
  *
  * @example
- * <TokenRow onSelect={setToken} selected={token.id === selectedId} token={token} />
+ * <TokenRow onFocus={() => setActive(index)} onKeyDown={move} onSelect={setToken}
+ *   selected={token.id === selectedId} tabbable={index === active} token={token} />
  */
-export const TokenRow = ({ onSelect, selected, token }: TokenRowProps): ReactElement => (
+export const TokenRow = ({
+  onFocus,
+  onKeyDown,
+  onSelect,
+  selected,
+  tabbable,
+  token,
+}: TokenRowProps): ReactElement => (
   <button
     aria-label={`${token.name} ${token.symbol}`}
     aria-pressed={selected}
     className={anatomy.parts.row}
     onClick={() => onSelect(token)}
-    style={{ height: ROW_HEIGHT }}
+    onFocus={onFocus}
+    onKeyDown={onKeyDown}
+    style={{ height: `${ROW_HEIGHT_REM}rem` }}
+    tabIndex={tabbable ? 0 : -1}
     type="button"
     {...{ [anatomy.states.selected]: selected || undefined }}
   >

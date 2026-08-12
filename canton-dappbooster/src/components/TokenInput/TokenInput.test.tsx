@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
+import { stubViewport } from '../../testing/viewport'
 import { formatAmount } from '../../utils/tokenAmount'
 import { TokenInput, type TokenMeta } from '.'
 import { anatomy } from './anatomy'
@@ -21,6 +22,8 @@ const DECIMAL = formatAmount('1.1').replace(/\d/g, '') || '.'
 
 const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => {
   const onChange = vi.fn()
+  // The token select's list windows itself against a height jsdom does not lay out.
+  stubViewport(320)
   render(
     <TokenListProvider tokens={TOKENS}>
       <TokenInput
@@ -40,8 +43,12 @@ const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => 
   }
 }
 
-// The symbol is on the pill and again inside the fallback logo, so text is no longer a way in.
-const pill = (): HTMLElement => document.querySelector(`.${anatomy.parts.token}`) as HTMLElement
+// The element the field points its description at, which is the contract the symbol is under: the
+// symbol reads twice now (on the pill and inside its fallback logo), so text is no longer a way in.
+const symbol = (field: HTMLInputElement): HTMLElement => {
+  const [id] = (field.getAttribute('aria-describedby') ?? '').split(' ')
+  return document.getElementById(id) as HTMLElement
+}
 
 // No `@testing-library/user-event` in this package, so keystrokes are hand-built input events.
 const typeAtEnd = (field: HTMLInputElement, char: string): void => {
@@ -92,7 +99,7 @@ describe('TokenInput', () => {
   it('associates the label with the field and shows the symbol', () => {
     const { field } = setup()
     expect(field).toHaveClass(anatomy.parts.field)
-    expect(pill()).toHaveTextContent('CC')
+    expect(symbol(field)).toHaveTextContent('CC')
   })
 
   it('groups the displayed value and reports the sanitized one', () => {
@@ -236,7 +243,7 @@ describe('TokenInput', () => {
     const { field } = setup({ balance: '1250.5' })
     const balance = screen.getByText(`Balance: ${formatAmount('1250.5')}`)
     expect(balance).toHaveClass(anatomy.parts.balance)
-    expect(field).toHaveAttribute('aria-describedby', `${pill().id} ${balance.id}`)
+    expect(field).toHaveAttribute('aria-describedby', `${symbol(field).id} ${balance.id}`)
   })
 
   it('announces the balance as it settles', () => {
@@ -259,16 +266,16 @@ describe('TokenInput', () => {
   })
 
   it('leaves the symbol inert with no handler to change the token', () => {
-    setup()
+    const { field } = setup()
     expect(screen.queryByRole('button', { name: 'CC' })).not.toBeInTheDocument()
-    expect(pill()).toHaveTextContent('CC')
+    expect(symbol(field)).toHaveTextContent('CC')
   })
 
   // One part class covers both renderings, so this attribute is all the theme has to keep the
   // button's cursor and hover off the inert span.
   it('leaves the inert symbol unmarked so the theme does not style it as a button', () => {
-    setup()
-    expect(pill()).not.toHaveAttribute(anatomy.states.interactive)
+    const { field } = setup()
+    expect(symbol(field)).not.toHaveAttribute(anatomy.states.interactive)
   })
 
   it('marks the symbol interactive when it opens the token select', () => {
@@ -351,6 +358,7 @@ describe('TokenInput', () => {
         </TokenListProvider>
       )
     }
+    stubViewport(320)
     render(<Harness />)
 
     fireEvent.click(screen.getByRole('button', { name: 'CC' }))

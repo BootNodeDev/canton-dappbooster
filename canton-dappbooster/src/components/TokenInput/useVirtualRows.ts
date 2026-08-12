@@ -32,15 +32,16 @@ export const useVirtualRows = ({
   const [scrollTop, setScrollTop] = useState(0)
   const [viewport, setViewport] = useState(0)
 
-  // Measured on a window listener, not a ResizeObserver: this list's height only changes with the
-  // viewport, and jsdom ships no observer to test against.
+  // Observed rather than measured off `window.resize`: the list is a flex item under a capped card,
+  // so anything above it growing resizes it with the window untouched.
   useLayoutEffect(() => {
     const node = scrollRef.current
     if (node === null) return
     const measure = (): void => setViewport(node.clientHeight)
     measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
   }, [scrollRef])
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import { createRef, type ReactElement, type RefObject } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
+import { stubViewport } from '../../testing/viewport'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 
@@ -11,17 +12,21 @@ const TOKENS: Token[] = [
   { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
 ]
 
+// The list inside windows itself against a height jsdom does not lay out.
 const modal = (
   props: Partial<React.ComponentProps<typeof TokenSelectModal>> & {
     onClose: () => void
     onSelect: (token: Token) => void
     returnFocusTo: RefObject<HTMLElement | null>
   },
-): ReactElement => (
-  <TokenListProvider tokens={TOKENS}>
-    <TokenSelectModal contentId="token-select" open={true} {...props} />
-  </TokenListProvider>
-)
+): ReactElement => {
+  stubViewport(320)
+  return (
+    <TokenListProvider tokens={TOKENS}>
+      <TokenSelectModal contentId="token-select" open={true} {...props} />
+    </TokenListProvider>
+  )
+}
 
 const setup = (open = true) => {
   const onClose = vi.fn()
