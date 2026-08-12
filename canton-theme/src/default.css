@@ -351,6 +351,7 @@
     font: inherit;
     font-size: 1rem;
     gap: 1rem;
+    line-height: 1.2;
     padding: 0 1rem;
     text-align: start;
     width: 100%;
@@ -377,6 +378,7 @@
   }
 
   .cnc-token-select-modal__row-name {
+    font-size: 0.9375em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
