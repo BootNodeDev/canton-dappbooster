@@ -1,7 +1,9 @@
-import type { CSSProperties, ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { cx } from '../../utils/cx'
 import { anatomy } from './anatomy'
-import { hueOf } from './hue'
+import { swatchOf } from './swatch'
+
+const INITIALS = 3
 
 interface TokenLogoProps {
   className?: string
@@ -9,12 +11,12 @@ interface TokenLogoProps {
   symbol: string
 }
 
-// The theme composes the colour
-const hueStyle = (symbol: string): CSSProperties =>
-  ({ '--cnc-token-hue': hueOf(symbol) }) as CSSProperties
+// Cut by code point, so an astral glyph is not split into two broken halves.
+const initialsOf = (symbol: string): string => [...symbol].slice(0, INITIALS).join('')
 
 /**
- * A token's logo
+ * A token's logo, falling back to the symbol's initials on a coloured disc when there is no
+ * artwork. The disc is `aria-hidden` either way, so whatever renders it must name the token itself.
  *
  * @example
  * <TokenLogo logo={token.logo} symbol={token.symbol} />
@@ -26,10 +28,12 @@ export const TokenLogo = ({ className, logo, symbol }: TokenLogoProps): ReactEle
     <span
       aria-hidden
       className={cx(anatomy.parts.root, className)}
-      style={fallback ? hueStyle(symbol) : undefined}
-      {...{ [anatomy.states.fallback]: fallback || undefined }}
+      {...{
+        [anatomy.states.fallback]: fallback || undefined,
+        [anatomy.states.swatch]: fallback ? swatchOf(symbol) : undefined,
+      }}
     >
-      {fallback ? symbol : logo}
+      {fallback ? initialsOf(symbol) : logo}
     </span>
   )
 }

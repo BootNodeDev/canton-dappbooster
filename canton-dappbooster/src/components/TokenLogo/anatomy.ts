@@ -4,5 +4,6 @@ export const anatomy = {
   },
   states: {
     fallback: 'data-fallback',
+    swatch: 'data-swatch',
   },
 } as const

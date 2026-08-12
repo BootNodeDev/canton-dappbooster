@@ -271,7 +271,7 @@
     max-height: 100%;
     max-width: 100%;
     padding: 1rem;
-    width: 550px;
+    width: 34.375rem;
   }
 
   .cnc-token-select-modal__header {
@@ -324,14 +324,10 @@
   }
 
   .cnc-token-select-modal__list {
-    flex: 0 1 320px;
+    flex: 0 1 20rem;
     min-height: 0;
+    overscroll-behavior: contain;
     overflow-y: auto;
-  }
-
-  .cnc-token-select-modal__list:focus-visible {
-    outline: 2px solid var(--cnc-accent);
-    outline-offset: -2px;
   }
 
   .cnc-token-select-modal__sizer {
@@ -406,11 +402,49 @@
   }
 
   .cnc-token-logo[data-fallback] {
-    background: oklch(0.78 0.13 var(--cnc-token-hue));
     border-radius: 50%;
-    color: oklch(0.28 0.09 var(--cnc-token-hue));
     font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+
+  .cnc-token-logo[data-swatch="1"] {
+    background: var(--cnc-swatch-1);
+    color: var(--cnc-swatch-1-fg);
+  }
+
+  .cnc-token-logo[data-swatch="2"] {
+    background: var(--cnc-swatch-2);
+    color: var(--cnc-swatch-2-fg);
+  }
+
+  .cnc-token-logo[data-swatch="3"] {
+    background: var(--cnc-swatch-3);
+    color: var(--cnc-swatch-3-fg);
+  }
+
+  .cnc-token-logo[data-swatch="4"] {
+    background: var(--cnc-swatch-4);
+    color: var(--cnc-swatch-4-fg);
+  }
+
+  .cnc-token-logo[data-swatch="5"] {
+    background: var(--cnc-swatch-5);
+    color: var(--cnc-swatch-5-fg);
+  }
+
+  .cnc-token-logo[data-swatch="6"] {
+    background: var(--cnc-swatch-6);
+    color: var(--cnc-swatch-6-fg);
+  }
+
+  .cnc-token-logo[data-swatch="7"] {
+    background: var(--cnc-swatch-7);
+    color: var(--cnc-swatch-7-fg);
+  }
+
+  .cnc-token-logo[data-swatch="8"] {
+    background: var(--cnc-swatch-8);
+    color: var(--cnc-swatch-8-fg);
   }
 }
