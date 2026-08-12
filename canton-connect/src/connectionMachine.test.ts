@@ -2,7 +2,7 @@
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine } from './connectionMachine'
+import { connectionMachine, type RestoreAnswer } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -51,7 +51,7 @@ describe('connectionMachine', () => {
       actor.send({ type: 'connect' })
       await pause(0)
 
-      expect(actor.getSnapshot().matches('connected')).toBe(true)
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
       expect(actor.getSnapshot().context.connection).toBe(connection)
 
       actor.stop()
@@ -98,7 +98,7 @@ describe('connectionMachine', () => {
       await pause(0)
       actor.send({ type: 'cancel' })
 
-      expect(actor.getSnapshot().matches('connected')).toBe(true)
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
       expect(onAbort).not.toHaveBeenCalled()
 
       actor.stop()
@@ -165,7 +165,7 @@ describe('connectionMachine', () => {
       expect(states).toEqual<typeof states>([
         'disconnected',
         'connecting',
-        'connected',
+        { session: 'authenticated' },
         'disconnected',
       ])
 
@@ -207,7 +207,7 @@ describe('connectionMachine', () => {
     it('restores an existing session to connected', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise(() => Promise.resolve(connection)),
+          restore: fromPromise(() => Promise.resolve({ connection })),
         },
       })
       const actor = createActor(machine)
@@ -216,7 +216,7 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(actor.getSnapshot().matches('connected')).toBe(true)
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
       expect(actor.getSnapshot().context.connection).toBe(connection)
 
       actor.stop()
@@ -225,8 +225,8 @@ describe('connectionMachine', () => {
     it('returns to disconnected when there is no session to restore', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          restore: fromPromise<ConnectResult>(() =>
-            Promise.resolve({ isConnected: false, isNetworkConnected: false }),
+          restore: fromPromise<RestoreAnswer>(() =>
+            Promise.resolve({ connection: { isConnected: false, isNetworkConnected: false } }),
           ),
         },
       })
@@ -283,6 +283,28 @@ describe('connectionMachine', () => {
 
       expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
       expect(onAbort).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
+
+    it('keeps a logged-out session, waiting for login', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<RestoreAnswer>(() =>
+            Promise.resolve({
+              connection: { isConnected: false, isNetworkConnected: true },
+              session: { accessToken: 'token', userId: 'user' },
+            }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
 
       actor.stop()
     })

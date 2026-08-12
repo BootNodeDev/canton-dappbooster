@@ -1,16 +1,19 @@
-import type { ConnectResult } from '@canton-network/dapp-sdk'
+import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { assign, fromPromise, setup } from 'xstate'
+
+export type RestoreAnswer = Pick<StatusEvent, 'connection' | 'network' | 'session'>
 
 export const connectionMachine = setup({
   actors: {
     connect: fromPromise<ConnectResult>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
-    restore: fromPromise<ConnectResult>(() =>
+    restore: fromPromise<RestoreAnswer>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
   },
   guards: {
+    hasRestoredSession: (_, params: { session: StatusEvent['session'] }) => !!params.session,
     sessionRestored: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
   },
   types: {
@@ -42,7 +45,7 @@ export const connectionMachine = setup({
       invoke: {
         src: 'connect',
         onDone: {
-          target: 'connected',
+          target: 'session.authenticated',
           actions: assign({ connection: ({ event: { output } }) => output }),
         },
         onError: {
@@ -54,8 +57,14 @@ export const connectionMachine = setup({
         cancel: { target: 'disconnected' },
       },
     },
-    connected: {
-      exit: assign({ connection: undefined }),
+    session: {
+      initial: 'unauthenticated',
+      states: {
+        authenticated: {
+          exit: assign({ connection: undefined }),
+        },
+        unauthenticated: {},
+      },
       on: {
         disconnect: { target: 'disconnected' },
       },
@@ -73,10 +82,17 @@ export const connectionMachine = setup({
           {
             guard: {
               type: 'sessionRestored',
-              params: ({ event: { output } }) => ({ connection: output }),
+              params: ({ event: { output } }) => ({ connection: output.connection }),
             },
-            target: 'connected',
-            actions: assign({ connection: ({ event: { output } }) => output }),
+            target: 'session.authenticated',
+            actions: assign(({ event: { output } }) => ({ connection: output.connection })),
+          },
+          {
+            guard: {
+              type: 'hasRestoredSession',
+              params: ({ event: { output } }) => ({ session: output.session }),
+            },
+            target: 'session.unauthenticated',
           },
           { target: 'disconnected' },
         ],
