@@ -18,16 +18,24 @@ const tokens: Token[] = Array.from({ length: 100 }, (_, index) => ({
   symbol: `TK${index}`,
 }))
 
-const setup = (selectedId?: string, query?: string) => {
+const renderList = (element: ReactElement) => {
   stubViewport(VIEWPORT)
+  const { container, rerender } = render(element)
+  return {
+    container,
+    rerender,
+    scroller: container.querySelector(`.${anatomy.parts.list}`) as HTMLElement,
+  }
+}
+
+const setup = (selectedId?: string, query?: string) => {
   const onSelect = vi.fn()
   const list = (next?: string): ReactElement => (
     <TokenListProvider tokens={tokens}>
       <TokenList onSelect={onSelect} query={next} selectedId={selectedId} />
     </TokenListProvider>
   )
-  const { container, rerender } = render(list(query))
-  const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
+  const { container, rerender, scroller } = renderList(list(query))
   return { container, onSelect, scroller, search: (next?: string) => rerender(list(next)) }
 }
 
@@ -77,8 +85,7 @@ describe('TokenList', () => {
   })
 
   it('shows a token logo without announcing it', () => {
-    stubViewport(VIEWPORT)
-    const { container } = render(
+    const { container } = renderList(
       <TokenListProvider tokens={[{ ...tokens[0], logo: <svg aria-label="ignored" /> }]}>
         <TokenList onSelect={vi.fn()} />
       </TokenListProvider>,
@@ -174,6 +181,26 @@ describe('TokenList', () => {
     expect(container.querySelector(`.${anatomy.parts.empty}`)).not.toBeInTheDocument()
   })
 
+  // Says so on screen, but announces nothing: mounting a list is not a change to report.
+  it('shows the empty message for a provider with no tokens and stays silent', () => {
+    const { container } = renderList(
+      <TokenListProvider tokens={[]}>
+        <TokenList onSelect={vi.fn()} />
+      </TokenListProvider>,
+    )
+
+    expect(container.querySelector(`.${anatomy.parts.empty}`)).toHaveTextContent('No tokens found')
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('leaves the tab stop and the scroll alone when a keystroke only pads the query', () => {
+    const { scroller, search } = setup(undefined, 'Token 1')
+    scrollTo(scroller, ROW * 5)
+    search('  Token 1  ')
+
+    expect(scroller.scrollTop).toBe(ROW * 5)
+  })
+
   it('restores the whole list when the query is cleared', () => {
     const { search } = setup(undefined, 'TK7')
     search('')
@@ -191,7 +218,8 @@ describe('TokenList', () => {
     expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(1)])
   })
 
-  // The rewound scroll fires no scroll event, so the window has to be told rather than left to hear.
+  // The rewind goes through the hook, so the window is recomputed in the same commit rather than
+  // waiting on a scroll event the programmatic write may never produce.
   it('renders the matches from the top after a query change scrolled the list back', () => {
     const { scroller, search } = setup()
     scrollTo(scroller, ROW * 90)
@@ -205,14 +233,12 @@ describe('TokenList', () => {
   })
 
   it('holds the tab stop and the scroll through a provider handing over an equal list', () => {
-    stubViewport(VIEWPORT)
     const list = (given: Token[]): ReactElement => (
       <TokenListProvider tokens={given}>
         <TokenList onSelect={vi.fn()} />
       </TokenListProvider>
     )
-    const { container, rerender } = render(list(tokens))
-    const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
+    const { rerender, scroller } = renderList(list(tokens))
     scrollTo(scroller, ROW * 40)
     rerender(list([...tokens]))
 

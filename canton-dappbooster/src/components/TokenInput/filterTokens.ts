@@ -1,15 +1,29 @@
 import type { Token } from '../../providers/TokenListProvider/context'
 
-const NO_MATCH = Number.POSITIVE_INFINITY
+// Held per token rather than per keystroke: the same three strings would otherwise be lowercased
+// again for every character typed, over a list long enough to have needed windowing.
+const haystacks = new WeakMap<Token, { id: string; name: string; symbol: string }>()
 
-// `id` stands in for the address criterion: a `Token` carries no address field, and a caller with
-// on-chain tokens puts the identifier it filters by there. Prefix-only and ranked last, so a short
-// query does not bury the readable matches under every hash that happens to contain it.
-const rank = (token: Token, needle: string): number => {
-  if (token.symbol.toLowerCase().includes(needle)) return 0
-  if (token.name.toLowerCase().includes(needle)) return 1
-  return token.id.toLowerCase().startsWith(needle) ? 2 : NO_MATCH
+const haystack = (token: Token): { id: string; name: string; symbol: string } => {
+  const cached = haystacks.get(token)
+  if (cached !== undefined) return cached
+  const next = {
+    id: token.id.toLowerCase(),
+    name: token.name.toLowerCase(),
+    symbol: token.symbol.toLowerCase(),
+  }
+  haystacks.set(token, next)
+  return next
 }
+
+/**
+ * Normalizes a query to what {@link filterTokens} matches on. Key a memo on this rather than on the
+ * raw query, so typing a space either side re-runs nothing.
+ *
+ * @example
+ * const tokens = useMemo(() => filterTokens(all, toNeedle(query)), [all, toNeedle(query)])
+ */
+export const toNeedle = (query: string): string => query.trim().toLowerCase()
 
 /**
  * Narrows a token list to what a query matches, symbol matches first, then name, then id.
@@ -18,11 +32,19 @@ const rank = (token: Token, needle: string): number => {
  * const shown = filterTokens(tokens, 'ca')
  */
 export const filterTokens = (tokens: readonly Token[], query: string): readonly Token[] => {
-  const needle = query.trim().toLowerCase()
+  const needle = toNeedle(query)
   if (needle === '') return tokens
-  return tokens
-    .map((token) => ({ rank: rank(token, needle), token }))
-    .filter((match) => match.rank !== NO_MATCH)
-    .sort((one, other) => one.rank - other.rank)
-    .map((match) => match.token)
+  const bySymbol: Token[] = []
+  const byName: Token[] = []
+  const byId: Token[] = []
+  for (const token of tokens) {
+    const { id, name, symbol } = haystack(token)
+    // `id` stands in for the address criterion: a `Token` carries no address field, and a caller
+    // with on-chain tokens puts the identifier it filters by there. Prefix-only and ranked last, so
+    // a short query does not bury the readable matches under every hash that happens to contain it.
+    if (symbol.includes(needle)) bySymbol.push(token)
+    else if (name.includes(needle)) byName.push(token)
+    else if (id.startsWith(needle)) byId.push(token)
+  }
+  return [...bySymbol, ...byName, ...byId]
 }

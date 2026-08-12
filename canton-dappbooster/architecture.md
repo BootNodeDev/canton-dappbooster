@@ -104,9 +104,9 @@ the form that has it. Each of the three stays addable later without a break.
   `aria-*` the component exposes to assistive tech, so the two cannot disagree.
 - **One exception to zero styling:** visually hiding a live region is functional, not decorative —
   a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
-  the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way
-  Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is
-  styled in L2.
+  a component applies that `sr-only` inline from `SR_ONLY` in `src/utils/srOnly.ts`, the way Radix's
+  `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is styled in
+  L2.
 - Tokens are `var(--cnc-*, <fallback>)`; the whole theme package is under `@layer cnc` so consumer
   CSS wins.
 - Token naming convention and dark mode live in

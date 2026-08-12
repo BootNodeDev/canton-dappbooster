@@ -1,10 +1,11 @@
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 const DEFAULT_OVERSCAN = 4
 
 interface UseVirtualRowsOptions {
   count: number
   overscan?: number
+  resetKey?: unknown
   rowHeight: number
   scrollRef: RefObject<HTMLElement | null>
 }
@@ -12,15 +13,16 @@ interface UseVirtualRowsOptions {
 interface UseVirtualRowsResult {
   end: number
   offset: number
-  scrollToTop: () => void
+  scrollRowIntoView: (index: number) => void
   start: number
   totalHeight: number
 }
 
 /**
- * Windows a uniform-height list. Rewind it with `scrollToTop` rather than by writing `scrollTop`
- * on the node: a programmatic scroll fires no scroll event, so the window would keep the offset it
- * was computed for.
+ * Windows a uniform-height list. The hook owns every scroll write, so move it with
+ * `scrollRowIntoView`, or hand it a `resetKey` that changes when the rendered sequence does and it
+ * rewinds itself: the window is computed from state, which a `scrollTop` written on the node behind
+ * the hook's back leaves pointing at the offset it was computed for.
  *
  * @example
  * const { end, offset, start, totalHeight } = useVirtualRows({ count: rows.length, rowHeight: 56, scrollRef })
@@ -29,6 +31,7 @@ interface UseVirtualRowsResult {
 export const useVirtualRows = ({
   count,
   overscan = DEFAULT_OVERSCAN,
+  resetKey,
   rowHeight,
   scrollRef,
 }: UseVirtualRowsOptions): UseVirtualRowsResult => {
@@ -55,16 +58,44 @@ export const useVirtualRows = ({
     return () => node.removeEventListener('scroll', onScroll)
   }, [scrollRef])
 
-  const scrollToTop = useCallback((): void => {
-    const node = scrollRef.current
-    if (node !== null) node.scrollTop = 0
-    setScrollTop(0)
-  }, [scrollRef])
+  const scrollTo = useCallback(
+    (top: number): void => {
+      const node = scrollRef.current
+      if (node !== null) node.scrollTop = top
+      setScrollTop(top)
+    },
+    [scrollRef],
+  )
+
+  // Reads the node rather than the state above, so two moves batched into one render still stack.
+  const scrollRowIntoView = useCallback(
+    (index: number): void => {
+      const node = scrollRef.current
+      if (node === null) return
+      const top = index * rowHeight
+      scrollTo(Math.max(top + rowHeight - node.clientHeight, Math.min(node.scrollTop, top)))
+    },
+    [rowHeight, scrollRef, scrollTo],
+  )
+
+  // Held in a ref rather than state so the mount pass has nothing to rewind and costs no commit.
+  const applied = useRef(resetKey)
+  useLayoutEffect(() => {
+    if (applied.current === resetKey) return
+    applied.current = resetKey
+    scrollTo(0)
+  }, [resetKey, scrollTo])
 
   // Clamped to the count, so a list that shrinks under a scrolled viewport still renders its tail.
   const first = Math.min(Math.floor(scrollTop / rowHeight), Math.max(0, count - 1))
   const start = Math.max(0, first - overscan)
   const end = Math.min(count, start + Math.ceil(viewport / rowHeight) + 1 + overscan * 2)
 
-  return { end, offset: start * rowHeight, scrollToTop, start, totalHeight: count * rowHeight }
+  return {
+    end,
+    offset: start * rowHeight,
+    scrollRowIntoView,
+    start,
+    totalHeight: count * rowHeight,
+  }
 }

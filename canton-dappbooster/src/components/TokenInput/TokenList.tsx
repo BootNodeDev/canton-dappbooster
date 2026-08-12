@@ -10,8 +10,8 @@ import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
 import { SR_ONLY } from '../../utils/srOnly'
 import { modalAnatomy as anatomy } from './anatomy'
-import { ROW_HEIGHT_REM } from './constants'
-import { filterTokens } from './filterTokens'
+import { NO_TOKENS, ROW_HEIGHT_REM } from './constants'
+import { filterTokens, toNeedle } from './filterTokens'
 import { TokenRow } from './TokenRow'
 import { useRemPx } from './useRemPx'
 import { useVirtualRows } from './useVirtualRows'
@@ -41,10 +41,11 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
   }
 }
 
-// The narrowing is otherwise carried only by rows going missing, which nobody is reading.
-const announce = (query: string, count: number): string => {
-  if (query.trim() === '') return ''
-  if (count === 0) return 'No tokens found'
+// The narrowing is otherwise carried only by rows going missing, which nobody is reading. Silent
+// without a needle, so mounting a list never announces a count nobody asked for.
+const announce = (needle: string, count: number): string => {
+  if (needle === '') return ''
+  if (count === 0) return NO_TOKENS
   return count === 1 ? '1 token found' : `${count} tokens found`
 }
 
@@ -58,41 +59,41 @@ const announce = (query: string, count: number): string => {
 export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { tokens: all } = useTokenList()
-  const tokens = useMemo(() => filterTokens(all, query), [all, query])
+  const needle = toNeedle(query)
+  const tokens = useMemo(() => filterTokens(all, needle), [all, needle])
   const rowHeight = useRemPx(ROW_HEIGHT_REM)
-  const { end, offset, scrollToTop, start, totalHeight } = useVirtualRows({
+  const { end, offset, scrollRowIntoView, start, totalHeight } = useVirtualRows({
     count: tokens.length,
+    resetKey: needle,
     rowHeight,
     scrollRef,
   })
 
   // Held by id, not by index: a provider handing over an equal-but-new array must not move it.
   const [activeId, setActiveId] = useState(selectedId)
-  const active = Math.max(
-    0,
-    tokens.findIndex((token) => token.id === activeId),
+  const active = useMemo(
+    () =>
+      Math.max(
+        0,
+        tokens.findIndex((token) => token.id === activeId),
+      ),
+    [activeId, tokens],
   )
   // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
 
-  // A new query makes the old tab stop and scroll offset meaningless, so both go back to the top;
-  // no token carries an unset id, which is what lands the tab stop on the first row.
-  const [applied, setApplied] = useState({ query, rewind: false })
-  if (applied.query !== query) {
-    setApplied({ query, rewind: true })
+  // A new needle makes the old tab stop meaningless, so it goes back to the top; no token carries
+  // an unset id, which is what lands it on the first row.
+  const [applied, setApplied] = useState(needle)
+  if (applied !== needle) {
+    setApplied(needle)
     setActiveId(undefined)
   }
 
   const focusActive = (): void => {
     scrollRef.current?.querySelector<HTMLElement>(`.${anatomy.parts.row}[tabindex="0"]`)?.focus()
   }
-
-  useLayoutEffect(() => {
-    if (!applied.rewind) return
-    setApplied({ query, rewind: false })
-    scrollToTop()
-  }, [applied, query, scrollToTop])
 
   // Two jobs per commit: hand focus to the tab stop the keys just moved, and take it back when a
   // scroll re-rendered the row that held it. Focus landing on `body` is what tells the two apart
@@ -109,11 +110,7 @@ export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps):
 
   const moveTo = (index: number): void => {
     const next = Math.max(0, Math.min(tokens.length - 1, index))
-    const node = scrollRef.current
-    if (node !== null) {
-      const top = next * rowHeight
-      node.scrollTop = Math.max(top + rowHeight - node.clientHeight, Math.min(node.scrollTop, top))
-    }
+    scrollRowIntoView(next)
     if (next === active) {
       focusActive()
       return
@@ -164,9 +161,9 @@ export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps):
       {/* Out of flow and always mounted: a live region must precede the change it announces, and
           an in-flow one would offset the rows the sizer positions. */}
       <span className={anatomy.parts.status} role="status" style={SR_ONLY}>
-        {announce(query, tokens.length)}
+        {announce(needle, tokens.length)}
       </span>
-      {tokens.length === 0 && <p className={anatomy.parts.empty}>No tokens found</p>}
+      {tokens.length === 0 && <p className={anatomy.parts.empty}>{NO_TOKENS}</p>}
       <div className={anatomy.parts.sizer} style={{ height: totalHeight }}>
         {active < start && stray}
         <div className={anatomy.parts.rows} style={{ transform: `translateY(${offset}px)` }}>

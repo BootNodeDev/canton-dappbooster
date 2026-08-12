@@ -285,12 +285,16 @@
     font-weight: 700;
   }
 
-  .cnc-token-select-modal__close {
+  .cnc-token-select-modal__close,
+  .cnc-token-select-modal__search-icon {
     color: var(--cnc-text-muted);
     display: inline-grid;
+    place-items: center;
+  }
+
+  .cnc-token-select-modal__close {
     font-size: 1.25rem;
     padding: 0;
-    place-items: center;
   }
 
   .cnc-token-select-modal__close:hover {
@@ -314,10 +318,7 @@
   }
 
   .cnc-token-select-modal__search-icon {
-    color: var(--cnc-text-muted);
-    display: inline-grid;
     font-size: 1.125em;
-    place-items: center;
   }
 
   .cnc-token-select-modal__search {

@@ -8,10 +8,11 @@ const ROW = 52
 // Four rows of viewport: jsdom lays nothing out, so the height every row reads from is stubbed.
 const VIEWPORT = ROW * 4
 
-const Probe = ({ count }: { count: number }): React.JSX.Element => {
+const Probe = ({ count, resetKey }: { count: number; resetKey?: string }): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { end, offset, start, totalHeight } = useVirtualRows({
+  const { end, offset, scrollRowIntoView, start, totalHeight } = useVirtualRows({
     count,
+    resetKey,
     rowHeight: ROW,
     scrollRef,
   })
@@ -20,6 +21,7 @@ const Probe = ({ count }: { count: number }): React.JSX.Element => {
       <span data-testid="window">{`${start}-${end}`}</span>
       <span data-testid="offset">{offset}</span>
       <span data-testid="total">{totalHeight}</span>
+      <button data-testid="reveal" onClick={() => scrollRowIntoView(count - 1)} type="button" />
     </div>
   )
 }
@@ -27,10 +29,14 @@ const Probe = ({ count }: { count: number }): React.JSX.Element => {
 const shown = (id: 'window' | 'offset' | 'total'): string | null =>
   screen.getByTestId(id).textContent
 
-const mount = (count: number) => {
+const mount = (count: number, resetKey?: string) => {
   const resize = stubViewport(VIEWPORT)
-  render(<Probe count={count} />)
-  return { resize, scroller: screen.getByTestId('scroller') }
+  const { rerender } = render(<Probe count={count} resetKey={resetKey} />)
+  return {
+    resize,
+    reset: (next: string) => rerender(<Probe count={count} resetKey={next} />),
+    scroller: screen.getByTestId('scroller'),
+  }
 }
 
 const scrollTo = (scroller: HTMLElement, top: number): void => {
@@ -73,6 +79,43 @@ describe('useVirtualRows', () => {
     mount(0)
     expect(shown('window')).toBe('0-0')
     expect(shown('total')).toBe('0')
+  })
+
+  // A programmatic scroll may report no scroll event, so the window moves on the write rather than
+  // on an event: rewinding the node alone would leave it windowing the offset it was computed for.
+  it('rewinds the node and the window together when the reset key changes', () => {
+    const { reset, scroller } = mount(100, 'all')
+    scrollTo(scroller, ROW * 10)
+    reset('narrowed')
+
+    expect(scroller.scrollTop).toBe(0)
+    expect(shown('window')).toBe('0-13')
+    expect(shown('offset')).toBe('0')
+  })
+
+  it('holds the scroll through a render that leaves the reset key alone', () => {
+    const { reset, scroller } = mount(100, 'all')
+    scrollTo(scroller, ROW * 10)
+    reset('all')
+
+    expect(scroller.scrollTop).toBe(ROW * 10)
+    expect(shown('window')).toBe('6-19')
+  })
+
+  it('scrolls a row out of view up to the bottom of the viewport', () => {
+    const { scroller } = mount(20)
+    fireEvent.click(screen.getByTestId('reveal'))
+
+    expect(scroller.scrollTop).toBe(20 * ROW - VIEWPORT)
+    expect(shown('window')).toBe('12-20')
+  })
+
+  it('leaves the scroll alone for a row already in view', () => {
+    const { scroller } = mount(3)
+    scrollTo(scroller, 0)
+    fireEvent.click(screen.getByTestId('reveal'))
+
+    expect(scroller.scrollTop).toBe(0)
   })
 
   // The list is a flex item under a capped card, so it resizes with the window untouched.
