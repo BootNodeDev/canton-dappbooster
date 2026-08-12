@@ -298,21 +298,40 @@
   }
 
   .cnc-token-select-modal__search {
+    align-items: center;
     background: var(--cnc-surface);
     border-radius: var(--cnc-radius);
     border: 1px solid var(--cnc-border-strong);
-    color: inherit;
-    font: inherit;
+    display: flex;
+    gap: 0.5rem;
     padding: 0.5rem 0.625rem;
   }
 
-  .cnc-token-select-modal__search:focus-visible {
+  .cnc-token-select-modal__search:focus-within {
     border-color: var(--cnc-accent);
     outline: 2px solid var(--cnc-accent);
     outline-offset: 1px;
   }
 
-  .cnc-token-select-modal__search::placeholder {
+  .cnc-token-select-modal__search-icon {
+    color: var(--cnc-text-muted);
+    display: inline-grid;
+    font-size: 1.125em;
+    place-items: center;
+  }
+
+  .cnc-token-select-modal__search-input {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    min-width: 0;
+    outline: none;
+    padding: 0;
+    width: 100%;
+  }
+
+  .cnc-token-select-modal__search-input::placeholder {
     color: var(--cnc-text-muted);
     opacity: 0.7;
   }
