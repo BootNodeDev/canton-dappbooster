@@ -327,4 +327,24 @@
     min-height: 0;
     overflow-y: auto;
   }
+
+  /* Token logo */
+  .cnc-token-logo {
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 2rem;
+    justify-content: center;
+    overflow: hidden;
+    width: 2rem;
+  }
+
+  .cnc-token-logo[data-fallback] {
+    background: oklch(0.78 0.13 var(--cnc-token-hue));
+    border-radius: 50%;
+    color: oklch(0.28 0.09 var(--cnc-token-hue));
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
 }
