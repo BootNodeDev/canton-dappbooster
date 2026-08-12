@@ -14,8 +14,7 @@ interface TokenRowProps {
 }
 
 /**
- * One row of the token select's list. `tabbable` is the list's roving tab stop, so exactly one row
- * carries it.
+ * One row of the token select's list.
  *
  * @example
  * <TokenRow onFocus={() => setActive(index)} onKeyDown={move} onSelect={setToken}
