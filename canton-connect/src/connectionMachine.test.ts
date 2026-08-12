@@ -15,6 +15,7 @@ const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMach
 }
 
 const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
+const session: RestoreAnswer['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionMachine', () => {
   it('starts disconnected', () => {
@@ -190,6 +191,67 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('drops the session data on disconnect', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<RestoreAnswer>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+      const states = recordStates(actor)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+      expect(actor.getSnapshot().context.session).toBe(session)
+
+      actor.send({ type: 'disconnect' })
+
+      expect(actor.getSnapshot().context.connection).toBeUndefined()
+      expect(actor.getSnapshot().context.session).toBeUndefined()
+      expect(states).toEqual<typeof states>([
+        'disconnected',
+        'restoring',
+        { session: 'authenticated' },
+        'disconnected',
+      ])
+
+      actor.stop()
+    })
+
+    it('drops the session data on disconnect from a logged-out session', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<RestoreAnswer>(() =>
+            Promise.resolve({
+              connection: { ...connection, isConnected: false },
+              session,
+            }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+      const states = recordStates(actor)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+      expect(actor.getSnapshot().context.session).toBe(session)
+      expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.send({ type: 'disconnect' })
+
+      expect(actor.getSnapshot().context.session).toBeUndefined()
+      expect(states).toEqual<typeof states>([
+        'disconnected',
+        'restoring',
+        { session: 'unauthenticated' },
+        'disconnected',
+      ])
+
+      actor.stop()
+    })
   })
 
   describe('session restore', () => {
@@ -293,7 +355,7 @@ describe('connectionMachine', () => {
           restore: fromPromise<RestoreAnswer>(() =>
             Promise.resolve({
               connection: { isConnected: false, isNetworkConnected: true },
-              session: { accessToken: 'token', userId: 'user' },
+              session,
             }),
           ),
         },
@@ -304,7 +366,25 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
+      expect(actor.getSnapshot().context.session).toBe(session)
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+
+      actor.stop()
+    })
+
+    it('keeps the restored session data in context', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<RestoreAnswer>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().context.session).toBe(session)
 
       actor.stop()
     })

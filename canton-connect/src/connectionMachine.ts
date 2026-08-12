@@ -19,6 +19,7 @@ export const connectionMachine = setup({
   types: {
     context: {} as {
       connection: ConnectResult | undefined
+      session: RestoreAnswer['session']
       error: unknown
     },
     events: {} as
@@ -30,6 +31,7 @@ export const connectionMachine = setup({
 }).createMachine({
   context: {
     connection: undefined,
+    session: undefined,
     error: undefined,
   },
   id: 'connection',
@@ -65,6 +67,7 @@ export const connectionMachine = setup({
         },
         unauthenticated: {},
       },
+      exit: assign({ session: undefined }),
       on: {
         disconnect: { target: 'disconnected' },
       },
@@ -85,7 +88,10 @@ export const connectionMachine = setup({
               params: ({ event: { output } }) => ({ connection: output.connection }),
             },
             target: 'session.authenticated',
-            actions: assign({ connection: ({ event: { output } }) => output.connection }),
+            actions: assign(({ event: { output } }) => ({
+              connection: output.connection,
+              session: output.session,
+            })),
           },
           {
             guard: {
@@ -93,6 +99,7 @@ export const connectionMachine = setup({
               params: ({ event: { output } }) => ({ session: output.session }),
             },
             target: 'session.unauthenticated',
+            actions: assign(({ event: { output } }) => ({ session: output.session })),
           },
           { target: 'disconnected' },
         ],
