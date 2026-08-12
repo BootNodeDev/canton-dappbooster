@@ -329,6 +329,11 @@
     overflow-y: auto;
   }
 
+  .cnc-token-select-modal__list:focus-visible {
+    outline: 2px solid var(--cnc-accent);
+    outline-offset: -2px;
+  }
+
   .cnc-token-select-modal__sizer {
     position: relative;
   }

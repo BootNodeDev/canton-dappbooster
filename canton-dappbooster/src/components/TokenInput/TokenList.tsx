@@ -27,7 +27,16 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
   })
 
   return (
-    <div className={anatomy.parts.list} ref={scrollRef}>
+    <section
+      aria-label="Tokens"
+      className={anatomy.parts.list}
+      ref={scrollRef}
+      // Windowed, so the rows below the viewport are not in the DOM to tab to: the scroller itself
+      // has to take focus for a keyboard to reach them (axe `scrollable-region-focusable`, which
+      // this Biome rule contradicts).
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: see above
+      tabIndex={0}
+    >
       <div className={anatomy.parts.sizer} style={{ height: totalHeight }}>
         <div className={anatomy.parts.rows} style={{ transform: `translateY(${offset}px)` }}>
           {tokens.slice(start, end).map((token) => (
@@ -40,6 +49,6 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
           ))}
         </div>
       </div>
-    </div>
+    </section>
   )
 }

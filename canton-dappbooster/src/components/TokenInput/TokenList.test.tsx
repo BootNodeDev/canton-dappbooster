@@ -9,7 +9,6 @@ import { TokenList } from './TokenList'
 const VIEWPORT = ROW_HEIGHT * 4
 
 const tokens: Token[] = Array.from({ length: 100 }, (_, index) => ({
-  decimals: 10,
   id: `token-${index}`,
   name: `Token ${index}`,
   symbol: `TK${index}`,
@@ -34,6 +33,14 @@ describe('TokenList', () => {
     expect(rows()).toHaveLength(13)
     expect(screen.getByRole('button', { name: 'Token 0 TK0' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Token 40 TK40' })).not.toBeInTheDocument()
+  })
+
+  it('takes focus itself, so a keyboard can scroll to the rows it has not rendered', () => {
+    const { container } = setup()
+    const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
+
+    expect(screen.getByRole('region', { name: 'Tokens' })).toBe(scroller)
+    expect(scroller).toHaveAttribute('tabindex', '0')
   })
 
   it('reserves the height of the whole list', () => {
