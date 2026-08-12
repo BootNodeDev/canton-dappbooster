@@ -285,6 +285,8 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
+                // Mock-first: the pick only relabels the field. Balance, validation and the grant
+                // itself stay CC until real per-token balances land.
                 onTokenSelect={setToken}
                 usdValue={
                   usdRate === undefined || amount === ''
