@@ -13,8 +13,8 @@ export const connectionMachine = setup({
     ),
   },
   guards: {
-    hasRestoredSession: (_, params: { session: StatusEvent['session'] }) => !!params.session,
-    sessionRestored: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
+    hasSession: (_, params: { session: StatusEvent['session'] }) => !!params.session,
+    isAuthenticated: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
   },
   types: {
     context: {} as {
@@ -81,15 +81,15 @@ export const connectionMachine = setup({
         onDone: [
           {
             guard: {
-              type: 'sessionRestored',
+              type: 'isAuthenticated',
               params: ({ event: { output } }) => ({ connection: output.connection }),
             },
             target: 'session.authenticated',
-            actions: assign(({ event: { output } }) => ({ connection: output.connection })),
+            actions: assign({ connection: ({ event: { output } }) => output.connection }),
           },
           {
             guard: {
-              type: 'hasRestoredSession',
+              type: 'hasSession',
               params: ({ event: { output } }) => ({ session: output.session }),
             },
             target: 'session.unauthenticated',

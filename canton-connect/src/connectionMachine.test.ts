@@ -204,7 +204,7 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('restores an existing session to connected', async () => {
+    it('restores a logged-in session straight in', async () => {
       const machine = connectionMachine.provide({
         actors: {
           restore: fromPromise(() => Promise.resolve({ connection })),
