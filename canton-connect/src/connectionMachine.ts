@@ -1,5 +1,5 @@
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
-import { assign, fromPromise, setup } from 'xstate'
+import { assign, fromCallback, fromPromise, setup } from 'xstate'
 
 export type WalletStatus = Pick<StatusEvent, 'connection' | 'network' | 'session'>
 
@@ -11,6 +11,7 @@ export const connectionMachine = setup({
     restore: fromPromise<WalletStatus>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
+    walletEvents: fromCallback(() => {}),
   },
   guards: {
     hasSession: (_, params: { session: StatusEvent['session'] }) => !!params.session,
@@ -62,6 +63,9 @@ export const connectionMachine = setup({
     },
     session: {
       initial: 'unauthenticated',
+      invoke: {
+        src: 'walletEvents',
+      },
       states: {
         authenticated: {
           on: {

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { createActor, fromPromise, type StateValueFrom } from 'xstate'
+import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
 import { connectionMachine, type WalletStatus } from './connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -568,6 +568,109 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
       expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.stop()
+    })
+  })
+
+  describe('wallet events listener', () => {
+    it('starts listening when a session begins', async () => {
+      const walletSubscribed = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          walletEvents: fromCallback(() => {
+            walletSubscribed()
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+
+      expect(walletSubscribed).not.toHaveBeenCalled()
+
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(walletSubscribed).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
+
+    it('reaches the machine upon wallet push', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() =>
+            Promise.resolve({ connection: { ...connection, isConnected: false }, session }),
+          ),
+          walletEvents: fromCallback(({ sendBack }) => {
+            sendBack({ type: 'wallet.statusChanged', status: { connection, session } })
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.connection).toBe(connection)
+
+      actor.stop()
+    })
+
+    it('stops listening when session ends', async () => {
+      const walletUnsubscribed = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          walletEvents: fromCallback(() => walletUnsubscribed),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(walletUnsubscribed).not.toHaveBeenCalled()
+
+      actor.send({ type: 'disconnect' })
+
+      expect(walletUnsubscribed).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
+
+    it('keeps listening across login changes', async () => {
+      const walletSubscribed = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          walletEvents: fromCallback(() => {
+            walletSubscribed()
+          }),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(walletSubscribed).toHaveBeenCalledOnce()
+
+      actor.send({
+        type: 'wallet.statusChanged',
+        status: { connection: { ...connection, isConnected: false }, session },
+      })
+
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+      expect(walletSubscribed).toHaveBeenCalledOnce()
 
       actor.stop()
     })
