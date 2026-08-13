@@ -52,6 +52,7 @@
 
     /* shape */
     --cnc-radius: 8px;
+    --cnc-radius-muted: 6px;
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 

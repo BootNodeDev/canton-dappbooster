@@ -337,13 +337,51 @@
     opacity: 0.7;
   }
 
-  .cnc-token-select-modal__favorites,
-  .cnc-token-select-modal__list {
+  .cnc-token-select-modal__favorites {
+    border-bottom: 1px solid var(--cnc-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-block-start: 0.75rem;
+    padding-block-end: 0.75rem;
+  }
+
+  .cnc-token-select-modal__favorite {
+    align-items: center;
     background: var(--cnc-surface-muted);
-    border-radius: var(--cnc-radius);
+    border-radius: var(--cnc-radius-muted);
+    border: 1px solid var(--cnc-border);
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    gap: 0.5rem;
+    line-height: 1.2;
+    padding: 0.375rem 0.5rem;
+  }
+
+  .cnc-token-select-modal__favorite .cnc-token-select-modal__favorite-logo {
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+
+  .cnc-token-select-modal__favorite:hover {
+    background: var(--cnc-surface);
+  }
+
+  .cnc-token-select-modal__favorite:focus-visible {
+    outline: 2px solid var(--cnc-accent);
+    outline-offset: 1px;
+  }
+
+  .cnc-token-select-modal__favorite-symbol {
+    font-size: 0.875em;
+    font-weight: 600;
   }
 
   .cnc-token-select-modal__list {
+    background: var(--cnc-surface-muted);
+    border-radius: var(--cnc-radius);
     flex: 0 1 20rem;
     min-height: 0;
     overscroll-behavior: contain;

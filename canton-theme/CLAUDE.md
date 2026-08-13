@@ -40,7 +40,8 @@ a single one here would be unbeatable from outside the package.
   colour never crosses back into JavaScript, so it still follows the mode.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
-    still a text colour; `--cnc-surface-muted` is still a surface.
+    still a text colour; `--cnc-surface-muted` is still a surface, and `--cnc-radius-muted` is the
+    same corner, rounded less.
   - `-subtle` — a pale *fill* derived from a role whose base value is a foreground colour, for
     badges and callouts. `--cnc-danger` is the text, `--cnc-danger-subtle` the wash behind it.
   - `-hover` — the same role under interaction.
@@ -97,6 +98,11 @@ exactly the case the attribute exists for.
   because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
   inside a modal must not start scrolling the page behind it, which the user cannot see moving.
+- The token select's favourites sit `1.5rem` under the search field and are ruled off from the list
+  by their own `border-bottom`, not a separate element. Both distances are the modal's own `0.75rem`
+  gap plus `0.75rem` of margin or padding on the favourites; changing that gap moves them.
+- The favourite chip's logo is selected through its chip (`__favorite .__favorite-logo`) only to
+  outrank `.cnc-token-logo`, which sets the same properties at equal specificity further down.
 - The token select's "no tokens found" part renders only while the list is empty, so it needs no
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the
