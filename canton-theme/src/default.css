@@ -362,10 +362,6 @@
     background: var(--cnc-surface);
   }
 
-  .cnc-token-select-modal__row[data-selected] {
-    background: var(--cnc-accent-subtle);
-  }
-
   .cnc-token-select-modal__row:focus-visible {
     outline: 2px solid var(--cnc-accent);
     outline-offset: -2px;

@@ -9,7 +9,6 @@ import { useVirtualRows } from './useVirtualRows'
 
 interface TokenListProps {
   onSelect: (token: Token) => void
-  selectedId?: string
 }
 
 const nextIndex = (key: string, active: number, page: number, last: number): number | undefined => {
@@ -36,9 +35,9 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
  * keys instead of a tab stop per token: the rows out of view are not in the DOM to tab to.
  *
  * @example
- * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} selectedId={token.id} />
+ * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} />
  */
-export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElement => {
+export const TokenList = ({ onSelect }: TokenListProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { tokens } = useTokenList()
   const rowHeight = useRemPx(ROW_HEIGHT_REM)
@@ -48,12 +47,7 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
     scrollRef,
   })
 
-  const [active, setActive] = useState(() =>
-    Math.max(
-      0,
-      tokens.findIndex((token) => token.id === selectedId),
-    ),
-  )
+  const [active, setActive] = useState(0)
   // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
@@ -109,7 +103,6 @@ export const TokenList = ({ onSelect, selectedId }: TokenListProps): ReactElemen
       onFocus={() => onRowFocus(index)}
       onKeyDown={onKeyDown}
       onSelect={onSelect}
-      selected={token.id === selectedId}
       tabbable={index === active}
       token={token}
     />

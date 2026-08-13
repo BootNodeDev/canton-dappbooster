@@ -17,12 +17,12 @@ const tokens: Token[] = Array.from({ length: 100 }, (_, index) => ({
   symbol: `TK${index}`,
 }))
 
-const setup = (selectedId?: string) => {
+const setup = () => {
   stubViewport(VIEWPORT)
   const onSelect = vi.fn()
   const { container } = render(
     <TokenListProvider tokens={tokens}>
-      <TokenList onSelect={onSelect} selectedId={selectedId} />
+      <TokenList onSelect={onSelect} />
     </TokenListProvider>,
   )
   const scroller = container.querySelector(`.${anatomy.parts.list}`) as HTMLElement
@@ -62,12 +62,6 @@ describe('TokenList', () => {
     expect(row(40).parentElement).toHaveStyle({ transform: `translateY(${ROW * 36}px)` })
   })
 
-  it('reports the selected token on its row and on no other', () => {
-    setup('token-2')
-    expect(row(2)).toHaveAttribute('aria-pressed', 'true')
-    expect(row(3)).toHaveAttribute('aria-pressed', 'false')
-  })
-
   it('hands the clicked token back', () => {
     const { onSelect } = setup()
     row(5).click()
@@ -88,12 +82,7 @@ describe('TokenList', () => {
 
   // Windowed, so the rows out of view are not in the DOM to tab to: one tab stop and the arrow keys
   // are what reach them, not a tab stop per token.
-  it('carries a single tab stop, on the selected row', () => {
-    setup('token-2')
-    expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(2)])
-  })
-
-  it('starts the tab stop at the top when nothing is selected', () => {
+  it('carries a single tab stop, starting on the first row', () => {
     setup()
     expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(0)])
   })
