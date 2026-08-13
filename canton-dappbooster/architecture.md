@@ -107,19 +107,13 @@ roving tab stop starts at the top rather than at that row, and focus is the only
 
 The row height pays for all of it, so it has one home: `ROW_HEIGHT_REM`, written inline on the row by
 L2 and read by the maths, in rem because a px row would clip a reader who scales their text up. The
-sizer height and every row offset are multiples of it and nothing measures a rendered row, so a theme
-that gives a row a height, a border or a `min-height` puts the sizer and the offsets into silent
-disagreement and rows drift out of their slots. The theme may restyle a row; it may not resize one.
+sizer height and every row offset are multiples of it and nothing measures a rendered row, so the
+theme may restyle a row but may not resize one. That constraint, and the `scroll-behavior: smooth`
+this list cannot carry, are written where a theme author reads them:
+[`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md).
 
-Three more things the hand-roll does not carry:
-
-- **Smooth scrolling.** Scroll writes go straight to `scrollTop` and the window is computed for the
-  destination, so a `scroll-behavior: smooth` on the list would animate against a window that has
-  already arrived.
-- **A root font size that changes without a resize.** `useRemPx` re-measures on `window.resize`,
-  which browser zoom fires; a consumer swapping the root font size at runtime is missed until the
-  next one.
-- **RTL and horizontal windowing.** Neither is modelled; only `scrollTop` is read.
+Two things are deliberately not modelled: a root font size swapped at runtime without a resize
+event, and RTL or horizontal windowing.
 
 Replace rather than extend when the list needs rows of differing height, sticky group headers, or
 windowing in both axes. Each of those turns one multiplication into per-row bookkeeping, which is a
@@ -128,6 +122,21 @@ stays contained because the anatomy is the contract: `TokenList` keeps its parts
 and its keys, `useVirtualRows` and `useRemPx` go, `ROW_HEIGHT_REM` becomes an estimate rather than
 the truth, and `stubViewport` in `src/testing/viewport.ts` is needed either way, since jsdom lays
 nothing out for a windowed list of any provenance to measure.
+
+## The favourites row does not answer to the query
+
+`TokenFavorites` renders whatever `favoriteIds` resolves to and never filters. The row is the
+consumer's shortcut, fixed for the dialog, not a slice of the list the field is searching; filtering
+it would empty it on the first keystroke of a search for anything else. The cost is that
+`TokenList`'s "No tokens found" and the live region that announces it describe the list only, so a
+needle matching nothing leaves that message under a row of chips that are still there and still
+selectable. Accepted while favourites are a handful the consumer names. Filter the row, or hide it
+while the needle is non-empty, if it ever becomes user-editable.
+
+A handful is enforced rather than assumed: `MAX_FAVORITES` truncates the resolved list at L2. The
+number is arbitrary and human-picked, which is the point — the row wraps and does not scroll, so
+without a cap its height is the consumer's to set and the card has no scroll of its own to catch
+the spill.
 
 ## What `<TokenInput>` does not take
 
@@ -151,8 +160,8 @@ the form that has it. Each of the three stays addable later without a break.
   way Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook. The token row's
   height is the other, because the windowing maths is computed from it; see the windowing section
   above. Nothing else is styled in L2.
-- Tokens are `var(--cnc-*, <fallback>)`; the whole theme package is under `@layer cnc` so consumer
-  CSS wins.
+- Tokens are `var(--cnc-*)` with no fallback, declared once in `tokens.css`; the whole theme package
+  is under `@layer cnc` so consumer CSS wins.
 - Token naming convention and dark mode live in
   [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md).
 

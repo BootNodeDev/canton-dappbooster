@@ -4,11 +4,13 @@ import { type ReactElement, type RefObject, useId, useRef, useState } from 'reac
 import { CloseIcon } from '../../icons'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { modalAnatomy as anatomy } from './anatomy'
+import { TokenFavorites } from './TokenFavorites'
 import { TokenList } from './TokenList'
 import { TokenSearch } from './TokenSearch'
 
 interface TokenSelectModalProps {
   contentId: string
+  favoriteIds?: readonly string[]
   onClose: () => void
   onSelect: (token: Token) => void
   open: boolean
@@ -17,6 +19,7 @@ interface TokenSelectModalProps {
 
 const TokenSelect = ({
   contentId,
+  favoriteIds,
   onClose,
   onSelect,
   returnFocusTo,
@@ -42,6 +45,12 @@ const TokenSelect = ({
   })
   const api = dialog.connect(service, normalizeProps)
 
+  // Closed through the machine, not by unmounting, so the trigger gets its focus back.
+  const select = (token: Token): void => {
+    onSelect(token)
+    api.setOpen(false)
+  }
+
   return (
     <Portal>
       <div {...api.getBackdropProps()} className={anatomy.parts.backdrop} />
@@ -60,15 +69,8 @@ const TokenSelect = ({
             </button>
           </header>
           <TokenSearch onChange={setQuery} ref={searchRef} value={query} />
-          <div className={anatomy.parts.favorites} />
-          <TokenList
-            // Closed through the machine, not by unmounting, so the trigger gets its focus back.
-            onSelect={(token) => {
-              onSelect(token)
-              api.setOpen(false)
-            }}
-            query={query}
-          />
+          <TokenFavorites ids={favoriteIds} onSelect={select} />
+          <TokenList onSelect={select} query={query} />
         </div>
       </div>
     </Portal>
@@ -76,9 +78,7 @@ const TokenSelect = ({
 }
 
 /**
- * The dialog `<TokenInput>`'s token button opens. Lists what a `<TokenListProvider>` above it
- * supplies, filters it on its own search field, and closes itself on a pick, so `onSelect` only
- * has to record the choice.
+ * The dialog `<TokenInput>`'s token button opens.
  *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}

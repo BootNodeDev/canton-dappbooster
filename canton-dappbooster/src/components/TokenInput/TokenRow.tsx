@@ -3,6 +3,7 @@ import type { Token } from '../../providers/TokenListProvider/context'
 import { TokenLogo } from '../TokenLogo'
 import { modalAnatomy as anatomy } from './anatomy'
 import { ROW_HEIGHT_REM } from './constants'
+import { tokenLabel } from './tokenLabel'
 
 interface TokenRowProps {
   onFocus: () => void
@@ -28,7 +29,7 @@ export const TokenRow = ({
   token,
 }: TokenRowProps): ReactElement => (
   <button
-    aria-label={`${token.name} ${token.symbol}`}
+    aria-label={tokenLabel(token)}
     className={anatomy.parts.row}
     onClick={() => onSelect(token)}
     onFocus={onFocus}

@@ -40,7 +40,9 @@ a single one here would be unbeatable from outside the package.
   colour never crosses back into JavaScript, so it still follows the mode.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
-    still a text colour; `--cnc-surface-muted` is still a surface.
+    still a text colour; `--cnc-surface-muted` is still a surface. Emphasis is a colour axis, so
+    neither variant applies to `radius`: a second corner is a size scale, which the grid has not
+    got and which no single component earns.
   - `-subtle` — a pale *fill* derived from a role whose base value is a foreground colour, for
     badges and callouts. `--cnc-danger` is the text, `--cnc-danger-subtle` the wash behind it.
   - `-hover` — the same role under interaction.
@@ -99,6 +101,34 @@ exactly the case the attribute exists for.
   because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
   inside a modal must not start scrolling the page behind it, which the user cannot see moving.
+- The token select's favourites are ruled off from the list by their own `border-bottom`, not a
+  separate element, and the margin above matches the padding below so the rule sits centred in the
+  gap it divides.
+- The favourites row wraps and never scrolls. `MAX_FAVORITES` in
+  [`../canton-dappbooster`](../canton-dappbooster) is what bounds its height, so the row cannot push
+  the card past its own `max-height` — which is the spill the list's `flex: 0 1 20rem` exists to
+  prevent. Do not give this row a scroller to make room for more chips; raise or keep the cap.
+- The favourite chip and the token field's own token part share one rule, because they are the same
+  object rendered twice. What differs is a chip's border and cursor, and that the field's part
+  stretches to the amount input beside it.
+- The favourite chip's logo is selected as `.cnc-token-logo.cnc-token-select-modal__favorite-logo`,
+  a compound and not a descendant, because both classes land on the same element and the tie with
+  `.cnc-token-logo` further down would otherwise go to source order.
+- Shrinking that disc to `1.5rem` leaves `[data-fallback]`'s `0.6875rem` font-size, which was sized
+  for the `2rem` disc, so a 3-letter placeholder ("USD") can touch the disc edge in a wide font.
+  Accepted, and it is the common case rather than the rare one: a token with artwork is the
+  exception in the lists we have. Scale the font-size here when it starts clipping.
+- The favourite chip hovers to `--cnc-accent-subtle`, not to `--cnc-surface` the way a list row does.
+  A row sits on `--cnc-surface-muted` so `--cnc-surface` reads as emphasis; a chip sits on the card,
+  which already is `--cnc-surface`, so the same value would erase the chip instead. That wash was
+  the token select's selected-row fill until the current-row marking was dropped, so a consumer who
+  tuned it to read as "your current token" now meets it under the pointer.
+- The token select's rows are sized by L2, from `ROW_HEIGHT_REM`, and the windowing maths multiplies
+  it. A theme may restyle a row; it may not resize one. A height, a border or a `min-height` here
+  puts the sizer and the row offsets into silent disagreement and rows drift out of their slots.
+- The list takes no `scroll-behavior: smooth`. Scroll writes go straight to `scrollTop` and the
+  rendered window is computed for the destination, so a smooth scroll would animate against a
+  window that has already arrived.
 - The token select's "no tokens found" part renders only while the list is empty, so it needs no
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the

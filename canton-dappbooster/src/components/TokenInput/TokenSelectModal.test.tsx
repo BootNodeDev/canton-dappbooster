@@ -1,32 +1,24 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef, type ReactElement, type RefObject } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
+import { TOKENS } from '../../testing/tokens'
 import { stubViewport } from '../../testing/viewport'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 
-const TOKENS: Token[] = [
-  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
-]
-
-// The list inside windows itself against a height jsdom does not lay out.
 const modal = (
   props: Partial<React.ComponentProps<typeof TokenSelectModal>> & {
     onClose: () => void
     onSelect: (token: Token) => void
     returnFocusTo: RefObject<HTMLElement | null>
   },
-): ReactElement => {
-  stubViewport(320)
-  return (
-    <TokenListProvider tokens={TOKENS}>
-      <TokenSelectModal contentId="token-select" open={true} {...props} />
-    </TokenListProvider>
-  )
-}
+): ReactElement => (
+  <TokenListProvider tokens={TOKENS}>
+    <TokenSelectModal contentId="token-select" open={true} {...props} />
+  </TokenListProvider>
+)
 
 const setup = (open = true) => {
   const onClose = vi.fn()
@@ -42,6 +34,11 @@ const armDismiss = () =>
   act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
 
 describe('TokenSelectModal', () => {
+  // The list inside windows itself against a height jsdom does not lay out.
+  beforeEach(() => {
+    stubViewport(320)
+  })
+
   it('renders nothing while closed', () => {
     setup(false)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -54,13 +51,27 @@ describe('TokenSelectModal', () => {
     expect(dialog).toHaveAttribute('id', 'token-select')
   })
 
-  it('renders the search, the favourites placeholder and the token list', () => {
+  it('renders the search and the token list', () => {
     setup()
-    const dialog = screen.getByRole('dialog')
     expect(screen.getByLabelText('Search tokens')).toBeInTheDocument()
-    expect(dialog.querySelector(`.${anatomy.parts.favorites}`)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Canton Coin CC' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+  })
+
+  it('renders the favourites it was given above the list', () => {
+    const onClose = vi.fn()
+    const onSelect = vi.fn()
+    const returnFocusTo = createRef<HTMLElement>()
+    render(modal({ favoriteIds: ['canton-coin'], onClose, onSelect, returnFocusTo }))
+
+    const favorites = screen.getByRole('region', { name: 'Favorite tokens' })
+    expect(favorites).toHaveClass(anatomy.parts.favorites)
+    expect(within(favorites).getByRole('button', { name: 'Canton Coin CC' })).toBeInTheDocument()
+  })
+
+  it('renders no favourites section without ids', () => {
+    setup()
+    expect(screen.queryByRole('region', { name: 'Favorite tokens' })).not.toBeInTheDocument()
   })
 
   it('filters the list to what the search field holds', () => {
