@@ -58,6 +58,7 @@ interface TokenInputOwnProps
   balance?: string
   balanceState?: 'loading' | 'error'
   disabled?: boolean
+  favoriteIds?: readonly string[]
   label?: string
   onBlur?: FocusEventHandler<HTMLInputElement>
   onChange: (value: string, error: TokenAmountError | undefined) => void
@@ -69,13 +70,7 @@ interface TokenInputOwnProps
 }
 
 /**
- * Props for {@link TokenInput}. One of `label`, `aria-label` or `aria-labelledby` is required: the
- * field is nothing but digits, so an unnamed one is unusable to a screen reader. `value` and
- * `balance` are exact decimals, grouped for display but never reported back grouped; `balance`
- * doubles as the ceiling `above-max` is measured against, and `usdValue` is rendered after the
- * component's own `~$`. A `balanceState` of either kind disables Max. `onTokenSelect` is what turns
- * the symbol into a button opening the token picker, which needs a `<TokenListProvider>` above the
- * field to have anything to list.
+ * Props for {@link TokenInput}.
  *
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
@@ -100,6 +95,7 @@ export const TokenInput = ({
   balanceState,
   className,
   disabled,
+  favoriteIds,
   id,
   label,
   onBlur,
@@ -193,7 +189,6 @@ export const TokenInput = ({
             {...{ [anatomy.states.interactive]: true }}
           >
             <TokenLogo logo={token.logo} symbol={token.symbol} />
-            {/* The field's description targets the symbol, so it must not be the button itself. */}
             <span id={tokenId}>{token.symbol}</span>
           </button>
         )}
@@ -215,7 +210,6 @@ export const TokenInput = ({
           {balanceText}
         </span>
         <button
-          // Every Max on a page is named "Max"; the balance it fills is what tells them apart.
           aria-describedby={balanceId}
           className={anatomy.parts.max}
           disabled={disabled || balanceState !== undefined || noBalance}
@@ -230,6 +224,7 @@ export const TokenInput = ({
       {onTokenSelect !== undefined && (
         <TokenSelectModal
           contentId={selectId}
+          favoriteIds={favoriteIds}
           onClose={() => setSelectOpen(false)}
           onSelect={onTokenSelect}
           open={selectOpen}

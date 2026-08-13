@@ -54,13 +54,27 @@ describe('TokenSelectModal', () => {
     expect(dialog).toHaveAttribute('id', 'token-select')
   })
 
-  it('renders the search, the favourites placeholder and the token list', () => {
+  it('renders the search and the token list', () => {
     setup()
-    const dialog = screen.getByRole('dialog')
     expect(screen.getByLabelText('Search tokens')).toBeInTheDocument()
-    expect(dialog.querySelector(`.${anatomy.parts.favorites}`)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Canton Coin CC' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+  })
+
+  it('renders the favourites it was given above the list', () => {
+    const onClose = vi.fn()
+    const onSelect = vi.fn()
+    const returnFocusTo = createRef<HTMLElement>()
+    render(modal({ favoriteIds: ['canton-coin'], onClose, onSelect, returnFocusTo }))
+
+    const favorites = screen.getByRole('region', { name: 'Favorite tokens' })
+    expect(favorites).toHaveClass(anatomy.parts.favorites)
+    expect(screen.getByRole('button', { name: 'CC' })).toBeInTheDocument()
+  })
+
+  it('renders no favourites section without ids', () => {
+    setup()
+    expect(screen.queryByRole('region', { name: 'Favorite tokens' })).not.toBeInTheDocument()
   })
 
   it('filters the list to what the search field holds', () => {
