@@ -48,10 +48,22 @@ export const connectionMachine = setup({
     connecting: {
       invoke: {
         src: 'connect',
-        onDone: {
-          target: 'session.authenticated',
-          actions: assign({ connection: ({ event: { output } }) => output }),
-        },
+        onDone: [
+          {
+            guard: {
+              type: 'isAuthenticated',
+              params: ({ event: { output } }) => ({ connection: output }),
+            },
+            target: 'session.authenticated',
+            actions: assign({ connection: ({ event: { output } }) => output }),
+          },
+          {
+            target: 'failure',
+            actions: assign(({ event: { output } }) => ({
+              error: new Error(output.reason ?? 'wallet declined connection'),
+            })),
+          },
+        ],
         onError: {
           target: 'failure',
           actions: assign({ error: ({ event: { error } }) => error }),

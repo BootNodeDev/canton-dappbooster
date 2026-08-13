@@ -145,6 +145,32 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('lands in failure when the wallet declines the connection', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise<ConnectResult>(() =>
+            Promise.resolve({
+              isConnected: false,
+              isNetworkConnected: true,
+              reason: 'user rejected',
+            }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+      const states = recordStates(actor)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(states).toEqual<typeof states>(['disconnected', 'connecting', 'failure'])
+      expect(actor.getSnapshot().context.error).toEqual(new Error('user rejected'))
+      expect(actor.getSnapshot().context.connection).toBeUndefined()
+
+      actor.stop()
+    })
   })
 
   describe('disconnect', () => {
