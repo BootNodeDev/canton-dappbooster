@@ -100,6 +100,11 @@ row holding focus has to hand it back, which is what `TokenList`'s layout effect
 do. That wants the scroll position and the rendered window moving together in a commit this package
 controls, rather than coordinated against a library's own scroll writes and measurement cache.
 
+No row is marked as the token the field is already on. The trigger that opened the dialog shows it,
+so a highlighted row only repeats it, and that marking was the one thing forcing an identity onto the
+field's token: without it `TokenMeta` needs no `id` and the modal anatomy no `data-selected`. The
+roving tab stop starts at the top rather than at that row, and focus is the only state a row carries.
+
 The row height pays for all of it, so it has one home: `ROW_HEIGHT_REM`, written inline on the row by
 L2 and read by the maths, in rem because a px row would clip a reader who scales their text up. The
 sizer height and every row offset are multiples of it and nothing measures a rendered row, so a theme
