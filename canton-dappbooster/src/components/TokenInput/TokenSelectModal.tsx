@@ -1,10 +1,11 @@
 import * as dialog from '@zag-js/dialog'
 import { normalizeProps, Portal, useMachine } from '@zag-js/react'
-import { type ReactElement, type RefObject, useId, useRef } from 'react'
+import { type ReactElement, type RefObject, useId, useRef, useState } from 'react'
 import { CloseIcon } from '../../icons'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenList } from './TokenList'
+import { TokenSearch } from './TokenSearch'
 
 interface TokenSelectModalProps {
   contentId: string
@@ -21,11 +22,19 @@ const TokenSelect = ({
   returnFocusTo,
 }: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
   const searchRef = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
   const service = useMachine(dialog.machine, {
     finalFocusEl: () => returnFocusTo.current,
     id: useId(),
     ids: { content: contentId },
     initialFocusEl: () => searchRef.current,
+    onEscapeKeyDown: (event) => {
+      // `input[type="search"]` clears on Escape, and the dialog dismisses on the same keydown, so
+      // the field takes it first rather than a keypress meant to clear the query losing the dialog.
+      if (query === '' || document.activeElement !== searchRef.current) return
+      event.preventDefault()
+      setQuery('')
+    },
     onOpenChange: (details) => {
       if (!details.open) onClose()
     },
@@ -50,15 +59,7 @@ const TokenSelect = ({
               <CloseIcon />
             </button>
           </header>
-          <input
-            aria-label="Search tokens"
-            autoComplete="off"
-            className={anatomy.parts.search}
-            placeholder="Search by name or symbol"
-            ref={searchRef}
-            spellCheck={false}
-            type="search"
-          />
+          <TokenSearch onChange={setQuery} ref={searchRef} value={query} />
           <div className={anatomy.parts.favorites} />
           <TokenList
             // Closed through the machine, not by unmounting, so the trigger gets its focus back.
@@ -66,6 +67,7 @@ const TokenSelect = ({
               onSelect(token)
               api.setOpen(false)
             }}
+            query={query}
           />
         </div>
       </div>
@@ -75,7 +77,8 @@ const TokenSelect = ({
 
 /**
  * The dialog `<TokenInput>`'s token button opens. Lists what a `<TokenListProvider>` above it
- * supplies, and closes itself on a pick, so `onSelect` only has to record the choice.
+ * supplies, filters it on its own search field, and closes itself on a pick, so `onSelect` only
+ * has to record the choice.
  *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}

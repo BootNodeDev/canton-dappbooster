@@ -14,10 +14,10 @@ interface TokenRowProps {
 
 /**
  * One row of the token select's list. `tabbable` is the list's roving tab stop, so exactly one row
- * carries it.
+ * carries it: a tab stop per row is what the windowing exists to avoid.
  *
  * @example
- * <TokenRow onFocus={() => setActive(index)} onKeyDown={move} onSelect={setToken}
+ * <TokenRow onFocus={() => setActiveId(token.id)} onKeyDown={move} onSelect={setToken}
  *   tabbable={index === active} token={token} />
  */
 export const TokenRow = ({

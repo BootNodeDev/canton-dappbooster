@@ -63,6 +63,20 @@ describe('TokenSelectModal', () => {
     expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
   })
 
+  it('filters the list to what the search field holds', () => {
+    setup()
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'usd' } })
+
+    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Canton Coin CC' })).not.toBeInTheDocument()
+  })
+
+  it('reports a search that matches nothing', () => {
+    setup()
+    fireEvent.change(screen.getByLabelText('Search tokens'), { target: { value: 'zzz' } })
+    expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
+  })
+
   it('reports the picked token and asks to close', async () => {
     const { onClose, onSelect } = setup()
     screen.getByRole('button', { name: 'USD Coin USDC' }).click()
@@ -107,6 +121,30 @@ describe('TokenSelectModal', () => {
     } finally {
       document.removeEventListener('keydown', outer)
     }
+  })
+
+  // `input[type="search"]` clears on Escape, so the same keydown would otherwise take the dialog.
+  it('clears a query on Escape from the search field rather than closing', async () => {
+    const { onClose } = setup()
+    await armDismiss()
+    const search = screen.getByLabelText('Search tokens')
+    fireEvent.change(search, { target: { value: 'usd' } })
+    search.focus()
+    fireEvent.keyDown(search, { key: 'Escape' })
+    await armDismiss()
+
+    expect(search).toHaveValue('')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('asks to close on Escape once the search field is empty', async () => {
+    const { onClose } = setup()
+    await armDismiss()
+    const search = screen.getByLabelText('Search tokens')
+    search.focus()
+    fireEvent.keyDown(search, { key: 'Escape' })
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('returns focus to the element it was opened from', async () => {

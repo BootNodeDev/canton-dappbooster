@@ -23,6 +23,7 @@ export const modalAnatomy = {
     backdrop: 'cnc-token-select-modal__backdrop',
     close: 'cnc-token-select-modal__close',
     content: 'cnc-token-select-modal',
+    empty: 'cnc-token-select-modal__empty',
     favorites: 'cnc-token-select-modal__favorites',
     header: 'cnc-token-select-modal__header',
     list: 'cnc-token-select-modal__list',
@@ -34,7 +35,10 @@ export const modalAnatomy = {
     rowSymbol: 'cnc-token-select-modal__row-symbol',
     rowText: 'cnc-token-select-modal__row-text',
     search: 'cnc-token-select-modal__search',
+    searchField: 'cnc-token-select-modal__search-field',
+    searchIcon: 'cnc-token-select-modal__search-icon',
     sizer: 'cnc-token-select-modal__sizer',
+    status: 'cnc-token-select-modal__status',
     title: 'cnc-token-select-modal__title',
   },
 } as const

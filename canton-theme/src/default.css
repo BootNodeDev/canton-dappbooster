@@ -286,31 +286,51 @@
     font-weight: 700;
   }
 
-  .cnc-token-select-modal__close {
+  .cnc-token-select-modal__close,
+  .cnc-token-select-modal__search-icon {
     color: var(--cnc-text-muted);
     display: inline-grid;
+    place-items: center;
+  }
+
+  .cnc-token-select-modal__close {
     font-size: 1.25rem;
     padding: 0;
-    place-items: center;
   }
 
   .cnc-token-select-modal__close:hover {
     color: var(--cnc-accent);
   }
 
-  .cnc-token-select-modal__search {
+  .cnc-token-select-modal__search-field {
+    align-items: center;
     background: var(--cnc-surface);
     border-radius: var(--cnc-radius);
     border: 1px solid var(--cnc-border-strong);
-    color: inherit;
-    font: inherit;
+    display: flex;
+    gap: 0.5rem;
     padding: 0.5rem 0.625rem;
   }
 
-  .cnc-token-select-modal__search:focus-visible {
+  .cnc-token-select-modal__search-field:focus-within {
     border-color: var(--cnc-accent);
     outline: 2px solid var(--cnc-accent);
     outline-offset: 1px;
+  }
+
+  .cnc-token-select-modal__search-icon {
+    font-size: 1.125em;
+  }
+
+  .cnc-token-select-modal__search {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    min-width: 0;
+    outline: none;
+    padding: 0;
+    width: 100%;
   }
 
   .cnc-token-select-modal__search::placeholder {
@@ -329,6 +349,15 @@
     min-height: 0;
     overscroll-behavior: contain;
     overflow-y: auto;
+  }
+
+  .cnc-token-select-modal__empty {
+    color: var(--cnc-text-muted);
+    display: grid;
+    min-height: 100%;
+    padding: 1rem;
+    place-items: center;
+    text-align: center;
   }
 
   .cnc-token-select-modal__sizer {

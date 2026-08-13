@@ -1,14 +1,24 @@
-import { type KeyboardEvent, type ReactElement, useLayoutEffect, useRef, useState } from 'react'
+import {
+  type KeyboardEvent,
+  type ReactElement,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
+import { SR_ONLY } from '../../utils/srOnly'
 import { modalAnatomy as anatomy } from './anatomy'
-import { ROW_HEIGHT_REM } from './constants'
+import { NO_TOKENS, ROW_HEIGHT_REM } from './constants'
+import { filterTokens, toNeedle } from './filterTokens'
 import { TokenRow } from './TokenRow'
 import { useRemPx } from './useRemPx'
 import { useVirtualRows } from './useVirtualRows'
 
 interface TokenListProps {
   onSelect: (token: Token) => void
+  query?: string
 }
 
 const nextIndex = (key: string, active: number, page: number, last: number): number | undefined => {
@@ -30,6 +40,14 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
   }
 }
 
+// The narrowing is otherwise carried only by rows going missing, which nobody is reading. Silent
+// without a needle, so mounting a list never announces a count nobody asked for.
+const announce = (needle: string, count: number): string => {
+  if (needle === '') return ''
+  if (count === 0) return NO_TOKENS
+  return count === 1 ? '1 token found' : `${count} tokens found`
+}
+
 /**
  * The token select's scrolling list. Windowed, so it walks on one roving tab stop and the arrow
  * keys instead of a tab stop per token: the rows out of view are not in the DOM to tab to.
@@ -37,20 +55,40 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
  * @example
  * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} />
  */
-export const TokenList = ({ onSelect }: TokenListProps): ReactElement => {
+export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { tokens } = useTokenList()
+  const { tokens: all } = useTokenList()
+  const needle = toNeedle(query)
+  const tokens = useMemo(() => filterTokens(all, needle), [all, needle])
   const rowHeight = useRemPx(ROW_HEIGHT_REM)
-  const { end, offset, start, totalHeight } = useVirtualRows({
+  const { end, offset, scrollRowIntoView, start, totalHeight } = useVirtualRows({
     count: tokens.length,
+    resetKey: needle,
     rowHeight,
     scrollRef,
   })
 
-  const [active, setActive] = useState(0)
+  // Held by id, not by index: a provider handing over an equal-but-new array must not move it.
+  const [activeId, setActiveId] = useState<string>()
+  const active = useMemo(
+    () =>
+      Math.max(
+        0,
+        tokens.findIndex((token) => token.id === activeId),
+      ),
+    [activeId, tokens],
+  )
   // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
+
+  // A new needle makes the old tab stop meaningless, so it goes back to the top; no token carries
+  // an unset id, which is what lands it on the first row.
+  const [applied, setApplied] = useState(needle)
+  if (applied !== needle) {
+    setApplied(needle)
+    setActiveId(undefined)
+  }
 
   const focusActive = (): void => {
     scrollRef.current?.querySelector<HTMLElement>(`.${anatomy.parts.row}[tabindex="0"]`)?.focus()
@@ -71,17 +109,13 @@ export const TokenList = ({ onSelect }: TokenListProps): ReactElement => {
 
   const moveTo = (index: number): void => {
     const next = Math.max(0, Math.min(tokens.length - 1, index))
-    const node = scrollRef.current
-    if (node !== null) {
-      const top = next * rowHeight
-      node.scrollTop = Math.max(top + rowHeight - node.clientHeight, Math.min(node.scrollTop, top))
-    }
+    scrollRowIntoView(next)
     if (next === active) {
       focusActive()
       return
     }
     pullFocus.current = true
-    setActive(next)
+    setActiveId(tokens[next].id)
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
@@ -92,15 +126,15 @@ export const TokenList = ({ onSelect }: TokenListProps): ReactElement => {
     moveTo(next)
   }
 
-  const onRowFocus = (index: number): void => {
+  const onRowFocus = (token: Token): void => {
     hadFocus.current = true
-    setActive(index)
+    setActiveId(token.id)
   }
 
   const row = (token: Token, index: number): ReactElement => (
     <TokenRow
       key={token.id}
-      onFocus={() => onRowFocus(index)}
+      onFocus={() => onRowFocus(token)}
       onKeyDown={onKeyDown}
       onSelect={onSelect}
       tabbable={index === active}
@@ -122,6 +156,12 @@ export const TokenList = ({ onSelect }: TokenListProps): ReactElement => {
 
   return (
     <section aria-label="Tokens" className={anatomy.parts.list} ref={scrollRef}>
+      {/* Out of flow and always mounted: a live region must precede the change it announces, and
+          an in-flow one would offset the rows the sizer positions. */}
+      <span className={anatomy.parts.status} role="status" style={SR_ONLY}>
+        {announce(needle, tokens.length)}
+      </span>
+      {tokens.length === 0 && <p className={anatomy.parts.empty}>{NO_TOKENS}</p>}
       <div className={anatomy.parts.sizer} style={{ height: totalHeight }}>
         {active < start && stray}
         <div className={anatomy.parts.rows} style={{ transform: `translateY(${offset}px)` }}>
