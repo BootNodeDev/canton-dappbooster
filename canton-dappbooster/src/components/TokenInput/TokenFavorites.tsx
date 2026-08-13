@@ -3,6 +3,8 @@ import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
 import { TokenLogo } from '../TokenLogo'
 import { modalAnatomy as anatomy } from './anatomy'
+import { MAX_FAVORITES } from './constants'
+import { tokenLabel } from './tokenLabel'
 
 interface TokenFavoritesProps {
   ids?: readonly string[]
@@ -10,7 +12,8 @@ interface TokenFavoritesProps {
 }
 
 /**
- * The token select's shortcut row.
+ * The token select's shortcut row. Takes the first `MAX_FAVORITES` ids the list provider holds, in
+ * the order given, and drops the rest.
  *
  * @example
  * <TokenFavorites ids={['canton-coin']} onSelect={setToken} />
@@ -20,7 +23,10 @@ export const TokenFavorites = ({
   onSelect,
 }: TokenFavoritesProps): ReactElement | null => {
   const { byId } = useTokenList()
-  const favorites = ids.map((id) => byId.get(id)).filter((token) => token !== undefined)
+  const favorites = ids
+    .map((id) => byId.get(id))
+    .filter((token) => token !== undefined)
+    .slice(0, MAX_FAVORITES)
 
   if (favorites.length === 0) return null
 
@@ -28,7 +34,7 @@ export const TokenFavorites = ({
     <section aria-label="Favorite tokens" className={anatomy.parts.favorites}>
       {favorites.map((token) => (
         <button
-          aria-label={`${token.name} ${token.symbol}`}
+          aria-label={tokenLabel(token)}
           className={anatomy.parts.favorite}
           key={token.id}
           onClick={() => onSelect(token)}

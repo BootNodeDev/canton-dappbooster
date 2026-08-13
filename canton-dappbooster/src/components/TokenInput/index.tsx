@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { Token } from '../../providers/TokenListProvider/context'
 import { cx } from '../../utils/cx'
 import { resolveInvalid } from '../../utils/invalid'
 import {
@@ -26,8 +27,9 @@ import { useFormattedField } from './useFormattedField'
 const ZERO = formatAmount('0.00')
 
 /**
- * The token an amount is denominated in. A `Token` off the list provider satisfies it, so a pick
- * goes straight back into the field.
+ * The token an amount is denominated in: what the field renders, and no more. A `Token` off the
+ * list provider satisfies it, so a pick goes straight back into the field. `onTokenSelect` hands
+ * back the whole `Token`, identity included, because that is what the picker resolved.
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
@@ -62,7 +64,7 @@ interface TokenInputOwnProps
   onBlur?: FocusEventHandler<HTMLInputElement>
   onChange: (value: string, error: TokenAmountError | undefined) => void
   onFocus?: FocusEventHandler<HTMLInputElement>
-  onTokenSelect?: (token: TokenMeta) => void
+  onTokenSelect?: (token: Token) => void
   token: TokenMeta
   usdValue?: string
   value: string

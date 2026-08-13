@@ -1,32 +1,24 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef, type ReactElement, type RefObject } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
+import { TOKENS } from '../../testing/tokens'
 import { stubViewport } from '../../testing/viewport'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 
-const TOKENS: Token[] = [
-  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
-]
-
-// The list inside windows itself against a height jsdom does not lay out.
 const modal = (
   props: Partial<React.ComponentProps<typeof TokenSelectModal>> & {
     onClose: () => void
     onSelect: (token: Token) => void
     returnFocusTo: RefObject<HTMLElement | null>
   },
-): ReactElement => {
-  stubViewport(320)
-  return (
-    <TokenListProvider tokens={TOKENS}>
-      <TokenSelectModal contentId="token-select" open={true} {...props} />
-    </TokenListProvider>
-  )
-}
+): ReactElement => (
+  <TokenListProvider tokens={TOKENS}>
+    <TokenSelectModal contentId="token-select" open={true} {...props} />
+  </TokenListProvider>
+)
 
 const setup = (open = true) => {
   const onClose = vi.fn()
@@ -42,6 +34,11 @@ const armDismiss = () =>
   act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
 
 describe('TokenSelectModal', () => {
+  // The list inside windows itself against a height jsdom does not lay out.
+  beforeEach(() => {
+    stubViewport(320)
+  })
+
   it('renders nothing while closed', () => {
     setup(false)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

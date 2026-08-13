@@ -2,18 +2,13 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
-import type { Token } from '../../providers/TokenListProvider/context'
+import { TOKENS } from '../../testing/tokens'
 import { stubViewport } from '../../testing/viewport'
 import { formatAmount } from '../../utils/tokenAmount'
 import { TokenInput, type TokenMeta } from '.'
 import { anatomy } from './anatomy'
 
 const CC: TokenMeta = { symbol: 'CC' }
-
-const TOKENS: Token[] = [
-  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
-]
 
 // Derived through `formatAmount`, so the test agrees with the component rather than with a
 // hardcoded `1,234` or its own copy of the Intl lookup.

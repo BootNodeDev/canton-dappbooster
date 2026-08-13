@@ -3,23 +3,27 @@ import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
+import { TOKENS } from '../../testing/tokens'
 import { modalAnatomy as anatomy } from './anatomy'
+import { MAX_FAVORITES } from './constants'
 import { TokenFavorites } from './TokenFavorites'
-
-const TOKENS: Token[] = [
-  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
-  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
-]
 
 const favorites = (
   props: Partial<React.ComponentProps<typeof TokenFavorites>> & {
     onSelect: (token: Token) => void
   },
+  tokens: Token[] = TOKENS,
 ): ReactElement => (
-  <TokenListProvider tokens={TOKENS}>
+  <TokenListProvider tokens={tokens}>
     <TokenFavorites {...props} />
   </TokenListProvider>
 )
+
+const many = Array.from({ length: MAX_FAVORITES + 3 }, (_, index) => ({
+  id: `token-${index}`,
+  name: `Token ${index}`,
+  symbol: `TK${index}`,
+}))
 
 describe('TokenFavorites', () => {
   it('renders the tokens its ids resolve to, in the order given', () => {
@@ -44,9 +48,12 @@ describe('TokenFavorites', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('names a chip the way the list row for the same token is named', () => {
-    render(favorites({ ids: ['usdc'], onSelect: vi.fn() }))
-    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+  it('renders no more chips than the cap, keeping the first', () => {
+    render(favorites({ ids: many.map((token) => token.id), onSelect: vi.fn() }, many))
+
+    const chips = screen.getAllByRole('button')
+    expect(chips).toHaveLength(MAX_FAVORITES)
+    expect(chips.at(-1)).toHaveAccessibleName(`Token ${MAX_FAVORITES - 1} TK${MAX_FAVORITES - 1}`)
   })
 
   it('hands the whole token to onSelect', () => {

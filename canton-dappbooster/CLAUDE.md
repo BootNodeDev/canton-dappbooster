@@ -62,7 +62,9 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
   every test, so no stub, spy, or attribute from the test before it is ever load-bearing.
 - `src/testing/` holds the helpers that install that state: `stubPrefersDark` for the OS colour
   preference, `stubClipboard` for `navigator.clipboard`, `stubViewport` for the element height and
-  `ResizeObserver` a windowed list has to measure against, which jsdom supplies neither of.
+  `ResizeObserver` a windowed list has to measure against, which jsdom supplies neither of. It also
+  holds `TOKENS`, the fixture the token select's tests share so a name asserted in one file means
+  the same token in the next.
 
 ## Validation Checklist
 
