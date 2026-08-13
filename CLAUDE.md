@@ -97,13 +97,18 @@ A README may state that a contract exists and link to it. It may not restate it.
   Two only if one genuinely cannot carry it; never more. Do not restate what the code already says
   or narrate steps. If the code needs a paragraph to be understood, simplify the code instead.
 - **Never annotate members one by one.** No per-property comments on a type, interface, enum, or
-  object literal; no per-rule or per-declaration comments in CSS. A member whose name and type do
-  not explain it gets renamed or retyped, not captioned. A section header grouping a block of
-  tokens or exports is not a member comment and stays allowed.
-- The only exception is something the code cannot carry: a hack, a workaround, a non-obvious
-  external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate *omission*,
-  or a rejected alternative. Comment that, one line, on the line it applies to. Before deleting a
-  comment, check the code still carries the fact — an absence and a road not taken never do.
+  object literal. A member whose name and type do not explain it gets renamed or retyped, not
+  captioned. A section header grouping a block of tokens or exports is not a member comment and
+  stays allowed.
+- **CSS carries no comments at all, with one exception: a section separator** naming the block that
+  follows (`/* Modal */`, `/* Header */`, `/* Colour roles */`). Nothing else, not even the
+  why-exception below: a stylesheet workaround or ordering constraint is recorded in the nearest
+  `CLAUDE.md`, where the next author looks before editing, and not in a comment they will delete.
+- Outside CSS, the only exception is something the code cannot carry: a hack, a workaround, a
+  non-obvious external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate
+  *omission*, or a rejected alternative. Comment that, one line, on the line it applies to. Before
+  deleting a comment, check the code still carries the fact — an absence and a road not taken never
+  do.
 - JSDoc is exempt from the line cap but not from terseness: say what the symbol does, and when a
   caller could reasonably pick a different export, say which. Never restate the type, never
   inventory the fields. Every JSDoc block carries at least one `@example` showing real usage.

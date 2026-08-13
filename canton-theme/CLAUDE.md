@@ -31,8 +31,9 @@ a single one here would be unbeatable from outside the package.
 - **Name the role, never the appearance or the component.** `--cnc-text-muted`, not `--cnc-grey`
   (appearance drifts when the palette changes) and not `--cnc-identifier-copy` (a token every
   component can read is the point).
-- Colour roles: `bg`, `surface`, `text`, `border`, `accent`, and the state roles `success`,
-  `warning`, `danger`. Shape roles: `radius`, `font-mono`.
+- Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, and the state roles
+  `success`, `warning`, `danger`. Shape roles: `radius`, `font-mono`. `overlay` is the scrim a
+  layer above the page sits on, so it is the one role whose value is translucent by definition.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
     still a text colour; `--cnc-surface-muted` is still a surface.
@@ -77,6 +78,25 @@ exactly the case the attribute exists for.
   once; a fallback would be a second copy that drifts and that nothing checks.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
+- Put colour on the root part, never on the inner value part, so a consumer's utility class on the
+  root still wins.
+- Never declare `font-size` on a primitive that can sit inside a heading, a row, or a table cell.
+  Let it inherit, and size sub-parts in `em` so they scale with whatever they land in.
+- A field nested in a card takes `--cnc-border-strong`: it shares the card's surface, so the card's
+  own border colour on it reads as the card edge rather than as a field.
+- A wide field shows focus and invalidity by tinting its own border under a translucent wash, not by
+  adding a detached solid ring. The wash carries the thickness contrast needs; a 2px ring standing
+  off a field that wide reads as an error even when nothing is wrong.
+- The token part is `align-self: stretch`, so the symbol takes its height from the amount field
+  beside it instead of from its own padding, and the two stay level when the field is resized.
+- The token select's list is `flex: 1 1 14rem` with `min-height: 0`, never a `min-height` floor: a
+  flex item that cannot shrink pushes the card past its own `max-height` on a short viewport, and
+  the card has no scroll of its own to catch the spill.
+- `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
+  above the page instead of in it. Everything else stacks in document order; a second value here
+  means two components can fight over depth, so treat adding one as a contract decision.
+- Comments: root [`../CLAUDE.md`](../CLAUDE.md) allows only section separators. A stylesheet fact
+  worth keeping is written into this file instead, under the section that owns it.
 
 ## Validation
 

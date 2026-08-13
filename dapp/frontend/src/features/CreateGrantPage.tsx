@@ -285,6 +285,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
+                onTokenSelect={() => {}}
                 usdValue={
                   usdRate === undefined || amount === ''
                     ? undefined
