@@ -13,7 +13,6 @@ interface TokenSelectModalProps {
   onSelect: (token: Token) => void
   open: boolean
   returnFocusTo: RefObject<HTMLElement | null>
-  selectedId?: string
 }
 
 const TokenSelect = ({
@@ -21,7 +20,6 @@ const TokenSelect = ({
   onClose,
   onSelect,
   returnFocusTo,
-  selectedId,
 }: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
   const searchRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -70,7 +68,6 @@ const TokenSelect = ({
               api.setOpen(false)
             }}
             query={query}
-            selectedId={selectedId}
           />
         </div>
       </div>
@@ -85,7 +82,7 @@ const TokenSelect = ({
  *
  * @example
  * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}
- *   open={open} returnFocusTo={triggerRef} selectedId={token.id} />
+ *   open={open} returnFocusTo={triggerRef} />
  */
 export const TokenSelectModal = ({ open, ...rest }: TokenSelectModalProps): ReactElement | null =>
   open ? <TokenSelect {...rest} /> : null

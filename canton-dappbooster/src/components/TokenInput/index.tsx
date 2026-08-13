@@ -26,14 +26,13 @@ import { useFormattedField } from './useFormattedField'
 const ZERO = formatAmount('0.00')
 
 /**
- * The token an amount is denominated in. A `Token` off the list provider satisfies it, and `id` is
- * what the picker marks the current row by, so a display-only field can leave it out.
+ * The token an amount is denominated in. A `Token` off the list provider satisfies it, so a pick
+ * goes straight back into the field.
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
  */
 export interface TokenMeta {
-  id?: string
   symbol: string
   logo?: ReactNode
 }
@@ -234,7 +233,6 @@ export const TokenInput = ({
           onSelect={onTokenSelect}
           open={selectOpen}
           returnFocusTo={triggerRef}
-          selectedId={token.id}
         />
       )}
     </div>

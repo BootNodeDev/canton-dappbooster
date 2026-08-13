@@ -19,7 +19,6 @@ import { useVirtualRows } from './useVirtualRows'
 interface TokenListProps {
   onSelect: (token: Token) => void
   query?: string
-  selectedId?: string
 }
 
 const nextIndex = (key: string, active: number, page: number, last: number): number | undefined => {
@@ -54,9 +53,9 @@ const announce = (needle: string, count: number): string => {
  * keys instead of a tab stop per token: the rows out of view are not in the DOM to tab to.
  *
  * @example
- * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} selectedId={token.id} />
+ * <TokenList onSelect={(token) => { onTokenSelect(token); onClose() }} />
  */
-export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps): ReactElement => {
+export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElement => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { tokens: all } = useTokenList()
   const needle = toNeedle(query)
@@ -70,7 +69,7 @@ export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps):
   })
 
   // Held by id, not by index: a provider handing over an equal-but-new array must not move it.
-  const [activeId, setActiveId] = useState(selectedId)
+  const [activeId, setActiveId] = useState<string>()
   const active = useMemo(
     () =>
       Math.max(
@@ -138,7 +137,6 @@ export const TokenList = ({ onSelect, query = '', selectedId }: TokenListProps):
       onFocus={() => onRowFocus(token)}
       onKeyDown={onKeyDown}
       onSelect={onSelect}
-      selected={token.id === selectedId}
       tabbable={index === active}
       token={token}
     />

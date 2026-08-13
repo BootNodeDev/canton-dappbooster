@@ -154,6 +154,7 @@
 
   .cnc-token-input__token {
     align-items: center;
+    align-self: stretch;
     background: var(--cnc-surface-muted);
     border-radius: var(--cnc-radius);
     color: inherit;
@@ -389,10 +390,6 @@
 
   .cnc-token-select-modal__row:hover {
     background: var(--cnc-surface);
-  }
-
-  .cnc-token-select-modal__row[data-selected] {
-    background: var(--cnc-accent-subtle);
   }
 
   .cnc-token-select-modal__row:focus-visible {

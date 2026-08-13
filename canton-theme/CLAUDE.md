@@ -91,6 +91,8 @@ exactly the case the attribute exists for.
 - A wide field shows focus and invalidity by tinting its own border under a translucent wash, not by
   adding a detached solid ring. The wash carries the thickness contrast needs; a 2px ring standing
   off a field that wide reads as an error even when nothing is wrong.
+- The token part is `align-self: stretch`, so the symbol takes its height from the amount field
+  beside it instead of from its own padding, and the two stay level when the field is resized.
 - The token select's list is a fixed `20rem`, expressed as `flex: 0 1 20rem` with `min-height: 0` and
   never as `height`: a flex item that cannot shrink pushes the card past its own `max-height` on a
   short viewport, and the card has no scroll of its own to catch the spill. It is `rem` and not `px`

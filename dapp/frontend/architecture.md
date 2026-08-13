@@ -13,7 +13,7 @@ them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (live ledger), and the pure ACS→domain mappers. `createBackend` picks the implementation. |
-| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (the CC `TokenMeta`), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
+| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (CC plus the padded list the picker shows), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
 | `src/wallet/` | The `Wallet` interface and `StealthWallet`, its live-ledger implementation. |
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Two kinds. `useBackend`, `useParty`, `useParties`, and `useConnect` are projections of the wallet context, one per concern. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |

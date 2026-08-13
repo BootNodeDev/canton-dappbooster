@@ -77,16 +77,6 @@ describe('TokenSelectModal', () => {
     expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
   })
 
-  it('marks the row of the token it was given', () => {
-    const onClose = vi.fn()
-    const onSelect = vi.fn()
-    render(modal({ onClose, onSelect, returnFocusTo: createRef(), selectedId: 'usdc' }))
-    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-  })
-
   it('reports the picked token and asks to close', async () => {
     const { onClose, onSelect } = setup()
     screen.getByRole('button', { name: 'USD Coin USDC' }).click()
