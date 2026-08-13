@@ -44,10 +44,15 @@ describe('TokenFavorites', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
+  it('names a chip the way the list row for the same token is named', () => {
+    render(favorites({ ids: ['usdc'], onSelect: vi.fn() }))
+    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+  })
+
   it('hands the whole token to onSelect', () => {
     const onSelect = vi.fn()
     render(favorites({ ids: ['canton-coin'], onSelect }))
-    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Canton Coin CC' }))
 
     expect(onSelect).toHaveBeenCalledWith(TOKENS[0])
   })

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef, type ReactElement, type RefObject } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
@@ -69,7 +69,7 @@ describe('TokenSelectModal', () => {
 
     const favorites = screen.getByRole('region', { name: 'Favorite tokens' })
     expect(favorites).toHaveClass(anatomy.parts.favorites)
-    expect(screen.getByRole('button', { name: 'CC' })).toBeInTheDocument()
+    expect(within(favorites).getByRole('button', { name: 'Canton Coin CC' })).toBeInTheDocument()
   })
 
   it('renders no favourites section without ids', () => {

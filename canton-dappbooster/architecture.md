@@ -129,6 +129,16 @@ and its keys, `useVirtualRows` and `useRemPx` go, `ROW_HEIGHT_REM` becomes an es
 the truth, and `stubViewport` in `src/testing/viewport.ts` is needed either way, since jsdom lays
 nothing out for a windowed list of any provenance to measure.
 
+## The favourites row does not answer to the query
+
+`TokenFavorites` renders whatever `favoriteIds` resolves to and never filters. The row is the
+consumer's shortcut, fixed for the dialog, not a slice of the list the field is searching; filtering
+it would empty it on the first keystroke of a search for anything else. The cost is that
+`TokenList`'s "No tokens found" and the live region that announces it describe the list only, so a
+needle matching nothing leaves that message under a row of chips that are still there and still
+selectable. Accepted while favourites are a handful the consumer names. Filter the row, or hide it
+while the needle is non-empty, if that row ever grows or becomes user-editable.
+
 ## What `<TokenInput>` does not take
 
 Three props a token field usually has are deliberately absent. **Precision** is not configurable

@@ -101,10 +101,25 @@ exactly the case the attribute exists for.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
   inside a modal must not start scrolling the page behind it, which the user cannot see moving.
 - The token select's favourites sit `1.5rem` under the search field and are ruled off from the list
-  by their own `border-bottom`, not a separate element. Both distances are the modal's own `0.75rem`
-  gap plus `0.75rem` of margin or padding on the favourites; changing that gap moves them.
+  by their own `border-bottom`, not a separate element. Below the row that distance is the modal's
+  own `0.75rem` gap plus `0.75rem` of padding; above it the gap plus `0.5rem` of margin and
+  `0.25rem` of padding, split that way because the row scrolls (next bullet) and a scroller clips
+  the `2px` focus outline of a chip flush against its content edge.
+- The favourites row is `nowrap` with `overflow-x: auto`, and its chips `flex-shrink: 0`. The count
+  is the consumer's, so a wrapping row grows without a bound and the only sibling that can absorb
+  it is the list; enough favourites and the card is pushed past its own `max-height`, which is the
+  spill the list's `flex: 0 1 20rem` exists to prevent. Scrolling sideways keeps the row one chip
+  tall whatever the count. It takes `overscroll-behavior-inline: contain` for the reason the list
+  takes `overscroll-behavior`.
 - The favourite chip's logo is selected through its chip (`__favorite .__favorite-logo`) only to
-  outrank `.cnc-token-logo`, which sets the same properties at equal specificity further down.
+  outrank `.cnc-token-logo`, which sets the same properties at equal specificity further down. It
+  shrinks the disc to `1.5rem` and leaves `[data-fallback]`'s `0.6875rem` font-size, which was sized
+  for the `2rem` disc: a 3-letter placeholder ("USD") can touch the disc edge in a wide font. Accepted
+  — the chip is a shortcut for tokens that in practice carry artwork. Scale the font-size here if it
+  starts clipping.
+- The favourite chip hovers to `--cnc-accent-subtle`, not to `--cnc-surface` the way a list row does.
+  A row sits on `--cnc-surface-muted` so `--cnc-surface` reads as emphasis; a chip sits on the card,
+  which already is `--cnc-surface`, so the same value would erase the chip instead.
 - The token select's "no tokens found" part renders only while the list is empty, so it needs no
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the

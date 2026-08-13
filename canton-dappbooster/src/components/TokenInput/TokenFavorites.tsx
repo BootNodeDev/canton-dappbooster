@@ -28,6 +28,7 @@ export const TokenFavorites = ({
     <section aria-label="Favorite tokens" className={anatomy.parts.favorites}>
       {favorites.map((token) => (
         <button
+          aria-label={`${token.name} ${token.symbol}`}
           className={anatomy.parts.favorite}
           key={token.id}
           onClick={() => onSelect(token)}
