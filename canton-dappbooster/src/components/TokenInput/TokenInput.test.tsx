@@ -367,15 +367,6 @@ describe('TokenInput', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'USDC' })).toBeInTheDocument())
   })
 
-  it('marks the row of the token the field is on', () => {
-    setup({ onTokenSelect: vi.fn(), token: TOKENS[0] })
-    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
-    expect(screen.getByRole('button', { name: 'Canton Coin CC' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-  })
-
   it('describes the field with the symbol rather than with the trigger', () => {
     const { field } = setup({ onTokenSelect: vi.fn() })
     const [tokenId] = (field.getAttribute('aria-describedby') ?? '').split(' ')

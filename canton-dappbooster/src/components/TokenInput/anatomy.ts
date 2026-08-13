@@ -44,7 +44,4 @@ export const modalAnatomy = {
     status: 'cnc-token-select-modal__status',
     title: 'cnc-token-select-modal__title',
   },
-  states: {
-    selected: 'data-selected',
-  },
 } as const

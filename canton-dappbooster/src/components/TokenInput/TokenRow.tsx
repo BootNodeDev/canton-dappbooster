@@ -8,7 +8,6 @@ interface TokenRowProps {
   onFocus: () => void
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onSelect: (token: Token) => void
-  selected: boolean
   tabbable: boolean
   token: Token
 }
@@ -19,19 +18,17 @@ interface TokenRowProps {
  *
  * @example
  * <TokenRow onFocus={() => setActiveId(token.id)} onKeyDown={move} onSelect={setToken}
- *   selected={token.id === selectedId} tabbable={index === active} token={token} />
+ *   tabbable={index === active} token={token} />
  */
 export const TokenRow = ({
   onFocus,
   onKeyDown,
   onSelect,
-  selected,
   tabbable,
   token,
 }: TokenRowProps): ReactElement => (
   <button
     aria-label={`${token.name} ${token.symbol}`}
-    aria-pressed={selected}
     className={anatomy.parts.row}
     onClick={() => onSelect(token)}
     onFocus={onFocus}
@@ -39,7 +36,6 @@ export const TokenRow = ({
     style={{ height: `${ROW_HEIGHT_REM}rem` }}
     tabIndex={tabbable ? 0 : -1}
     type="button"
-    {...{ [anatomy.states.selected]: selected || undefined }}
   >
     <TokenLogo className={anatomy.parts.rowLogo} logo={token.logo} symbol={token.symbol} />
     <span className={anatomy.parts.rowText}>

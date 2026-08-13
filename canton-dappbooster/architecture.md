@@ -86,6 +86,49 @@ avoid. And it rounds silently through `formatOptions.maximumFractionDigits`, whe
 flags instead. Zag landed with the token selector (issue #11) instead: a combobox and a dialog are
 the real mistake to hand-roll.
 
+## Windowing the token list: hand-rolled, and when to stop
+
+The token select renders only the rows in view, on `useVirtualRows` and `useRemPx` inside the
+component's folder rather than on a windowing library. The case is the narrowest one there is: one
+list, uniform row height, vertical only, nothing measured. `@tanstack/react-virtual`, the default
+choice, prices in variable heights, sticky items, windowing in both axes and a measurement cache,
+none of which this list uses, and lands them in the bundle of every consumer of a package whose only
+runtime dependencies so far are the two `@zag-js/*` widgets above.
+
+Focus is the second reason. The list walks on one roving tab stop, so a scroll that re-renders the
+row holding focus has to hand it back, which is what `TokenList`'s layout effect and its stray row
+do. That wants the scroll position and the rendered window moving together in a commit this package
+controls, rather than coordinated against a library's own scroll writes and measurement cache.
+
+No row is marked as the token the field is already on. The trigger that opened the dialog shows it,
+so a highlighted row only repeats it, and that marking was the one thing forcing an identity onto the
+field's token: without it `TokenMeta` needs no `id` and the modal anatomy no `data-selected`. The
+roving tab stop starts at the top rather than at that row, and focus is the only state a row carries.
+
+The row height pays for all of it, so it has one home: `ROW_HEIGHT_REM`, written inline on the row by
+L2 and read by the maths, in rem because a px row would clip a reader who scales their text up. The
+sizer height and every row offset are multiples of it and nothing measures a rendered row, so a theme
+that gives a row a height, a border or a `min-height` puts the sizer and the offsets into silent
+disagreement and rows drift out of their slots. The theme may restyle a row; it may not resize one.
+
+Three more things the hand-roll does not carry:
+
+- **Smooth scrolling.** Scroll writes go straight to `scrollTop` and the window is computed for the
+  destination, so a `scroll-behavior: smooth` on the list would animate against a window that has
+  already arrived.
+- **A root font size that changes without a resize.** `useRemPx` re-measures on `window.resize`,
+  which browser zoom fires; a consumer swapping the root font size at runtime is missed until the
+  next one.
+- **RTL and horizontal windowing.** Neither is modelled; only `scrollTop` is read.
+
+Replace rather than extend when the list needs rows of differing height, sticky group headers, or
+windowing in both axes. Each of those turns one multiplication into per-row bookkeeping, which is a
+library's job and not something to graft onto this hook; `@tanstack/react-virtual` is the swap. It
+stays contained because the anatomy is the contract: `TokenList` keeps its parts, its roving tab stop
+and its keys, `useVirtualRows` and `useRemPx` go, `ROW_HEIGHT_REM` becomes an estimate rather than
+the truth, and `stubViewport` in `src/testing/viewport.ts` is needed either way, since jsdom lays
+nothing out for a windowed list of any provenance to measure.
+
 ## What `<TokenInput>` does not take
 
 Three props a token field usually has are deliberately absent. **Precision** is not configurable
@@ -102,11 +145,12 @@ the form that has it. Each of the three stays addable later without a break.
   `.cnc-identifier`, `.cnc-identifier__copy`).
 - **State** is a `data-*` on the element the theme styles, written from the same value as the
   `aria-*` the component exposes to assistive tech, so the two cannot disagree.
-- **One exception to zero styling:** visually hiding a live region is functional, not decorative —
-  a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
-  a component applies that `sr-only` inline from `SR_ONLY` in `src/utils/srOnly.ts`, the way Radix's
-  `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is styled in
-  L2.
+- **Zero styling has two functional exceptions, both load-bearing.** Visually hiding a live region
+  is one: a consumer running the kit with no CSS would otherwise get "Copied party id" in their
+  layout. So a component applies that `sr-only` inline from `SR_ONLY` in `src/utils/srOnly.ts`, the
+  way Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook. The token row's
+  height is the other, because the windowing maths is computed from it; see the windowing section
+  above. Nothing else is styled in L2.
 - Tokens are `var(--cnc-*, <fallback>)`; the whole theme package is under `@layer cnc` so consumer
   CSS wins.
 - Token naming convention and dark mode live in

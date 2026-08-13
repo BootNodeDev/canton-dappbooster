@@ -28,11 +28,11 @@ const renderList = (element: ReactElement) => {
   }
 }
 
-const setup = (selectedId?: string, query?: string) => {
+const setup = (query?: string) => {
   const onSelect = vi.fn()
   const list = (next?: string): ReactElement => (
     <TokenListProvider tokens={tokens}>
-      <TokenList onSelect={onSelect} query={next} selectedId={selectedId} />
+      <TokenList onSelect={onSelect} query={next} />
     </TokenListProvider>
   )
   const { container, rerender, scroller } = renderList(list(query))
@@ -72,12 +72,6 @@ describe('TokenList', () => {
     expect(row(40).parentElement).toHaveStyle({ transform: `translateY(${ROW * 36}px)` })
   })
 
-  it('reports the selected token on its row and on no other', () => {
-    setup('token-2')
-    expect(row(2)).toHaveAttribute('aria-pressed', 'true')
-    expect(row(3)).toHaveAttribute('aria-pressed', 'false')
-  })
-
   it('hands the clicked token back', () => {
     const { onSelect } = setup()
     row(5).click()
@@ -97,12 +91,7 @@ describe('TokenList', () => {
 
   // Windowed, so the rows out of view are not in the DOM to tab to: one tab stop and the arrow keys
   // are what reach them, not a tab stop per token.
-  it('carries a single tab stop, on the selected row', () => {
-    setup('token-2')
-    expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(2)])
-  })
-
-  it('starts the tab stop at the top when nothing is selected', () => {
+  it('carries a single tab stop, starting on the first row', () => {
     setup()
     expect(rows().filter((node) => node.tabIndex === 0)).toEqual([row(0)])
   })
@@ -149,7 +138,7 @@ describe('TokenList', () => {
   })
 
   it('renders only the tokens the query matches', () => {
-    setup(undefined, 'TK7')
+    setup('TK7')
     expect(rows().map((node) => node.getAttribute('aria-label'))).toEqual([
       'Token 7 TK7',
       ...Array.from({ length: 10 }, (_, index) => `Token 7${index} TK7${index}`),
@@ -157,21 +146,21 @@ describe('TokenList', () => {
   })
 
   it('reserves only the height of the tokens the query matches', () => {
-    const { container } = setup(undefined, 'TK7')
+    const { container } = setup('TK7')
     expect(container.querySelector(`.${anatomy.parts.sizer}`)).toHaveStyle({
       height: `${11 * ROW}px`,
     })
   })
 
   it('announces that nothing matches instead of listing rows', () => {
-    const { container } = setup(undefined, 'nothing')
+    const { container } = setup('nothing')
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     expect(screen.getByRole('status')).toHaveTextContent('No tokens found')
     expect(container.querySelector(`.${anatomy.parts.empty}`)).toHaveTextContent('No tokens found')
   })
 
   it('announces how far the query narrowed the list', () => {
-    setup(undefined, 'TK7')
+    setup('TK7')
     expect(screen.getByRole('status')).toHaveTextContent('11 tokens found')
   })
 
@@ -194,7 +183,7 @@ describe('TokenList', () => {
   })
 
   it('leaves the tab stop and the scroll alone when a keystroke only pads the query', () => {
-    const { scroller, search } = setup(undefined, 'Token 1')
+    const { scroller, search } = setup('Token 1')
     scrollTo(scroller, ROW * 5)
     search('  Token 1  ')
 
@@ -202,7 +191,7 @@ describe('TokenList', () => {
   })
 
   it('restores the whole list when the query is cleared', () => {
-    const { search } = setup(undefined, 'TK7')
+    const { search } = setup('TK7')
     search('')
     expect(row(0)).toBeInTheDocument()
     expect(rows()).toHaveLength(13)
