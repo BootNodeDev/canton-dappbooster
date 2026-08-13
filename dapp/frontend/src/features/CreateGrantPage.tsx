@@ -25,6 +25,7 @@ import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
 import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
+import { FAVORITE_IDS } from '@/mock/tokens'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
 type CurveKind = 'linear' | 'milestone'
@@ -282,6 +283,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 balance={balance?.total}
                 balanceState={balanceState}
                 className={'w-full'}
+                favoriteIds={FAVORITE_IDS}
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}

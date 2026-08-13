@@ -15,6 +15,8 @@ const NAMED: Token[] = [
   { id: 'weth', name: 'Wrapped Ether', symbol: 'WETH' },
 ]
 
+export const FAVORITE_IDS: readonly string[] = [CC.id, 'usdt', 'usdc']
+
 // Padded well past the list's own height so the scrolling and the windowing are visible in a browser.
 const FILLER: Token[] = Array.from({ length: 60 }, (_, index) => ({
   id: `mock-${index}`,
