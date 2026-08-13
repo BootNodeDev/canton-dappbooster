@@ -1,7 +1,7 @@
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { assign, fromCallback, fromPromise, setup } from 'xstate'
 
-export type WalletStatus = Pick<StatusEvent, 'connection' | 'network' | 'session'>
+export type WalletStatus = Pick<StatusEvent, 'connection' | 'session'>
 
 export const connectionMachine = setup({
   actors: {
@@ -13,8 +13,14 @@ export const connectionMachine = setup({
     ),
     walletEvents: fromCallback(() => {}),
   },
+  actions: {
+    applyWalletStatus: assign((_, params: { status: WalletStatus }) => ({
+      connection: params.status.connection,
+      session: params.status.session,
+    })),
+  },
   guards: {
-    hasSession: (_, params: { session: StatusEvent['session'] }) => !!params.session,
+    hasSession: (_, params: { session: WalletStatus['session'] }) => !!params.session,
     isAuthenticated: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
   },
   types: {
@@ -87,10 +93,10 @@ export const connectionMachine = setup({
                   type: 'isAuthenticated',
                   params: ({ event: { status } }) => ({ connection: status.connection }),
                 },
-                actions: assign(({ event: { status } }) => ({
-                  connection: status.connection,
-                  session: status.session,
-                })),
+                actions: {
+                  type: 'applyWalletStatus',
+                  params: ({ event: { status } }) => ({ status }),
+                },
               },
               { target: 'unauthenticated' },
             ],
@@ -105,10 +111,10 @@ export const connectionMachine = setup({
                 params: ({ event: { status } }) => ({ connection: status.connection }),
               },
               target: 'authenticated',
-              actions: assign(({ event: { status } }) => ({
-                connection: status.connection,
-                session: status.session,
-              })),
+              actions: {
+                type: 'applyWalletStatus',
+                params: ({ event: { status } }) => ({ status }),
+              },
             },
           },
         },
@@ -134,10 +140,10 @@ export const connectionMachine = setup({
               params: ({ event: { output } }) => ({ connection: output.connection }),
             },
             target: 'session.authenticated',
-            actions: assign(({ event: { output } }) => ({
-              connection: output.connection,
-              session: output.session,
-            })),
+            actions: {
+              type: 'applyWalletStatus',
+              params: ({ event: { output } }) => ({ status: output }),
+            },
           },
           {
             guard: {

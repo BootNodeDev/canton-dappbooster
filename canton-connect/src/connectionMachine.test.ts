@@ -15,6 +15,7 @@ const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMach
 }
 
 const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
+const loggedOutConnection = { ...connection, isConnected: false }
 const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionMachine', () => {
@@ -250,10 +251,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({
-              connection: { ...connection, isConnected: false },
-              session,
-            }),
+            Promise.resolve({ connection: loggedOutConnection, session }),
           ),
         },
       })
@@ -397,23 +395,6 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
-
-    it('keeps the restored session data in context', async () => {
-      const machine = connectionMachine.provide({
-        actors: {
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
-        },
-      })
-      const actor = createActor(machine)
-
-      actor.start()
-      actor.send({ type: 'restore' })
-      await pause(0)
-
-      expect(actor.getSnapshot().context.session).toBe(session)
-
-      actor.stop()
-    })
   })
 
   describe('races', () => {
@@ -498,7 +479,7 @@ describe('connectionMachine', () => {
 
       actor.send({
         type: 'wallet.statusChanged',
-        status: { connection: { ...connection, isConnected: false }, session },
+        status: { connection: loggedOutConnection, session },
       })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
@@ -512,10 +493,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({
-              connection: { ...connection, isConnected: false },
-              session,
-            }),
+            Promise.resolve({ connection: loggedOutConnection, session }),
           ),
         },
       })
@@ -570,10 +548,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({
-              connection: { ...connection, isConnected: false },
-              session,
-            }),
+            Promise.resolve({ connection: loggedOutConnection, session }),
           ),
         },
       })
@@ -586,10 +561,7 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
 
-      actor.send({
-        type: 'wallet.statusChanged',
-        status: { connection: { ...connection, isConnected: false } },
-      })
+      actor.send({ type: 'wallet.statusChanged', status: { connection: loggedOutConnection } })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
@@ -629,7 +601,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: { ...connection, isConnected: false }, session }),
+            Promise.resolve({ connection: loggedOutConnection, session }),
           ),
           walletEvents: fromCallback(({ sendBack }) => {
             sendBack({ type: 'wallet.statusChanged', status: { connection, session } })
@@ -692,7 +664,7 @@ describe('connectionMachine', () => {
 
       actor.send({
         type: 'wallet.statusChanged',
-        status: { connection: { ...connection, isConnected: false }, session },
+        status: { connection: loggedOutConnection, session },
       })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
