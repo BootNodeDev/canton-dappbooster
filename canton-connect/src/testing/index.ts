@@ -5,3 +5,4 @@ export {
   type FakeWalletAccount,
   type FakeWalletOptions,
 } from './fakeWallet'
+export { pause } from './pause'

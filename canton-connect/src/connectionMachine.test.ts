@@ -3,8 +3,7 @@ import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
 import { connectionMachine, type WalletStatus } from './connectionMachine'
-
-const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+import { pause } from './testing'
 
 const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMachine>>) => {
   const states: StateValueFrom<typeof connectionMachine>[] = []
