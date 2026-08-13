@@ -1,21 +1,39 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef } from 'react'
+import { createRef, type ReactElement, type RefObject } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { TokenListProvider } from '../../providers/TokenListProvider'
+import type { Token } from '../../providers/TokenListProvider/context'
+import { stubViewport } from '../../testing/viewport'
 import { modalAnatomy as anatomy } from './anatomy'
 import { TokenSelectModal } from './TokenSelectModal'
 
+const TOKENS: Token[] = [
+  { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },
+  { id: 'usdc', name: 'USD Coin', symbol: 'USDC' },
+]
+
+// The list inside windows itself against a height jsdom does not lay out.
+const modal = (
+  props: Partial<React.ComponentProps<typeof TokenSelectModal>> & {
+    onClose: () => void
+    onSelect: (token: Token) => void
+    returnFocusTo: RefObject<HTMLElement | null>
+  },
+): ReactElement => {
+  stubViewport(320)
+  return (
+    <TokenListProvider tokens={TOKENS}>
+      <TokenSelectModal contentId="token-select" open={true} {...props} />
+    </TokenListProvider>
+  )
+}
+
 const setup = (open = true) => {
   const onClose = vi.fn()
+  const onSelect = vi.fn()
   const returnFocusTo = createRef<HTMLElement>()
-  const view = render(
-    <TokenSelectModal
-      contentId="token-select"
-      onClose={onClose}
-      open={open}
-      returnFocusTo={returnFocusTo}
-    />,
-  )
-  return { onClose, returnFocusTo, view }
+  const view = render(modal({ onClose, onSelect, open, returnFocusTo }))
+  return { onClose, onSelect, returnFocusTo, view }
 }
 
 // Zag arms the dismiss listeners a frame after the dialog mounts, so a dismissal fired before that
@@ -36,23 +54,26 @@ describe('TokenSelectModal', () => {
     expect(dialog).toHaveAttribute('id', 'token-select')
   })
 
-  it('renders the search, favourites and list placeholders', () => {
+  it('renders the search, the favourites placeholder and the token list', () => {
     setup()
     const dialog = screen.getByRole('dialog')
     expect(screen.getByLabelText('Search tokens')).toBeInTheDocument()
     expect(dialog.querySelector(`.${anatomy.parts.favorites}`)).toBeInTheDocument()
-    expect(dialog.querySelector(`.${anatomy.parts.list}`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Canton Coin CC' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'USD Coin USDC' })).toBeInTheDocument()
+  })
+
+  it('reports the picked token and asks to close', async () => {
+    const { onClose, onSelect } = setup()
+    screen.getByRole('button', { name: 'USD Coin USDC' }).click()
+    expect(onSelect).toHaveBeenCalledWith(TOKENS[1])
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('unmounts on a close it was not the one to ask for', () => {
     const { view } = setup()
     view.rerender(
-      <TokenSelectModal
-        contentId="token-select"
-        onClose={vi.fn()}
-        open={false}
-        returnFocusTo={createRef<HTMLElement>()}
-      />,
+      modal({ onClose: vi.fn(), onSelect: vi.fn(), open: false, returnFocusTo: createRef() }),
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -93,12 +114,7 @@ describe('TokenSelectModal', () => {
     document.body.append(trigger)
     try {
       const { unmount } = render(
-        <TokenSelectModal
-          contentId="token-select"
-          onClose={vi.fn()}
-          open={true}
-          returnFocusTo={{ current: trigger }}
-        />,
+        modal({ onClose: vi.fn(), onSelect: vi.fn(), returnFocusTo: { current: trigger } }),
       )
       await armDismiss()
       unmount()

@@ -1,37 +1,40 @@
 export const anatomy = {
   parts: {
-    root: 'cnc-token-input',
-    label: 'cnc-token-input__label',
-    // The field and the token pill share a row, which a flex column cannot do without a wrapper.
-    row: 'cnc-token-input__row',
-    field: 'cnc-token-input__field',
-    token: 'cnc-token-input__token',
-    meta: 'cnc-token-input__meta',
-    usdValue: 'cnc-token-input__usd-value',
     balance: 'cnc-token-input__balance',
+    field: 'cnc-token-input__field',
+    label: 'cnc-token-input__label',
     max: 'cnc-token-input__max',
+    meta: 'cnc-token-input__meta',
+    root: 'cnc-token-input',
+    row: 'cnc-token-input__row',
+    token: 'cnc-token-input__token',
+    usdValue: 'cnc-token-input__usd-value',
   },
   states: {
-    invalid: 'data-invalid',
-    disabled: 'data-disabled',
     balance: 'data-state',
-    // The token part renders as a span or as a picker button, so the theme needs the two apart.
+    disabled: 'data-disabled',
     interactive: 'data-interactive',
+    invalid: 'data-invalid',
   },
 } as const
 
-// Its own block, not a `cnc-token-input__` sub-part: the dialog renders in a portal, so nothing
-// it holds is a descendant of the field.
 export const modalAnatomy = {
   parts: {
     backdrop: 'cnc-token-select-modal__backdrop',
-    positioner: 'cnc-token-select-modal__positioner',
-    content: 'cnc-token-select-modal',
-    header: 'cnc-token-select-modal__header',
-    title: 'cnc-token-select-modal__title',
     close: 'cnc-token-select-modal__close',
-    search: 'cnc-token-select-modal__search',
+    content: 'cnc-token-select-modal',
     favorites: 'cnc-token-select-modal__favorites',
+    header: 'cnc-token-select-modal__header',
     list: 'cnc-token-select-modal__list',
+    positioner: 'cnc-token-select-modal__positioner',
+    row: 'cnc-token-select-modal__row',
+    rowLogo: 'cnc-token-select-modal__row-logo',
+    rowName: 'cnc-token-select-modal__row-name',
+    rows: 'cnc-token-select-modal__rows',
+    rowSymbol: 'cnc-token-select-modal__row-symbol',
+    rowText: 'cnc-token-select-modal__row-text',
+    search: 'cnc-token-select-modal__search',
+    sizer: 'cnc-token-select-modal__sizer',
+    title: 'cnc-token-select-modal__title',
   },
 } as const

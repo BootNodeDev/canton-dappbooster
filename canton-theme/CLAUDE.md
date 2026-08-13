@@ -31,9 +31,13 @@ a single one here would be unbeatable from outside the package.
 - **Name the role, never the appearance or the component.** `--cnc-text-muted`, not `--cnc-grey`
   (appearance drifts when the palette changes) and not `--cnc-identifier-copy` (a token every
   component can read is the point).
-- Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, and the state roles
+- Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, `swatch`, and the state roles
   `success`, `warning`, `danger`. Shape roles: `radius`, `font-mono`. `overlay` is the scrim a
   layer above the page sits on, so it is the one role whose value is translucent by definition.
+- `swatch` is the one numbered role: `--cnc-swatch-1` … `--cnc-swatch-8` and their `-fg`, a
+  categorical palette for a placeholder standing in for artwork that does not exist (a token with no
+  logo). Anything picking one hashes an identifier to the index and puts it in a `data-*`; the
+  colour never crosses back into JavaScript, so it still follows the mode.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
     still a text colour; `--cnc-surface-muted` is still a surface.
@@ -89,9 +93,12 @@ exactly the case the attribute exists for.
   off a field that wide reads as an error even when nothing is wrong.
 - The token part is `align-self: stretch`, so the symbol takes its height from the amount field
   beside it instead of from its own padding, and the two stay level when the field is resized.
-- The token select's list is `flex: 1 1 14rem` with `min-height: 0`, never a `min-height` floor: a
-  flex item that cannot shrink pushes the card past its own `max-height` on a short viewport, and
-  the card has no scroll of its own to catch the spill.
+- The token select's list is a fixed `20rem`, expressed as `flex: 0 1 20rem` with `min-height: 0` and
+  never as `height`: a flex item that cannot shrink pushes the card past its own `max-height` on a
+  short viewport, and the card has no scroll of its own to catch the spill. It is `rem` and not `px`
+  because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
+- The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
+  inside a modal must not start scrolling the page behind it, which the user cannot see moving.
 - `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
   above the page instead of in it. Everything else stacks in document order; a second value here
   means two components can fight over depth, so treat adding one as a contract decision.

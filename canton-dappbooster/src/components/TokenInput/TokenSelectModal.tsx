@@ -2,11 +2,14 @@ import * as dialog from '@zag-js/dialog'
 import { normalizeProps, Portal, useMachine } from '@zag-js/react'
 import { type ReactElement, type RefObject, useId, useRef } from 'react'
 import { CloseIcon } from '../../icons'
+import type { Token } from '../../providers/TokenListProvider/context'
 import { modalAnatomy as anatomy } from './anatomy'
+import { TokenList } from './TokenList'
 
 interface TokenSelectModalProps {
   contentId: string
   onClose: () => void
+  onSelect: (token: Token) => void
   open: boolean
   returnFocusTo: RefObject<HTMLElement | null>
 }
@@ -14,6 +17,7 @@ interface TokenSelectModalProps {
 const TokenSelect = ({
   contentId,
   onClose,
+  onSelect,
   returnFocusTo,
 }: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
   const searchRef = useRef<HTMLInputElement>(null)
@@ -56,7 +60,13 @@ const TokenSelect = ({
             type="search"
           />
           <div className={anatomy.parts.favorites} />
-          <div className={anatomy.parts.list} />
+          <TokenList
+            // Closed through the machine, not by unmounting, so the trigger gets its focus back.
+            onSelect={(token) => {
+              onSelect(token)
+              api.setOpen(false)
+            }}
+          />
         </div>
       </div>
     </Portal>
@@ -64,11 +74,12 @@ const TokenSelect = ({
 }
 
 /**
- * The dialog `<TokenInput>`'s token button opens
+ * The dialog `<TokenInput>`'s token button opens. Lists what a `<TokenListProvider>` above it
+ * supplies, and closes itself on a pick, so `onSelect` only has to record the choice.
  *
  * @example
- * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} open={open}
- *   returnFocusTo={triggerRef} />
+ * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}
+ *   open={open} returnFocusTo={triggerRef} />
  */
 export const TokenSelectModal = ({ open, ...rest }: TokenSelectModalProps): ReactElement | null =>
   open ? <TokenSelect {...rest} /> : null

@@ -32,6 +32,24 @@
     --cnc-danger: #a32626;
     --cnc-danger-subtle: #f6dede;
 
+    /* swatch */
+    --cnc-swatch-1: oklch(0.85 0.1 25);
+    --cnc-swatch-1-fg: oklch(0.36 0.1 25);
+    --cnc-swatch-2: oklch(0.85 0.1 70);
+    --cnc-swatch-2-fg: oklch(0.36 0.1 70);
+    --cnc-swatch-3: oklch(0.85 0.1 115);
+    --cnc-swatch-3-fg: oklch(0.36 0.1 115);
+    --cnc-swatch-4: oklch(0.85 0.1 160);
+    --cnc-swatch-4-fg: oklch(0.36 0.1 160);
+    --cnc-swatch-5: oklch(0.85 0.1 205);
+    --cnc-swatch-5-fg: oklch(0.36 0.1 205);
+    --cnc-swatch-6: oklch(0.85 0.1 250);
+    --cnc-swatch-6-fg: oklch(0.36 0.1 250);
+    --cnc-swatch-7: oklch(0.85 0.1 295);
+    --cnc-swatch-7-fg: oklch(0.36 0.1 295);
+    --cnc-swatch-8: oklch(0.85 0.1 340);
+    --cnc-swatch-8-fg: oklch(0.36 0.1 340);
+
     /* shape */
     --cnc-radius: 8px;
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
@@ -69,5 +87,23 @@
     --cnc-warning-subtle: #332a16;
     --cnc-danger: #e57373;
     --cnc-danger-subtle: #331a1a;
+
+    /* swatch */
+    --cnc-swatch-1: oklch(0.42 0.09 25);
+    --cnc-swatch-1-fg: oklch(0.9 0.06 25);
+    --cnc-swatch-2: oklch(0.42 0.09 70);
+    --cnc-swatch-2-fg: oklch(0.9 0.06 70);
+    --cnc-swatch-3: oklch(0.42 0.09 115);
+    --cnc-swatch-3-fg: oklch(0.9 0.06 115);
+    --cnc-swatch-4: oklch(0.42 0.09 160);
+    --cnc-swatch-4-fg: oklch(0.9 0.06 160);
+    --cnc-swatch-5: oklch(0.42 0.09 205);
+    --cnc-swatch-5-fg: oklch(0.9 0.06 205);
+    --cnc-swatch-6: oklch(0.42 0.09 250);
+    --cnc-swatch-6-fg: oklch(0.9 0.06 250);
+    --cnc-swatch-7: oklch(0.42 0.09 295);
+    --cnc-swatch-7-fg: oklch(0.9 0.06 295);
+    --cnc-swatch-8: oklch(0.42 0.09 340);
+    --cnc-swatch-8-fg: oklch(0.9 0.06 340);
   }
 }
