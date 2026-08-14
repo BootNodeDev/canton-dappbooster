@@ -569,6 +569,29 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('keeps the stored session when a push carries none', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+
+      actor.send({ type: 'wallet.statusChanged', status: { connection } })
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
+
+      actor.stop()
+    })
   })
 
   describe('wallet events listener', () => {

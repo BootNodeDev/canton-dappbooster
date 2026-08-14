@@ -14,9 +14,9 @@ export const connectionMachine = setup({
     walletEvents: fromCallback(() => {}),
   },
   actions: {
-    applyWalletStatus: assign((_, params: { status: WalletStatus }) => ({
+    applyWalletStatus: assign(({ context }, params: { status: WalletStatus }) => ({
       connection: params.status.connection,
-      session: params.status.session,
+      session: params.status.session ?? context.session,
     })),
   },
   guards: {
