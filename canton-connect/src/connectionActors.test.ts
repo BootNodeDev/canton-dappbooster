@@ -1,10 +1,11 @@
 // @vitest-environment node
 
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { createConnectionActors } from './connectionActors'
 import type { WalletStatus } from './connectionMachine'
+import { createMockAdapter } from './mock/mockAdapter'
 import { pause } from './testing'
 
 const pickerExploded = new Error('picker exploded')
@@ -121,6 +122,46 @@ describe('connectionActors', () => {
         connection: restorable.connection,
         session: restorable.session,
       })
+
+      actor.stop()
+    })
+
+    it('keeps the SDK default gateways out unless opted in', async () => {
+      const init = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init,
+        status: () => Promise.resolve({ ...liveStatus, session }),
+      }
+      const actor = createActor(createConnectionActors(sdk).restore)
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(init).toHaveBeenCalledWith({ defaultAdapters: [] })
+
+      actor.stop()
+    })
+
+    it('forwards the caller init options to the SDK', async () => {
+      const init = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init,
+        status: () => Promise.resolve({ ...liveStatus, session }),
+      }
+      const mockAdapter = createMockAdapter()
+      const actor = createActor(
+        createConnectionActors(sdk, { additionalAdapters: [], defaultAdapters: [mockAdapter] })
+          .restore,
+      )
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(init).toHaveBeenCalledWith({ additionalAdapters: [], defaultAdapters: [mockAdapter] })
 
       actor.stop()
     })
