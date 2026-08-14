@@ -4,7 +4,7 @@ import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { createConnectionActors } from './connectionActors'
-import type { WalletStatus } from './connectionMachine'
+import { connectionMachine, type WalletStatus } from './connectionMachine'
 import { createMockAdapter } from './mock/mockAdapter'
 import { pause } from './testing'
 
@@ -20,14 +20,45 @@ const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' 
 
 describe('connectionActors', () => {
   describe('connect actor', () => {
-    const init = () => {
-      throw new Error('init must not run during connect')
+    const init = () => Promise.resolve()
+    const onStatusChanged = () => {
+      throw new Error('pushes must not be wired during connect')
     }
+    const removeOnStatusChanged = () => {
+      throw new Error('teardown must not run during connect')
+    }
+
+    it('initializes the SDK before connecting', async () => {
+      const init = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect: () => Promise.resolve(connection),
+        init,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status: () => {
+          throw new Error('probe must not run on a resolved connect')
+        },
+      }
+      const mockAdapter = createMockAdapter()
+      const actor = createActor(
+        createConnectionActors(sdk, { additionalAdapters: [mockAdapter] }).connect,
+      )
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(init).toHaveBeenCalledWith({ defaultAdapters: [], additionalAdapters: [mockAdapter] })
+
+      actor.stop()
+    })
 
     it('passes the wallet decline through untouched', async () => {
       const sdk = {
         connect: () => Promise.resolve(declined),
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => {
           throw new Error('probe must not run on a resolved connect')
         },
@@ -45,8 +76,10 @@ describe('connectionActors', () => {
 
     it('live session is not lost upon connect rejection', async () => {
       const sdk = {
-        connect: () => Promise.reject(new Error('picker exploded')),
+        connect: () => Promise.reject(pickerExploded),
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.resolve(liveStatus),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -64,6 +97,8 @@ describe('connectionActors', () => {
       const sdk = {
         connect: () => Promise.reject(pickerExploded),
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.resolve({ ...liveStatus, connection: noSession }),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -84,6 +119,8 @@ describe('connectionActors', () => {
       const sdk = {
         connect: () => Promise.reject(pickerExploded),
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.reject(new Error('wallet unreachable')),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -104,12 +141,20 @@ describe('connectionActors', () => {
     const connect = () => {
       throw new Error('connect must not run during restore')
     }
+    const onStatusChanged = () => {
+      throw new Error('pushes must not be wired during restore')
+    }
+    const removeOnStatusChanged = () => {
+      throw new Error('teardown must not run during restore')
+    }
 
     it('restores the wallet connection and session from status', async () => {
       const restorable: StatusEvent = { ...liveStatus, session }
       const sdk = {
         connect,
         init: () => Promise.resolve(),
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.resolve(restorable),
       }
       const actor = createActor(createConnectionActors(sdk).restore)
@@ -131,6 +176,8 @@ describe('connectionActors', () => {
       const sdk = {
         connect,
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.resolve({ ...liveStatus, session }),
       }
       const actor = createActor(createConnectionActors(sdk).restore)
@@ -149,6 +196,8 @@ describe('connectionActors', () => {
       const sdk = {
         connect,
         init,
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.resolve({ ...liveStatus, session }),
       }
       const mockAdapter = createMockAdapter()
@@ -171,6 +220,8 @@ describe('connectionActors', () => {
       const sdk = {
         connect,
         init: () => Promise.resolve(),
+        onStatusChanged,
+        removeOnStatusChanged,
         status: () => Promise.reject(failedToRecoverStatus),
       }
       const actor = createActor(createConnectionActors(sdk).restore)
@@ -182,6 +233,72 @@ describe('connectionActors', () => {
 
       expect(actor.getSnapshot().status).toBe('error')
       expect(actor.getSnapshot().error).toBe(failedToRecoverStatus)
+
+      actor.stop()
+    })
+  })
+
+  describe('walletEvents actor', () => {
+    const connect = () => {
+      throw new Error('connect must not run while listening for pushes')
+    }
+
+    it('delivers wallet status pushes while a session exists', async () => {
+      let captured: ((event: StatusEvent) => void) | undefined
+
+      const restorable: StatusEvent = { ...liveStatus, session }
+      const sdk = {
+        connect,
+        init: () => Promise.resolve(),
+        status: () => Promise.resolve(restorable),
+        onStatusChanged: (listener: (event: StatusEvent) => void) => {
+          captured = listener
+          return Promise.resolve()
+        },
+        removeOnStatusChanged: () => Promise.resolve(),
+      }
+      const actor = createActor(connectionMachine.provide({ actors: createConnectionActors(sdk) }))
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().value).toEqual({ session: 'authenticated' })
+      expect(captured).toBeDefined()
+
+      captured?.({ ...restorable, connection: noSession })
+
+      expect(actor.getSnapshot().value).toEqual({ session: 'unauthenticated' })
+
+      actor.stop()
+    })
+
+    it('stops listening when the session ends', async () => {
+      let captured: ((event: StatusEvent) => void) | undefined
+
+      const restorable: StatusEvent = { ...liveStatus, session }
+      const removeOnStatusChanged = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init: () => Promise.resolve(),
+        onStatusChanged: (listener: (event: StatusEvent) => void) => {
+          captured = listener
+          return Promise.resolve()
+        },
+        removeOnStatusChanged,
+        status: () => Promise.resolve(restorable),
+      }
+      const actor = createActor(connectionMachine.provide({ actors: createConnectionActors(sdk) }))
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(captured).toBeDefined()
+
+      actor.send({ type: 'disconnect' })
+
+      expect(removeOnStatusChanged).toHaveBeenCalledWith(captured)
 
       actor.stop()
     })
