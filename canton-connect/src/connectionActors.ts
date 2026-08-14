@@ -1,7 +1,12 @@
 import type { DappSDK } from '@canton-network/dapp-sdk'
 import { fromPromise } from 'xstate'
 
-export const createConnectionActors = (sdk: Pick<DappSDK, 'connect' | 'status'>) => ({
+type InitOptions = NonNullable<Parameters<DappSDK['init']>[0]>
+
+export const createConnectionActors = (
+  sdk: Pick<DappSDK, 'connect' | 'init' | 'status'>,
+  options: InitOptions = {},
+) => ({
   connect: fromPromise(async () => {
     try {
       return await sdk.connect()
@@ -20,5 +25,13 @@ export const createConnectionActors = (sdk: Pick<DappSDK, 'connect' | 'status'>)
 
       throw error
     }
+  }),
+  restore: fromPromise(async () => {
+    // SDK's `defaultAdapters` include a localhost dev gateway; override them
+    await sdk.init({ defaultAdapters: [], ...options })
+
+    const { connection, session } = await sdk.status()
+
+    return { connection, session }
   }),
 })

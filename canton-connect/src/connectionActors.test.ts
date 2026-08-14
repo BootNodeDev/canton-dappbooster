@@ -4,6 +4,7 @@ import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { describe, expect, it } from 'vitest'
 import { createActor } from 'xstate'
 import { createConnectionActors } from './connectionActors'
+import type { WalletStatus } from './connectionMachine'
 import { pause } from './testing'
 
 const pickerExploded = new Error('picker exploded')
@@ -14,11 +15,18 @@ const declined = { ...noSession, reason: 'user rejected' }
 
 const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
 
+const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
+
 describe('connectionActors', () => {
   describe('connect actor', () => {
+    const init = () => {
+      throw new Error('init must not run during connect')
+    }
+
     it('passes the wallet decline through untouched', async () => {
       const sdk = {
         connect: () => Promise.resolve(declined),
+        init,
         status: () => {
           throw new Error('probe must not run on a resolved connect')
         },
@@ -37,6 +45,7 @@ describe('connectionActors', () => {
     it('live session is not lost upon connect rejection', async () => {
       const sdk = {
         connect: () => Promise.reject(new Error('picker exploded')),
+        init,
         status: () => Promise.resolve(liveStatus),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -53,6 +62,7 @@ describe('connectionActors', () => {
     it('surfaces the original error when no session is live', async () => {
       const sdk = {
         connect: () => Promise.reject(pickerExploded),
+        init,
         status: () => Promise.resolve({ ...liveStatus, connection: noSession }),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -72,6 +82,7 @@ describe('connectionActors', () => {
     it('surfaces the original error even when the probe itself fails', async () => {
       const sdk = {
         connect: () => Promise.reject(pickerExploded),
+        init,
         status: () => Promise.reject(new Error('wallet unreachable')),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
@@ -83,6 +94,33 @@ describe('connectionActors', () => {
 
       expect(actor.getSnapshot().status).toBe('error')
       expect(actor.getSnapshot().error).toBe(pickerExploded)
+
+      actor.stop()
+    })
+  })
+
+  describe('restore actor', () => {
+    const connect = () => {
+      throw new Error('connect must not run during restore')
+    }
+
+    it('restores the wallet connection and session from status', async () => {
+      const restorable: StatusEvent = { ...liveStatus, session }
+      const sdk = {
+        connect,
+        init: () => Promise.resolve(),
+        status: () => Promise.resolve(restorable),
+      }
+      const actor = createActor(createConnectionActors(sdk).restore)
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(actor.getSnapshot().output).toEqual({
+        connection: restorable.connection,
+        session: restorable.session,
+      })
 
       actor.stop()
     })
