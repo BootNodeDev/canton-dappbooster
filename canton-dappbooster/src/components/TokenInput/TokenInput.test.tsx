@@ -1,6 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { TokenListProvider } from '../../providers/TokenListProvider'
+import { TOKENS } from '../../testing/tokens'
+import { stubViewport } from '../../testing/viewport'
 import { formatAmount } from '../../utils/tokenAmount'
 import { TokenInput, type TokenMeta } from '.'
 import { anatomy } from './anatomy'
@@ -14,21 +17,32 @@ const DECIMAL = formatAmount('1.1').replace(/\d/g, '') || '.'
 
 const setup = (props: Partial<React.ComponentProps<typeof TokenInput>> = {}) => {
   const onChange = vi.fn()
+  // The token select's list windows itself against a height jsdom does not lay out.
+  stubViewport(320)
   render(
-    <TokenInput
-      data-testid="root"
-      label="Amount"
-      onChange={onChange}
-      token={CC}
-      value=""
-      {...props}
-    />,
+    <TokenListProvider tokens={TOKENS}>
+      <TokenInput
+        data-testid="root"
+        label="Amount"
+        onChange={onChange}
+        token={CC}
+        value=""
+        {...props}
+      />
+    </TokenListProvider>,
   )
   return {
     field: screen.getByLabelText<HTMLInputElement>('Amount'),
     onChange,
     root: screen.getByTestId('root'),
   }
+}
+
+// The element the field points its description at, which is the contract the symbol is under: the
+// symbol reads twice now (on the pill and inside its fallback logo), so text is no longer a way in.
+const symbol = (field: HTMLInputElement): HTMLElement => {
+  const [id] = (field.getAttribute('aria-describedby') ?? '').split(' ')
+  return document.getElementById(id) as HTMLElement
 }
 
 // No `@testing-library/user-event` in this package, so keystrokes are hand-built input events.
@@ -80,7 +94,7 @@ describe('TokenInput', () => {
   it('associates the label with the field and shows the symbol', () => {
     const { field } = setup()
     expect(field).toHaveClass(anatomy.parts.field)
-    expect(screen.getByText('CC')).toHaveClass(anatomy.parts.token)
+    expect(symbol(field)).toHaveTextContent('CC')
   })
 
   it('groups the displayed value and reports the sanitized one', () => {
@@ -224,7 +238,7 @@ describe('TokenInput', () => {
     const { field } = setup({ balance: '1250.5' })
     const balance = screen.getByText(`Balance: ${formatAmount('1250.5')}`)
     expect(balance).toHaveClass(anatomy.parts.balance)
-    expect(field).toHaveAttribute('aria-describedby', `${screen.getByText('CC').id} ${balance.id}`)
+    expect(field).toHaveAttribute('aria-describedby', `${symbol(field).id} ${balance.id}`)
   })
 
   it('announces the balance as it settles', () => {
@@ -244,6 +258,123 @@ describe('TokenInput', () => {
   it('marks the root disabled so the theme can dim it', () => {
     const { root } = setup({ disabled: true })
     expect(root).toHaveAttribute(anatomy.states.disabled, 'true')
+  })
+
+  it('leaves the symbol inert with no handler to change the token', () => {
+    const { field } = setup()
+    expect(screen.queryByRole('button', { name: 'CC' })).not.toBeInTheDocument()
+    expect(symbol(field)).toHaveTextContent('CC')
+  })
+
+  // One part class covers both renderings, so this attribute is all the theme has to keep the
+  // button's cursor and hover off the inert span.
+  it('leaves the inert symbol unmarked so the theme does not style it as a button', () => {
+    const { field } = setup()
+    expect(symbol(field)).not.toHaveAttribute(anatomy.states.interactive)
+  })
+
+  it('marks the symbol interactive when it opens the token select', () => {
+    setup({ onTokenSelect: vi.fn() })
+    expect(screen.getByRole('button', { name: 'CC' })).toHaveAttribute(
+      anatomy.states.interactive,
+      'true',
+    )
+  })
+
+  it('opens the token select on the symbol button', () => {
+    setup({ onTokenSelect: vi.fn() })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    expect(screen.getByRole('dialog', { name: 'Select a token' })).toBeInTheDocument()
+  })
+
+  it('reports the open state on the trigger and points it at the dialog', () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).not.toHaveAttribute('aria-controls')
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveAttribute('aria-controls', dialog.id)
+  })
+
+  it('clears the open state from the trigger once the dialog is gone', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).not.toHaveAttribute('aria-controls')
+  })
+
+  it('closes the token select on Escape', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    // Zag arms the dismiss listeners a frame after the dialog mounts.
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+    fireEvent.keyDown(screen.getByLabelText('Search tokens'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('returns focus to the trigger when the token select closes', async () => {
+    setup({ onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    fireEvent.click(trigger)
+    // The focus trap arms a frame after the dialog mounts; a close before that returns nothing.
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('hands the picked token to the consumer and closes the select', async () => {
+    const onTokenSelect = vi.fn()
+    setup({ onTokenSelect })
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    screen.getByRole('button', { name: 'USD Coin USDC' }).click()
+    expect(onTokenSelect).toHaveBeenCalledWith(TOKENS[1])
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  // The trigger reads the `token` prop, so only a consumer that stores the pick shows the new one.
+  it('shows the picked token on the trigger once the consumer stores it', async () => {
+    const Harness = (): React.JSX.Element => {
+      const [token, setToken] = useState<TokenMeta>(CC)
+      return (
+        <TokenListProvider tokens={TOKENS}>
+          <TokenInput
+            label="Amount"
+            onChange={vi.fn()}
+            onTokenSelect={setToken}
+            token={token}
+            value=""
+          />
+        </TokenListProvider>
+      )
+    }
+    stubViewport(320)
+    render(<Harness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'CC' }))
+    screen.getByRole('button', { name: 'USD Coin USDC' }).click()
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'USDC' })).toBeInTheDocument())
+  })
+
+  it('describes the field with the symbol rather than with the trigger', () => {
+    const { field } = setup({ onTokenSelect: vi.fn() })
+    const [tokenId] = (field.getAttribute('aria-describedby') ?? '').split(' ')
+    expect(document.getElementById(tokenId)).toHaveTextContent('CC')
+    expect(screen.getByRole('button', { name: 'CC' })).not.toHaveAttribute('id', tokenId)
+  })
+
+  it('disables the token select while the field is disabled', () => {
+    setup({ disabled: true, onTokenSelect: vi.fn() })
+    const trigger = screen.getByRole('button', { name: 'CC' })
+    expect(trigger).toBeDisabled()
+    fireEvent.click(trigger)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('marks the balance readout busy while loading', () => {

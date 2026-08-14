@@ -13,7 +13,7 @@ them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (live ledger), and the pure ACS→domain mappers. `createBackend` picks the implementation. |
-| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (the CC `TokenMeta`), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
+| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (CC plus the padded list the picker shows), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
 | `src/wallet/` | The `Wallet` interface and `StealthWallet`, its live-ledger implementation. |
 | `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
 | `src/hooks/` | Two kinds. `useBackend`, `useParty`, `useParties`, and `useConnect` are projections of the wallet context, one per concern. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
@@ -116,6 +116,14 @@ total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both 
 in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
+Both fields also open the kit's token picker, and on both the pick is deliberately display-only: it
+relabels the field and nothing else. Everything around it is still Canton Coin — the balance and the
+`max` behind it, the USD rate, the re-lock floor's wording, the claim toast, and the grant that gets
+created. `useTokenBalance` reads no holdings for a symbol other than `CC`, so choosing another token
+empties the balance and Max rather than showing a wrong one; the rest of the CC wording stays put
+and will read as a mismatch until per-token balances land. The picker is wired ahead of them on
+purpose, so the mock exercises the list.
+
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
 live-vesting `claimable` that recomputes each second, and a stored code would keep flagging an
@@ -173,8 +181,21 @@ pre-paint script sits in `index.html`, are the kit's call:
 [`src/styles/index.css`](src/styles/index.css) is the single entry. Its leading
 `@layer properties, theme, base, cnc, components, utilities` is declared before the first `@import`,
 which is what puts the kit theme's `cnc` layer above Tailwind's preflight and below the app's
-utilities. Moving that line below an import silently reorders the cascade.
+utilities: above preflight because preflight resets `button { color: inherit }` over the kit's copy
+control, below `utilities` so a `className` on a kit component still wins. Moving that line under an
+import silently reorders the cascade, and a layer left off the list lands on top of every layer that
+is on it, so the list is worth rereading on a Tailwind major bump.
 
 The app carries its own preflight restorations in `base` too, currently `cursor: pointer` on enabled
 buttons, which Tailwind v4's preflight dropped. `base` is the right layer for them because
-`utilities` comes later in the list, so a `cursor-*` utility on the element still wins.
+`utilities` comes later in the list, so a `cursor-*` utility on the element still wins; unlayered
+they would outrank every utility and every `cnc` rule whatever the specificity.
+
+[`src/styles/tokens.css`](src/styles/tokens.css) holds the app's Tailwind-facing colour names, which
+`@theme inline` in the entry turns into utilities. `inline` is what keeps those utilities pointing at
+the live custom property, so flipping `data-theme` reskins the page with no recompile. A name
+pointing at a `--cnc-*` token inherits the kit's dark value and so needs no counterpart in the
+`[data-theme="dark"]` block; an app-only value is spelled out in both unless it is mode-independent
+by construction, which the brand hues (`--accent`, `--pink`, `--gradient-brand`) are. `--surface-2`
+and `--muted` resolve to the same grey and stay separate names because components already pick one
+or the other.

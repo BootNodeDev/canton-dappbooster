@@ -43,7 +43,7 @@ The class strings live in `anatomy.ts`; the theme (a separate package) selects t
 Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
 tooling, not MVP scope.
 
-## Behavior: Zag, hand-rolled — deferred until needed
+## Behavior: Zag, hand-rolled — one widget at a time
 
 The chosen behavior engine is **Zag** (framework-agnostic interaction state machines exposed as
 prop-getters spread onto your own markup). Components are hand-rolled on those prop-getters, never
@@ -51,9 +51,25 @@ dropped in. The anatomy, not the engine, is the public contract.
 
 Zag earns its place where the interaction is one HTML does not supply, such as a listbox with
 roving focus, a popup with dismiss and outside-click, or a composite navigated by arrow keys.
-Holding state is not the trigger; everything else is hand-rolled on plain React state. So the
-`@zag-js/*` dependency lands with the first widget that needs it, not before; adding it now would
-be an unused dependency.
+Holding state is not the trigger; everything else is hand-rolled on plain React state. So a
+`@zag-js/*` dependency lands with the widget that needs it, never ahead of it: `@zag-js/dialog` and
+`@zag-js/react` arrived with `<TokenInput>`'s token select and are the only two so far. The React
+adapter reaches for `react-dom` from `useMachine` down, not only from `Portal`, and declares it a
+peer of its own, which is why `react-dom` joins `react` as a peer dependency here; a consumer
+already has it, so nothing new is asked of them.
+
+A machine is instantiated only while its widget is mounted. The token select renders nothing until
+it opens, so a field whose picker is never opened pays for no machine, no scope and no dismiss
+listeners.
+
+The trigger pays for that. Mounting *is* the open state, so the machine lives inside the dialog and
+`<TokenInput>`'s symbol button cannot spread `api.getTriggerProps()`; it hand-rolls `aria-haspopup`,
+`aria-expanded`, `aria-controls` and the click. It is therefore not the machine's registered trigger,
+which costs two things: no `data-state` for the theme to style an open trigger with, and absence from
+the dismiss layer's `exclude` list, harmless only because that layer blocks pointer events outside
+itself while open. Lifting the machine into `<TokenInput>` buys the prop-getter back and charges
+every field for a machine it may never open; the aria contract is duplicated instead, and drift
+against Zag's on upgrade is the accepted risk.
 
 `@zag-js/clipboard` is a genuine fit for `<Identifier>`'s copy control, and it still loses: it
 models copied/not-copied but not a rejected write, which the `onCopy` outcome contract needs, and
@@ -67,8 +83,60 @@ the WAI-ARIA spinbutton pattern, so the field would carry `role="spinbutton"` pl
 pointer scrubbing, none of which belong on an amount nothing steps. Its callbacks and clamping run
 on `valueAsNumber`, a double, which reintroduces exactly the precision loss the component exists to
 avoid. And it rounds silently through `formatOptions.maximumFractionDigits`, where this component
-flags instead. Zag lands with the token selector (issue #11) instead: a combobox and a dialog are
+flags instead. Zag landed with the token selector (issue #11) instead: a combobox and a dialog are
 the real mistake to hand-roll.
+
+## Windowing the token list: hand-rolled, and when to stop
+
+The token select renders only the rows in view, on `useVirtualRows` and `useRemPx` inside the
+component's folder rather than on a windowing library. The case is the narrowest one there is: one
+list, uniform row height, vertical only, nothing measured. `@tanstack/react-virtual`, the default
+choice, prices in variable heights, sticky items, windowing in both axes and a measurement cache,
+none of which this list uses, and lands them in the bundle of every consumer of a package whose only
+runtime dependencies so far are the two `@zag-js/*` widgets above.
+
+Focus is the second reason. The list walks on one roving tab stop, so a scroll that re-renders the
+row holding focus has to hand it back, which is what `TokenList`'s layout effect and its stray row
+do. That wants the scroll position and the rendered window moving together in a commit this package
+controls, rather than coordinated against a library's own scroll writes and measurement cache.
+
+No row is marked as the token the field is already on. The trigger that opened the dialog shows it,
+so a highlighted row only repeats it, and that marking was the one thing forcing an identity onto the
+field's token: without it `TokenMeta` needs no `id` and the modal anatomy no `data-selected`. The
+roving tab stop starts at the top rather than at that row, and focus is the only state a row carries.
+
+The row height pays for all of it, so it has one home: `ROW_HEIGHT_REM`, written inline on the row by
+L2 and read by the maths, in rem because a px row would clip a reader who scales their text up. The
+sizer height and every row offset are multiples of it and nothing measures a rendered row, so the
+theme may restyle a row but may not resize one. That constraint, and the `scroll-behavior: smooth`
+this list cannot carry, are written where a theme author reads them:
+[`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md).
+
+Two things are deliberately not modelled: a root font size swapped at runtime without a resize
+event, and RTL or horizontal windowing.
+
+Replace rather than extend when the list needs rows of differing height, sticky group headers, or
+windowing in both axes. Each of those turns one multiplication into per-row bookkeeping, which is a
+library's job and not something to graft onto this hook; `@tanstack/react-virtual` is the swap. It
+stays contained because the anatomy is the contract: `TokenList` keeps its parts, its roving tab stop
+and its keys, `useVirtualRows` and `useRemPx` go, `ROW_HEIGHT_REM` becomes an estimate rather than
+the truth, and `stubViewport` in `src/testing/viewport.ts` is needed either way, since jsdom lays
+nothing out for a windowed list of any provenance to measure.
+
+## The favourites row does not answer to the query
+
+`TokenFavorites` renders whatever `favoriteIds` resolves to and never filters. The row is the
+consumer's shortcut, fixed for the dialog, not a slice of the list the field is searching; filtering
+it would empty it on the first keystroke of a search for anything else. The cost is that
+`TokenList`'s "No tokens found" and the live region that announces it describe the list only, so a
+needle matching nothing leaves that message under a row of chips that are still there and still
+selectable. Accepted while favourites are a handful the consumer names. Filter the row, or hide it
+while the needle is non-empty, if it ever becomes user-editable.
+
+A handful is enforced rather than assumed: `MAX_FAVORITES` truncates the resolved list at L2. The
+number is arbitrary and human-picked, which is the point — the row wraps and does not scroll, so
+without a cap its height is the consumer's to set and the card has no scroll of its own to catch
+the spill.
 
 ## What `<TokenInput>` does not take
 
@@ -86,13 +154,14 @@ the form that has it. Each of the three stays addable later without a break.
   `.cnc-identifier`, `.cnc-identifier__copy`).
 - **State** is a `data-*` on the element the theme styles, written from the same value as the
   `aria-*` the component exposes to assistive tech, so the two cannot disagree.
-- **One exception to zero styling:** visually hiding a live region is functional, not decorative —
-  a consumer running the kit with no CSS would otherwise get "Copied party id" in their layout. So
-  the component applies that `sr-only` inline (see `SR_ONLY` in `Identifier/index.tsx`), the way
-  Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook; nothing else is
-  styled in L2.
-- Tokens are `var(--cnc-*, <fallback>)`; the whole theme package is under `@layer cnc` so consumer
-  CSS wins.
+- **Zero styling has two functional exceptions, both load-bearing.** Visually hiding a live region
+  is one: a consumer running the kit with no CSS would otherwise get "Copied party id" in their
+  layout. So a component applies that `sr-only` inline from `SR_ONLY` in `src/utils/srOnly.ts`, the
+  way Radix's `VisuallyHidden` does. The part class stays in the anatomy as a hook. The token row's
+  height is the other, because the windowing maths is computed from it; see the windowing section
+  above. Nothing else is styled in L2.
+- Tokens are `var(--cnc-*)` with no fallback, declared once in `tokens.css`; the whole theme package
+  is under `@layer cnc` so consumer CSS wins.
 - Token naming convention and dark mode live in
   [`canton-theme/CLAUDE.md`](../canton-theme/CLAUDE.md).
 

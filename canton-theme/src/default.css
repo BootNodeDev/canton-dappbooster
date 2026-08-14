@@ -1,12 +1,11 @@
-/* Pulls the tokens rather than restating each default in a var() fallback, so a value lives in
-   exactly one place. tokens.css self-layers, so this stays inside @layer cnc and consumer styles
-   still win. */
 @import "./tokens.css";
 
 @layer cnc {
+  /* Button-like parts */
   .cnc-identifier__copy,
   .cnc-explorer-link,
-  .cnc-token-input__max {
+  .cnc-token-input__max,
+  .cnc-token-select-modal__close {
     background: none;
     border-radius: var(--cnc-radius);
     border: 0;
@@ -16,9 +15,18 @@
 
   .cnc-identifier__copy:focus-visible,
   .cnc-explorer-link:focus-visible,
-  .cnc-token-input__max:focus-visible {
+  .cnc-token-input__max:focus-visible,
+  .cnc-token-input__token[data-interactive]:focus-visible,
+  .cnc-token-select-modal__close:focus-visible {
     outline: 2px solid var(--cnc-accent);
     outline-offset: 2px;
+  }
+
+  .cnc-party-id-input:focus-visible,
+  .cnc-token-select-modal__favorite:focus-visible,
+  .cnc-token-select-modal__search-field:focus-within {
+    outline: 2px solid var(--cnc-accent);
+    outline-offset: 1px;
   }
 
   .cnc-party-id-input::placeholder,
@@ -27,9 +35,21 @@
     opacity: 0.7;
   }
 
+  /* Token chips */
+  .cnc-token-input__token,
+  .cnc-token-select-modal__favorite {
+    align-items: center;
+    background: var(--cnc-surface-muted);
+    border-radius: var(--cnc-radius);
+    color: inherit;
+    display: inline-flex;
+    flex-shrink: 0;
+    font: inherit;
+  }
+
+  /* Identifier */
   .cnc-identifier {
     align-items: center;
-    /* On the root, not the value, so a consumer utility class can override it. */
     color: var(--cnc-text);
     display: inline-flex;
     gap: 0.375rem;
@@ -37,7 +57,6 @@
     min-width: 0;
   }
 
-  /* Declares no font-size on purpose: the primitive inherits it inside a heading, row, or cell. */
   .cnc-identifier__value {
     font-family: var(--cnc-font-mono);
     overflow: hidden;
@@ -70,6 +89,7 @@
     font-size: 0.875em;
   }
 
+  /* Explorer link */
   .cnc-explorer-link {
     color: var(--cnc-text-muted);
     display: inline-grid;
@@ -80,6 +100,7 @@
     color: var(--cnc-accent);
   }
 
+  /* Party id input */
   .cnc-party-id-input {
     background: var(--cnc-surface);
     border-radius: var(--cnc-radius);
@@ -88,7 +109,6 @@
     font-family: var(--cnc-font-mono);
     font-size: 0.875rem;
     padding: 0.5rem 0.625rem;
-    /* The field holds one long unbroken token, so it stretches rather than sizing to `size`. */
     width: 100%;
   }
 
@@ -98,11 +118,8 @@
 
   .cnc-party-id-input:focus-visible {
     border-color: var(--cnc-accent);
-    outline: 2px solid var(--cnc-accent);
-    outline-offset: 1px;
   }
 
-  /* Set from the first blur onward, so a half-typed value is never flagged before then. */
   .cnc-party-id-input[data-invalid] {
     background: var(--cnc-danger-subtle);
     border-color: var(--cnc-danger);
@@ -112,6 +129,7 @@
     outline-color: var(--cnc-danger);
   }
 
+  /* Token input */
   .cnc-token-input {
     background: var(--cnc-surface);
     border-radius: var(--cnc-radius);
@@ -137,8 +155,6 @@
   .cnc-token-input__field {
     background: none;
     border-radius: var(--cnc-radius);
-    /* `-strong`: the field shares the card's surface, so the card's own border colour reads as the
-       card edge rather than a field. */
     border: 1px solid var(--cnc-border-strong);
     color: inherit;
     flex: 1;
@@ -148,22 +164,30 @@
     padding: 0.5rem 0.75rem;
   }
 
-  /* The field's own border tints, and the wash carries the thickness a11y wants: a detached solid 2px
-     ring around a field this wide reads as an error. */
   .cnc-token-input__field:focus-visible {
     border-color: var(--cnc-accent);
     outline: 3px solid color-mix(in oklab, var(--cnc-accent) 28%, transparent);
   }
 
   .cnc-token-input__token {
-    align-items: center;
-    background: var(--cnc-surface-muted);
-    border-radius: var(--cnc-radius);
-    display: inline-flex;
-    flex-shrink: 0;
+    align-self: stretch;
     font-weight: 500;
     gap: 0.375rem;
     padding: 0.375rem 0.625rem;
+  }
+
+  .cnc-token-input__token[data-interactive] {
+    border: 0;
+    cursor: pointer;
+    transition: color 120ms ease;
+  }
+
+  .cnc-token-input__token[data-interactive]:hover:not(:disabled) {
+    color: var(--cnc-accent);
+  }
+
+  .cnc-token-input__token[data-interactive]:disabled {
+    cursor: not-allowed;
   }
 
   .cnc-token-input__meta {
@@ -226,5 +250,263 @@
   .cnc-token-input[data-invalid] .cnc-token-input__field:focus-visible {
     border-color: var(--cnc-danger);
     outline-color: color-mix(in oklab, var(--cnc-danger) 28%, transparent);
+  }
+
+  /* Token select modal */
+  .cnc-token-select-modal__backdrop,
+  .cnc-token-select-modal__positioner {
+    inset: 0;
+    position: fixed;
+    z-index: 100;
+  }
+
+  .cnc-token-select-modal__backdrop {
+    background: var(--cnc-overlay);
+  }
+
+  .cnc-token-select-modal__positioner {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .cnc-token-select-modal {
+    background: var(--cnc-surface);
+    border-radius: var(--cnc-radius);
+    border: 1px solid var(--cnc-border);
+    color: var(--cnc-text);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    width: 34.375rem;
+  }
+
+  .cnc-token-select-modal__header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .cnc-token-select-modal__title {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .cnc-token-select-modal__close,
+  .cnc-token-select-modal__search-icon {
+    color: var(--cnc-text-muted);
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .cnc-token-select-modal__close {
+    font-size: 1.25rem;
+    padding: 0;
+  }
+
+  .cnc-token-select-modal__close:hover {
+    color: var(--cnc-accent);
+  }
+
+  .cnc-token-select-modal__search-field {
+    align-items: center;
+    background: var(--cnc-surface);
+    border-radius: var(--cnc-radius);
+    border: 1px solid var(--cnc-border-strong);
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+  }
+
+  .cnc-token-select-modal__search-field:focus-within {
+    border-color: var(--cnc-accent);
+  }
+
+  .cnc-token-select-modal__search-icon {
+    font-size: 1.125em;
+  }
+
+  .cnc-token-select-modal__search {
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    min-width: 0;
+    outline: none;
+    padding: 0;
+    width: 100%;
+  }
+
+  .cnc-token-select-modal__search::placeholder {
+    color: var(--cnc-text-muted);
+    opacity: 0.7;
+  }
+
+  .cnc-token-select-modal__favorites {
+    border-bottom: 1px solid var(--cnc-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-block-start: 0.75rem;
+    padding-block-end: 0.75rem;
+  }
+
+  .cnc-token-select-modal__favorite {
+    border: 1px solid var(--cnc-border);
+    cursor: pointer;
+    gap: 0.5rem;
+    line-height: 1.2;
+    padding: 0.375rem 0.5rem;
+  }
+
+  .cnc-token-logo.cnc-token-select-modal__favorite-logo {
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+
+  .cnc-token-select-modal__favorite:hover {
+    background: var(--cnc-accent-subtle);
+    border-color: var(--cnc-accent);
+  }
+
+  .cnc-token-select-modal__favorite-symbol {
+    font-size: 0.875em;
+    font-weight: 600;
+  }
+
+  .cnc-token-select-modal__list {
+    background: var(--cnc-surface-muted);
+    border-radius: var(--cnc-radius);
+    flex: 0 1 20rem;
+    min-height: 0;
+    overscroll-behavior: contain;
+    overflow-y: auto;
+  }
+
+  .cnc-token-select-modal__empty {
+    color: var(--cnc-text-muted);
+    display: grid;
+    min-height: 100%;
+    padding: 1rem;
+    place-items: center;
+    text-align: center;
+  }
+
+  .cnc-token-select-modal__sizer {
+    position: relative;
+  }
+
+  .cnc-token-select-modal__rows {
+    display: flex;
+    flex-direction: column;
+    inset-inline: 0;
+    position: absolute;
+    top: 0;
+  }
+
+  .cnc-token-select-modal__row {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-size: 1rem;
+    gap: 1rem;
+    line-height: 1.2;
+    padding: 0 1rem;
+    text-align: start;
+    width: 100%;
+  }
+
+  .cnc-token-select-modal__row:hover {
+    background: var(--cnc-surface);
+  }
+
+  .cnc-token-select-modal__row:focus-visible {
+    outline: 2px solid var(--cnc-accent);
+    outline-offset: -2px;
+  }
+
+  .cnc-token-select-modal__row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .cnc-token-select-modal__row-name {
+    font-size: 0.9375em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cnc-token-select-modal__row-symbol {
+    color: var(--cnc-text-muted);
+    font-size: 0.8125em;
+  }
+
+  /* Token logo */
+  .cnc-token-logo {
+    align-items: center;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 2rem;
+    justify-content: center;
+    overflow: hidden;
+    width: 2rem;
+  }
+
+  .cnc-token-logo[data-fallback] {
+    border-radius: 50%;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .cnc-token-logo[data-swatch="1"] {
+    background: var(--cnc-swatch-1);
+    color: var(--cnc-swatch-1-fg);
+  }
+
+  .cnc-token-logo[data-swatch="2"] {
+    background: var(--cnc-swatch-2);
+    color: var(--cnc-swatch-2-fg);
+  }
+
+  .cnc-token-logo[data-swatch="3"] {
+    background: var(--cnc-swatch-3);
+    color: var(--cnc-swatch-3-fg);
+  }
+
+  .cnc-token-logo[data-swatch="4"] {
+    background: var(--cnc-swatch-4);
+    color: var(--cnc-swatch-4-fg);
+  }
+
+  .cnc-token-logo[data-swatch="5"] {
+    background: var(--cnc-swatch-5);
+    color: var(--cnc-swatch-5-fg);
+  }
+
+  .cnc-token-logo[data-swatch="6"] {
+    background: var(--cnc-swatch-6);
+    color: var(--cnc-swatch-6-fg);
+  }
+
+  .cnc-token-logo[data-swatch="7"] {
+    background: var(--cnc-swatch-7);
+    color: var(--cnc-swatch-7-fg);
+  }
+
+  .cnc-token-logo[data-swatch="8"] {
+    background: var(--cnc-swatch-8);
+    color: var(--cnc-swatch-8-fg);
   }
 }

@@ -25,6 +25,7 @@ import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
 import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
+import { FAVORITE_IDS } from '@/mock/tokens'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
 type CurveKind = 'linear' | 'milestone'
@@ -109,7 +110,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const { party } = useParty()
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
-  const token = useToken()
+  const [token, setToken] = useToken()
   const { usdRate } = useTokenPrice(token)
   const {
     balance,
@@ -282,9 +283,13 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 balance={balance?.total}
                 balanceState={balanceState}
                 className={'w-full'}
+                favoriteIds={FAVORITE_IDS}
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
+                // Mock-first: the pick only relabels the field. Balance, validation and the grant
+                // itself stay CC until real per-token balances land.
+                onTokenSelect={setToken}
                 usdValue={
                   usdRate === undefined || amount === ''
                     ? undefined

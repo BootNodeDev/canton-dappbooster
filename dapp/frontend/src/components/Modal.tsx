@@ -36,7 +36,8 @@ export const Modal = ({
     }
     const previouslyFocused = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
+      // A nested dismissable layer (the kit's token select) marks the Escape it consumed.
+      if (e.key === 'Escape' && !e.defaultPrevented) {
         onCloseRef.current()
         return
       }
@@ -82,7 +83,7 @@ export const Modal = ({
         type="button"
         aria-label="Close dialog"
         onClick={onClose}
-        className="absolute inset-0 bg-[var(--scrim,rgba(8,8,18,0.6))] backdrop-blur-sm"
+        className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-sm"
       />
       <div
         ref={dialogRef}

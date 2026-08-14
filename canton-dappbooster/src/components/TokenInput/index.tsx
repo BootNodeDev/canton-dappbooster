@@ -5,7 +5,10 @@ import {
   type ReactElement,
   type ReactNode,
   useId,
+  useRef,
+  useState,
 } from 'react'
+import type { Token } from '../../providers/TokenListProvider/context'
 import { cx } from '../../utils/cx'
 import { resolveInvalid } from '../../utils/invalid'
 import {
@@ -16,13 +19,17 @@ import {
   type TokenAmountError,
   validateAmount,
 } from '../../utils/tokenAmount'
+import { TokenLogo } from '../TokenLogo'
 import { anatomy } from './anatomy'
+import { TokenSelectModal } from './TokenSelectModal'
 import { useFormattedField } from './useFormattedField'
 
 const ZERO = formatAmount('0.00')
 
 /**
- * The token an amount is denominated in.
+ * The token an amount is denominated in: what the field renders, and no more. A `Token` off the
+ * list provider satisfies it, so a pick goes straight back into the field. `onTokenSelect` hands
+ * back the whole `Token`, identity included, because that is what the picker resolved.
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
@@ -52,21 +59,19 @@ interface TokenInputOwnProps
   balance?: string
   balanceState?: 'loading' | 'error'
   disabled?: boolean
+  favoriteIds?: readonly string[]
   label?: string
   onBlur?: FocusEventHandler<HTMLInputElement>
   onChange: (value: string, error: TokenAmountError | undefined) => void
   onFocus?: FocusEventHandler<HTMLInputElement>
+  onTokenSelect?: (token: Token) => void
   token: TokenMeta
   usdValue?: string
   value: string
 }
 
 /**
- * Props for {@link TokenInput}. One of `label`, `aria-label` or `aria-labelledby` is required: the
- * field is nothing but digits, so an unnamed one is unusable to a screen reader. `value` and
- * `balance` are exact decimals, grouped for display but never reported back grouped; `balance`
- * doubles as the ceiling `above-max` is measured against, and `usdValue` is rendered after the
- * component's own `~$`. A `balanceState` of either kind disables Max.
+ * Props for {@link TokenInput}.
  *
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
@@ -91,11 +96,13 @@ export const TokenInput = ({
   balanceState,
   className,
   disabled,
+  favoriteIds,
   id,
   label,
   onBlur,
   onChange,
   onFocus,
+  onTokenSelect,
   usdValue,
   token,
   value,
@@ -105,9 +112,12 @@ export const TokenInput = ({
   const fieldId = id ?? generatedId
   const balanceId = `${fieldId}-balance`
   const tokenId = `${fieldId}-token`
+  const selectId = `${fieldId}-token-select`
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const bounds = { max: balance }
   const error = validateAmount(value, bounds)
   const [invalid, flagged] = resolveInvalid(ariaInvalid, error !== undefined)
+  const [selectOpen, setSelectOpen] = useState(false)
   const noBalance = !parseAmount(balance ?? '')
 
   const balanceText =
@@ -162,10 +172,27 @@ export const TokenInput = ({
           type="text"
           value={field.value}
         />
-        <span className={anatomy.parts.token} id={tokenId}>
-          {token.logo}
-          {token.symbol}
-        </span>
+        {onTokenSelect === undefined ? (
+          <span className={anatomy.parts.token} id={tokenId}>
+            <TokenLogo logo={token.logo} symbol={token.symbol} />
+            {token.symbol}
+          </span>
+        ) : (
+          <button
+            aria-controls={selectOpen ? selectId : undefined}
+            aria-expanded={selectOpen}
+            aria-haspopup="dialog"
+            className={anatomy.parts.token}
+            disabled={disabled}
+            onClick={() => setSelectOpen(true)}
+            ref={triggerRef}
+            type="button"
+            {...{ [anatomy.states.interactive]: true }}
+          >
+            <TokenLogo logo={token.logo} symbol={token.symbol} />
+            <span id={tokenId}>{token.symbol}</span>
+          </button>
+        )}
       </div>
       <div className={anatomy.parts.meta}>
         ~$
@@ -184,7 +211,6 @@ export const TokenInput = ({
           {balanceText}
         </span>
         <button
-          // Every Max on a page is named "Max"; the balance it fills is what tells them apart.
           aria-describedby={balanceId}
           className={anatomy.parts.max}
           disabled={disabled || balanceState !== undefined || noBalance}
@@ -196,6 +222,16 @@ export const TokenInput = ({
           Max
         </button>
       </div>
+      {onTokenSelect !== undefined && (
+        <TokenSelectModal
+          contentId={selectId}
+          favoriteIds={favoriteIds}
+          onClose={() => setSelectOpen(false)}
+          onSelect={onTokenSelect}
+          open={selectOpen}
+          returnFocusTo={triggerRef}
+        />
+      )}
     </div>
   )
 }

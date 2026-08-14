@@ -1,6 +1,3 @@
-/* Must precede the first @import: `cnc` sits above preflight, which resets `button { color: inherit }`
-   over the kit copy control, and below `utilities` so a className on a kit component still wins. A
-   layer missing here lands on top; revisit on a Tailwind bump. */
 @layer properties, theme, base, cnc, components, utilities;
 
 @import "tailwindcss";
@@ -9,8 +6,6 @@
 @import "@bootnodedev/canton-theme/default.css";
 @import "./tokens.css";
 
-/* `inline` keeps the generated utilities pointing at the live var, so [data-theme] switching works
-   without recompiling. */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -46,8 +41,6 @@
   --radius-xl: 14px;
 }
 
-/* App-wide defaults Tailwind v4's preflight no longer sets. In `base` because unlayered they would
-   outrank every `border-*` and `cursor-*` utility and every `cnc` rule, whatever the specificity. */
 @layer base {
   * {
     border-color: var(--border);
