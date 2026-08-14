@@ -6,9 +6,15 @@ export const createConnectionActors = (sdk: Pick<DappSDK, 'connect' | 'status'>)
     try {
       return await sdk.connect()
     } catch (error) {
-      const status = await sdk.status()
+      // a crashed connect may have left the previous session alive
+      // check before failing
+      const status = await sdk
+        .status()
+        // a dead check proves nothing
+        // original error will be the answer
+        .catch(() => null)
 
-      if (status.connection.isConnected) {
+      if (status?.connection.isConnected) {
         return status.connection
       }
 
