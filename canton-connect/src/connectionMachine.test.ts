@@ -479,7 +479,10 @@ describe('connectionMachine', () => {
 
       actor.send({
         type: 'wallet.statusChanged',
-        status: { connection: loggedOutConnection, session },
+        status: {
+          connection: loggedOutConnection,
+          session: { ...session, accessToken: 'stale-token' },
+        },
       })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
