@@ -165,5 +165,25 @@ describe('connectionActors', () => {
 
       actor.stop()
     })
+
+    it('surfaces the restore failure untouched', async () => {
+      const failedToRecoverStatus = new Error('failed to recover status')
+      const sdk = {
+        connect,
+        init: () => Promise.resolve(),
+        status: () => Promise.reject(failedToRecoverStatus),
+      }
+      const actor = createActor(createConnectionActors(sdk).restore)
+
+      actor.subscribe({ error: () => {} })
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('error')
+      expect(actor.getSnapshot().error).toBe(failedToRecoverStatus)
+
+      actor.stop()
+    })
   })
 })
