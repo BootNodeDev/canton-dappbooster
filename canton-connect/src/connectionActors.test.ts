@@ -19,6 +19,77 @@ const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
 const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionActors', () => {
+  it('inits the SDK once per factory', async () => {
+    const init = vi.fn(() => Promise.resolve())
+    const sdk = {
+      connect: () => {
+        throw new Error('connect must not run during restore')
+      },
+      init,
+      onStatusChanged: () => {
+        throw new Error('pushes must not be wired during restore')
+      },
+      removeOnStatusChanged: () => {
+        throw new Error('teardown must not run during restore')
+      },
+      status: () => Promise.resolve({ ...liveStatus, session }),
+    }
+    const { restore } = createConnectionActors(sdk)
+
+    const firstActor = createActor(restore)
+    firstActor.start()
+    await pause(0)
+
+    expect(firstActor.getSnapshot().status).toBe('done')
+
+    const secondActor = createActor(restore)
+    secondActor.start()
+    await pause(0)
+
+    expect(secondActor.getSnapshot().status).toBe('done')
+    expect(init).toHaveBeenCalledOnce()
+
+    firstActor.stop()
+    secondActor.stop()
+  })
+
+  it('retries init after a failure', async () => {
+    const bootError = new Error('boot failed')
+    const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
+    const sdk = {
+      connect: () => {
+        throw new Error('connect must not run during restore')
+      },
+      init,
+      onStatusChanged: () => {
+        throw new Error('pushes must not be wired during restore')
+      },
+      removeOnStatusChanged: () => {
+        throw new Error('teardown must not run during restore')
+      },
+      status: () => Promise.resolve({ ...liveStatus, session }),
+    }
+    const { restore } = createConnectionActors(sdk)
+
+    const firstActor = createActor(restore)
+    firstActor.subscribe({ error: () => {} })
+    firstActor.start()
+    await pause(0)
+
+    expect(firstActor.getSnapshot().status).toBe('error')
+    expect(firstActor.getSnapshot().error).toBe(bootError)
+
+    const secondActor = createActor(restore)
+    secondActor.start()
+    await pause(0)
+
+    expect(secondActor.getSnapshot().status).toBe('done')
+    expect(init).toHaveBeenCalledTimes(2)
+
+    firstActor.stop()
+    secondActor.stop()
+  })
+
   describe('connect actor', () => {
     const init = () => Promise.resolve()
     const onStatusChanged = () => {

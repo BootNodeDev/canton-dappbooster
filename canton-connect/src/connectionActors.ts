@@ -8,9 +8,20 @@ export const createConnectionActors = (
   sdk: Pick<DappSDK, 'connect' | 'init' | 'status' | 'onStatusChanged' | 'removeOnStatusChanged'>,
   options: InitOptions = {},
 ) => {
+  let initialization: Promise<void> | undefined
+
   // SDK's `defaultAdapters` include a localhost dev gateway; override them
   // connect() inits with no options internally, so only an early options-carrying init registers the caller's adapters
-  const ensureInit = () => sdk.init({ defaultAdapters: [], ...options })
+  const ensureInit = () => {
+    if (!initialization) {
+      initialization = sdk.init({ defaultAdapters: [], ...options }).catch((error) => {
+        initialization = undefined
+        throw error
+      })
+    }
+
+    return initialization
+  }
 
   return {
     connect: fromPromise<WalletStatus>(async () => {
