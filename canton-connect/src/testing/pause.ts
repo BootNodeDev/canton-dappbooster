@@ -1,7 +1,9 @@
 /**
  * Real-timer sleep; `pause(0)` flushes pending macrotasks.
+ *
  *  How the suites await promise-settling sends.
- *  Why not waitFor? a red should fail its assertion, not hang into a timeout.
+ *
+ *  Why not `waitFor`? a red should fail its assertion, not hang into a timeout.
  *
  * @example
  * actor.send({ type: 'restore' })

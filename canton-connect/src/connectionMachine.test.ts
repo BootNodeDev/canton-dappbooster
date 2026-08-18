@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine, type WalletStatus } from './connectionMachine'
+import { connectionMachine, toConnectionStatus, type WalletStatus } from './connectionMachine'
 import { pause } from './testing'
 
 const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMachine>>) => {
@@ -716,6 +716,18 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(walletSubscribed).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
+  })
+
+  describe('public status', () => {
+    it('reports disconnected before anything happens', () => {
+      const actor = createActor(connectionMachine)
+
+      actor.start()
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('disconnected')
 
       actor.stop()
     })

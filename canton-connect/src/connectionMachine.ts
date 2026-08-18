@@ -1,7 +1,27 @@
 import type { StatusEvent } from '@canton-network/dapp-sdk'
-import { assign, fromCallback, fromPromise, setup } from 'xstate'
+import { assign, fromCallback, fromPromise, type SnapshotFrom, setup } from 'xstate'
+import type { ConnectionStatus } from './types'
 
 export type WalletStatus = Pick<StatusEvent, 'connection' | 'session'>
+
+export const toConnectionStatus = (
+  snapshot: SnapshotFrom<typeof connectionMachine>,
+): ConnectionStatus => {
+  if (snapshot.matches('connecting')) {
+    return 'connecting'
+  }
+
+  if (snapshot.matches('session')) {
+    return 'connected'
+  }
+
+  if (snapshot.matches('restoring')) {
+    return 'idle'
+  }
+
+  // `failure` reads as disconnected to consumers; the error rides in context
+  return 'disconnected'
+}
 
 export const connectionMachine = setup({
   actors: {
