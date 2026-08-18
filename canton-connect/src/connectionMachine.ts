@@ -1,11 +1,11 @@
-import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
+import type { StatusEvent } from '@canton-network/dapp-sdk'
 import { assign, fromCallback, fromPromise, setup } from 'xstate'
 
 export type WalletStatus = Pick<StatusEvent, 'connection' | 'session'>
 
 export const connectionMachine = setup({
   actors: {
-    connect: fromPromise<ConnectResult>(() =>
+    connect: fromPromise<WalletStatus>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
     restore: fromPromise<WalletStatus>(() =>
@@ -21,11 +21,12 @@ export const connectionMachine = setup({
   },
   guards: {
     hasSession: (_, params: { session: WalletStatus['session'] }) => !!params.session,
-    isAuthenticated: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
+    isAuthenticated: (_, params: { connection: WalletStatus['connection'] }) =>
+      params.connection.isConnected,
   },
   types: {
     context: {} as {
-      connection: ConnectResult | undefined
+      connection: WalletStatus['connection'] | undefined
       session: WalletStatus['session']
       error: unknown
     },
@@ -58,15 +59,18 @@ export const connectionMachine = setup({
           {
             guard: {
               type: 'isAuthenticated',
-              params: ({ event: { output } }) => ({ connection: output }),
+              params: ({ event: { output } }) => ({ connection: output.connection }),
             },
             target: 'session.authenticated',
-            actions: assign({ connection: ({ event: { output } }) => output }),
+            actions: {
+              type: 'applyWalletStatus',
+              params: ({ event: { output } }) => ({ status: output }),
+            },
           },
           {
             target: 'failure',
             actions: assign(({ event: { output } }) => ({
-              error: new Error(output.reason ?? 'wallet declined connection'),
+              error: new Error(output.connection.reason ?? 'wallet declined connection'),
             })),
           },
         ],

@@ -27,6 +27,9 @@ describe('connectionActors', () => {
     const removeOnStatusChanged = () => {
       throw new Error('teardown must not run during connect')
     }
+    const status = () => {
+      throw new Error('probe must not run on a resolved connect')
+    }
 
     it('initializes the SDK before connecting', async () => {
       const init = vi.fn(() => Promise.resolve())
@@ -35,9 +38,7 @@ describe('connectionActors', () => {
         init,
         onStatusChanged,
         removeOnStatusChanged,
-        status: () => {
-          throw new Error('probe must not run on a resolved connect')
-        },
+        status,
       }
       const mockAdapter = createMockAdapter()
       const actor = createActor(
@@ -59,9 +60,7 @@ describe('connectionActors', () => {
         init,
         onStatusChanged,
         removeOnStatusChanged,
-        status: () => {
-          throw new Error('probe must not run on a resolved connect')
-        },
+        status,
       }
       const actor = createActor(createConnectionActors(sdk).connect)
 
@@ -69,7 +68,7 @@ describe('connectionActors', () => {
       await pause(0)
 
       expect(actor.getSnapshot().status).toBe('done')
-      expect(actor.getSnapshot().output).toEqual(declined)
+      expect(actor.getSnapshot().output).toEqual({ connection: declined })
 
       actor.stop()
     })
@@ -88,7 +87,30 @@ describe('connectionActors', () => {
       await pause(0)
 
       expect(actor.getSnapshot().status).toBe('done')
-      expect(actor.getSnapshot().output).toEqual(liveStatus.connection)
+      expect(actor.getSnapshot().output).toEqual({ connection: liveStatus.connection })
+
+      actor.stop()
+    })
+
+    it('recovers the session alongside the connection', async () => {
+      const recovered: StatusEvent = { ...liveStatus, session }
+      const sdk = {
+        connect: () => Promise.reject(pickerExploded),
+        init,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status: () => Promise.resolve(recovered),
+      }
+      const actor = createActor(createConnectionActors(sdk).connect)
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(actor.getSnapshot().output).toEqual({
+        connection: recovered.connection,
+        session: recovered.session,
+      })
 
       actor.stop()
     })

@@ -1,5 +1,4 @@
 // @vitest-environment node
-import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
 import { connectionMachine, type WalletStatus } from './connectionMachine'
@@ -13,7 +12,7 @@ const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMach
   return states
 }
 
-const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
+const connection: WalletStatus['connection'] = { isConnected: true, isNetworkConnected: true }
 const loggedOutConnection = { ...connection, isConnected: false }
 const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
@@ -43,7 +42,7 @@ describe('connectionMachine', () => {
     it('stores the connect result in context', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise(() => Promise.resolve(connection)),
+          connect: fromPromise(() => Promise.resolve({ connection })),
         },
       })
       const actor = createActor(machine)
@@ -54,6 +53,24 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
       expect(actor.getSnapshot().context.connection).toBe(connection)
+
+      actor.stop()
+    })
+
+    it('lands recovered sessions in context', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(actor.getSnapshot().context.session).toBe(session)
 
       actor.stop()
     })
@@ -88,7 +105,7 @@ describe('connectionMachine', () => {
         actors: {
           connect: fromPromise(({ signal }) => {
             signal.addEventListener('abort', onAbort, { once: true })
-            return Promise.resolve(connection)
+            return Promise.resolve({ connection })
           }),
         },
       })
@@ -149,11 +166,13 @@ describe('connectionMachine', () => {
     it('lands in failure when the wallet declines the connection', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise<ConnectResult>(() =>
+          connect: fromPromise<WalletStatus>(() =>
             Promise.resolve({
-              isConnected: false,
-              isNetworkConnected: true,
-              reason: 'user rejected',
+              connection: {
+                isConnected: false,
+                isNetworkConnected: true,
+                reason: 'user rejected',
+              },
             }),
           ),
         },
@@ -177,7 +196,7 @@ describe('connectionMachine', () => {
     it('returns to disconnected', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise(() => Promise.resolve(connection)),
+          connect: fromPromise(() => Promise.resolve({ connection })),
         },
       })
       const actor = createActor(machine)
@@ -202,7 +221,7 @@ describe('connectionMachine', () => {
     it('drops the connection information', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise(() => Promise.resolve(connection)),
+          connect: fromPromise(() => Promise.resolve({ connection })),
         },
       })
       const actor = createActor(machine)
@@ -532,7 +551,10 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
 
-      const freshConnection: ConnectResult = { isConnected: true, isNetworkConnected: false }
+      const freshConnection: WalletStatus['connection'] = {
+        isConnected: true,
+        isNetworkConnected: false,
+      }
       const freshSession: WalletStatus['session'] = { accessToken: 'fresh-token', userId: 'user' }
       actor.send({
         type: 'wallet.statusChanged',

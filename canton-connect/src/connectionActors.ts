@@ -13,11 +13,13 @@ export const createConnectionActors = (
   const ensureInit = () => sdk.init({ defaultAdapters: [], ...options })
 
   return {
-    connect: fromPromise(async () => {
+    connect: fromPromise<WalletStatus>(async () => {
       await ensureInit()
 
       try {
-        return await sdk.connect()
+        return {
+          connection: await sdk.connect(),
+        }
       } catch (error) {
         // a crashed connect may have left the previous session alive
         // check before failing
@@ -28,7 +30,10 @@ export const createConnectionActors = (
           .catch(() => null)
 
         if (status?.connection.isConnected) {
-          return status.connection
+          return {
+            connection: status.connection,
+            session: status.session,
+          }
         }
 
         throw error
