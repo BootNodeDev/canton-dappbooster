@@ -1,14 +1,71 @@
 import { DappSDK } from '@canton-network/dapp-sdk'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { PICKER_DISMISSED } from './connectError'
 import { guardedConnect } from './guardedConnect'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
 
-// jsdom has no popup, so the close this guards against cannot happen here — that is proven in a real
-// browser. What is testable headless is the degrade path and the borrow of window.open.
+// The guard reads nothing off a popup but `closed`, so a stub carries every headless path. Only the
+// real cause — the SDK losing its `beforeunload` to the about:blank → blob: navigation — needs a browser.
+const stubPopup = (): Window & { closed: boolean } =>
+  ({ closed: false }) as unknown as Window & { closed: boolean }
+
+// Assigned, not `vi.spyOn`: jsdom's `window.open` is an accessor, and a spy on it survives the
+// guard's own reassignment, so the borrow never runs.
+const stubOpen = (popup: Window | null): (() => void) => {
+  const original = window.open
+  window.open = (() => popup) as typeof window.open
+  return () => {
+    window.open = original
+  }
+}
+
+// The #49 hang itself: a connect that never settles, driven by a picker window the guard must watch.
+const hangingSdk = (): DappSDK =>
+  ({
+    connect: () => {
+      window.open('', 'wallet-popup')
+      return new Promise(() => {})
+    },
+  }) as unknown as DappSDK
+
 describe('guardedConnect', () => {
   afterEach(() => {
     localStorage.clear()
+  })
+
+  it('rejects with the picker-dismissed message once the captured popup closes', async () => {
+    vi.useFakeTimers()
+    const popup = stubPopup()
+    const restoreOpen = stubOpen(popup)
+
+    const guarded = guardedConnect(hangingSdk())
+    const settled = expect(guarded).rejects.toThrow(PICKER_DISMISSED)
+
+    popup.closed = true
+    await vi.advanceTimersByTimeAsync(500)
+    await settled
+
+    expect(vi.getTimerCount()).toBe(0)
+
+    restoreOpen()
+    vi.useRealTimers()
+  })
+
+  it('stays pending while the captured popup is open', async () => {
+    vi.useFakeTimers()
+    const restoreOpen = stubOpen(stubPopup())
+
+    let settled = false
+    void guardedConnect(hangingSdk()).catch(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(settled).toBe(false)
+
+    restoreOpen()
+    vi.useRealTimers()
   })
 
   it('passes a connect through untouched when no popup handle is captured', async () => {
