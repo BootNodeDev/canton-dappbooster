@@ -1,4 +1,5 @@
 export { createAutoPicker } from './autoPicker'
+export { FakeSessionProvider, type FakeSessionProviderProps } from './fakeSession'
 export {
   createFakeWallet,
   type FakeWallet,

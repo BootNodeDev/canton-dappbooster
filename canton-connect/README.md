@@ -77,6 +77,10 @@ function Dapp() {
 `connect()` opens the SDK's wallet picker — a popup by default. There's no
 mode argument; the picker is what chooses the wallet.
 
+Closing the picker rejects with `ConnectCancelledError`, which `connectError`
+mirrors, so a cancel is told from a failure with `instanceof` rather than by
+matching an SDK message. A custom `walletPicker` should throw it too.
+
 ## Hook reference
 
 Every hook throws if called outside `<CantonConnectProvider>`.

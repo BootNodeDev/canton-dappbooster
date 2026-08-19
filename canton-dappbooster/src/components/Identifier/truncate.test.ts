@@ -51,10 +51,35 @@ describe('truncateIdentifier', () => {
     expect(truncateIdentifier('abcdefghijklmno', { threshold: 5 })).toBe('abcdefghijklmno')
   })
 
+  it('bounds the hint when asked, keeping its head and no tail', () => {
+    expect(
+      truncateIdentifier(`treasury-operations-team::${PARTY.split('::')[1]}`, { hint: 12 }),
+    ).toBe('treasury-ope…::1220df…0b1cbb46')
+  })
+
+  it('leaves a hint at or under the bound alone', () => {
+    expect(truncateIdentifier(PARTY, { hint: 12 })).toBe('nico::1220df…0b1cbb46')
+    expect(truncateIdentifier(`${'a'.repeat(12)}::1220df94`, { hint: 12 })).toBe(
+      `${'a'.repeat(12)}::1220df94`,
+    )
+  })
+
+  it('ignores the hint bound on a value with no separator', () => {
+    expect(truncateIdentifier(PLAIN, { hint: 4 })).toBe('viewer1-1220…d05fe52e')
+  })
+
   it('never returns more characters than it was given', () => {
     // Deliberately malformed: shortening must never make a string longer, whatever it is given.
     const inputs = [PARTY, PLAIN, 'a'.repeat(30), `::${'f'.repeat(30)}`, 'alice::ns::extra']
-    const knobs = [{}, { tail: 0 }, { head: 0 }, { threshold: 1 }, { head: 20, tail: 20 }]
+    const knobs = [
+      {},
+      { tail: 0 },
+      { head: 0 },
+      { threshold: 1 },
+      { head: 20, tail: 20 },
+      { hint: 0 },
+      { hint: 40 },
+    ]
     for (const value of inputs) {
       for (const options of knobs) {
         expect(truncateIdentifier(value, options).length).toBeLessThanOrEqual(value.length)

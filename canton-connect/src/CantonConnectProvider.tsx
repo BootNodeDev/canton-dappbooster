@@ -20,6 +20,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { toConnectError } from './connectError'
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
@@ -48,13 +49,15 @@ export interface CantonConnectContextValue {
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects on cancel. */
+  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects with
+   * `ConnectCancelledError` on cancel, which `connectError` mirrors. */
   connect: () => Promise<void>
   /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
-const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
+// Exported for src/testing's session double only; consumers reach it through the hooks.
+export const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
 /** Throws if called outside a `CantonConnectProvider`. */
 export const useCantonConnectContext = (): CantonConnectContextValue => {
@@ -239,7 +242,8 @@ export const CantonConnectProvider = ({
       setIsLocked(false)
       setStatus('connected')
     } catch (err) {
-      setConnectError(err as Error)
+      const error = toConnectError(err)
+      setConnectError(error)
 
       // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
       const restored = await sdk.status().catch(() => undefined)
@@ -252,7 +256,7 @@ export const CantonConnectProvider = ({
         await syncFromStatus(restored)
       }
 
-      throw err
+      throw error
     }
   }, [sdk, networkId, wireEvents, syncFromStatus])
 

@@ -2,6 +2,7 @@
 
 @layer cnc {
   /* Button-like parts */
+  .cnc-account-popover__disconnect,
   .cnc-identifier__copy,
   .cnc-explorer-link,
   .cnc-token-input__max,
@@ -15,6 +16,8 @@
       color var(--cnc-duration) ease;
   }
 
+  .cnc-account-popover__disconnect:focus-visible,
+  .cnc-connect-button:focus-visible,
   .cnc-identifier__copy:focus-visible,
   .cnc-explorer-link:focus-visible,
   .cnc-token-input__max:focus-visible,
@@ -510,5 +513,102 @@
   .cnc-token-logo[data-swatch="8"] {
     background: var(--cnc-swatch-8);
     color: var(--cnc-swatch-8-fg);
+  }
+
+  /* Connect button */
+  .cnc-connect-button {
+    align-items: center;
+    background: var(--cnc-surface);
+    border-radius: var(--cnc-radius);
+    border: 1px solid var(--cnc-border);
+    color: var(--cnc-text);
+    cursor: pointer;
+    display: flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: var(--cnc-space-sm);
+    height: 2.75rem;
+    padding-inline: calc(var(--cnc-space-xs) * 3);
+    transition:
+      background-color var(--cnc-duration) ease,
+      border-color var(--cnc-duration) ease;
+  }
+
+  .cnc-connect-button:hover:not(:disabled, [data-pending]) {
+    background: var(--cnc-surface-muted);
+    border-color: var(--cnc-border-strong);
+  }
+
+  .cnc-connect-button:active:not(:disabled, [data-pending]) {
+    background: var(--cnc-accent-subtle);
+    border-color: var(--cnc-accent);
+  }
+
+  .cnc-connect-button:disabled,
+  .cnc-connect-button[data-pending] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .cnc-connect-button__spinner {
+    animation: cnc-spin calc(var(--cnc-duration-xl) * 1.5) linear infinite;
+    border-radius: 50%;
+    border: 2px solid color-mix(in oklab, currentColor 25%, transparent);
+    border-block-start-color: currentColor;
+    flex-shrink: 0;
+    height: 1em;
+    width: 1em;
+  }
+
+  @keyframes cnc-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cnc-connect-button__spinner {
+      animation: none;
+    }
+  }
+
+  /* Account popover */
+  .cnc-account-popover {
+    background: var(--cnc-surface);
+    border-radius: var(--cnc-radius);
+    border: 1px solid var(--cnc-border);
+    box-shadow: var(--cnc-shadow);
+    color: var(--cnc-text);
+    display: flex;
+    flex-direction: column;
+    gap: var(--cnc-space);
+    min-width: 15rem;
+    padding: var(--cnc-space);
+    z-index: 50;
+  }
+
+  .cnc-account-popover[hidden] {
+    display: none;
+  }
+
+  .cnc-identifier.cnc-account-popover__party-id {
+    font-weight: 700;
+    justify-content: center;
+  }
+
+  .cnc-account-popover__disconnect {
+    align-items: center;
+    background: var(--cnc-surface-muted);
+    display: flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: var(--cnc-space-sm);
+    justify-content: center;
+    padding: calc(var(--cnc-space-xs) * 2.5) var(--cnc-space-sm);
+  }
+
+  .cnc-account-popover__disconnect:hover {
+    background: var(--cnc-danger-subtle);
+    color: var(--cnc-danger);
   }
 }
