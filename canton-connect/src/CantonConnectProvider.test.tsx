@@ -14,6 +14,7 @@ import { useWalletStatus } from './hooks/useWalletStatus'
 import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
+import { type StubPopup, stubOpen, stubPopup } from './testing/stubPopup'
 
 const KERNEL_DISCOVERY_KEY = 'splice_wallet_kernel_discovery'
 const DISCOVERY_SESSION_KEY = 'splice_discovery_client_session'
@@ -33,40 +34,26 @@ const throwingPicker: WalletPickerFn = async () => {
   throw new Error('cancel')
 }
 
-interface StubPickerWindow {
-  closed: boolean
-  location: { href: string }
-  focus: () => void
-  close: () => void
-  postMessage: () => void
-  addEventListener: () => void
-  removeEventListener: () => void
-}
+let restoreOpen: (() => void) | undefined
 
-// Enough of a popup for the SDK's real picker to drive.
-const stubPickerWindow = (): StubPickerWindow => ({
-  closed: false,
-  location: { href: '' },
-  focus: () => undefined,
-  close: () => undefined,
-  postMessage: () => undefined,
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined,
-})
+// Drives a connect to the point a close strands it: the window only gets a URL once the SDK opened it.
+const strandOnClosedPicker = async (
+  result: { current: { sdk: DappSDK; connect: () => Promise<void> } },
+  popup: StubPopup,
+): Promise<DappSDK> => {
+  const stranded = result.current.sdk
 
-// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the borrow.
-const stubOpen = (popup: object): (() => void) => {
-  const original = window.open
-  window.open = (() => popup) as unknown as typeof window.open
-  return () => {
-    window.open = original
-  }
-}
+  await act(async () => {
+    const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
+      ConnectCancelledError,
+    )
+    await waitFor(() => expect(popup.location.href).not.toBe(''))
+    popup.closed = true
+    await connecting
+  })
 
-// The window only gets a URL once the SDK has opened it: the point a close can strand connect().
-const closeOnceOpened = async (popup: StubPickerWindow) => {
-  await waitFor(() => expect(popup.location.href).not.toBe(''))
-  popup.closed = true
+  await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+  return stranded
 }
 
 describe('CantonConnectProvider', () => {
@@ -78,6 +65,8 @@ describe('CantonConnectProvider', () => {
 
     // A prototype spy survives a failed assertion; restoring here keeps it out of later tests.
     vi.restoreAllMocks()
+    restoreOpen?.()
+    restoreOpen = undefined
   })
 
   it('initial state is idle with no party and not locked', () => {
@@ -420,8 +409,8 @@ describe('CantonConnectProvider', () => {
       target: 'wallet-a',
       accounts: [{ partyId: 'alice::1220ab', primary: true }],
     })
-    const popup = stubPickerWindow()
-    const restoreOpen = stubOpen(popup)
+    const popup = stubPopup()
+    restoreOpen = stubOpen(popup)
 
     const config = { appName: 'test' }
     const { result } = renderHook(() => useCantonConnectContext(), {
@@ -430,20 +419,9 @@ describe('CantonConnectProvider', () => {
       ),
     })
 
-    const stranded = result.current.sdk
-
-    await act(async () => {
-      const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
-        ConnectCancelledError,
-      )
-      await closeOnceOpened(popup)
-      await connecting
-    })
-
-    await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+    await strandOnClosedPicker(result, popup)
     expect(result.current.status).toBe('disconnected')
 
-    restoreOpen()
     wallet.dispose()
   })
 
@@ -462,8 +440,8 @@ describe('CantonConnectProvider', () => {
       target: 'wallet-a',
       accounts: [{ partyId: 'alice::1220ab', primary: true }],
     })
-    const popup = stubPickerWindow()
-    const restoreOpen = stubOpen(popup)
+    const popup = stubPopup()
+    restoreOpen = stubOpen(popup)
 
     const config = { appName: 'test' }
     const { result } = renderHook(() => useCantonConnectContext(), {
@@ -473,21 +451,11 @@ describe('CantonConnectProvider', () => {
     })
 
     await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
-    const stranded = result.current.sdk
 
-    await act(async () => {
-      const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
-        ConnectCancelledError,
-      )
-      await closeOnceOpened(popup)
-      await connecting
-    })
-
-    await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+    await strandOnClosedPicker(result, popup)
     expect(result.current.status).toBe('connected')
     expect(result.current.party?.partyId).toBe('alice::1220ab')
 
-    restoreOpen()
     wallet.dispose()
   })
 

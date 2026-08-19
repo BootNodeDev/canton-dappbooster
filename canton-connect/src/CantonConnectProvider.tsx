@@ -41,7 +41,7 @@ export interface TxStatusSnapshot {
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
-  /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
+  /** One per `CantonConnectProvider`; its identity churns, so read it, never cache it. */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
@@ -118,14 +118,16 @@ export const CantonConnectProvider = ({
 
   const networkId = config.networkId ?? 'canton:local'
 
-  const [sdkGeneration, setSdkGeneration] = useState(0)
+  // The SDK owns the picker surface unless the consumer supplied one.
+  const guardPicker = config.walletPicker === undefined
 
-  const sdk = useMemo(() => {
-    void sdkGeneration // a discard token, not an SDK input
-    return new DappSDK(
-      config.walletPicker === undefined ? {} : { walletPicker: config.walletPicker },
-    )
-  }, [config.walletPicker, sdkGeneration])
+  const [retirements, setRetirements] = useState(0)
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retirements rebuilds, it is not read
+  const sdk = useMemo(
+    () => new DappSDK({ walletPicker: config.walletPicker }),
+    [config.walletPicker, retirements],
+  )
 
   const additionalAdapters = useMemo(
     () =>
@@ -232,8 +234,7 @@ export const CantonConnectProvider = ({
     teardownRef.current = undefined
 
     try {
-      // Opens the picker; only the SDK's own popup is guarded against being closed (#49).
-      const result = await (config.walletPicker === undefined ? guardedConnect(sdk) : sdk.connect())
+      const result = await (guardPicker ? guardedConnect(sdk) : sdk.connect())
       if (!result.isConnected) {
         throw new Error(result.reason ?? 'Wallet did not connect')
       }
@@ -265,12 +266,12 @@ export const CantonConnectProvider = ({
       // The connect we walked out on still listens for a picker result and would swap this SDK's
       // client from under the wiring above; the mount effect re-restores the session.
       if (err instanceof PickerClosedError) {
-        setSdkGeneration((generation) => generation + 1)
+        setRetirements((count) => count + 1)
       }
 
       throw error
     }
-  }, [sdk, config.walletPicker, networkId, wireEvents, syncFromStatus])
+  }, [sdk, guardPicker, networkId, wireEvents, syncFromStatus])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()
