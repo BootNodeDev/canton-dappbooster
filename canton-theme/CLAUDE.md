@@ -32,8 +32,16 @@ a single one here would be unbeatable from outside the package.
   (appearance drifts when the palette changes) and not `--cnc-identifier-copy` (a token every
   component can read is the point).
 - Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, `swatch`, and the state roles
-  `success`, `warning`, `danger`. Shape roles: `radius`, `font-mono`. `overlay` is the scrim a
-  layer above the page sits on, so it is the one role whose value is translucent by definition.
+  `success`, `warning`, `danger`. Shape roles: `radius`, `space`, `font-mono`. Motion role:
+  `duration`. `overlay` is the scrim a layer above the page sits on, so it is the one role whose
+  value is translucent by definition.
+- `space` is distance inside a component — gaps between its parts, padding within them — never
+  layout between components: the page owns that and never reads our tokens. It is the one role with
+  a size scale, `-xs` through `-xl` around an unsuffixed default, on the 4px grid the rest of the
+  industry uses. Reach for a step first. A distance no step lands on is a multiple of `-xs`, the
+  grid unit — `calc(var(--cnc-space-xs) * 2.5)` — and never a literal, so the scale stays the only
+  input and retuning it moves everything derived from it. One derivation form throughout: two
+  spellings of 12px read as two different decisions.
 - `swatch` is the one numbered role: `--cnc-swatch-1` … `--cnc-swatch-8` and their `-fg`, a
   categorical palette for a placeholder standing in for artwork that does not exist (a token with no
   logo). Anything picking one hashes an identifier to the index and puts it in a `data-*`; the
@@ -41,14 +49,23 @@ a single one here would be unbeatable from outside the package.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
     still a text colour; `--cnc-surface-muted` is still a surface. Emphasis is a colour axis, so
-    neither variant applies to `radius`: a second corner is a size scale, which the grid has not
-    got and which no single component earns.
+    neither variant applies to a shape role. A shape role that needs more than one value takes the
+    size steps below instead.
+  - `-xs` / `-sm` / `-lg` / `-xl` — steps of a scale around the unsuffixed default, which is the
+    middle and stays the one to reach for first. `space` and `duration` have them; `radius` does
+    not, because a second corner is a decision no component has earned.
   - `-subtle` — a pale *fill* derived from a role whose base value is a foreground colour, for
     badges and callouts. `--cnc-danger` is the text, `--cnc-danger-subtle` the wash behind it.
   - `-hover` — the same role under interaction.
   - `-fg` — the text colour that sits *on* that role's fill (`--cnc-accent-fg` over `--cnc-accent`).
-- Colour and shape only. No spacing or typography scale until a component needs one; adding a scale
-  is a contract decision, not a convenience.
+- Colour, shape and motion. `space` and `duration` are the only scales and both are deliberately
+  short; there is no typography scale, and adding one is a contract decision, not a convenience.
+- `duration` is how long a state change takes, not what it looks like getting there: the easing
+  curve stays a literal until a component needs a second one. The default is the hover-and-focus
+  band; reach past it only for something that moves rather than recolours.
+- Every size token is `rem`, so the grid follows the reader's root font size. `px` survives only
+  where a value must not scale: hairline borders and focus outlines, which round to a blurred or
+  vanishing fraction of a device pixel in `rem`.
 
 ## When a token earns existence
 
@@ -71,7 +88,7 @@ a media query. The attribute must decide in both directions. That runtime is `<T
 and this package stays free of JavaScript.
 
 Every token in `:root` needs a dark counterpart unless it is mode-independent by construction
-(radius, font stack).
+(radius, space, duration, font stack).
 
 `color-scheme` follows the same rule and is the one non-token declaration here: it hands the browser
 the mode for the surfaces we cannot style (scrollbars, form controls, the caret). One explicit value
