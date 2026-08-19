@@ -40,7 +40,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect/` | yes | shim | yes | yes | Public hook API, the facade's adapter/picker seams, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp (mock-first); root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
+| `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp (mock-first data, real session); root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
@@ -83,7 +83,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-barebones/`](canton-barebones/) | Local Canton participant + Postgres via docker-compose; deploy + health + token scripts | Docker, Bash, Node scripts | 3013/3014/3015/3016/3017/3018 |
 | [`dapp/daml/`](dapp/daml/) | `quickstart-tally` DAML model | DAML | n/a (DAR artifact) |
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
-| [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
+| [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; mock-first data (in-memory backend, no services) behind a real CIP-0103 session from `canton-connect`. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
@@ -213,7 +213,8 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
 ## Testing
 
 - Each subproject owns its own test runner. Run from the subproject directory or via `pnpm -C`:
-  - `dapp/frontend`: `pnpm test` (vitest, node env)
+  - `dapp/frontend`: `pnpm test` (vitest + jsdom, though it asserts on no DOM: the wallet SDK
+    reached through `canton-connect` touches DOM globals on import)
   - `canton-connect`: `pnpm test` (vitest + jsdom)
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
