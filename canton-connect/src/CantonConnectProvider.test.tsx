@@ -377,6 +377,25 @@ describe('CantonConnectProvider', () => {
     ])
   })
 
+  it('leaves a consumer-supplied picker alone rather than guarding the SDK popup', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const picker = vi.fn(throwingPicker)
+
+    const config = { appName: 'test', walletPicker: picker }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await expect(result.current.connect()).rejects.toThrow('cancel')
+    })
+
+    expect(picker).toHaveBeenCalledTimes(1)
+    expect(openSpy).not.toHaveBeenCalled()
+  })
+
   it('offers no WalletConnect entry without a project id', async () => {
     const offered: WalletPickerEntry[] = []
 
