@@ -100,7 +100,7 @@ exactly the case the attribute exists for.
   short viewport, and the card has no scroll of its own to catch the spill. It is `rem` and not `px`
   because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
-  inside a modal must not start scrolling the page behind it, which the user cannot see moving.
+  inside a dialog must not start scrolling the page behind it, which the user cannot see moving.
 - The token select's favourites are ruled off from the list by their own `border-bottom`, not a
   separate element, and the margin above matches the padding below so the rule sits centred in the
   gap it divides.
@@ -111,7 +111,7 @@ exactly the case the attribute exists for.
 - The favourite chip and the token field's own token part share one rule, because they are the same
   object rendered twice. What differs is a chip's border and cursor, and that the field's part
   stretches to the amount input beside it.
-- The favourite chip's logo is selected as `.cnc-token-logo.cnc-token-select-modal__favorite-logo`,
+- The favourite chip's logo is selected as `.cnc-token-logo.cnc-token-select-dialog__favorite-logo`,
   a compound and not a descendant, because both classes land on the same element and the tie with
   `.cnc-token-logo` further down would otherwise go to source order.
 - Shrinking that disc to `1.5rem` leaves `[data-fallback]`'s `0.6875rem` font-size, which was sized
@@ -133,7 +133,7 @@ exactly the case the attribute exists for.
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the
   accessibility tree and silences the announcement it exists for.
-- `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
+- `z-index` appears once, on the token select dialog's backdrop and positioner, because those two sit
   above the page instead of in it. Everything else stacks in document order; a second value here
   means two components can fight over depth, so treat adding one as a contract decision.
 - Comments: root [`../CLAUDE.md`](../CLAUDE.md) allows only section separators. A stylesheet fact

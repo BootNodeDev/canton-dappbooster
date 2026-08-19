@@ -9,7 +9,7 @@ import {
 import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
 import { SR_ONLY } from '../../utils/srOnly'
-import { modalAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from './anatomy'
 import { NO_TOKENS, ROW_HEIGHT_REM } from './constants'
 import { filterTokens, toNeedle } from './filterTokens'
 import { TokenRow } from './TokenRow'
