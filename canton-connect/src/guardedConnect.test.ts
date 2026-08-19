@@ -1,72 +1,81 @@
 import { DappSDK } from '@canton-network/dapp-sdk'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PICKER_DISMISSED } from './connectError'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PickerClosedError } from './connectError'
 import { guardedConnect } from './guardedConnect'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
+import { type StubPopup, stubOpen, stubPopup } from './testing/stubPopup'
 
-const openStubs: { closed: boolean }[] = []
+type ConnectOnly = Pick<DappSDK, 'connect'>
 
-const stubPopup = (): Window & { closed: boolean } => {
-  const popup = { closed: false }
-  openStubs.push(popup)
-  return popup as unknown as Window & { closed: boolean }
-}
-
+const popups: StubPopup[] = []
 let restoreOpen: (() => void) | undefined
 
-// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the borrow.
-const stubOpen = (popup: Window | null): typeof window.open => {
-  const original = window.open
-  window.open = (() => popup) as typeof window.open
-  restoreOpen = () => {
-    window.open = original
-  }
-  return window.open
+const openStub = (popup: object | null): void => {
+  restoreOpen = stubOpen(popup)
 }
 
-const pendingSdk = (): DappSDK => ({ connect: () => new Promise(() => {}) }) as unknown as DappSDK
+const watchable = (): StubPopup => {
+  const popup = stubPopup()
+  popups.push(popup)
+  return popup
+}
 
-const pickingSdk = (): DappSDK =>
-  ({
+// Past one poll interval, whatever it is.
+const tick = () => vi.advanceTimersByTimeAsync(500)
+
+// `opens` drives whether the SDK reaches for window.open; `settle` lets a test resolve the connect.
+const stubSdk = ({ opens = false } = {}): ConnectOnly & { settle: () => void } => {
+  let settle = (): void => undefined
+  return {
+    settle: () => settle(),
     connect: () => {
-      window.open('', 'wallet-popup')
-      return new Promise(() => {})
+      if (opens) window.open('', 'wallet-popup')
+      return new Promise((done) => {
+        settle = () => done({ isConnected: true, isNetworkConnected: true })
+      })
     },
-  }) as unknown as DappSDK
+  }
+}
 
 describe('guardedConnect', () => {
-  afterEach(() => {
-    // Here, not per test: a timed-out test would leave fake timers and a live popup for the next one.
-    for (const popup of openStubs.splice(0)) {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(async () => {
+    // Fake timers still live: closing the popups lets every pending guard reject and release the borrow.
+    for (const popup of popups.splice(0)) {
       popup.closed = true
     }
+    if (vi.isFakeTimers()) await tick()
+
+    vi.useRealTimers()
     restoreOpen?.()
     restoreOpen = undefined
-    vi.useRealTimers()
     localStorage.clear()
   })
 
-  it('rejects with the picker-dismissed message once the captured popup closes', async () => {
-    vi.useFakeTimers()
-    const popup = stubPopup()
-    stubOpen(popup)
+  it('rejects once the captured popup closes', async () => {
+    const popup = watchable()
+    openStub(popup)
 
-    const settled = expect(guardedConnect(pickingSdk())).rejects.toThrow(PICKER_DISMISSED)
+    const settled = expect(guardedConnect(stubSdk({ opens: true }))).rejects.toBeInstanceOf(
+      PickerClosedError,
+    )
 
     popup.closed = true
-    await vi.advanceTimersByTimeAsync(500)
+    await tick()
     await settled
 
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it('stays pending while the captured popup is open', async () => {
-    vi.useFakeTimers()
-    stubOpen(stubPopup())
+    openStub(watchable())
 
     let settled = false
-    void guardedConnect(pickingSdk()).catch(() => {
+    void guardedConnect(stubSdk({ opens: true })).catch(() => {
       settled = true
     })
 
@@ -75,39 +84,34 @@ describe('guardedConnect', () => {
   })
 
   it('hands the original window.open back after overlapping connects settle', async () => {
-    vi.useFakeTimers()
-    const stubbed = stubOpen(null)
+    openStub(null)
+    const stubbed = window.open
 
-    let settleA = (): void => {}
-    let settleB = (): void => {}
-    const settling = (capture: (settle: () => void) => void): DappSDK =>
-      ({
-        connect: () => new Promise((done) => capture(() => done({ isConnected: true }))),
-      }) as unknown as DappSDK
+    const a = stubSdk()
+    const b = stubSdk()
+    const settledA = guardedConnect(a)
+    const settledB = guardedConnect(b)
 
-    const a = guardedConnect(settling((settle) => (settleA = settle)))
-    const b = guardedConnect(settling((settle) => (settleB = settle)))
-
-    settleA()
-    await a
-    settleB()
-    await b
+    a.settle()
+    await settledA
+    b.settle()
+    await settledB
 
     expect(window.open).toBe(stubbed)
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it('watches one popup on behalf of every connect in flight', async () => {
-    vi.useFakeTimers()
-    const popup = stubPopup()
-    const stubbed = stubOpen(popup)
+    const popup = watchable()
+    openStub(popup)
+    const stubbed = window.open
 
-    const settledA = expect(guardedConnect(pendingSdk())).rejects.toThrow(PICKER_DISMISSED)
-    const settledB = expect(guardedConnect(pendingSdk())).rejects.toThrow(PICKER_DISMISSED)
+    const settledA = expect(guardedConnect(stubSdk())).rejects.toBeInstanceOf(PickerClosedError)
+    const settledB = expect(guardedConnect(stubSdk())).rejects.toBeInstanceOf(PickerClosedError)
 
     window.open('', 'wallet-popup')
     popup.closed = true
-    await vi.advanceTimersByTimeAsync(500)
+    await tick()
     await Promise.all([settledA, settledB])
 
     expect(window.open).toBe(stubbed)
@@ -115,36 +119,33 @@ describe('guardedConnect', () => {
   })
 
   it('watches a popup the SDK reuses instead of reopening', async () => {
-    vi.useFakeTimers()
-    const popup = stubPopup()
-    stubOpen(popup)
+    const popup = watchable()
+    openStub(popup)
 
-    void guardedConnect(pickingSdk()).catch(() => undefined)
-    await vi.advanceTimersByTimeAsync(500)
+    void guardedConnect(stubSdk({ opens: true })).catch(() => undefined)
+    await tick()
 
     // Opens nothing, so only the remembered handle can arm the watchdog.
-    const settled = expect(guardedConnect(pendingSdk())).rejects.toThrow(PICKER_DISMISSED)
+    const settled = expect(guardedConnect(stubSdk())).rejects.toBeInstanceOf(PickerClosedError)
 
     popup.closed = true
-    await vi.advanceTimersByTimeAsync(500)
+    await tick()
     await settled
   })
 
   it('ignores a remembered popup the user already closed', async () => {
-    vi.useFakeTimers()
-    const popup = stubPopup()
-    stubOpen(popup)
+    const popup = watchable()
+    openStub(popup)
 
-    void guardedConnect(pickingSdk()).catch(() => undefined)
-    await vi.advanceTimersByTimeAsync(500)
+    void guardedConnect(stubSdk({ opens: true })).catch(() => undefined)
+    await tick()
     popup.closed = true
-    await vi.advanceTimersByTimeAsync(500)
+    await tick()
 
-    const reopened = stubPopup()
-    stubOpen(reopened)
+    openStub(watchable())
 
     let settled = false
-    void guardedConnect(pickingSdk()).catch(() => {
+    void guardedConnect(stubSdk({ opens: true })).catch(() => {
       settled = true
     })
 
@@ -153,6 +154,7 @@ describe('guardedConnect', () => {
   })
 
   it('passes a connect through untouched when no popup handle is captured', async () => {
+    vi.useRealTimers()
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',
@@ -169,6 +171,7 @@ describe('guardedConnect', () => {
   })
 
   it('hands window.open back when the connect rejects', async () => {
+    vi.useRealTimers()
     const original = window.open
     const sdk = new DappSDK({ walletPicker: createAutoPicker('absent') })
     await sdk.init({ defaultAdapters: [] })

@@ -1,6 +1,6 @@
 // What the SDK's built-in picker rejects with, and what `guardedConnect` raises in its place when
 // the SDK misses the close — matched here, at the seam that owns the SDK, and never downstream.
-export const PICKER_DISMISSED = 'User closed the wallet picker'
+const PICKER_DISMISSED = 'User closed the wallet picker'
 
 /**
  * Raised by `guardedConnect` when it settles a connect the SDK left pending. The SDK's own

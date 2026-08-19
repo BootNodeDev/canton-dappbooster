@@ -8,10 +8,11 @@ const POLL_MS = 400
 
 // Module-scoped: a per-call borrow would capture another call's wrapper as its native.
 let nativeOpen: typeof window.open | undefined
-const waiting = new Set<(popup: Window) => void>()
+let inFlight = 0
 
-// The SDK calls window.open only to *create* its picker window, never to reuse one still open.
-let openedPopup: Window | undefined
+// Remembered, not captured per call: the SDK calls window.open only to *create* its picker window,
+// so a connect reusing one the last left open opens nothing.
+let opened: Window | undefined
 
 const borrowOpen = (): void => {
   if (nativeOpen !== undefined) {
@@ -26,22 +27,20 @@ const borrowOpen = (): void => {
 
     // Falsy, not `=== null`: jsdom's unimplemented window.open returns undefined, off-type.
     if (popup) {
-      openedPopup = popup
-
-      const notify = [...waiting]
-      waiting.clear()
-      returnOpen()
-      for (const watch of notify) {
-        watch(popup)
-      }
+      opened = popup
+      // Every guard polls the remembered handle, so hand `open` back the moment one exists rather
+      // than hold it for the whole connect, where an unrelated popup would become the watched one.
+      window.open = native
+      nativeOpen = undefined
     }
 
     return popup
   }
 }
 
+// Only for a connect that captured nothing; the wrapper hands `open` back itself once it has a popup.
 const returnOpen = (): void => {
-  if (nativeOpen === undefined || waiting.size > 0) {
+  if (nativeOpen === undefined || inFlight > 0) {
     return
   }
 
@@ -57,38 +56,36 @@ const returnOpen = (): void => {
  * const result = await guardedConnect(sdk)
  * if (!result.isConnected) throw new Error(result.reason)
  */
-export const guardedConnect = (sdk: DappSDK): ReturnType<DappSDK['connect']> => {
-  if (typeof window === 'undefined' || typeof window.open !== 'function') {
+export const guardedConnect = (sdk: Pick<DappSDK, 'connect'>): ReturnType<DappSDK['connect']> => {
+  if (typeof window === 'undefined') {
     return sdk.connect()
   }
 
+  inFlight += 1
+  borrowOpen()
+
+  // A handle already closed on arrival belongs to a past connect; wait for the next one instead.
+  let seen = opened
+  let watched = opened?.closed === false ? opened : undefined
   let poll: ReturnType<typeof setInterval> | undefined
-  let watch: ((popup: Window) => void) | undefined
 
   const dismissed = new Promise<never>((_resolve, reject) => {
-    watch = (popup) => {
-      clearInterval(poll)
-      poll = setInterval(() => {
-        if (popup.closed) {
-          reject(new PickerClosedError())
-        }
-      }, POLL_MS)
-    }
+    poll = setInterval(() => {
+      if (opened !== seen) {
+        seen = opened
+        watched = opened
+      }
 
-    if (openedPopup !== undefined && !openedPopup.closed) {
-      watch(openedPopup)
-    }
-
-    waiting.add(watch)
-    borrowOpen()
+      if (watched?.closed === true) {
+        reject(new PickerClosedError())
+      }
+    }, POLL_MS)
   })
 
-  // No status() probe before rejecting: it would read a still-live previous session and swallow a cancel.
+  // No status() probe before rejecting: a still-live previous session would swallow the cancel.
   return Promise.race([sdk.connect(), dismissed]).finally(() => {
-    if (watch !== undefined) {
-      waiting.delete(watch)
-    }
-    returnOpen()
     clearInterval(poll)
+    inFlight -= 1
+    returnOpen()
   })
 }
