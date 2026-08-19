@@ -24,7 +24,7 @@ export interface CantonConnectConfig {
   networkId?: string
   /** Reown project id. Without it, no WalletConnect entry is offered in the picker. */
   walletConnectProjectId?: string
-  /** Omit for the SDK's built-in popup picker. */
+  /** Omit for the SDK's built-in popup picker, guarded so closing it rejects. */
   walletPicker?: WalletPickerFn
   /** Registered alongside the discovered ones, e.g. `createMockAdapter()` in dev/test. */
   additionalAdapters?: ProviderAdapter[]

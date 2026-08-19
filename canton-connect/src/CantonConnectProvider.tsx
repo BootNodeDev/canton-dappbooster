@@ -21,6 +21,7 @@ import {
   useState,
 } from 'react'
 import { toConnectError } from './connectError'
+import { guardedConnect } from './guardedConnect'
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
 
@@ -227,7 +228,8 @@ export const CantonConnectProvider = ({
     teardownRef.current = undefined
 
     try {
-      const result = await sdk.connect() // opens the picker
+      // Opens the picker; only the SDK's own popup is guarded against being closed (#49).
+      const result = await (config.walletPicker === undefined ? guardedConnect(sdk) : sdk.connect())
       if (!result.isConnected) {
         throw new Error(result.reason ?? 'Wallet did not connect')
       }
@@ -258,7 +260,7 @@ export const CantonConnectProvider = ({
 
       throw error
     }
-  }, [sdk, networkId, wireEvents, syncFromStatus])
+  }, [sdk, config.walletPicker, networkId, wireEvents, syncFromStatus])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()

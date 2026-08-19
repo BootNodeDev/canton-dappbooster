@@ -1,7 +1,6 @@
-// The SDK's built-in picker rejects with exactly this, from @canton-network/core-wallet-ui-components,
-// a package bundled into dapp-sdk that no consumer declares — so match it here, at the seam that owns
-// the SDK, and never downstream.
-const PICKER_DISMISSED = 'User closed the wallet picker'
+// What the SDK's built-in picker rejects with, and what `guardedConnect` raises in its place when
+// the SDK misses the close — matched here, at the seam that owns the SDK, and never downstream.
+export const PICKER_DISMISSED = 'User closed the wallet picker'
 
 /**
  * A connect the user walked away from: the picker was closed rather than a wallet failing.
