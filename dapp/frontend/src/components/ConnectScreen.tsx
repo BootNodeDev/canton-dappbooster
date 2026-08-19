@@ -1,7 +1,7 @@
 import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { useConnect } from '@/hooks/useConnect'
 import { useParties } from '@/hooks/useParties'
-import { ThemeToggle } from './ThemeToggle'
 
 // Landing party picker. Picking a party enters the app. The party is remembered
 // in localStorage so a reload lands back in the same session.

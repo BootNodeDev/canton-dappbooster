@@ -1,7 +1,6 @@
 // The VestingBackend over the vesting-lite DAML templates, reached through the wallet-service
 // ledgerApi proxy.
 
-import type { DisclosedContract, LedgerCommand, Wallet } from '@/wallet/Wallet'
 import {
   buildAcceptCommand,
   buildCancelCommand,
@@ -10,8 +9,8 @@ import {
   buildCreateVestingCommand,
   buildDisclosedContract,
   extractCreatedEventBlob,
-} from './commands'
-import { walletServiceRequest } from './ledgerApi'
+} from '@/backend/commands'
+import { walletServiceRequest } from '@/backend/ledgerApi'
 import {
   type CreateVestInput,
   composeNote,
@@ -21,7 +20,8 @@ import {
   rowToProposal,
   type VestingBackend,
   type VestingView,
-} from './VestingBackend'
+} from '@/backend/VestingBackend'
+import type { DisclosedContract, LedgerCommand, Wallet } from '@/wallet/Wallet'
 
 export class LiteBackend implements VestingBackend {
   readonly mode = 'lite' as const

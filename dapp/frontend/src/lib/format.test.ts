@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCC, formatCCFull, formatUsdValue } from './format'
+import { formatCC, formatCCFull, formatUsdValue } from '@/lib/format'
 
 describe('formatCC / formatCCFull', () => {
   it('shows full precision where the 2dp formatter would round up', () => {

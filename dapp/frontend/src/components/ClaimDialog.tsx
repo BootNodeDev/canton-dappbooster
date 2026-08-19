@@ -1,5 +1,9 @@
 import { TokenInput, validateAmount } from '@bootnodedev/canton-dappbooster'
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/Button'
+import { FieldError } from '@/components/FieldError'
+import { Modal } from '@/components/Modal'
+import { toast } from '@/components/toast'
 import { useToken } from '@/hooks/useToken'
 import { isPositive } from '@/lib/amount'
 import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
@@ -7,10 +11,6 @@ import { errorText } from '@/lib/errorText'
 import { formatCC, formatCCFull } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/lib/schedule'
 import { FAVORITE_IDS } from '@/mock/tokens'
-import { Button } from './Button'
-import { FieldError } from './FieldError'
-import { Modal } from './Modal'
-import { toast } from './toast'
 
 interface ClaimDialogProps {
   open: boolean

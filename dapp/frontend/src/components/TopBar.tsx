@@ -1,6 +1,6 @@
-import { RoleToggle } from './RoleToggle'
-import { ThemeToggle } from './ThemeToggle'
-import { WalletControl } from './WalletControl'
+import { RoleToggle } from '@/components/RoleToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { WalletControl } from '@/components/WalletControl'
 
 interface TopBarProps {
   title: string

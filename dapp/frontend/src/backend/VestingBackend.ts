@@ -1,10 +1,10 @@
 // The backend seam: the UI depends only on this interface and the domain types, never on DAML or
 // transport details. The mappers below turn active-contract rows into those domain types.
 
+import { decodeSchedule } from '@/backend/commands'
 import { isAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
 import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
-import { decodeSchedule } from './commands'
 
 export type PartyRef = { name: string; partyId: string }
 export type Deployment = { pkg: string; operator: string }

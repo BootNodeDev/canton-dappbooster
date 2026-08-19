@@ -1,11 +1,11 @@
 import { useState } from 'react'
+import { AmountDisplay } from '@/components/AmountDisplay'
+import { Button } from '@/components/Button'
+import { Modal } from '@/components/Modal'
+import { toast } from '@/components/toast'
 import { errorText } from '@/lib/errorText'
 import type { Grant } from '@/store/types'
 import { deriveGrant } from '@/store/useVestingStore'
-import { AmountDisplay } from './AmountDisplay'
-import { Button } from './Button'
-import { Modal } from './Modal'
-import { toast } from './toast'
 
 interface CancelGrantDialogProps {
   open: boolean
