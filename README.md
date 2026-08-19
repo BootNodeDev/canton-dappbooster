@@ -110,9 +110,10 @@ Open the dApp:
 http://localhost:3012
 ```
 
-The vesting dApp runs **mock-first** (a DirectWallet party-picker + in-memory
-backend), so it needs neither the stack above nor Carpincho — pick any party on the
-landing screen to act as it. The live wallet-service / Carpincho path is deferred.
+The vesting dApp's **data** runs mock-first (in-memory backend), so it needs none of
+the stack above. Its wallet session is real, over CIP-0103 through `canton-connect`,
+so connecting needs a wallet that answers it. The live wallet-service backend path is
+deferred.
 
 ## Extension
 
