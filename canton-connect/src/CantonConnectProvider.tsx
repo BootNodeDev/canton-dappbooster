@@ -122,7 +122,9 @@ export const CantonConnectProvider = ({
 
   const sdk = useMemo(() => {
     void sdkGeneration // a discard token, not a value the SDK reads: see connect()'s catch
-    return new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {})
+    return new DappSDK(
+      config.walletPicker === undefined ? {} : { walletPicker: config.walletPicker },
+    )
   }, [config.walletPicker, sdkGeneration])
 
   const additionalAdapters = useMemo(
