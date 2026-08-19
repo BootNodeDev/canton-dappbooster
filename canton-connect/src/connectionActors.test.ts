@@ -6,7 +6,8 @@ import { createActor } from 'xstate'
 import { createConnectionActors } from './connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from './connectionMachine'
 import { createMockAdapter } from './mock/mockAdapter'
-import { pause } from './testing'
+// Not the './testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
+import { pause } from './testing/pause'
 
 const pickerExploded = new Error('picker exploded')
 
