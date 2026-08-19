@@ -3,7 +3,7 @@
 // Borrowing window.open captures the handle without depending on the SDK's internal window name.
 
 import type { DappSDK } from '@canton-network/dapp-sdk'
-import { PICKER_DISMISSED } from './connectError'
+import { PickerClosedError } from './connectError'
 
 const POLL_MS = 400
 
@@ -74,7 +74,7 @@ export const guardedConnect = (sdk: DappSDK): ReturnType<DappSDK['connect']> => 
       clearInterval(poll) // a freshly opened popup supersedes the reused one watched below
       poll = setInterval(() => {
         if (popup.closed) {
-          reject(new Error(PICKER_DISMISSED))
+          reject(new PickerClosedError())
         }
       }, POLL_MS)
     }

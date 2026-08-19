@@ -4,6 +4,7 @@ import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
+import { ConnectCancelledError } from './connectError'
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
 import { useLedger } from './hooks/useLedger'
@@ -30,6 +31,42 @@ const capturePicker =
 // A picker a test can call connect() with when it never intends to succeed.
 const throwingPicker: WalletPickerFn = async () => {
   throw new Error('cancel')
+}
+
+interface StubPickerWindow {
+  closed: boolean
+  location: { href: string }
+  focus: () => void
+  close: () => void
+  postMessage: () => void
+  addEventListener: () => void
+  removeEventListener: () => void
+}
+
+// Enough of a popup for the SDK's real picker to drive, so a test can close it the way #49 does.
+const stubPickerWindow = (): StubPickerWindow => ({
+  closed: false,
+  location: { href: '' },
+  focus: () => undefined,
+  close: () => undefined,
+  postMessage: () => undefined,
+  addEventListener: () => undefined,
+  removeEventListener: () => undefined,
+})
+
+// Assigned, not `vi.spyOn`: jsdom's `window.open` is an accessor a spy outlives the guard's borrow of.
+const stubOpen = (popup: object): (() => void) => {
+  const original = window.open
+  window.open = (() => popup) as unknown as typeof window.open
+  return () => {
+    window.open = original
+  }
+}
+
+// The picker window only gets a URL once the SDK has opened it — the point a close can strand connect().
+const closeOnceOpened = async (popup: StubPickerWindow) => {
+  await waitFor(() => expect(popup.location.href).not.toBe(''))
+  popup.closed = true
 }
 
 describe('CantonConnectProvider', () => {
@@ -375,6 +412,83 @@ describe('CantonConnectProvider', () => {
     expect(offered).toEqual([
       expect.objectContaining({ providerId: 'walletconnect', type: 'mobile' }),
     ])
+  })
+
+  it('retires the SDK a closed picker left mid-connect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+    const popup = stubPickerWindow()
+    const restoreOpen = stubOpen(popup)
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    const stranded = result.current.sdk
+
+    await act(async () => {
+      const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
+        ConnectCancelledError,
+      )
+      await closeOnceOpened(popup)
+      await connecting
+    })
+
+    await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+    expect(result.current.status).toBe('disconnected')
+
+    restoreOpen()
+    wallet.dispose()
+  })
+
+  it('keeps a restored session across the retirement a closed picker forces', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+    const popup = stubPickerWindow()
+    const restoreOpen = stubOpen(popup)
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    const stranded = result.current.sdk
+
+    await act(async () => {
+      const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
+        ConnectCancelledError,
+      )
+      await closeOnceOpened(popup)
+      await connecting
+    })
+
+    await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+    expect(result.current.status).toBe('connected')
+    expect(result.current.party?.partyId).toBe('alice::1220ab')
+
+    restoreOpen()
+    wallet.dispose()
   })
 
   it('leaves a consumer-supplied picker alone rather than guarding the SDK popup', async () => {

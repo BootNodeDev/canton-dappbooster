@@ -20,7 +20,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { toConnectError } from './connectError'
+import { PickerClosedError, toConnectError } from './connectError'
 import { guardedConnect } from './guardedConnect'
 import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
 import { selectPrimaryAccount, toParty } from './walletAccount'
@@ -118,10 +118,12 @@ export const CantonConnectProvider = ({
 
   const networkId = config.networkId ?? 'canton:local'
 
-  const sdk = useMemo(
-    () => new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {}),
-    [config.walletPicker],
-  )
+  const [sdkGeneration, setSdkGeneration] = useState(0)
+
+  const sdk = useMemo(() => {
+    void sdkGeneration // a discard token, not a value the SDK reads: see connect()'s catch
+    return new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {})
+  }, [config.walletPicker, sdkGeneration])
 
   const additionalAdapters = useMemo(
     () =>
@@ -256,6 +258,12 @@ export const CantonConnectProvider = ({
         setStatus('disconnected')
       } else {
         await syncFromStatus(restored)
+      }
+
+      // The connect we walked out on still listens for a picker result and would swap this SDK's
+      // client from under the wiring above, so retire it — the mount effect re-restores the session.
+      if (err instanceof PickerClosedError) {
+        setSdkGeneration((generation) => generation + 1)
       }
 
       throw error
