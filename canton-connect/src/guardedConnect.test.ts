@@ -5,8 +5,6 @@ import { guardedConnect } from './guardedConnect'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
 
-// The guard reads nothing off a popup but `closed`, so a stub carries every headless path. Only the
-// real cause — the SDK losing its `beforeunload` to the about:blank → blob: navigation — needs a browser.
 const openStubs: { closed: boolean }[] = []
 
 const stubPopup = (): Window & { closed: boolean } => {
@@ -17,8 +15,7 @@ const stubPopup = (): Window & { closed: boolean } => {
 
 let restoreOpen: (() => void) | undefined
 
-// Assigned, not `vi.spyOn`: jsdom's `window.open` is an accessor, and a spy on it survives the
-// guard's own reassignment, so the borrow never runs.
+// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the borrow.
 const stubOpen = (popup: Window | null): typeof window.open => {
   const original = window.open
   window.open = (() => popup) as typeof window.open
@@ -28,7 +25,6 @@ const stubOpen = (popup: Window | null): typeof window.open => {
   return window.open
 }
 
-// The #49 hang: a connect that never settles.
 const pendingSdk = (): DappSDK => ({ connect: () => new Promise(() => {}) }) as unknown as DappSDK
 
 const pickingSdk = (): DappSDK =>
@@ -41,8 +37,7 @@ const pickingSdk = (): DappSDK =>
 
 describe('guardedConnect', () => {
   afterEach(() => {
-    // In afterEach, not per test: a timed-out test would otherwise leave fake timers on for the rest.
-    // The guard remembers a live popup across calls, so leaving a stub open would leak into the next test.
+    // Here, not per test: a timed-out test would leave fake timers and a live popup for the next one.
     for (const popup of openStubs.splice(0)) {
       popup.closed = true
     }
@@ -124,11 +119,10 @@ describe('guardedConnect', () => {
     const popup = stubPopup()
     stubOpen(popup)
 
-    // First connect creates the popup; the SDK leaves it open for wallets that reuse it.
     void guardedConnect(pickingSdk()).catch(() => undefined)
     await vi.advanceTimersByTimeAsync(500)
 
-    // Second connect opens nothing, so only the remembered handle can arm the watchdog.
+    // Opens nothing, so only the remembered handle can arm the watchdog.
     const settled = expect(guardedConnect(pendingSdk())).rejects.toThrow(PICKER_DISMISSED)
 
     popup.closed = true

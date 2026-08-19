@@ -3,9 +3,8 @@
 export const PICKER_DISMISSED = 'User closed the wallet picker'
 
 /**
- * What `guardedConnect` raises when it settles a connect the SDK left pending on a closed picker.
- * Distinct from the SDK's own dismissal because the SDK's `connect()` is still running underneath:
- * whoever catches this must retire the `DappSDK`, not reuse it. Consumers see `ConnectCancelledError`.
+ * Raised by `guardedConnect` when it settles a connect the SDK left pending. The SDK's own
+ * `connect()` is still running underneath, so whoever catches this retires the `DappSDK`.
  *
  * @example
  * if (err instanceof PickerClosedError) discardSdk()

@@ -121,7 +121,7 @@ export const CantonConnectProvider = ({
   const [sdkGeneration, setSdkGeneration] = useState(0)
 
   const sdk = useMemo(() => {
-    void sdkGeneration // a discard token, not a value the SDK reads: see connect()'s catch
+    void sdkGeneration // a discard token, not an SDK input
     return new DappSDK(
       config.walletPicker === undefined ? {} : { walletPicker: config.walletPicker },
     )
@@ -263,7 +263,7 @@ export const CantonConnectProvider = ({
       }
 
       // The connect we walked out on still listens for a picker result and would swap this SDK's
-      // client from under the wiring above, so retire it — the mount effect re-restores the session.
+      // client from under the wiring above; the mount effect re-restores the session.
       if (err instanceof PickerClosedError) {
         setSdkGeneration((generation) => generation + 1)
       }

@@ -1,19 +1,16 @@
-// #49: the SDK's picker attaches `beforeunload` to the popup, and the about:blank → blob:
-// navigation that follows destroys the listener, so a closed popup leaves connect() pending forever.
-// Borrowing window.open captures the handle without depending on the SDK's internal window name.
+// #49: the SDK's picker loses its `beforeunload` to the about:blank → blob: navigation, so a closed
+// popup leaves connect() pending forever. See architecture.md.
 
 import type { DappSDK } from '@canton-network/dapp-sdk'
 import { PickerClosedError } from './connectError'
 
 const POLL_MS = 400
 
-// One borrow for the whole module, not one per call: a second guard would otherwise capture the
-// first guard's wrapper as its "native" and hand it back on settle, leaving it installed for good.
+// Module-scoped: a per-call borrow would capture another call's wrapper as its native.
 let nativeOpen: typeof window.open | undefined
 const waiting = new Set<(popup: Window) => void>()
 
-// The SDK caches its picker window and calls window.open only to *create* one, so a connect that
-// reuses a window left open by the last one opens nothing to capture. Remember the handle instead.
+// The SDK calls window.open only to *create* its picker window, never to reuse one still open.
 let openedPopup: Window | undefined
 
 const borrowOpen = (): void => {
@@ -55,7 +52,6 @@ const returnOpen = (): void => {
 /**
  * `sdk.connect()` with a watchdog on the popup the SDK opens. Call it only when no
  * `CantonConnectConfig.walletPicker` is set; a consumer's picker owns its own surface.
- * Degrades to a bare `sdk.connect()` wherever no popup handle can be had.
  *
  * @example
  * const result = await guardedConnect(sdk)
@@ -71,7 +67,7 @@ export const guardedConnect = (sdk: DappSDK): ReturnType<DappSDK['connect']> => 
 
   const dismissed = new Promise<never>((_resolve, reject) => {
     watch = (popup) => {
-      clearInterval(poll) // a freshly opened popup supersedes the reused one watched below
+      clearInterval(poll)
       poll = setInterval(() => {
         if (popup.closed) {
           reject(new PickerClosedError())
@@ -87,8 +83,7 @@ export const guardedConnect = (sdk: DappSDK): ReturnType<DappSDK['connect']> => 
     borrowOpen()
   })
 
-  // No status() probe before rejecting: it would read a still-live previous session and swallow a
-  // genuine cancel, and connect() resolves before the microtask that closes the popup on success.
+  // No status() probe before rejecting: it would read a still-live previous session and swallow a cancel.
   return Promise.race([sdk.connect(), dismissed]).finally(() => {
     if (watch !== undefined) {
       waiting.delete(watch)

@@ -43,7 +43,7 @@ interface StubPickerWindow {
   removeEventListener: () => void
 }
 
-// Enough of a popup for the SDK's real picker to drive, so a test can close it the way #49 does.
+// Enough of a popup for the SDK's real picker to drive.
 const stubPickerWindow = (): StubPickerWindow => ({
   closed: false,
   location: { href: '' },
@@ -54,7 +54,7 @@ const stubPickerWindow = (): StubPickerWindow => ({
   removeEventListener: () => undefined,
 })
 
-// Assigned, not `vi.spyOn`: jsdom's `window.open` is an accessor a spy outlives the guard's borrow of.
+// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the borrow.
 const stubOpen = (popup: object): (() => void) => {
   const original = window.open
   window.open = (() => popup) as unknown as typeof window.open
@@ -63,7 +63,7 @@ const stubOpen = (popup: object): (() => void) => {
   }
 }
 
-// The picker window only gets a URL once the SDK has opened it — the point a close can strand connect().
+// The window only gets a URL once the SDK has opened it: the point a close can strand connect().
 const closeOnceOpened = async (popup: StubPickerWindow) => {
   await waitFor(() => expect(popup.location.href).not.toBe(''))
   popup.closed = true
