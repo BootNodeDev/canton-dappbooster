@@ -1,9 +1,9 @@
 import type { KeyboardEvent, ReactElement } from 'react'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { TokenLogo } from '../TokenLogo'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { ROW_HEIGHT_REM } from './constants'
-import { tokenLabel } from './tokenLabel'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
+import { tokenLabel } from '#src/components/TokenInput/tokenLabel'
+import { TokenLogo } from '#src/components/TokenLogo'
+import type { Token } from '#src/providers/TokenListProvider/context'
 
 interface TokenRowProps {
   onFocus: () => void

@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { ThemeContext, type UseThemeResult } from './context'
+import { ThemeContext, type UseThemeResult } from '#src/providers/ThemeProvider/context'
 
 /**
  * Reads and sets the theme mode. Requires a {@link ThemeProvider} above it; there is no ambient

@@ -8,9 +8,13 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { cx } from '../../utils/cx'
-import { resolveInvalid } from '../../utils/invalid'
+import { anatomy } from '#src/components/TokenInput/anatomy'
+import { TokenSelectDialog } from '#src/components/TokenInput/TokenSelectDialog'
+import { useFormattedField } from '#src/components/TokenInput/useFormattedField'
+import { TokenLogo } from '#src/components/TokenLogo'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { cx } from '#src/utils/cx'
+import { resolveInvalid } from '#src/utils/invalid'
 import {
   formatAmount,
   parseAmount,
@@ -18,11 +22,7 @@ import {
   settleAmount,
   type TokenAmountError,
   validateAmount,
-} from '../../utils/tokenAmount'
-import { TokenLogo } from '../TokenLogo'
-import { anatomy } from './anatomy'
-import { TokenSelectDialog } from './TokenSelectDialog'
-import { useFormattedField } from './useFormattedField'
+} from '#src/utils/tokenAmount'
 
 const ZERO = formatAmount('0.00')
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SWATCH_COUNT, swatchOf } from './swatch'
+import { SWATCH_COUNT, swatchOf } from '#src/components/TokenLogo/swatch'
 
 describe('swatchOf', () => {
   it('answers the same swatch for the same symbol', () => {

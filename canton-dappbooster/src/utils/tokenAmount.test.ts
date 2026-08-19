@@ -6,7 +6,7 @@ import {
   sanitizeAmountInput,
   settleAmount,
   validateAmount,
-} from './tokenAmount'
+} from '#src/utils/tokenAmount'
 
 describe('parseAmount', () => {
   it('scales a decimal string to the ledger precision', () => {

@@ -1,36 +1,36 @@
-export { ExplorerLink, type ExplorerLinkProps } from './components/ExplorerLink'
-export { Identifier, type IdentifierProps } from './components/Identifier'
+export { ExplorerLink, type ExplorerLinkProps } from '#src/components/ExplorerLink'
+export { Identifier, type IdentifierProps } from '#src/components/Identifier'
 export {
   partyHint,
   type TruncateOptions,
   truncateIdentifier,
-} from './components/Identifier/truncate'
-export { PartyIdInput, type PartyIdInputProps } from './components/PartyIdInput'
-export { TokenInput, type TokenInputProps, type TokenMeta } from './components/TokenInput'
+} from '#src/components/Identifier/truncate'
+export { PartyIdInput, type PartyIdInputProps } from '#src/components/PartyIdInput'
+export { TokenInput, type TokenInputProps, type TokenMeta } from '#src/components/TokenInput'
 export {
   type CopyOutcome,
   type CopyState,
   type UseCopyToClipboardOptions,
   type UseCopyToClipboardResult,
   useCopyToClipboard,
-} from './hooks/useCopyToClipboard'
+} from '#src/hooks/useCopyToClipboard'
 export {
   type ExplorerConfig,
   type ExplorerEntity,
   type GetExplorerLinkParams,
   getExplorerLink,
   useExplorerLink,
-} from './hooks/useExplorerLink'
-export { ThemeProvider, type ThemeProviderProps } from './providers/ThemeProvider'
-export type { ResolvedTheme, ThemeMode, UseThemeResult } from './providers/ThemeProvider/context'
-export { useTheme } from './providers/ThemeProvider/useTheme'
+} from '#src/hooks/useExplorerLink'
+export { ThemeProvider, type ThemeProviderProps } from '#src/providers/ThemeProvider'
+export type { ResolvedTheme, ThemeMode, UseThemeResult } from '#src/providers/ThemeProvider/context'
+export { useTheme } from '#src/providers/ThemeProvider/useTheme'
 export {
   TokenListProvider,
   type TokenListProviderProps,
-} from './providers/TokenListProvider'
-export type { Token, UseTokenListResult } from './providers/TokenListProvider/context'
-export { useTokenList } from './providers/TokenListProvider/useTokenList'
-export { isValidPartyId, type PartyIdError, validatePartyId } from './utils/partyId'
+} from '#src/providers/TokenListProvider'
+export type { Token, UseTokenListResult } from '#src/providers/TokenListProvider/context'
+export { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
+export { isValidPartyId, type PartyIdError, validatePartyId } from '#src/utils/partyId'
 export {
   DEFAULT_PRECISION,
   formatAmount,
@@ -39,4 +39,4 @@ export {
   sanitizeAmountInput,
   type TokenAmountError,
   validateAmount,
-} from './utils/tokenAmount'
+} from '#src/utils/tokenAmount'

@@ -1,12 +1,12 @@
 import * as dialog from '@zag-js/dialog'
 import { normalizeProps, Portal, useMachine } from '@zag-js/react'
 import { type ReactElement, type RefObject, useId, useRef, useState } from 'react'
-import { CloseIcon } from '../../icons'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { TokenFavorites } from './TokenFavorites'
-import { TokenList } from './TokenList'
-import { TokenSearch } from './TokenSearch'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { TokenFavorites } from '#src/components/TokenInput/TokenFavorites'
+import { TokenList } from '#src/components/TokenInput/TokenList'
+import { TokenSearch } from '#src/components/TokenInput/TokenSearch'
+import { CloseIcon } from '#src/icons'
+import type { Token } from '#src/providers/TokenListProvider/context'
 
 interface TokenSelectDialogProps {
   contentId: string

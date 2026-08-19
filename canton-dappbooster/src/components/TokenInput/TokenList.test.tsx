@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { TokenListProvider } from '../../providers/TokenListProvider'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { stubViewport } from '../../testing/viewport'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { ROW_HEIGHT_REM } from './constants'
-import { TokenList } from './TokenList'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
+import { TokenList } from '#src/components/TokenInput/TokenList'
+import { TokenListProvider } from '#src/providers/TokenListProvider'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { stubViewport } from '#src/testing/viewport'
 
 // jsdom's root font size is the 16px default, so the hook under the list resolves rem to this.
 const ROW = ROW_HEIGHT_REM * 16

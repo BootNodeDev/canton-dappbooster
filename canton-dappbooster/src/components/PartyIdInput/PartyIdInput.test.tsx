@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import type { PartyIdError } from '../../utils/partyId'
-import { PartyIdInput, type PartyIdInputProps } from '.'
-import { anatomy } from './anatomy'
+import { PartyIdInput, type PartyIdInputProps } from '#src/components/PartyIdInput'
+import { anatomy } from '#src/components/PartyIdInput/anatomy'
+import type { PartyIdError } from '#src/utils/partyId'
 
 const VALID = 'nico::1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c'
 

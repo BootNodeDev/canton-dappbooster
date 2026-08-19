@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import { DARK_QUERY } from '../providers/ThemeProvider/constants'
+import { DARK_QUERY } from '#src/providers/ThemeProvider/constants'
 
 type Listener = (event: MediaQueryListEvent) => void
 

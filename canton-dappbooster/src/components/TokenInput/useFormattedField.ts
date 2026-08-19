@@ -1,5 +1,5 @@
 import { type ChangeEvent, type RefObject, useLayoutEffect, useRef } from 'react'
-import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
+import { caretBeforeDigits, countDigitsAfter, dropDigit } from '#src/components/TokenInput/caret'
 
 // `format` and `sanitize` must be inverses under the same locale, or a keystroke reads back as a
 // different amount.

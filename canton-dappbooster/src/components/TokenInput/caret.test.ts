@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caretBeforeDigits, countDigitsAfter, dropDigit } from './caret'
+import { caretBeforeDigits, countDigitsAfter, dropDigit } from '#src/components/TokenInput/caret'
 
 describe('countDigitsAfter', () => {
   it('counts digits after the caret, ignoring separators', () => {

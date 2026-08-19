@@ -1,6 +1,6 @@
 import type { ReactElement, RefObject } from 'react'
-import { SearchIcon } from '../../icons'
-import { dialogAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { SearchIcon } from '#src/icons'
 
 interface TokenSearchProps {
   onChange: (query: string) => void

@@ -1,4 +1,4 @@
-import { PARTY_SEPARATOR } from '../../utils/partyId'
+import { PARTY_SEPARATOR } from '#src/utils/partyId'
 
 /**
  * Character counts overriding the display defaults of {@link truncateIdentifier}: how much to keep

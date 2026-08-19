@@ -1,4 +1,4 @@
-import type { Token } from '../providers/TokenListProvider/context'
+import type { Token } from '#src/providers/TokenListProvider/context'
 
 /**
  * The two-token list the token select's tests render against. Two is enough to tell a filtered row
