@@ -1,6 +1,7 @@
 import type { DappSDK, StatusEvent } from '@canton-network/dapp-sdk'
 import { fromCallback, fromPromise } from 'xstate'
 import type { WalletStatusUpdate } from './connectionMachine'
+import { guardedConnect } from './guardedConnect'
 
 // DappSDKConnectOptions is not exported from the package index; derived until it is
 type InitOptions = NonNullable<Parameters<DappSDK['init']>[0]>
@@ -32,7 +33,7 @@ export const createConnectionActors = (
 
       try {
         return {
-          connection: await sdk.connect(),
+          connection: await guardedConnect(sdk),
         }
       } catch (error) {
         // a crashed connect may have left the previous session alive
