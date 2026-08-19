@@ -822,5 +822,88 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('reports connecting while the wallet decides', () => {
+      const actor = createActor(connectionMachine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('connecting')
+
+      actor.stop()
+    })
+
+    it('reports connected for a live session', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('connected')
+
+      actor.stop()
+    })
+
+    it('reports connected for an unauthenticated session', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise(() => Promise.resolve()),
+          restore: fromPromise<WalletStatus>(() =>
+            Promise.resolve({ connection: loggedOutConnection, session }),
+          ),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('connected')
+
+      actor.stop()
+    })
+
+    it('reports idle while restoring', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise(() => Promise.resolve()),
+          restore: fromPromise<WalletStatus>(() => new Promise(() => {})),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('idle')
+
+      actor.stop()
+    })
+
+    it('reports disconnected after a failure', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect: fromPromise<WalletStatus>(() => Promise.reject(new Error('picker exploded'))),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('disconnected')
+
+      actor.stop()
+    })
   })
 })
