@@ -195,6 +195,9 @@ export const connectionMachine = setup({
           actions: assign({ error: ({ event: { error } }) => error }),
         },
       },
+      on: {
+        cancel: { target: 'disconnected' },
+      },
     },
   },
 })

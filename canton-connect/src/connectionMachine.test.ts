@@ -79,6 +79,29 @@ describe('connectionMachine', () => {
   })
 
   describe('cancel', () => {
+    it('aborts the in-flight boot', () => {
+      const onAbort = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise(({ signal }) => {
+            signal.addEventListener('abort', onAbort, { once: true })
+            return new Promise(() => {})
+          }),
+        },
+      })
+      const actor = createActor(machine)
+      const states = recordStates(actor)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      actor.send({ type: 'cancel' })
+
+      expect(states).toEqual<typeof states>(['disconnected', 'initializing', 'disconnected'])
+      expect(onAbort).toHaveBeenCalledOnce()
+
+      actor.stop()
+    })
+
     it('aborts the in-flight connect attempt', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
