@@ -1,5 +1,12 @@
 import type { StatusEvent } from '@canton-network/dapp-sdk'
-import { assign, fromCallback, fromPromise, type SnapshotFrom, setup } from 'xstate'
+import {
+  assign,
+  type DoneActorEvent,
+  fromCallback,
+  fromPromise,
+  type SnapshotFrom,
+  setup,
+} from 'xstate'
 import type { ConnectionStatus } from './types'
 
 export type WalletStatusUpdate = Pick<StatusEvent, 'connection' | 'session'>
@@ -23,6 +30,23 @@ export const toConnectionStatus = (
   return 'disconnected'
 }
 
+// one rule for landing an authenticated answer, shared by `connect` and `restore`
+const landAuthenticated = {
+  guard: {
+    type: 'isAuthenticated',
+    params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
+      connection: output.connection,
+    }),
+  },
+  target: 'session.authenticated',
+  actions: {
+    type: 'applyWalletStatus',
+    params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
+      status: output,
+    }),
+  },
+} as const
+
 export const connectionMachine = setup({
   actors: {
     connect: fromPromise<WalletStatusUpdate>(() =>
@@ -39,6 +63,7 @@ export const connectionMachine = setup({
       connection: params.status.connection,
       session: params.status.session ?? context.session,
     })),
+    assignError: assign((_, params: { error: unknown }) => ({ error: params.error })),
   },
   guards: {
     hasSession: (_, params: { session: WalletStatusUpdate['session'] }) => !!params.session,
@@ -77,17 +102,7 @@ export const connectionMachine = setup({
       invoke: {
         src: 'connect',
         onDone: [
-          {
-            guard: {
-              type: 'isAuthenticated',
-              params: ({ event: { output } }) => ({ connection: output.connection }),
-            },
-            target: 'session.authenticated',
-            actions: {
-              type: 'applyWalletStatus',
-              params: ({ event: { output } }) => ({ status: output }),
-            },
-          },
+          landAuthenticated,
           {
             target: 'failure',
             actions: assign(({ event: { output } }) => ({
@@ -97,7 +112,10 @@ export const connectionMachine = setup({
         ],
         onError: {
           target: 'failure',
-          actions: assign({ error: ({ event: { error } }) => error }),
+          actions: {
+            type: 'assignError',
+            params: ({ event: { error } }) => ({ error }),
+          },
         },
       },
       on: {
@@ -160,17 +178,7 @@ export const connectionMachine = setup({
       invoke: {
         src: 'restore',
         onDone: [
-          {
-            guard: {
-              type: 'isAuthenticated',
-              params: ({ event: { output } }) => ({ connection: output.connection }),
-            },
-            target: 'session.authenticated',
-            actions: {
-              type: 'applyWalletStatus',
-              params: ({ event: { output } }) => ({ status: output }),
-            },
-          },
+          landAuthenticated,
           {
             guard: {
               type: 'hasSession',
@@ -193,7 +201,10 @@ export const connectionMachine = setup({
         onDone: { target: 'restoring' },
         onError: {
           target: 'failure',
-          actions: assign({ error: ({ event: { error } }) => error }),
+          actions: {
+            type: 'assignError',
+            params: ({ event: { error } }) => ({ error }),
+          },
         },
       },
       on: {

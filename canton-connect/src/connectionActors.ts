@@ -25,6 +25,8 @@ export const createConnectionActors = (
   }
 
   return {
+    // init + the status check stay inside `connect`, not as machine states
+    // the chart would grow just to relocate tested behavior
     connect: fromPromise<WalletStatusUpdate>(async () => {
       await ensureInit()
 
@@ -51,7 +53,7 @@ export const createConnectionActors = (
         throw error
       }
     }),
-    init: fromPromise(() => ensureInit()),
+    init: fromPromise(ensureInit),
     restore: fromPromise<WalletStatusUpdate>(async () => {
       const { connection, session } = await sdk.status()
 
