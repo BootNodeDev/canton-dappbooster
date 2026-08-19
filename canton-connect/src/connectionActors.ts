@@ -64,10 +64,10 @@ export const createConnectionActors = (
         sendBack({ type: 'wallet.statusChanged', status: { connection, session } })
       }
 
-      void sdk.onStatusChanged(listener)
+      void sdk.onStatusChanged(listener).catch(() => {})
 
       return () => {
-        void sdk.removeOnStatusChanged(listener)
+        void sdk.removeOnStatusChanged(listener).catch(() => {})
       }
     }),
   }
