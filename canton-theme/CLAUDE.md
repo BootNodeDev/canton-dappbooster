@@ -33,8 +33,9 @@ a single one here would be unbeatable from outside the package.
   component can read is the point).
 - Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, `swatch`, and the state roles
   `success`, `warning`, `danger`. Shape roles: `radius`, `space`, `font-mono`. Motion role:
-  `duration`. `overlay` is the scrim a layer above the page sits on, so it is the one role whose
-  value is translucent by definition.
+  `duration`. Elevation role: `shadow`. `overlay` and `shadow` are the two roles whose values are
+  translucent by definition: one is the scrim a layer above the page sits on, the other the cast it
+  throws onto the page it floats over.
 - `space` is distance inside a component — gaps between its parts, padding within them — never
   layout between components: the page owns that and never reads our tokens. It is the one role with
   a size scale, `-xs` through `-xl` around an unsuffixed default, on the 4px grid the rest of the
@@ -150,9 +151,33 @@ exactly the case the attribute exists for.
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the
   accessibility tree and silences the announcement it exists for.
-- `z-index` appears once, on the token select dialog's backdrop and positioner, because those two sit
-  above the page instead of in it. Everything else stacks in document order; a second value here
-  means two components can fight over depth, so treat adding one as a contract decision.
+- Depth is set twice, on the token select dialog's backdrop and positioner at `100` and the account
+  popover's positioner at `50`, because those sit above the page instead of in it. Both are
+  portalled, so document order cannot decide it: a host's own stacking context — a sticky header,
+  say — otherwise renders over them. The two values are ordered so a dialog covers a popover.
+  Everything else stacks in document order, and a third value means three components can fight
+  over depth, so treat adding one as a contract decision.
+- **A part Zag marks `hidden` needs its own `[hidden] { display: none }` rule here.** Zag's
+  `getContentProps` closes a popover by setting the `hidden` attribute and leaves the hiding to CSS,
+  but `[hidden]` only carries `display: none` in the user-agent stylesheet, which any author `display`
+  loses to whatever the layer or the specificity. So `.cnc-account-popover`'s own `display: flex`
+  keeps the closed panel on screen for a consumer whose reset does not re-declare `[hidden]`; ours
+  only looked right because `dapp/frontend` pulls in Tailwind's preflight. This applies to every
+  future part whose machine hides it by attribute rather than by unmounting.
+- The popover's `z-index` goes on its content, never its positioner. Zag's popper owns the
+  positioner's inline style and, on every placement, copies the *content's* computed `z-index` onto
+  it as `--z-index`; a rule on the positioner is overwritten with `auto`, and the popover ends up
+  behind the header it was opened from. The dialog is the other way round, on the positioner and
+  the backdrop, because its machine does not use the popper.
+- A `@keyframes` name is global whatever layer declares it, so it carries the `cnc-` prefix like a
+  token does and is public the moment it ships. Its duration comes off the `duration` scale, by
+  `calc()` where no step fits, for the same reason every other distance does.
+- **Anything that moves ships its own `prefers-reduced-motion: reduce` rule, right beside it.** The
+  package is consumed as a stylesheet with no reset assumed, so a consumer's blanket
+  `animation-duration: 0.01ms !important` is not ours to count on, and we cannot write that rule
+  ourselves: `!important` inside a layer is unbeatable from outside. Kill the animation instead, and
+  leave the meaning to something that is not motion — the connect spinner stops, and the button
+  still reads "Connecting…". Recolouring transitions need no guard; the preference is about motion.
 - Comments: root [`../CLAUDE.md`](../CLAUDE.md) allows only section separators. A stylesheet fact
   worth keeping is written into this file instead, under the section that owns it.
 

@@ -130,10 +130,16 @@ importers:
       '@zag-js/dialog':
         specifier: ^1.43.0
         version: 1.43.1
+      '@zag-js/popover':
+        specifier: ^1.43.0
+        version: 1.43.1
       '@zag-js/react':
         specifier: ^1.43.0
         version: 1.43.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
+      '@bootnodedev/canton-connect':
+        specifier: workspace:*
+        version: link:../canton-connect
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -1986,6 +1992,12 @@ packages:
 
   '@zag-js/interact-outside@1.43.1':
     resolution: {integrity: sha512-KQCsiG2x1eYtf3BceYto3xKPbFpZP0weHcdxvOzr7Hcalrrlm4FcOn9KnfRYFWIVnF39CL8TAMptCnuoN8oAng==}
+
+  '@zag-js/popover@1.43.1':
+    resolution: {integrity: sha512-MpuM6+nDN4Bw2YuPVp/TR3+NDH+cu7B3eK/S4eHgmbPFwjT8DPVYot6wTZL4TgovmGS1wwVElywfa1D/81sMUg==}
+
+  '@zag-js/popper@1.43.1':
+    resolution: {integrity: sha512-xqka/qkx3cdQ5lGH2xWqDKYGzAXcnvdfNTiQl8hSxDeyqcTTS8peitPscbikSBCT56i4dk5+72wKeDrSOuY9aw==}
 
   '@zag-js/react@1.43.1':
     resolution: {integrity: sha512-bSXhZqxuN/qzVJiDcIXDeDGOiJtrP4u7FXnZ1Jrwf0KlrlSIdq3sMQyzFHemcFxyt1fL7DCxwIqtcB1MfDCMHA==}
@@ -6034,6 +6046,25 @@ snapshots:
 
   '@zag-js/interact-outside@1.43.1':
     dependencies:
+      '@zag-js/dom-query': 1.43.1
+      '@zag-js/utils': 1.43.1
+
+  '@zag-js/popover@1.43.1':
+    dependencies:
+      '@zag-js/anatomy': 1.43.1
+      '@zag-js/aria-hidden': 1.43.1
+      '@zag-js/core': 1.43.1
+      '@zag-js/dismissable': 1.43.1
+      '@zag-js/dom-query': 1.43.1
+      '@zag-js/focus-trap': 1.43.1
+      '@zag-js/popper': 1.43.1
+      '@zag-js/remove-scroll': 1.43.1
+      '@zag-js/types': 1.43.1
+      '@zag-js/utils': 1.43.1
+
+  '@zag-js/popper@1.43.1':
+    dependencies:
+      '@floating-ui/dom': 1.8.0
       '@zag-js/dom-query': 1.43.1
       '@zag-js/utils': 1.43.1
 

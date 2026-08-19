@@ -85,7 +85,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-barebones/wallet-service/`](canton-barebones/wallet-service/) | JSON-RPC bridge between the wallet and the Canton participant. Started by `pnpm run canton:up`. Self-mints its Canton JWT. | Node + Express + TypeScript | 3010 |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp; runs mock-first (DirectWallet party-picker + in-memory backend, no services). Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`); live ledger + CIP-0103 path deferred. | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 ## Code Style
@@ -101,9 +101,10 @@ A README may state that a contract exists and link to it. It may not restate it.
   captioned. A section header grouping a block of tokens or exports is not a member comment and
   stays allowed.
 - **CSS carries no comments at all, with one exception: a section separator** naming the block that
-  follows (`/* Modal */`, `/* Header */`, `/* Colour roles */`). Nothing else, not even the
-  why-exception below: a stylesheet workaround or ordering constraint is recorded in the nearest
-  `CLAUDE.md`, where the next author looks before editing, and not in a comment they will delete.
+  follows (`/* Account popover */`, `/* Token chips */`, `/* Colour roles */`). Nothing else, not
+  even the why-exception below: a stylesheet workaround or ordering constraint is recorded in the
+  nearest `CLAUDE.md`, where the next author looks before editing, and not in a comment they will
+  delete.
 - Outside CSS, the only exception is something the code cannot carry: a hack, a workaround, a
   non-obvious external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate
   *omission*, or a rejected alternative. Comment that, one line, on the line it applies to. Before
@@ -176,6 +177,16 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - `ref` is an ordinary prop (React 19), so do not reach for `forwardRef`. Do not declare it until a
   consumer needs one: a published prop is a contract owed forever, and adding it later is
   non-breaking.
+- **State a component reads from a provider is never also a prop.** `isConnecting` and `partyId`
+  on `<ConnectButton>` shadowed the wallet session, so a caller could contradict a connect already
+  in flight and the component had to pick a winner. One source, and a consumer wanting other
+  behaviour composes the hook the provider already exports. This is what RainbowKit and ConnectKit
+  do: no state props, a render-prop that *exposes* the same state if markup must differ.
+- **A consumer's handler composes with the component's own action, never replaces it.** Run theirs
+  first and treat the built-in as the default action, so `preventDefault` opts out explicitly;
+  `onClick ?? doTheThing` silently drops the behaviour the component exists for. Where a state
+  machine owns the handler, merge through its own utility (`mergeProps` in Zag) rather than by
+  hand, so a handler the library adds later is not missed.
 - Tests assert on roles, accessible names, and whatever contract the component declares. Never on
   styling.
 
