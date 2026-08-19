@@ -20,8 +20,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
-import { selectPrimaryAccount, toParty } from './walletAccount'
+import type { CantonConnectConfig, ConnectionStatus, Party } from '#src/types'
+import { selectPrimaryAccount, toParty } from '#src/walletAccount'
 
 /**
  * Mirrored from the SDK's `txChanged` event as a command moves through

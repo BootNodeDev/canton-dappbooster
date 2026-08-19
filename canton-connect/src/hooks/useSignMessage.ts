@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useCantonConnectContext } from '../CantonConnectProvider'
+import { useCantonConnectContext } from '#src/CantonConnectProvider'
 
 export interface UseSignMessageResult {
   /** Throws if no wallet is connected. */

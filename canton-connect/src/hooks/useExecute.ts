@@ -1,6 +1,6 @@
 import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback, useState } from 'react'
-import { type TxStatusSnapshot, useCantonConnectContext } from '../CantonConnectProvider'
+import { type TxStatusSnapshot, useCantonConnectContext } from '#src/CantonConnectProvider'
 
 /** Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type. */
 export type { PrepareExecuteParams }

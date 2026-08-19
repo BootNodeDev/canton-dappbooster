@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createMockAdapter } from './mockAdapter'
+import { createMockAdapter } from '#src/mock/mockAdapter'
 
 describe('createMockAdapter', () => {
   it('detects as available with no real wallet installed', async () => {

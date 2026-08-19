@@ -35,6 +35,17 @@
       "import": "./dist/testing/index.js"
     }
   },
+  "imports": {
+    "#src/*": {
+      "types": [
+        "./src/*.ts",
+        "./src/*.tsx",
+        "./src/*/index.ts",
+        "./src/*/index.tsx"
+      ],
+      "default": "./src/*"
+    }
+  },
   "peerDependencies": {
     "@canton-network/core-types": "^1.8.0",
     "@canton-network/dapp-sdk": "^1.4.0",

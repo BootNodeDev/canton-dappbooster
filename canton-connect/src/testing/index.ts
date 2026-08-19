@@ -1,7 +1,7 @@
-export { createAutoPicker } from './autoPicker'
+export { createAutoPicker } from '#src/testing/autoPicker'
 export {
   createFakeWallet,
   type FakeWallet,
   type FakeWalletAccount,
   type FakeWalletOptions,
-} from './fakeWallet'
+} from '#src/testing/fakeWallet'
