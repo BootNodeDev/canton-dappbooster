@@ -2,7 +2,7 @@ import type { StatusEvent } from '@canton-network/dapp-sdk'
 import { assign, fromCallback, fromPromise, type SnapshotFrom, setup } from 'xstate'
 import type { ConnectionStatus } from './types'
 
-export type WalletStatus = Pick<StatusEvent, 'connection' | 'session'>
+export type WalletStatusUpdate = Pick<StatusEvent, 'connection' | 'session'>
 
 export const toConnectionStatus = (
   snapshot: SnapshotFrom<typeof connectionMachine>,
@@ -25,30 +25,30 @@ export const toConnectionStatus = (
 
 export const connectionMachine = setup({
   actors: {
-    connect: fromPromise<WalletStatus>(() =>
+    connect: fromPromise<WalletStatusUpdate>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
     init: fromPromise<void>(() => Promise.reject(new Error('init actor not provided'))),
-    restore: fromPromise<WalletStatus>(() =>
+    restore: fromPromise<WalletStatusUpdate>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
     walletEvents: fromCallback(() => {}),
   },
   actions: {
-    applyWalletStatus: assign(({ context }, params: { status: WalletStatus }) => ({
+    applyWalletStatus: assign(({ context }, params: { status: WalletStatusUpdate }) => ({
       connection: params.status.connection,
       session: params.status.session ?? context.session,
     })),
   },
   guards: {
-    hasSession: (_, params: { session: WalletStatus['session'] }) => !!params.session,
-    isAuthenticated: (_, params: { connection: WalletStatus['connection'] }) =>
+    hasSession: (_, params: { session: WalletStatusUpdate['session'] }) => !!params.session,
+    isAuthenticated: (_, params: { connection: WalletStatusUpdate['connection'] }) =>
       params.connection.isConnected,
   },
   types: {
     context: {} as {
-      connection: WalletStatus['connection'] | undefined
-      session: WalletStatus['session']
+      connection: WalletStatusUpdate['connection'] | undefined
+      session: WalletStatusUpdate['session']
       error: unknown
     },
     events: {} as
@@ -56,7 +56,7 @@ export const connectionMachine = setup({
       | { type: 'cancel' }
       | { type: 'disconnect' }
       | { type: 'restore' }
-      | { type: 'wallet.statusChanged'; status: WalletStatus },
+      | { type: 'wallet.statusChanged'; status: WalletStatusUpdate },
   },
 }).createMachine({
   context: {

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine, toConnectionStatus, type WalletStatus } from './connectionMachine'
+import { connectionMachine, toConnectionStatus, type WalletStatusUpdate } from './connectionMachine'
 import { pause } from './testing'
 
 const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMachine>>) => {
@@ -12,9 +12,9 @@ const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMach
   return states
 }
 
-const connection: WalletStatus['connection'] = { isConnected: true, isNetworkConnected: true }
-const loggedOutConnection = { ...connection, isConnected: false }
-const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
+const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
+const unauthenticatedConnection = { ...connection, isConnected: false }
+const session: WalletStatusUpdate['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionMachine', () => {
   const init = fromPromise(() => Promise.resolve())
@@ -62,7 +62,7 @@ describe('connectionMachine', () => {
     it('lands recovered sessions in context', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          connect: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -79,7 +79,7 @@ describe('connectionMachine', () => {
   })
 
   describe('cancel', () => {
-    it('aborts the in-flight boot', () => {
+    it('aborts the in-flight init', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
@@ -149,7 +149,7 @@ describe('connectionMachine', () => {
   })
 
   describe('failure', () => {
-    it('lands in failure with the reason', async () => {
+    it('lands in failure when connect throws', async () => {
       const machine = connectionMachine.provide({
         actors: {
           connect: fromPromise(() => Promise.reject(new Error('wallet rejected'))),
@@ -191,7 +191,7 @@ describe('connectionMachine', () => {
     it('lands in failure when the wallet declines the connection', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise<WalletStatus>(() =>
+          connect: fromPromise<WalletStatusUpdate>(() =>
             Promise.resolve({
               connection: {
                 isConnected: false,
@@ -216,12 +216,12 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('retries the boot when restore is sent again', async () => {
+    it('retries the init when restore is sent again', async () => {
       const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(new Error('init failed'))
       const machine = connectionMachine.provide({
         actors: {
           init: fromPromise(init),
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -291,7 +291,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -321,8 +321,8 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: loggedOutConnection, session }),
+          restore: fromPromise<WalletStatusUpdate>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection, session }),
           ),
         },
       })
@@ -385,7 +385,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
+          restore: fromPromise<WalletStatusUpdate>(() =>
             Promise.resolve({ connection: { isConnected: false, isNetworkConnected: false } }),
           ),
         },
@@ -469,7 +469,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
+          restore: fromPromise<WalletStatusUpdate>(() =>
             Promise.resolve({
               connection: { isConnected: false, isNetworkConnected: true },
               session,
@@ -489,11 +489,11 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('surfaces a broken boot as a failure', async () => {
-      const bootFailed = new Error('boot failed')
+    it('surfaces a failed init as a failure', async () => {
+      const initFailed = new Error('init failed')
       const machine = connectionMachine.provide({
         actors: {
-          init: fromPromise(() => Promise.reject(bootFailed)),
+          init: fromPromise(() => Promise.reject(initFailed)),
         },
       })
       const actor = createActor(machine)
@@ -503,7 +503,7 @@ describe('connectionMachine', () => {
       await pause(0)
 
       expect(actor.getSnapshot().matches('failure')).toBe(true)
-      expect(actor.getSnapshot().context.error).toBe(bootFailed)
+      expect(actor.getSnapshot().context.error).toBe(initFailed)
 
       actor.stop()
     })
@@ -580,7 +580,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -594,7 +594,7 @@ describe('connectionMachine', () => {
       actor.send({
         type: 'wallet.statusChanged',
         status: {
-          connection: loggedOutConnection,
+          connection: unauthenticatedConnection,
           session: { ...session, accessToken: 'stale-token' },
         },
       })
@@ -610,8 +610,8 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: loggedOutConnection, session }),
+          restore: fromPromise<WalletStatusUpdate>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection, session }),
           ),
         },
       })
@@ -624,7 +624,10 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
 
-      const freshSession: WalletStatus['session'] = { accessToken: 'fresh-token', userId: 'user' }
+      const freshSession: WalletStatusUpdate['session'] = {
+        accessToken: 'fresh-token',
+        userId: 'user',
+      }
       actor.send({ type: 'wallet.statusChanged', status: { connection, session: freshSession } })
 
       expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
@@ -638,7 +641,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -649,11 +652,14 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
 
-      const freshConnection: WalletStatus['connection'] = {
+      const freshConnection: WalletStatusUpdate['connection'] = {
         isConnected: true,
         isNetworkConnected: false,
       }
-      const freshSession: WalletStatus['session'] = { accessToken: 'fresh-token', userId: 'user' }
+      const freshSession: WalletStatusUpdate['session'] = {
+        accessToken: 'fresh-token',
+        userId: 'user',
+      }
       actor.send({
         type: 'wallet.statusChanged',
         status: { connection: freshConnection, session: freshSession },
@@ -670,8 +676,8 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: loggedOutConnection, session }),
+          restore: fromPromise<WalletStatusUpdate>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection, session }),
           ),
         },
       })
@@ -684,7 +690,10 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
 
-      actor.send({ type: 'wallet.statusChanged', status: { connection: loggedOutConnection } })
+      actor.send({
+        type: 'wallet.statusChanged',
+        status: { connection: unauthenticatedConnection },
+      })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
       expect(actor.getSnapshot().context.session).toBe(session)
@@ -697,7 +706,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -724,7 +733,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => {
             walletSubscribed()
           }),
@@ -749,8 +758,8 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: loggedOutConnection, session }),
+          restore: fromPromise<WalletStatusUpdate>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection, session }),
           ),
           walletEvents: fromCallback(({ sendBack }) => {
             sendBack({ type: 'wallet.statusChanged', status: { connection, session } })
@@ -774,7 +783,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => walletUnsubscribed),
         },
       })
@@ -799,7 +808,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init,
-          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          restore: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => {
             walletSubscribed()
           }),
@@ -815,7 +824,7 @@ describe('connectionMachine', () => {
 
       actor.send({
         type: 'wallet.statusChanged',
-        status: { connection: loggedOutConnection, session },
+        status: { connection: unauthenticatedConnection, session },
       })
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
@@ -862,7 +871,7 @@ describe('connectionMachine', () => {
     it('reports connected for a live session', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+          connect: fromPromise<WalletStatusUpdate>(() => Promise.resolve({ connection, session })),
         },
       })
       const actor = createActor(machine)
@@ -880,8 +889,8 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init: fromPromise(() => Promise.resolve()),
-          restore: fromPromise<WalletStatus>(() =>
-            Promise.resolve({ connection: loggedOutConnection, session }),
+          restore: fromPromise<WalletStatusUpdate>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection, session }),
           ),
         },
       })
@@ -900,7 +909,7 @@ describe('connectionMachine', () => {
       const machine = connectionMachine.provide({
         actors: {
           init: fromPromise(() => Promise.resolve()),
-          restore: fromPromise<WalletStatus>(() => new Promise(() => {})),
+          restore: fromPromise<WalletStatusUpdate>(() => new Promise(() => {})),
         },
       })
       const actor = createActor(machine)
@@ -917,7 +926,9 @@ describe('connectionMachine', () => {
     it('reports disconnected after a failure', async () => {
       const machine = connectionMachine.provide({
         actors: {
-          connect: fromPromise<WalletStatus>(() => Promise.reject(new Error('picker exploded'))),
+          connect: fromPromise<WalletStatusUpdate>(() =>
+            Promise.reject(new Error('picker exploded')),
+          ),
         },
       })
       const actor = createActor(machine)

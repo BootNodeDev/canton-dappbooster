@@ -4,19 +4,19 @@ import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { createConnectionActors } from './connectionActors'
-import { connectionMachine, type WalletStatus } from './connectionMachine'
+import { connectionMachine, type WalletStatusUpdate } from './connectionMachine'
 import { createMockAdapter } from './mock/mockAdapter'
 import { pause } from './testing'
 
 const pickerExploded = new Error('picker exploded')
 
 const connection: ConnectResult = { isConnected: true, isNetworkConnected: true }
-const noSession: ConnectResult = { isConnected: false, isNetworkConnected: false }
-const declined = { ...noSession, reason: 'user rejected' }
+const unauthenticatedConnection: ConnectResult = { ...connection, isConnected: false }
+const declined = { ...unauthenticatedConnection, reason: 'user rejected' }
 
 const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
 
-const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
+const session: WalletStatusUpdate['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionActors', () => {
   describe('connect actor', () => {
@@ -28,7 +28,7 @@ describe('connectionActors', () => {
       throw new Error('teardown must not run during connect')
     }
     const status = () => {
-      throw new Error('probe must not run on a resolved connect')
+      throw new Error('status must not be read on a resolved connect')
     }
 
     it('initializes the SDK before connecting', async () => {
@@ -121,7 +121,7 @@ describe('connectionActors', () => {
         init,
         onStatusChanged,
         removeOnStatusChanged,
-        status: () => Promise.resolve({ ...liveStatus, connection: noSession }),
+        status: () => Promise.resolve({ ...liveStatus, connection: unauthenticatedConnection }),
       }
       const actor = createActor(createConnectionActors(sdk).connect)
 
@@ -137,7 +137,7 @@ describe('connectionActors', () => {
       actor.stop()
     })
 
-    it('surfaces the original error even when the probe itself fails', async () => {
+    it('surfaces the original error even when the check itself fails', async () => {
       const sdk = {
         connect: () => Promise.reject(pickerExploded),
         init,
@@ -249,8 +249,8 @@ describe('connectionActors', () => {
     })
 
     it('retries init after a failure', async () => {
-      const bootError = new Error('boot failed')
-      const sdkInit = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
+      const initError = new Error('init failed')
+      const sdkInit = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(initError)
       const sdk = {
         connect,
         init: sdkInit,
@@ -266,7 +266,7 @@ describe('connectionActors', () => {
       await pause(0)
 
       expect(firstActor.getSnapshot().status).toBe('error')
-      expect(firstActor.getSnapshot().error).toBe(bootError)
+      expect(firstActor.getSnapshot().error).toBe(initError)
 
       const secondActor = createActor(init)
       secondActor.start()
@@ -368,7 +368,7 @@ describe('connectionActors', () => {
       expect(actor.getSnapshot().value).toEqual({ session: 'authenticated' })
       expect(captured).toBeDefined()
 
-      captured?.({ ...restorable, connection: noSession })
+      captured?.({ ...restorable, connection: unauthenticatedConnection })
 
       expect(actor.getSnapshot().value).toEqual({ session: 'unauthenticated' })
 

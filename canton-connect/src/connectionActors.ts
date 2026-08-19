@@ -1,7 +1,8 @@
 import type { DappSDK, StatusEvent } from '@canton-network/dapp-sdk'
 import { fromCallback, fromPromise } from 'xstate'
-import type { WalletStatus } from './connectionMachine'
+import type { WalletStatusUpdate } from './connectionMachine'
 
+// DappSDKConnectOptions is not exported from the package index; derived until it is
 type InitOptions = NonNullable<Parameters<DappSDK['init']>[0]>
 
 export const createConnectionActors = (
@@ -24,7 +25,7 @@ export const createConnectionActors = (
   }
 
   return {
-    connect: fromPromise<WalletStatus>(async () => {
+    connect: fromPromise<WalletStatusUpdate>(async () => {
       await ensureInit()
 
       try {
@@ -51,7 +52,7 @@ export const createConnectionActors = (
       }
     }),
     init: fromPromise(() => ensureInit()),
-    restore: fromPromise<WalletStatus>(async () => {
+    restore: fromPromise<WalletStatusUpdate>(async () => {
       const { connection, session } = await sdk.status()
 
       return { connection, session }
