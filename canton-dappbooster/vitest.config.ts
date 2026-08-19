@@ -9,5 +9,7 @@ export default defineConfig({
     // A stub or spy surviving into the next test is an order-dependent pass; undo both centrally.
     restoreMocks: true,
     unstubGlobals: true,
+    // Room for the SDK's discovery sleeps plus the asyncUtilTimeout waiting them out.
+    testTimeout: 10_000,
   },
 })

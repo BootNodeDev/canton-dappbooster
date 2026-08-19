@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
+import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
 import { useParty } from '@/hooks/useParty'
 import { useUiStore } from '@/store/useUiStore'
 import { ConnectScreen } from './ConnectScreen'
@@ -23,13 +24,12 @@ export const AppShell = (): React.JSX.Element => {
   const role = useUiStore((s) => s.role)
   const location = useLocation()
 
-  if (!isConnected) {
-    return <ConnectScreen />
-  }
-
+  useConnectErrorToast()
   const { title, crumb } = titleFor(location.pathname, role)
 
-  return (
+  return !isConnected ? (
+    <ConnectScreen />
+  ) : (
     <div className="flex min-h-screen">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">

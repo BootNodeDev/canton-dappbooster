@@ -32,8 +32,17 @@ a single one here would be unbeatable from outside the package.
   (appearance drifts when the palette changes) and not `--cnc-identifier-copy` (a token every
   component can read is the point).
 - Colour roles: `bg`, `surface`, `text`, `border`, `overlay`, `accent`, `swatch`, and the state roles
-  `success`, `warning`, `danger`. Shape roles: `radius`, `font-mono`. `overlay` is the scrim a
-  layer above the page sits on, so it is the one role whose value is translucent by definition.
+  `success`, `warning`, `danger`. Shape roles: `radius`, `space`, `font-mono`. Motion role:
+  `duration`. Elevation role: `shadow`. `overlay` and `shadow` are the two roles whose values are
+  translucent by definition: one is the scrim a layer above the page sits on, the other the cast it
+  throws onto the page it floats over.
+- `space` is distance inside a component — gaps between its parts, padding within them — never
+  layout between components: the page owns that and never reads our tokens. It is the one role with
+  a size scale, `-xs` through `-xl` around an unsuffixed default, on the 4px grid the rest of the
+  industry uses. Reach for a step first. A distance no step lands on is a multiple of `-xs`, the
+  grid unit — `calc(var(--cnc-space-xs) * 2.5)` — and never a literal, so the scale stays the only
+  input and retuning it moves everything derived from it. One derivation form throughout: two
+  spellings of 12px read as two different decisions.
 - `swatch` is the one numbered role: `--cnc-swatch-1` … `--cnc-swatch-8` and their `-fg`, a
   categorical palette for a placeholder standing in for artwork that does not exist (a token with no
   logo). Anything picking one hashes an identifier to the index and puts it in a `data-*`; the
@@ -41,14 +50,23 @@ a single one here would be unbeatable from outside the package.
 - Variants modify a role:
   - `-muted` / `-strong` — same kind as the base, less or more emphasis. `--cnc-text-muted` is
     still a text colour; `--cnc-surface-muted` is still a surface. Emphasis is a colour axis, so
-    neither variant applies to `radius`: a second corner is a size scale, which the grid has not
-    got and which no single component earns.
+    neither variant applies to a shape role. A shape role that needs more than one value takes the
+    size steps below instead.
+  - `-xs` / `-sm` / `-lg` / `-xl` — steps of a scale around the unsuffixed default, which is the
+    middle and stays the one to reach for first. `space` and `duration` have them; `radius` does
+    not, because a second corner is a decision no component has earned.
   - `-subtle` — a pale *fill* derived from a role whose base value is a foreground colour, for
     badges and callouts. `--cnc-danger` is the text, `--cnc-danger-subtle` the wash behind it.
   - `-hover` — the same role under interaction.
   - `-fg` — the text colour that sits *on* that role's fill (`--cnc-accent-fg` over `--cnc-accent`).
-- Colour and shape only. No spacing or typography scale until a component needs one; adding a scale
-  is a contract decision, not a convenience.
+- Colour, shape and motion. `space` and `duration` are the only scales and both are deliberately
+  short; there is no typography scale, and adding one is a contract decision, not a convenience.
+- `duration` is how long a state change takes, not what it looks like getting there: the easing
+  curve stays a literal until a component needs a second one. The default is the hover-and-focus
+  band; reach past it only for something that moves rather than recolours.
+- Every size token is `rem`, so the grid follows the reader's root font size. `px` survives only
+  where a value must not scale: hairline borders and focus outlines, which round to a blurred or
+  vanishing fraction of a device pixel in `rem`.
 
 ## When a token earns existence
 
@@ -71,7 +89,7 @@ a media query. The attribute must decide in both directions. That runtime is `<T
 and this package stays free of JavaScript.
 
 Every token in `:root` needs a dark counterpart unless it is mode-independent by construction
-(radius, font stack).
+(radius, space, duration, font stack).
 
 `color-scheme` follows the same rule and is the one non-token declaration here: it hands the browser
 the mode for the surfaces we cannot style (scrollbars, form controls, the caret). One explicit value
@@ -100,7 +118,7 @@ exactly the case the attribute exists for.
   short viewport, and the card has no scroll of its own to catch the spill. It is `rem` and not `px`
   because the rows it windows are measured in `rem` too, from `ROW_HEIGHT_REM`.
 - The token select's list takes `overscroll-behavior: contain`. Reaching either end of a scroller
-  inside a modal must not start scrolling the page behind it, which the user cannot see moving.
+  inside a dialog must not start scrolling the page behind it, which the user cannot see moving.
 - The token select's favourites are ruled off from the list by their own `border-bottom`, not a
   separate element, and the margin above matches the padding below so the rule sits centred in the
   gap it divides.
@@ -111,7 +129,7 @@ exactly the case the attribute exists for.
 - The favourite chip and the token field's own token part share one rule, because they are the same
   object rendered twice. What differs is a chip's border and cursor, and that the field's part
   stretches to the amount input beside it.
-- The favourite chip's logo is selected as `.cnc-token-logo.cnc-token-select-modal__favorite-logo`,
+- The favourite chip's logo is selected as `.cnc-token-logo.cnc-token-select-dialog__favorite-logo`,
   a compound and not a descendant, because both classes land on the same element and the tie with
   `.cnc-token-logo` further down would otherwise go to source order.
 - Shrinking that disc to `1.5rem` leaves `[data-fallback]`'s `0.6875rem` font-size, which was sized
@@ -133,9 +151,33 @@ exactly the case the attribute exists for.
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the
   accessibility tree and silences the announcement it exists for.
-- `z-index` appears once, on the token select modal's backdrop and positioner, because those two sit
-  above the page instead of in it. Everything else stacks in document order; a second value here
-  means two components can fight over depth, so treat adding one as a contract decision.
+- Depth is set twice, on the token select dialog's backdrop and positioner at `100` and the account
+  popover's positioner at `50`, because those sit above the page instead of in it. Both are
+  portalled, so document order cannot decide it: a host's own stacking context — a sticky header,
+  say — otherwise renders over them. The two values are ordered so a dialog covers a popover.
+  Everything else stacks in document order, and a third value means three components can fight
+  over depth, so treat adding one as a contract decision.
+- **A part Zag marks `hidden` needs its own `[hidden] { display: none }` rule here.** Zag's
+  `getContentProps` closes a popover by setting the `hidden` attribute and leaves the hiding to CSS,
+  but `[hidden]` only carries `display: none` in the user-agent stylesheet, which any author `display`
+  loses to whatever the layer or the specificity. So `.cnc-account-popover`'s own `display: flex`
+  keeps the closed panel on screen for a consumer whose reset does not re-declare `[hidden]`; ours
+  only looked right because `dapp/frontend` pulls in Tailwind's preflight. This applies to every
+  future part whose machine hides it by attribute rather than by unmounting.
+- The popover's `z-index` goes on its content, never its positioner. Zag's popper owns the
+  positioner's inline style and, on every placement, copies the *content's* computed `z-index` onto
+  it as `--z-index`; a rule on the positioner is overwritten with `auto`, and the popover ends up
+  behind the header it was opened from. The dialog is the other way round, on the positioner and
+  the backdrop, because its machine does not use the popper.
+- A `@keyframes` name is global whatever layer declares it, so it carries the `cnc-` prefix like a
+  token does and is public the moment it ships. Its duration comes off the `duration` scale, by
+  `calc()` where no step fits, for the same reason every other distance does.
+- **Anything that moves ships its own `prefers-reduced-motion: reduce` rule, right beside it.** The
+  package is consumed as a stylesheet with no reset assumed, so a consumer's blanket
+  `animation-duration: 0.01ms !important` is not ours to count on, and we cannot write that rule
+  ourselves: `!important` inside a layer is unbeatable from outside. Kill the animation instead, and
+  leave the meaning to something that is not motion — the connect spinner stops, and the button
+  still reads "Connecting…". Recolouring transitions need no guard; the preference is about motion.
 - Comments: root [`../CLAUDE.md`](../CLAUDE.md) allows only section separators. A stylesheet fact
   worth keeping is written into this file instead, under the section that owns it.
 

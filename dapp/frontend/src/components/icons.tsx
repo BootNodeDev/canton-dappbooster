@@ -58,26 +58,6 @@ export const MoonIcon = (p: IconProps) => (
   </Svg>
 )
 
-export const CopyIcon = (p: IconProps) => (
-  <Svg {...p}>
-    <rect x="9" y="9" width="11" height="11" rx="2" />
-    <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-  </Svg>
-)
-
-export const LogoutIcon = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
-    <path d="M10 17l5-5-5-5M15 12H3" />
-  </Svg>
-)
-
-export const ChevronDownIcon = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M6 9l6 6 6-6" />
-  </Svg>
-)
-
 export const LockIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="4.5" y="11" width="15" height="9" rx="2" />

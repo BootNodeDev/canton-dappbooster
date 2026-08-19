@@ -17,6 +17,7 @@
 
     /* overlay */
     --cnc-overlay: rgb(20 21 43 / 0.5);
+    --cnc-shadow: 0 0.5rem 1.5rem rgb(20 21 43 / 0.12);
 
     /* accent */
     --cnc-accent: #692581;
@@ -51,7 +52,21 @@
     --cnc-swatch-8-fg: oklch(0.36 0.1 340);
 
     /* shape */
-    --cnc-radius: 8px;
+    --cnc-radius: 0.5rem;
+    --cnc-space-xs: 0.25rem;
+    --cnc-space-sm: 0.5rem;
+    --cnc-space: 1rem;
+    --cnc-space-lg: 1.5rem;
+    --cnc-space-xl: 2rem;
+
+    /* motion */
+    --cnc-duration-xs: 75ms;
+    --cnc-duration-sm: 100ms;
+    --cnc-duration: 150ms;
+    --cnc-duration-lg: 300ms;
+    --cnc-duration-xl: 500ms;
+
+    /* typography */
     --cnc-font-mono: ui-monospace, SFMono-Regular, monospace;
   }
 
@@ -73,6 +88,7 @@
 
     /* overlay */
     --cnc-overlay: rgb(0 0 0 / 0.65);
+    --cnc-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.5);
 
     /* accent */
     --cnc-accent: #9d54b8;

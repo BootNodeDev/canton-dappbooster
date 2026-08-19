@@ -17,7 +17,10 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
   It is the single source of truth for theme selectors, test assertions, and docs.
 - Part classes are kebab-case regardless of the folder's casing: `Identifier/` renders
   `.cnc-identifier`, `ExplorerLink/` renders `.cnc-explorer-link`. BEM `__` for sub-parts.
-- `src/index.ts` is the public API. Nothing else is importable by consumers.
+- `src/index.ts` is the public API, `src/connect.ts` the `/connect` sub-path barrel. Nothing else is
+  importable by consumers. A component that imports `@bootnodedev/canton-connect` goes in
+  `connect.ts`, never `index.ts`: the barrel is the whole Canton SDK's entry point into a consumer's
+  graph, and under the `development` condition nothing tree-shakes it back out.
 - Nothing in `src/providers/` renders DOM of its own, so those folders have no `anatomy.ts` and no
   theme rules: there is no markup to style. The authoring steps below are for components that render.
 - `src/icons/` sits at the root ahead of the second-consumer rule: an icon is never one component's,
@@ -36,6 +39,10 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
    on, keyed by role: `invalid`, not `rootInvalid`). This typed const is what the theme, the tests,
    and the docs all derive from. An `aria-*` is placed by the component but is never an entry; write
    it from the same value as its `data-*` so they cannot disagree (`src/utils/invalid.ts`).
+   A slot filled by *another* kit component gets a part too, passed to it as `className`, so the
+   theme selects a compound on one element rather than reaching down from an ancestor. A descendant
+   selector would restyle every instance a consumer ever nests there, and leaves the DOM contract
+   incomplete for anyone theming it themselves.
 2. **`index.tsx`** — take class names from `anatomy.parts.*`, merged with the consumer's `className`
    through `cx` from `src/utils/cx.ts`; never hand-roll the join. No CSS import. Keyboard-heavy
    widgets hand-roll on Zag prop-getters; display primitives use plain React state.
@@ -44,11 +51,15 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
 4. **Test** — the contract the root rule says to assert against is `anatomy.parts.*` here. A state
    the theme styles but no role or accessible name carries needs a live-region part; see `status` on
    `<Identifier>`.
-5. **Export** from `src/index.ts`.
+5. **Export** from `src/index.ts`, or from `src/connect.ts` if it reads the wallet session.
 
 ## Working Rules
 
 - Components import no CSS. `sideEffects: false` depends on it.
+- `tsconfig.json`'s `customConditions: ["development"]` is load-bearing: without it
+  `@bootnodedev/canton-connect` resolves through its `types` entry into `dist/`, which is
+  gitignored, and CI typechecks before it builds. It passes locally either way, because a `dist/`
+  from an earlier build is sitting there.
 - Keep this package app-agnostic: do not import from `dapp/` or `canton-barebones/`.
 - React 19 only, peer and dev alike.
 - `dapp/frontend` keeps its own copy/check icons in `components/icons.tsx`. Leave them: the kit's

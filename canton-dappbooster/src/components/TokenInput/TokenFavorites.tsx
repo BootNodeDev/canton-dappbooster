@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
 import { TokenLogo } from '../TokenLogo'
-import { modalAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from './anatomy'
 import { MAX_FAVORITES } from './constants'
 import { tokenLabel } from './tokenLabel'
 
