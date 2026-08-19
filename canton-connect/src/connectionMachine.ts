@@ -15,7 +15,7 @@ export const toConnectionStatus = (
     return 'connected'
   }
 
-  if (snapshot.matches('restoring')) {
+  if (snapshot.matches('restoring') || snapshot.matches('initializing')) {
     return 'idle'
   }
 
@@ -28,6 +28,7 @@ export const connectionMachine = setup({
     connect: fromPromise<WalletStatus>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
+    init: fromPromise<void>(() => Promise.reject(new Error('init actor not provided'))),
     restore: fromPromise<WalletStatus>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
@@ -69,7 +70,7 @@ export const connectionMachine = setup({
     disconnected: {
       on: {
         connect: { target: 'connecting' },
-        restore: { target: 'restoring' },
+        restore: { target: 'initializing' },
       },
     },
     connecting: {
@@ -183,6 +184,16 @@ export const connectionMachine = setup({
       },
       on: {
         cancel: { target: 'disconnected' },
+      },
+    },
+    initializing: {
+      invoke: {
+        src: 'init',
+        onDone: { target: 'restoring' },
+        onError: {
+          target: 'failure',
+          actions: assign({ error: ({ event: { error } }) => error }),
+        },
       },
     },
   },

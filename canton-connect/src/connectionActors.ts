@@ -50,9 +50,8 @@ export const createConnectionActors = (
         throw error
       }
     }),
+    init: fromPromise(() => ensureInit()),
     restore: fromPromise<WalletStatus>(async () => {
-      await ensureInit()
-
       const { connection, session } = await sdk.status()
 
       return { connection, session }

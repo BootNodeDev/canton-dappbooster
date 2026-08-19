@@ -19,77 +19,6 @@ const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
 const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionActors', () => {
-  it('inits the SDK once per factory', async () => {
-    const init = vi.fn(() => Promise.resolve())
-    const sdk = {
-      connect: () => {
-        throw new Error('connect must not run during restore')
-      },
-      init,
-      onStatusChanged: () => {
-        throw new Error('pushes must not be wired during restore')
-      },
-      removeOnStatusChanged: () => {
-        throw new Error('teardown must not run during restore')
-      },
-      status: () => Promise.resolve({ ...liveStatus, session }),
-    }
-    const { restore } = createConnectionActors(sdk)
-
-    const firstActor = createActor(restore)
-    firstActor.start()
-    await pause(0)
-
-    expect(firstActor.getSnapshot().status).toBe('done')
-
-    const secondActor = createActor(restore)
-    secondActor.start()
-    await pause(0)
-
-    expect(secondActor.getSnapshot().status).toBe('done')
-    expect(init).toHaveBeenCalledOnce()
-
-    firstActor.stop()
-    secondActor.stop()
-  })
-
-  it('retries init after a failure', async () => {
-    const bootError = new Error('boot failed')
-    const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
-    const sdk = {
-      connect: () => {
-        throw new Error('connect must not run during restore')
-      },
-      init,
-      onStatusChanged: () => {
-        throw new Error('pushes must not be wired during restore')
-      },
-      removeOnStatusChanged: () => {
-        throw new Error('teardown must not run during restore')
-      },
-      status: () => Promise.resolve({ ...liveStatus, session }),
-    }
-    const { restore } = createConnectionActors(sdk)
-
-    const firstActor = createActor(restore)
-    firstActor.subscribe({ error: () => {} })
-    firstActor.start()
-    await pause(0)
-
-    expect(firstActor.getSnapshot().status).toBe('error')
-    expect(firstActor.getSnapshot().error).toBe(bootError)
-
-    const secondActor = createActor(restore)
-    secondActor.start()
-    await pause(0)
-
-    expect(secondActor.getSnapshot().status).toBe('done')
-    expect(init).toHaveBeenCalledTimes(2)
-
-    firstActor.stop()
-    secondActor.stop()
-  })
-
   describe('connect actor', () => {
     const init = () => Promise.resolve()
     const onStatusChanged = () => {
@@ -230,9 +159,133 @@ describe('connectionActors', () => {
     })
   })
 
+  describe('init actor', () => {
+    const connect = () => {
+      throw new Error('connect must not run during init')
+    }
+    const onStatusChanged = () => {
+      throw new Error('pushes must not be wired during init')
+    }
+    const removeOnStatusChanged = () => {
+      throw new Error('teardown must not run during init')
+    }
+    const status = () => {
+      throw new Error('status must not be read during init')
+    }
+
+    it('inits the SDK once per factory', async () => {
+      const sdkInit = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init: sdkInit,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status,
+      }
+      const { init } = createConnectionActors(sdk)
+
+      const firstActor = createActor(init)
+      firstActor.start()
+      await pause(0)
+
+      expect(firstActor.getSnapshot().status).toBe('done')
+
+      const secondActor = createActor(init)
+      secondActor.start()
+      await pause(0)
+
+      expect(secondActor.getSnapshot().status).toBe('done')
+      expect(sdkInit).toHaveBeenCalledOnce()
+
+      firstActor.stop()
+      secondActor.stop()
+    })
+
+    it('keeps the SDK default gateways out unless opted in', async () => {
+      const sdkInit = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init: sdkInit,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status,
+      }
+      const actor = createActor(createConnectionActors(sdk).init)
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(sdkInit).toHaveBeenCalledWith({ defaultAdapters: [] })
+
+      actor.stop()
+    })
+
+    it('forwards the caller init options to the SDK', async () => {
+      const sdkInit = vi.fn(() => Promise.resolve())
+      const sdk = {
+        connect,
+        init: sdkInit,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status,
+      }
+      const mockAdapter = createMockAdapter()
+      const actor = createActor(
+        createConnectionActors(sdk, { additionalAdapters: [], defaultAdapters: [mockAdapter] })
+          .init,
+      )
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('done')
+      expect(sdkInit).toHaveBeenCalledWith({
+        additionalAdapters: [],
+        defaultAdapters: [mockAdapter],
+      })
+
+      actor.stop()
+    })
+
+    it('retries init after a failure', async () => {
+      const bootError = new Error('boot failed')
+      const sdkInit = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
+      const sdk = {
+        connect,
+        init: sdkInit,
+        onStatusChanged,
+        removeOnStatusChanged,
+        status,
+      }
+      const { init } = createConnectionActors(sdk)
+
+      const firstActor = createActor(init)
+      firstActor.subscribe({ error: () => {} })
+      firstActor.start()
+      await pause(0)
+
+      expect(firstActor.getSnapshot().status).toBe('error')
+      expect(firstActor.getSnapshot().error).toBe(bootError)
+
+      const secondActor = createActor(init)
+      secondActor.start()
+      await pause(0)
+
+      expect(secondActor.getSnapshot().status).toBe('done')
+      expect(sdkInit).toHaveBeenCalledTimes(2)
+
+      firstActor.stop()
+      secondActor.stop()
+    })
+  })
+
   describe('restore actor', () => {
     const connect = () => {
       throw new Error('connect must not run during restore')
+    }
+    const init = () => {
+      throw new Error('init must not run during restore')
     }
     const onStatusChanged = () => {
       throw new Error('pushes must not be wired during restore')
@@ -245,7 +298,7 @@ describe('connectionActors', () => {
       const restorable: StatusEvent = { ...liveStatus, session }
       const sdk = {
         connect,
-        init: () => Promise.resolve(),
+        init,
         onStatusChanged,
         removeOnStatusChanged,
         status: () => Promise.resolve(restorable),
@@ -264,55 +317,11 @@ describe('connectionActors', () => {
       actor.stop()
     })
 
-    it('keeps the SDK default gateways out unless opted in', async () => {
-      const init = vi.fn(() => Promise.resolve())
-      const sdk = {
-        connect,
-        init,
-        onStatusChanged,
-        removeOnStatusChanged,
-        status: () => Promise.resolve({ ...liveStatus, session }),
-      }
-      const actor = createActor(createConnectionActors(sdk).restore)
-
-      actor.start()
-      await pause(0)
-
-      expect(actor.getSnapshot().status).toBe('done')
-      expect(init).toHaveBeenCalledWith({ defaultAdapters: [] })
-
-      actor.stop()
-    })
-
-    it('forwards the caller init options to the SDK', async () => {
-      const init = vi.fn(() => Promise.resolve())
-      const sdk = {
-        connect,
-        init,
-        onStatusChanged,
-        removeOnStatusChanged,
-        status: () => Promise.resolve({ ...liveStatus, session }),
-      }
-      const mockAdapter = createMockAdapter()
-      const actor = createActor(
-        createConnectionActors(sdk, { additionalAdapters: [], defaultAdapters: [mockAdapter] })
-          .restore,
-      )
-
-      actor.start()
-      await pause(0)
-
-      expect(actor.getSnapshot().status).toBe('done')
-      expect(init).toHaveBeenCalledWith({ additionalAdapters: [], defaultAdapters: [mockAdapter] })
-
-      actor.stop()
-    })
-
     it('surfaces the restore failure untouched', async () => {
       const failedToRecoverStatus = new Error('failed to recover status')
       const sdk = {
         connect,
-        init: () => Promise.resolve(),
+        init,
         onStatusChanged,
         removeOnStatusChanged,
         status: () => Promise.reject(failedToRecoverStatus),

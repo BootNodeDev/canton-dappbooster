@@ -17,6 +17,8 @@ const loggedOutConnection = { ...connection, isConnected: false }
 const session: WalletStatus['session'] = { accessToken: 'token', userId: 'user' }
 
 describe('connectionMachine', () => {
+  const init = fromPromise(() => Promise.resolve())
+
   it('starts disconnected', () => {
     const actor = createActor(connectionMachine)
 
@@ -240,6 +242,7 @@ describe('connectionMachine', () => {
     it('drops the session data on disconnect', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
@@ -257,6 +260,7 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().context.session).toBeUndefined()
       expect(states).toEqual<typeof states>([
         'disconnected',
+        'initializing',
         'restoring',
         { session: 'authenticated' },
         'disconnected',
@@ -268,6 +272,7 @@ describe('connectionMachine', () => {
     it('drops the session data on disconnect from a logged-out session', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: loggedOutConnection, session }),
           ),
@@ -287,6 +292,7 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().context.session).toBeUndefined()
       expect(states).toEqual<typeof states>([
         'disconnected',
+        'initializing',
         'restoring',
         { session: 'unauthenticated' },
         'disconnected',
@@ -297,13 +303,13 @@ describe('connectionMachine', () => {
   })
 
   describe('session restore', () => {
-    it('moves to restoring on restore', () => {
+    it('moves to initializing on restore', () => {
       const actor = createActor(connectionMachine)
 
       actor.start()
       actor.send({ type: 'restore' })
 
-      expect(actor.getSnapshot().matches('restoring')).toBe(true)
+      expect(actor.getSnapshot().matches('initializing')).toBe(true)
 
       actor.stop()
     })
@@ -311,6 +317,7 @@ describe('connectionMachine', () => {
     it('restores a logged-in session straight in', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise(() => Promise.resolve({ connection })),
         },
       })
@@ -329,6 +336,7 @@ describe('connectionMachine', () => {
     it('returns to disconnected when there is no session to restore', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: { isConnected: false, isNetworkConnected: false } }),
           ),
@@ -341,7 +349,12 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+      expect(states).toEqual<typeof states>([
+        'disconnected',
+        'initializing',
+        'restoring',
+        'disconnected',
+      ])
       expect(actor.getSnapshot().context.connection).toBeUndefined()
       expect(actor.getSnapshot().context.error).toBeUndefined()
 
@@ -351,6 +364,7 @@ describe('connectionMachine', () => {
     it('returns to disconnected quietly when restore fails', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise(() => Promise.reject('failed to restore session')),
         },
       })
@@ -361,17 +375,23 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+      expect(states).toEqual<typeof states>([
+        'disconnected',
+        'initializing',
+        'restoring',
+        'disconnected',
+      ])
       expect(actor.getSnapshot().context.connection).toBeUndefined()
       expect(actor.getSnapshot().context.error).toBeUndefined()
 
       actor.stop()
     })
 
-    it('aborts the in-flight restore', () => {
+    it('aborts the in-flight restore', async () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise(({ signal }) => {
             signal.addEventListener('abort', onAbort, { once: true })
             return new Promise(() => {})
@@ -383,9 +403,15 @@ describe('connectionMachine', () => {
 
       actor.start()
       actor.send({ type: 'restore' })
+      await pause(0)
       actor.send({ type: 'cancel' })
 
-      expect(states).toEqual<typeof states>(['disconnected', 'restoring', 'disconnected'])
+      expect(states).toEqual<typeof states>([
+        'disconnected',
+        'initializing',
+        'restoring',
+        'disconnected',
+      ])
       expect(onAbort).toHaveBeenCalledOnce()
 
       actor.stop()
@@ -394,6 +420,7 @@ describe('connectionMachine', () => {
     it('keeps a logged-out session, waiting for login', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({
               connection: { isConnected: false, isNetworkConnected: true },
@@ -410,6 +437,25 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().context.session).toBe(session)
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+
+      actor.stop()
+    })
+
+    it('surfaces a broken boot as a failure', async () => {
+      const bootFailed = new Error('boot failed')
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise(() => Promise.reject(bootFailed)),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('failure')).toBe(true)
+      expect(actor.getSnapshot().context.error).toBe(bootFailed)
 
       actor.stop()
     })
@@ -464,6 +510,7 @@ describe('connectionMachine', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
+          init,
           connect: fromPromise(({ signal }) => {
             signal.addEventListener('abort', onAbort, { once: true })
             return new Promise(() => {})
@@ -484,6 +531,7 @@ describe('connectionMachine', () => {
     it('makes a wallet logout visible immediately', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
@@ -513,6 +561,7 @@ describe('connectionMachine', () => {
     it('makes a wallet login visible immediately', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: loggedOutConnection, session }),
           ),
@@ -540,6 +589,7 @@ describe('connectionMachine', () => {
     it('stays authenticated when a push still says logged in', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
@@ -571,6 +621,7 @@ describe('connectionMachine', () => {
     it('stays logged out when a push still says logged out', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: loggedOutConnection, session }),
           ),
@@ -597,6 +648,7 @@ describe('connectionMachine', () => {
     it('keeps the stored session when a push carries none', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
         },
       })
@@ -623,6 +675,7 @@ describe('connectionMachine', () => {
       const walletSubscribed = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => {
             walletSubscribed()
@@ -647,6 +700,7 @@ describe('connectionMachine', () => {
     it('reaches the machine upon wallet push', async () => {
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() =>
             Promise.resolve({ connection: loggedOutConnection, session }),
           ),
@@ -671,6 +725,7 @@ describe('connectionMachine', () => {
       const walletUnsubscribed = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => walletUnsubscribed),
         },
@@ -695,6 +750,7 @@ describe('connectionMachine', () => {
       const walletSubscribed = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
+          init,
           restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
           walletEvents: fromCallback(() => {
             walletSubscribed()
@@ -728,6 +784,18 @@ describe('connectionMachine', () => {
       actor.start()
 
       expect(toConnectionStatus(actor.getSnapshot())).toBe('disconnected')
+
+      actor.stop()
+    })
+
+    it('reports idle while initializing', () => {
+      const machine = connectionMachine.provide({ actors: { init } })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('idle')
 
       actor.stop()
     })
