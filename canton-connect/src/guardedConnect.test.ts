@@ -7,8 +7,13 @@ import { createFakeWallet } from './testing/fakeWallet'
 
 // The guard reads nothing off a popup but `closed`, so a stub carries every headless path. Only the
 // real cause — the SDK losing its `beforeunload` to the about:blank → blob: navigation — needs a browser.
-const stubPopup = (): Window & { closed: boolean } =>
-  ({ closed: false }) as unknown as Window & { closed: boolean }
+const openStubs: { closed: boolean }[] = []
+
+const stubPopup = (): Window & { closed: boolean } => {
+  const popup = { closed: false }
+  openStubs.push(popup)
+  return popup as unknown as Window & { closed: boolean }
+}
 
 let restoreOpen: (() => void) | undefined
 
@@ -37,6 +42,10 @@ const pickingSdk = (): DappSDK =>
 describe('guardedConnect', () => {
   afterEach(() => {
     // In afterEach, not per test: a timed-out test would otherwise leave fake timers on for the rest.
+    // The guard remembers a live popup across calls, so leaving a stub open would leak into the next test.
+    for (const popup of openStubs.splice(0)) {
+      popup.closed = true
+    }
     restoreOpen?.()
     restoreOpen = undefined
     vi.useRealTimers()
@@ -108,6 +117,45 @@ describe('guardedConnect', () => {
 
     expect(window.open).toBe(stubbed)
     expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('watches a popup the SDK reuses instead of reopening', async () => {
+    vi.useFakeTimers()
+    const popup = stubPopup()
+    stubOpen(popup)
+
+    // First connect creates the popup; the SDK leaves it open for wallets that reuse it.
+    void guardedConnect(pickingSdk()).catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(500)
+
+    // Second connect opens nothing, so only the remembered handle can arm the watchdog.
+    const settled = expect(guardedConnect(pendingSdk())).rejects.toThrow(PICKER_DISMISSED)
+
+    popup.closed = true
+    await vi.advanceTimersByTimeAsync(500)
+    await settled
+  })
+
+  it('ignores a remembered popup the user already closed', async () => {
+    vi.useFakeTimers()
+    const popup = stubPopup()
+    stubOpen(popup)
+
+    void guardedConnect(pickingSdk()).catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(500)
+    popup.closed = true
+    await vi.advanceTimersByTimeAsync(500)
+
+    const reopened = stubPopup()
+    stubOpen(reopened)
+
+    let settled = false
+    void guardedConnect(pickingSdk()).catch(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(settled).toBe(false)
   })
 
   it('passes a connect through untouched when no popup handle is captured', async () => {

@@ -12,6 +12,10 @@ const POLL_MS = 400
 let nativeOpen: typeof window.open | undefined
 const waiting = new Set<(popup: Window) => void>()
 
+// The SDK caches its picker window and calls window.open only to *create* one, so a connect that
+// reuses a window left open by the last one opens nothing to capture. Remember the handle instead.
+let openedPopup: Window | undefined
+
 const borrowOpen = (): void => {
   if (nativeOpen !== undefined) {
     return
@@ -25,6 +29,8 @@ const borrowOpen = (): void => {
 
     // Falsy, not `=== null`: jsdom's unimplemented window.open returns undefined, off-type.
     if (popup) {
+      openedPopup = popup
+
       const notify = [...waiting]
       waiting.clear()
       returnOpen()
@@ -65,11 +71,16 @@ export const guardedConnect = (sdk: DappSDK): ReturnType<DappSDK['connect']> => 
 
   const dismissed = new Promise<never>((_resolve, reject) => {
     watch = (popup) => {
+      clearInterval(poll) // a freshly opened popup supersedes the reused one watched below
       poll = setInterval(() => {
         if (popup.closed) {
           reject(new Error(PICKER_DISMISSED))
         }
       }, POLL_MS)
+    }
+
+    if (openedPopup !== undefined && !openedPopup.closed) {
+      watch(openedPopup)
     }
 
     waiting.add(watch)
