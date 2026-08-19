@@ -118,7 +118,8 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 Applies to every TypeScript subproject. Biome (`biome.json`) enforces the allowed casings, the `use`
 prefix inside any `src/hooks/`, one-export-per-file naming inside any `src/icons/`, extensionless
-imports, and the `testing/` boundary. Which of the allowed casings a given file takes is convention:
+imports, the alias-only import rule below, and the `testing/` boundary. Which of the allowed casings
+a given file takes is convention:
 a linter reads basenames, so it cannot tell a component from a multi-export collection, and folder
 casing it cannot see at all.
 
@@ -157,8 +158,30 @@ Placement:
 - Every symbol a package exports from its public barrel carries a JSDoc block: what it does, where
   a caller could reasonably pick a different export, when to reach for it, and at least one
   `@example`. Do not restate the type.
-- Relative imports carry no file extension. `canton-barebones/` is the exception: it runs on
-  `NodeNext`, where the extension is load-bearing, so its imports keep `.ts` and lint allows it.
+- **A module has one legal spelling, and it is never relative.** `./components/toast` and
+  `@/components/toast` both resolved, so which one landed was down to who or what wrote the file.
+  Relative specifiers (`.`, `..`, `./*`, `../*`) are now a Biome error in `dapp/frontend`,
+  `canton-dappbooster`, and `canton-connect`, in all four positions: `import … from`,
+  `export … from`, `export *`, and dynamic `import()`.
+  - The app reaches an intra-`src` module through `@/`, wired in `tsconfig.app.json` and
+    `vite.config.ts`. The one suppression in the repo is `vite.config.ts` itself, which defines that
+    alias and so cannot use it.
+  - A library reaches an internal module through `#src/*`, the Node subpath imports declared in its
+    own `package.json`, and `@/` is an error there. Both libraries export `./src/index.ts` under the
+    `development` condition, so `dapp/frontend` compiles their source through its own Vite, where
+    `@` is the *app's* `src`; a library-internal `@/utils/cx` would resolve into the consumer's tree.
+    `#` is bound by spec to the nearest `package.json`, so no consumer alias can capture it.
+  - That map is `"#src/*": { "types": [four targets], "default": "./src/*" }` because no single
+    target satisfies every resolver: `tsc` needs the extension spelled out and walks the array until
+    one resolves, which is how one key covers `.ts`, `.tsx`, and folder entries; rolldown ignores
+    the array but resolves the extensionless `default` itself. Keep both conditions in step when
+    adding a key.
+  - Imports carry no file extension, and tsdown inlines every internal module, so no `#` or `@/`
+    specifier reaches `dist`.
+- `canton-barebones/` is exempt from both rules. It runs on `NodeNext`, where the extension is
+  load-bearing, so its imports keep `.ts`; and `tsc -p .` emits to `dist/` while an `imports` map
+  would still point at `./src/*.ts`, so a compiled `dist/server.js` would resolve back into
+  TypeScript source. Relative specifiers with extensions are correct there and lint allows them.
 
 ## Authoring a Component or Hook
 
