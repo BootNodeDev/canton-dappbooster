@@ -88,20 +88,39 @@ The SDK's picker attaches `beforeunload` to the popup's `WindowProxy`, and the `
 navigation that immediately follows destroys the listener, so a closed popup left `connect()` pending
 forever and the dApp bricked until reload (#49). `guardedConnect(sdk)` wraps the whole `sdk.connect()`
 call: it borrows `window.open` long enough to capture the handle the SDK opens, hands it straight
-back, then races the connect against a poll of `popup.closed` that rejects with the SDK's own
-`'User closed the wallet picker'` — which `toConnectError` already maps.
+back, then races the connect against a poll of `popup.closed` that rejects with `PickerClosedError`,
+carrying the SDK's own `'User closed the wallet picker'` so `toConnectError` maps it unchanged.
 
 Wrapping the *call* rather than the picker is deliberate. It needs nothing from
 `core-wallet-ui-components` (see [`CLAUDE.md`](CLAUDE.md) on why importing it is a trap), and the
 watchdog lives for the whole connect, so it also covers the retry prompt and the wallet's own window,
 not just the initial choice. It is armed only when no `config.walletPicker` is set.
 
-**How it fails.** It fails silently, in both directions. If the SDK stops reaching for `window.open`
-— an iframe, a `<dialog>`, any new picker surface — nothing is captured, `guardedConnect` degrades to
-a bare `sdk.connect()`, and #49 is back with no error and no red test, because jsdom has no popup to
-close. And for as long as the borrow is installed, the *first* window anything on the page opens is
-the one watched, so a connect racing an unrelated `window.open` watches the wrong handle. Both are
-browser-only failures. The guarantee is a manual pass, not the suite: see [`CLAUDE.md`](CLAUDE.md).
+Three things keep the borrow honest, and each is a bug that already bit:
+
+- **The popup is remembered, not just captured.** The SDK caches its picker window and calls
+  `window.open` only to *create* one, so a connect reusing a window the last one left open opens
+  nothing. Remote-gateway and WalletConnect wallets both set `reuseGlobalWalletPopup`, so this is the
+  normal path for them, not an edge. The guard arms on the remembered handle while it is still open,
+  and a freshly created popup supersedes it.
+- **One borrow per module, not per call.** Overlapping connects each captured the previous wrapper as
+  their "native" and handed it back on settle, stranding one wrapper installed for good along with an
+  interval nothing cleared. The guards in flight now wait on a single installation.
+- **A rejected race leaves the SDK's `connect()` running**, still listening for a picker result, and
+  it would swap the SDK's client from under the provider's event wiring on the *next* connect. That
+  is what `PickerClosedError` is for: `CantonConnectProvider` rebuilds its `DappSDK` on one, and the
+  mount effect re-restores the session from the discovery session key that `connect()` never clears.
+
+**How it fails.** Silently, in both directions. If the SDK stops reaching for `window.open` — an
+iframe, a `<dialog>`, any new picker surface — nothing is captured, `guardedConnect` degrades to a
+bare `sdk.connect()`, and #49 is back with no error and no red test. And for as long as the borrow is
+installed, the *first* window anything on the page opens is the one watched, so a connect racing an
+unrelated `window.open` watches the wrong handle.
+
+`guardedConnect.test.ts` drives capture, poll, rejection, reuse and overlap against a stub popup, so
+the guard's own logic is covered headless. What no test reaches is the *cause* — a real
+`WindowProxy` losing its `beforeunload` across the navigation — so a `dapp-sdk` bump still needs the
+manual pass in [`CLAUDE.md`](CLAUDE.md).
 
 ### Additional adapters
 
