@@ -3,12 +3,12 @@ import { normalizeProps, Portal, useMachine } from '@zag-js/react'
 import { type ReactElement, type RefObject, useId, useRef, useState } from 'react'
 import { CloseIcon } from '../../icons'
 import type { Token } from '../../providers/TokenListProvider/context'
-import { modalAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from './anatomy'
 import { TokenFavorites } from './TokenFavorites'
 import { TokenList } from './TokenList'
 import { TokenSearch } from './TokenSearch'
 
-interface TokenSelectModalProps {
+interface TokenSelectDialogProps {
   contentId: string
   favoriteIds?: readonly string[]
   onClose: () => void
@@ -23,7 +23,7 @@ const TokenSelect = ({
   onClose,
   onSelect,
   returnFocusTo,
-}: Omit<TokenSelectModalProps, 'open'>): ReactElement => {
+}: Omit<TokenSelectDialogProps, 'open'>): ReactElement => {
   const searchRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const service = useMachine(dialog.machine, {
@@ -81,8 +81,10 @@ const TokenSelect = ({
  * The dialog `<TokenInput>`'s token button opens.
  *
  * @example
- * <TokenSelectModal contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}
+ * <TokenSelectDialog contentId={selectId} onClose={() => setOpen(false)} onSelect={setToken}
  *   open={open} returnFocusTo={triggerRef} />
  */
-export const TokenSelectModal = ({ open, ...rest }: TokenSelectModalProps): ReactElement | null =>
-  open ? <TokenSelect {...rest} /> : null
+export const TokenSelectDialog = ({
+  open,
+  ...rest
+}: TokenSelectDialogProps): ReactElement | null => (open ? <TokenSelect {...rest} /> : null)

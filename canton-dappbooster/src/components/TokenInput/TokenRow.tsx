@@ -1,7 +1,7 @@
 import type { KeyboardEvent, ReactElement } from 'react'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { TokenLogo } from '../TokenLogo'
-import { modalAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from './anatomy'
 import { ROW_HEIGHT_REM } from './constants'
 import { tokenLabel } from './tokenLabel'
 

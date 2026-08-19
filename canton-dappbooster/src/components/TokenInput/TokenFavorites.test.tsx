@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { TOKENS } from '../../testing/tokens'
-import { modalAnatomy as anatomy } from './anatomy'
+import { dialogAnatomy as anatomy } from './anatomy'
 import { MAX_FAVORITES } from './constants'
 import { TokenFavorites } from './TokenFavorites'
 

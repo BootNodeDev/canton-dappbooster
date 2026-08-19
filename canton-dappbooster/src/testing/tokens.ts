@@ -5,7 +5,7 @@ import type { Token } from '../providers/TokenListProvider/context'
  * from an unfiltered one; a test needing a hundred builds its own.
  *
  * @example
- * render(<TokenListProvider tokens={TOKENS}><TokenSelectModal {...props} /></TokenListProvider>)
+ * render(<TokenListProvider tokens={TOKENS}><TokenSelectDialog {...props} /></TokenListProvider>)
  */
 export const TOKENS: Token[] = [
   { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' },

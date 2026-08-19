@@ -102,7 +102,7 @@ controls, rather than coordinated against a library's own scroll writes and meas
 
 No row is marked as the token the field is already on. The trigger that opened the dialog shows it,
 so a highlighted row only repeats it, and that marking was the one thing forcing an identity onto the
-field's token: without it `TokenMeta` needs no `id` and the modal anatomy no `data-selected`. The
+field's token: without it `TokenMeta` needs no `id` and the dialog anatomy no `data-selected`. The
 roving tab stop starts at the top rather than at that row, and focus is the only state a row carries.
 
 The row height pays for all of it, so it has one home: `ROW_HEIGHT_REM`, written inline on the row by

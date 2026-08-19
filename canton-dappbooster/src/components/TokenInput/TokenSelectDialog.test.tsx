@@ -5,18 +5,18 @@ import { TokenListProvider } from '../../providers/TokenListProvider'
 import type { Token } from '../../providers/TokenListProvider/context'
 import { TOKENS } from '../../testing/tokens'
 import { stubViewport } from '../../testing/viewport'
-import { modalAnatomy as anatomy } from './anatomy'
-import { TokenSelectModal } from './TokenSelectModal'
+import { dialogAnatomy as anatomy } from './anatomy'
+import { TokenSelectDialog } from './TokenSelectDialog'
 
-const modal = (
-  props: Partial<React.ComponentProps<typeof TokenSelectModal>> & {
+const dialog = (
+  props: Partial<React.ComponentProps<typeof TokenSelectDialog>> & {
     onClose: () => void
     onSelect: (token: Token) => void
     returnFocusTo: RefObject<HTMLElement | null>
   },
 ): ReactElement => (
   <TokenListProvider tokens={TOKENS}>
-    <TokenSelectModal contentId="token-select" open={true} {...props} />
+    <TokenSelectDialog contentId="token-select" open={true} {...props} />
   </TokenListProvider>
 )
 
@@ -24,7 +24,7 @@ const setup = (open = true) => {
   const onClose = vi.fn()
   const onSelect = vi.fn()
   const returnFocusTo = createRef<HTMLElement>()
-  const view = render(modal({ onClose, onSelect, open, returnFocusTo }))
+  const view = render(dialog({ onClose, onSelect, open, returnFocusTo }))
   return { onClose, onSelect, returnFocusTo, view }
 }
 
@@ -33,7 +33,7 @@ const setup = (open = true) => {
 const armDismiss = () =>
   act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
 
-describe('TokenSelectModal', () => {
+describe('TokenSelectDialog', () => {
   // The list inside windows itself against a height jsdom does not lay out.
   beforeEach(() => {
     stubViewport(320)
@@ -62,7 +62,7 @@ describe('TokenSelectModal', () => {
     const onClose = vi.fn()
     const onSelect = vi.fn()
     const returnFocusTo = createRef<HTMLElement>()
-    render(modal({ favoriteIds: ['canton-coin'], onClose, onSelect, returnFocusTo }))
+    render(dialog({ favoriteIds: ['canton-coin'], onClose, onSelect, returnFocusTo }))
 
     const favorites = screen.getByRole('region', { name: 'Favorite tokens' })
     expect(favorites).toHaveClass(anatomy.parts.favorites)
@@ -98,7 +98,7 @@ describe('TokenSelectModal', () => {
   it('unmounts on a close it was not the one to ask for', () => {
     const { view } = setup()
     view.rerender(
-      modal({ onClose: vi.fn(), onSelect: vi.fn(), open: false, returnFocusTo: createRef() }),
+      dialog({ onClose: vi.fn(), onSelect: vi.fn(), open: false, returnFocusTo: createRef() }),
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -163,7 +163,7 @@ describe('TokenSelectModal', () => {
     document.body.append(trigger)
     try {
       const { unmount } = render(
-        modal({ onClose: vi.fn(), onSelect: vi.fn(), returnFocusTo: { current: trigger } }),
+        dialog({ onClose: vi.fn(), onSelect: vi.fn(), returnFocusTo: { current: trigger } }),
       )
       await armDismiss()
       unmount()

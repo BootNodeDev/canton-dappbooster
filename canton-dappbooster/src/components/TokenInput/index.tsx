@@ -21,7 +21,7 @@ import {
 } from '../../utils/tokenAmount'
 import { TokenLogo } from '../TokenLogo'
 import { anatomy } from './anatomy'
-import { TokenSelectModal } from './TokenSelectModal'
+import { TokenSelectDialog } from './TokenSelectDialog'
 import { useFormattedField } from './useFormattedField'
 
 const ZERO = formatAmount('0.00')
@@ -223,7 +223,7 @@ export const TokenInput = ({
         </button>
       </div>
       {onTokenSelect !== undefined && (
-        <TokenSelectModal
+        <TokenSelectDialog
           contentId={selectId}
           favoriteIds={favoriteIds}
           onClose={() => setSelectOpen(false)}
