@@ -153,6 +153,7 @@ export const connectionMachine = setup({
       exit: assign({ error: undefined }),
       on: {
         connect: { target: 'connecting' },
+        restore: { target: 'initializing' },
       },
     },
     restoring: {

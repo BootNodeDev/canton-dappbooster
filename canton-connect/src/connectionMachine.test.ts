@@ -215,6 +215,31 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('retries the boot when restore is sent again', async () => {
+      const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(new Error('init failed'))
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise(init),
+          restore: fromPromise<WalletStatus>(() => Promise.resolve({ connection, session })),
+        },
+      })
+      const actor = createActor(machine)
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('failure')).toBe(true)
+
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      expect(init).toHaveBeenCalledTimes(2)
+
+      actor.stop()
+    })
   })
 
   describe('disconnect', () => {
