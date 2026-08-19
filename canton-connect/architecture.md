@@ -13,6 +13,7 @@ It is browser-only.
 src/
   CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
   connectionMachine.ts        connection lifecycle statechart (xstate v5); internal, not yet wired (#84/#85)
+  guardedConnect.ts           guardedConnect: sdk.connect() with a closed-popup watchdog (#49)
   hooks/
     useConnect.ts          connect / disconnect lifecycle
     useParty.ts            active party
@@ -80,6 +81,27 @@ they leak on the old client. `disconnect()` and unmount also tear down.
 from `core-wallet-ui-components`). Injected → a custom picker: `createAutoPicker` (headless, for
 tests/dev) today, and a `canton-theme`-styled picker component later (deferred follow-up). This one
 seam covers production UX, testability, and the future themed UI.
+
+### The popup close guard
+
+The SDK's picker attaches `beforeunload` to the popup's `WindowProxy`, and the `about:blank → blob:`
+navigation that immediately follows destroys the listener, so a closed popup left `connect()` pending
+forever and the dApp bricked until reload (#49). `guardedConnect(sdk)` wraps the whole `sdk.connect()`
+call: it borrows `window.open` long enough to capture the handle the SDK opens, hands it straight
+back, then races the connect against a poll of `popup.closed` that rejects with the SDK's own
+`'User closed the wallet picker'` — which `toConnectError` already maps.
+
+Wrapping the *call* rather than the picker is deliberate. It needs nothing from
+`core-wallet-ui-components` (see [`CLAUDE.md`](CLAUDE.md) on why importing it is a trap), and the
+watchdog lives for the whole connect, so it also covers the retry prompt and the wallet's own window,
+not just the initial choice. It is armed only when no `config.walletPicker` is set.
+
+**How it fails.** It fails silently, in both directions. If the SDK stops reaching for `window.open`
+— an iframe, a `<dialog>`, any new picker surface — nothing is captured, `guardedConnect` degrades to
+a bare `sdk.connect()`, and #49 is back with no error and no red test, because jsdom has no popup to
+close. And for as long as the borrow is installed, the *first* window anything on the page opens is
+the one watched, so a connect racing an unrelated `window.open` watches the wrong handle. Both are
+browser-only failures. The guarantee is a manual pass, not the suite: see [`CLAUDE.md`](CLAUDE.md).
 
 ### Additional adapters
 
