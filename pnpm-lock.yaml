@@ -4493,7 +4493,7 @@ snapshots:
     dependencies:
       '@canton-network/core-rpc-errors': 1.9.0
       '@canton-network/core-types': 1.10.0
-      jose: 6.2.8
+      jose: 6.2.9
       zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
