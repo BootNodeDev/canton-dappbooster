@@ -153,6 +153,51 @@ describe('guardedConnect', () => {
     expect(settled).toBe(false)
   })
 
+  // Dispatched, not posted: jsdom schedules postMessage on real timers, which fake ones never reach.
+  const pick = (walletType: string): void => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { messageType: 'SPLICE_WALLET_PICKER_RESULT', providerId: 'wallet-a', walletType },
+        origin: window.location.origin,
+      }),
+    )
+  }
+
+  it('stops treating a close as a dismissal once an extension is picked', async () => {
+    const popup = watchable()
+    openStub(popup)
+
+    const sdk = stubSdk({ opens: true })
+    let settled = false
+    const connecting = guardedConnect(sdk).catch(() => {
+      settled = true
+    })
+
+    pick('browser')
+    popup.closed = true
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    expect(settled).toBe(false)
+
+    // Closing it cannot drain a picked guard, so this one has to be let go by hand.
+    sdk.settle()
+    await connecting
+  })
+
+  it('keeps rejecting for a remote wallet, whose popup is the wallet itself', async () => {
+    const popup = watchable()
+    openStub(popup)
+
+    const settled = expect(guardedConnect(stubSdk({ opens: true }))).rejects.toBeInstanceOf(
+      PickerClosedError,
+    )
+
+    pick('remote')
+    popup.closed = true
+    await tick()
+    await settled
+  })
+
   it('passes a connect through untouched when no popup handle is captured', async () => {
     vi.useRealTimers()
     const wallet = createFakeWallet({

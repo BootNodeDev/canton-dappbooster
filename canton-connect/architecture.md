@@ -107,16 +107,44 @@ and would swap the SDK's client from under the provider's event wiring on the *n
 what `PickerClosedError` is for: `CantonConnectProvider` retires its `DappSDK` on one, and the mount
 effect re-restores the session from the discovery session key that `connect()` never clears.
 
-Retiring the instance does not reach the orphan itself. The abandoned `connect()` is parked inside
-`core-wallet-ui-components` module scope with a live `message` listener we cannot address, so the next
-successful connect wakes it too. Containing that needs an abort on `DappSDK.connect()`, upstream.
+Retiring the instance does not by itself reach the orphan. The abandoned `connect()` is parked inside
+`core-wallet-ui-components` module scope on a `message` listener keyed to nothing but our origin and
+the message type, so the *next* successful connect woke every past one: one `discovery.connect`, and
+one wallet approval prompt, per popup the user had closed.
+
+`settleAbandonedConnect` drains them at the close instead. It posts the SDK's own
+`SPLICE_WALLET_PICKER_RESULT` to our window, which is the only thing that makes that listener
+unsubscribe; the `providerId` matches no registered adapter, so the orphan fails with
+`WalletNotFoundError` before reaching a wallet, then rejects out of
+`waitForWalletPickerRetrySelection` because the popup is closed. `walletType` stays `'browser'` to
+keep it out of the branch that registers a remote adapter from the message. It is skipped while a
+second guard is in flight, since the message would resolve that one's live waiter too — a heuristic,
+because only guarded connects are counted.
+
+This is a workaround, not containment: the orphan still runs. The real fix is an abort on
+`DappSDK.connect()`, upstream.
+
+**The watchdog stands down once a wallet is chosen.** Past the pick the connect is waiting on the
+wallet, not the popup, so closing the popup is no longer a dismissal — treating it as one abandoned a
+live connect and left an unanswered approval request behind, one per close. Only for
+`walletType: 'browser'`: for remote and mobile the popup *is* the wallet surface, so a close there
+still strands the connect and must keep rejecting. The consequence is that closing the popup after
+choosing an extension leaves the button pending until the wallet is answered, with no way to cancel —
+the same shape as MetaMask's `eth_requestAccounts`. Nothing can retract a CIP-0103 `connect` already
+sent, and a wallet that stacks rather than replaces duplicate requests will show one prompt per
+attempt regardless.
 
 **How it fails.** For as long as the borrow is installed, the first window anything on the page opens
 is the one watched, so a connect racing an unrelated `window.open` watches the wrong handle. An SDK
 that stops reaching for `window.open` at all degrades the guard to a bare `sdk.connect()` — that much
-is pinned headless, since both provider tests wait on a URL only the SDK's own popup code writes. What
-no test reaches is the *cause*, a real `WindowProxy` losing its `beforeunload` across the navigation,
-so a `dapp-sdk` bump still needs the manual pass in [`CLAUDE.md`](CLAUDE.md).
+is pinned headless, since both provider tests wait on a URL only the SDK's own popup code writes.
+
+The drain and the stand-down have no such backstop. Both rest on the `SPLICE_WALLET_PICKER_RESULT`
+message — its type, its origin, and the `walletType` and `providerId` fields — none of it public API.
+A rename turns the drain into a no-op that returns the duplicate prompts, and turns the stand-down
+into the old behaviour of abandoning a live connect, with nothing going red either way. Nor does any
+test reach #49's own *cause*, a real `WindowProxy` losing its `beforeunload` across the navigation.
+All of it is why a `dapp-sdk` bump needs the manual pass in [`CLAUDE.md`](CLAUDE.md).
 
 ### Additional adapters
 
