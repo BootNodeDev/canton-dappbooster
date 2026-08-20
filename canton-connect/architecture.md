@@ -117,9 +117,10 @@ one wallet approval prompt, per popup the user had closed.
 unsubscribe; the `providerId` matches no registered adapter, so the orphan fails with
 `WalletNotFoundError` before reaching a wallet, then rejects out of
 `waitForWalletPickerRetrySelection` because the popup is closed. `walletType` stays `'browser'` to
-keep it out of the branch that registers a remote adapter from the message. It is skipped while a
-second guard is in flight, since the message would resolve that one's live waiter too — a heuristic,
-because only guarded connects are counted.
+keep it out of the branch that registers a remote adapter from the message, and no `name` is sent, so
+anything else on the page watching for a pick can tell the two apart — `dapp/frontend` does exactly
+that to label its connect button. It is skipped while a second guard is in flight, since the message
+would resolve that one's live waiter too — a heuristic, because only guarded connects are counted.
 
 This is a workaround, not containment: the orphan still runs. The real fix is an abort on
 `DappSDK.connect()`, upstream.

@@ -50,6 +50,7 @@ const returnOpen = (): void => {
 
 // Only its own result message unsubscribes it; an unmatched id fails before reaching a wallet.
 const settleAbandonedConnect = (): void => {
+  // No `name`: a real pick always carries one, so anything else listening can tell the two apart.
   window.postMessage(
     { messageType: 'SPLICE_WALLET_PICKER_RESULT', providerId: 'abandoned', walletType: 'browser' },
     window.location.origin,
