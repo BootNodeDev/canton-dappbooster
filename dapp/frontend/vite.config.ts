@@ -1,7 +1,8 @@
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, loadEnv } from 'vite'
+import { loadEnv } from 'vite'
+import { defineConfig } from 'vitest/config'
 // biome-ignore lint/style/noRestrictedImports: this file defines the @ alias, so it cannot use it.
 import { parseEnv } from './src/lib/env'
 
@@ -24,6 +25,11 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
       port: 3012,
       strictPort: true,
+    },
+    // jsdom, though nothing here asserts on the DOM: the wallet SDK reached through canton-connect
+    // touches DOM globals on import, so a node env fails at collection.
+    test: {
+      environment: 'jsdom',
     },
   }
 })

@@ -28,6 +28,11 @@
       "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./connect": {
+      "development": "./src/connect.ts",
+      "types": "./dist/connect.d.ts",
+      "import": "./dist/connect.js"
     }
   },
   "imports": {
@@ -42,6 +47,7 @@
     }
   },
   "devDependencies": {
+    "@bootnodedev/canton-connect": "workspace:*",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -57,11 +63,13 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
+    "@bootnodedev/canton-connect": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "dependencies": {
     "@zag-js/dialog": "^1.43.0",
+    "@zag-js/popover": "^1.43.0",
     "@zag-js/react": "^1.43.0"
   }
 }

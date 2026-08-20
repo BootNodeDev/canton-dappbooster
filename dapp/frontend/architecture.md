@@ -4,9 +4,10 @@ The app's internal seams and the reasoning behind them. What this is and how to 
 [`README.md`](README.md); repo-wide rules live in [`../../CLAUDE.md`](../../CLAUDE.md) and the
 cross-component picture in [`../../architecture.md`](../../architecture.md).
 
-Everything here follows from one constraint: the app shipped mock-first, and the live ledger path
-has to arrive without a UI rewrite. Two interfaces carry that, and every other decision hangs off
-them.
+Everything here follows from one constraint: the app shipped with its data mocked, and the live
+ledger path has to arrive without a UI rewrite. Two interfaces carry that, and every other decision
+hangs off them. The wallet session is not one of them — it comes from
+`@bootnodedev/canton-connect` and is a real CIP-0103 session whichever backend is behind it.
 
 ## Parts
 
@@ -15,8 +16,8 @@ them.
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (live ledger), and the pure ACS→domain mappers. `createBackend` picks the implementation. |
 | `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (CC plus the padded list the picker shows), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
 | `src/wallet/` | The `Wallet` interface and `StealthWallet`, its live-ledger implementation. |
-| `src/providers/` | `WalletProvider`: resolves the backend and owns the acting party. The theme provider comes from the kit. |
-| `src/hooks/` | Two kinds. `useBackend`, `useParty`, `useParties`, and `useConnect` are projections of the wallet context, one per concern. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
+| `src/providers/` | `BackendProvider`: resolves which backend the app runs on, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/hooks/` | Two kinds. `useParty` narrows the `canton-connect` session to what the UI needs, and `useConnectErrorToast` gives a rejected connection somewhere to surface. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, and `config.ts`, which reads the literals that validation left behind. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
@@ -32,9 +33,11 @@ transport. `MockBackend` satisfies it from memory; `LiteBackend` satisfies it ag
 turn active-contract rows into domain types live behind this interface, no component knows the
 ledger exists.
 
-**`Wallet`** ([`src/wallet/Wallet.ts`](src/wallet/Wallet.ts)) is the narrower one: list parties, sign
-and submit commands. `MockWallet` returns a seeded pool, `StealthWallet` talks to a real
-participant.
+**`Wallet`** ([`src/wallet/Wallet.ts`](src/wallet/Wallet.ts)) is the narrower one: sign and submit
+commands. `MockWallet` is what `MockBackend` is built with and never submits anything, since the
+mock mutates its own memory; `StealthWallet` talks to a real participant. Its `listParties` has no
+caller left now that the acting party comes from the wallet session, and survives against the live
+path needing it back.
 
 The pairing is decided once, at startup.
 [`createBackend`](src/backend/createBackend.ts) reads `/vesting-lite-parties.json`, a slim
@@ -46,22 +49,26 @@ an empty config and the app builds `MockWallet` + `MockBackend`. Present, it bui
 
 ```
 createBackend ─┐
-               ├─▶ WalletProvider ──▶ hooks ──▶ components
-Wallet ────────┘        │                          ▲
-                        └──▶ useVestingStore ──────┘
+               ├─▶ BackendProvider ──▶ useBackend ──▶ useVestingStore ──▶ components
+Wallet ────────┘                                                            ▲
+CantonConnectProvider ──▶ useParty ─────────────────────────────────────────┘
 ```
 
-`WalletProvider` ([`src/providers/WalletProvider.tsx`](src/providers/WalletProvider.tsx)) is the only
-place the two seams meet. It loads the config, constructs the pair, fetches the party pool, and holds
-which party you are acting as — "connecting" in this app means choosing a party, remembered in
-`localStorage` so a reload lands back in the same session.
+Two provider chains, meeting only in the components.
 
-Its loader is guarded by a monotonic epoch counter, so a slow first load cannot overwrite a faster
-later one.
+`BackendProvider` ([`src/providers/BackendProvider.tsx`](src/providers/BackendProvider.tsx)) is the
+only place the two seams above meet. It loads the config, constructs the pair, and provides the
+resulting backend. That is its whole job: it starts on the in-memory backend and swaps once the
+config resolves, so the tree always has one.
 
-Reads come out through `src/hooks/`, one hook per concern, each a thin projection of the context.
-Components never touch the context directly, so the hook signatures are what stays stable when the
-mock wallet gives way to a real one.
+The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it,
+`ConnectButton` from the kit drives it, and `useParty`
+([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
+standing the party hint in as a display name for the wallets that report none. `AppShell` gates the
+whole app on it. A connect that fails reaches the user through
+[`useConnectErrorToast`](src/hooks/useConnectErrorToast.ts), because the kit ships no user-facing
+copy and would otherwise fail silently; a cancel is a choice, not a failure, and stays quiet, which
+the hook reads off `canton-connect`'s `ConnectCancelledError` rather than off a message.
 
 `useVestingStore` takes the resolved backend from `useBackend` and owns the grant data. Every action
 submits through the backend and then refreshes; there is no optimistic local mutation, because the

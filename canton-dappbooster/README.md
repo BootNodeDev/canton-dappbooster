@@ -6,13 +6,15 @@ other half: a token-amount field, plus the exact-decimal utilities under it, bec
 cannot carry a Canton amount without losing digits.
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
-the call site. Authoring rules for new components live in [`CLAUDE.md`](CLAUDE.md).
+the call site. `<ConnectButton>` sits behind the `/connect` sub-path instead, because it is the one
+component that reaches for the wallet session and so pulls in the Canton SDK. Authoring rules for
+new components live in [`CLAUDE.md`](CLAUDE.md).
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
-| `pnpm build` | tsdown → `dist/` (ESM `index.js` + `index.d.ts`) |
+| `pnpm build` | tsdown → `dist/` (ESM `index.js` + `connect.js`, each with its `.d.ts`) |
 | `pnpm test` | vitest (jsdom + Testing Library), against `src` |
 | `pnpm typecheck` | `tsc --noEmit` |
 

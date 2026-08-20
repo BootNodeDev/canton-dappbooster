@@ -7,6 +7,7 @@ export type {
   TxStatusSnapshot,
 } from '#src/CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConnectProvider'
+export { ConnectCancelledError } from '#src/connectError'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
 export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecute'

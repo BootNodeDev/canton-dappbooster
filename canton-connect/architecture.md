@@ -63,7 +63,9 @@ connection status, lock status, last-tx snapshot, connect error. Hooks are reade
 - **mount**: `sdk.init({ additionalAdapters, defaultAdapters: [] })` cold-starts and restores a
   persisted session *without* opening the picker. If a session restores — even a locked one — events
   are wired immediately so a later unlock push isn't dropped.
-- **connect()**: `sdk.connect()` opens the picker and connects the chosen wallet.
+- **connect()**: `sdk.connect()` opens the picker and connects the chosen wallet. A rejection passes
+  through `toConnectError`, which turns the built-in picker's dismissal into `ConnectCancelledError`
+  so consumers never match on a message owned by `core-wallet-ui-components`.
 - **events**: `sdk.onAccountsChanged/onStatusChanged/onTxChanged` → React state. Same event names and
   types the SDK's `DappClient` exposes.
 

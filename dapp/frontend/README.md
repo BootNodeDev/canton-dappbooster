@@ -4,10 +4,12 @@ Direct-access dApp for **Canton Coin vesting**: propose a grant, the beneficiary
 accepts, claim as it vests, or cancel into a residual claim. Grants render live
 vested/claimable figures from the pure schedule math in [`src/lib/schedule.ts`](src/lib/schedule.ts).
 
-It runs **mock-first**: with no deployment config present it uses an in-memory
+Its **data runs mock-first**: with no deployment config present it uses an in-memory
 `MockBackend` seeded with sample parties, grants, proposals, and a residual claim,
-so the whole app is explorable with **no wallet-service, Canton, or DAR**. See the
-root [README](../../README.md) for the wider stack.
+so the whole app is explorable with **no wallet-service, Canton, or DAR**. The wallet
+session is not mocked — it is a real CIP-0103 one through `canton-connect`, so getting
+past the landing screen needs a wallet that answers it. See the root
+[README](../../README.md) for the wider stack.
 
 > Imported from `cn-dappbooster@feat/vesting-lite` — see [`PROVENANCE.md`](PROVENANCE.md).
 > The live `LiteBackend` path (real ledger via the wallet-service proxy), its
@@ -22,10 +24,10 @@ From the repo root (one `pnpm install` links every workspace):
 pnpm run app:dev   # → http://localhost:3012
 ```
 
-Pick any party on the landing screen to "connect" (the DirectWallet just chooses
-which party you act as; it is remembered in `localStorage`). No env vars needed:
-the one knob, the explorer party ids link to, defaults to the local Splice Scan.
-Override it by copying [`.env.example`](.env.example) to `.env.local`.
+Connect from the landing screen with a CIP-0103 browser wallet; the party it reports
+is the one you act as, and the session is restored on reload by the wallet itself.
+No env vars needed: the one knob, the explorer party ids link to, defaults to the
+local Splice Scan. Override it by copying [`.env.example`](.env.example) to `.env.local`.
 
 ## Going live (deferred)
 

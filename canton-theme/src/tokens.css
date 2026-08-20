@@ -17,6 +17,7 @@
 
     /* overlay */
     --cnc-overlay: rgb(20 21 43 / 0.5);
+    --cnc-shadow: 0 0.5rem 1.5rem rgb(20 21 43 / 0.12);
 
     /* accent */
     --cnc-accent: #692581;
@@ -87,6 +88,7 @@
 
     /* overlay */
     --cnc-overlay: rgb(0 0 0 / 0.65);
+    --cnc-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.5);
 
     /* accent */
     --cnc-accent: #9d54b8;
