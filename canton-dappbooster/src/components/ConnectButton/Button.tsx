@@ -32,14 +32,8 @@ export const Button = ({
       type={type}
       {...{ [anatomy.states.mode]: 'connect', [anatomy.states.pending]: pending || undefined }}
     >
-      {pending ? (
-        <>
-          <span aria-hidden="true" className={anatomy.parts.spinner} />
-          Connecting…
-        </>
-      ) : (
-        children
-      )}
+      {pending && <span aria-hidden="true" className={anatomy.parts.spinner} />}
+      {children ?? (pending ? 'Connecting…' : 'Connect wallet')}
     </button>
   )
 }

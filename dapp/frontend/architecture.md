@@ -177,6 +177,19 @@ That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 all. [`src/lib/env.ts`](src/lib/env.ts) holds that contract, and is the only module under `src/`
 that runs outside the browser.
 
+The connect button's copy is this app's, and one place where it reaches past the kit. `ConnectButton`
+renders `children` in every state, pending included, so
+[`useConnectLabel`](src/hooks/useConnectLabel.ts) supplies all three strings and names the wallet as
+what a pending connect is waiting on once one is chosen. Nothing public reports that pick, so the hook
+listens for the SDK picker's own `SPLICE_WALLET_PICKER_RESULT` message to the opener — the same
+message `canton-connect`'s close guard reads, and the only app-side coupling to an SDK internal.
+
+Two consequences. A `dapp-sdk` bump that renames that message leaves the label stuck on
+"Connecting…", silently, with nothing failing. And the guard posts a result of its own to settle a
+connect abandoned by a closed picker, so the hook accepts only messages carrying a wallet `name`,
+which a real pick always has and that synthetic one deliberately omits. Both are why the manual pass
+in [`canton-connect/CLAUDE.md`](../../canton-connect/CLAUDE.md) exists.
+
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own
 `--fg` / `--bg` set off the same attribute. The reload flash that comes with that, and why no

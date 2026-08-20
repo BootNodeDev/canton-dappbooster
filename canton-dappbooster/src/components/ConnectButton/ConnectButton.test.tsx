@@ -60,13 +60,22 @@ describe('ConnectButton', () => {
   })
 
   it('renames the connect face while pending, keeping it focusable to announce that', async () => {
-    renderWithWallet(<ConnectButton>Connect wallet</ConnectButton>)
+    renderWithWallet(<ConnectButton />)
     fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
     const button = await screen.findByRole('button', { name: 'Connecting…' })
 
     expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(button).toHaveAttribute(anatomy.states.pending, 'true')
     expect(button).toBeEnabled()
+  })
+
+  it('keeps a caller-supplied label while pending, that caller owning what it says', async () => {
+    renderWithWallet(<ConnectButton>Confirm in your wallet</ConnectButton>)
+    const button = screen.getByRole('button', { name: 'Confirm in your wallet' })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(button).toHaveAttribute(anatomy.states.pending, 'true'))
+    expect(button).toHaveAccessibleName('Confirm in your wallet')
   })
 
   it('runs a consumer handler on the connect face and still connects', async () => {

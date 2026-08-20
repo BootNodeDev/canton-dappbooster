@@ -4,6 +4,7 @@ import { act, render, renderHook, waitFor } from '@testing-library/react'
 import type { JSX } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CantonConnectProvider, useCantonConnectContext } from './CantonConnectProvider'
+import { ConnectCancelledError } from './connectError'
 import { useConnect } from './hooks/useConnect'
 import { useExecute } from './hooks/useExecute'
 import { useLedger } from './hooks/useLedger'
@@ -13,6 +14,7 @@ import { useWalletStatus } from './hooks/useWalletStatus'
 import { createMockAdapter } from './mock/mockAdapter'
 import { createAutoPicker } from './testing/autoPicker'
 import { createFakeWallet } from './testing/fakeWallet'
+import { type StubPopup, stubOpen, stubPopup } from './testing/stubPopup'
 
 const KERNEL_DISCOVERY_KEY = 'splice_wallet_kernel_discovery'
 const DISCOVERY_SESSION_KEY = 'splice_discovery_client_session'
@@ -32,6 +34,28 @@ const throwingPicker: WalletPickerFn = async () => {
   throw new Error('cancel')
 }
 
+let restoreOpen: (() => void) | undefined
+
+// Drives a connect to the point a close strands it: the window only gets a URL once the SDK opened it.
+const strandOnClosedPicker = async (
+  result: { current: { sdk: DappSDK; connect: () => Promise<void> } },
+  popup: StubPopup,
+): Promise<DappSDK> => {
+  const stranded = result.current.sdk
+
+  await act(async () => {
+    const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
+      ConnectCancelledError,
+    )
+    await waitFor(() => expect(popup.location.href).not.toBe(''))
+    popup.closed = true
+    await connecting
+  })
+
+  await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
+  return stranded
+}
+
 describe('CantonConnectProvider', () => {
   afterEach(() => {
     localStorage.removeItem(KERNEL_DISCOVERY_KEY)
@@ -41,6 +65,8 @@ describe('CantonConnectProvider', () => {
 
     // A prototype spy survives a failed assertion; restoring here keeps it out of later tests.
     vi.restoreAllMocks()
+    restoreOpen?.()
+    restoreOpen = undefined
   })
 
   it('initial state is idle with no party and not locked', () => {
@@ -375,6 +401,81 @@ describe('CantonConnectProvider', () => {
     expect(offered).toEqual([
       expect.objectContaining({ providerId: 'walletconnect', type: 'mobile' }),
     ])
+  })
+
+  it('retires the SDK a closed picker left mid-connect', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+    const popup = stubPopup()
+    restoreOpen = stubOpen(popup)
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await strandOnClosedPicker(result, popup)
+    expect(result.current.status).toBe('disconnected')
+
+    wallet.dispose()
+  })
+
+  it('keeps a restored session across the retirement a closed picker forces', async () => {
+    localStorage.setItem(
+      KERNEL_DISCOVERY_KEY,
+      JSON.stringify({ walletType: 'extension', providerId: 'browser:ext:wallet-a' }),
+    )
+    localStorage.setItem(
+      DISCOVERY_SESSION_KEY,
+      JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
+    )
+
+    const wallet = createFakeWallet({
+      id: 'wallet-a',
+      target: 'wallet-a',
+      accounts: [{ partyId: 'alice::1220ab', primary: true }],
+    })
+    const popup = stubPopup()
+    restoreOpen = stubOpen(popup)
+
+    const config = { appName: 'test' }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+
+    await strandOnClosedPicker(result, popup)
+    expect(result.current.status).toBe('connected')
+    expect(result.current.party?.partyId).toBe('alice::1220ab')
+
+    wallet.dispose()
+  })
+
+  it('leaves a consumer-supplied picker alone rather than guarding the SDK popup', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const picker = vi.fn(throwingPicker)
+
+    const config = { appName: 'test', walletPicker: picker }
+    const { result } = renderHook(() => useCantonConnectContext(), {
+      wrapper: ({ children }) => (
+        <CantonConnectProvider config={config}>{children}</CantonConnectProvider>
+      ),
+    })
+
+    await act(async () => {
+      await expect(result.current.connect()).rejects.toThrow('cancel')
+    })
+
+    expect(picker).toHaveBeenCalledTimes(1)
+    expect(openSpy).not.toHaveBeenCalled()
   })
 
   it('offers no WalletConnect entry without a project id', async () => {
