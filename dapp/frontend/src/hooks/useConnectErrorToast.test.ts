@@ -1,6 +1,6 @@
 import { ConnectCancelledError } from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
-import { isReportableConnectError } from './useConnectErrorToast'
+import { isReportableConnectError } from '@/hooks/useConnectErrorToast'
 
 describe('isReportableConnectError', () => {
   it('stays quiet when the user cancels the connect', () => {

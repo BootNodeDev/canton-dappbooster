@@ -1,7 +1,7 @@
 import type { DappSDK } from '@canton-network/dapp-sdk'
 import { type JSX, type ReactNode, useCallback, useMemo, useState } from 'react'
-import { CantonConnectContext, type CantonConnectContextValue } from '../CantonConnectProvider'
-import type { CantonConnectConfig, ConnectionStatus, Party } from '../types'
+import { CantonConnectContext, type CantonConnectContextValue } from '#src/CantonConnectProvider'
+import type { CantonConnectConfig, ConnectionStatus, Party } from '#src/types'
 
 const CONFIG: CantonConnectConfig = { appName: 'fake-session' }
 

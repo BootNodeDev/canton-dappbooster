@@ -18,7 +18,7 @@ all transports. Browser-only. A stopgap, meant to stay cheap to delete.
 - **The mock adapter answers the connect flow only.** `createMockAdapter()` implements `connect`/`disconnect`/`status`/`listAccounts` and throws naming the method for anything else. Don't extend it to fake `execute` or `signMessage` — a canned result there is indistinguishable from a real wallet's.
 - **Keep hooks thin.** Read `CantonConnectProvider` context or delegate straight to a facade method. Shared state transitions belong in `CantonConnectProvider.tsx`.
 - Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
-- Relative imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
+- Internal modules are reached through this package's `#src/*` subpath imports, never a relative path, and imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
 
 ## Layout deltas from the root rules
 

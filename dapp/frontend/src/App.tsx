@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Toaster } from '@/components/toast'
 import { TOKENS } from '@/mock/tokens'
 import { BackendProvider } from '@/providers/BackendProvider'
-import { routes } from './routes'
+import { routes } from '@/routes'
 
 const router = createBrowserRouter(routes)
 

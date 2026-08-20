@@ -2,12 +2,12 @@ import { useConnect } from '@bootnodedev/canton-connect'
 import * as popover from '@zag-js/popover'
 import { mergeProps, normalizeProps, Portal, useMachine } from '@zag-js/react'
 import { type ButtonHTMLAttributes, type ReactElement, type ReactNode, useId } from 'react'
-import { ChevronDownIcon, LogoutIcon } from '../../icons'
-import { cx } from '../../utils/cx'
-import { SR_ONLY } from '../../utils/srOnly'
-import { Identifier } from '../Identifier'
-import { truncateIdentifier } from '../Identifier/truncate'
-import { anatomy, popoverAnatomy } from './anatomy'
+import { anatomy, popoverAnatomy } from '#src/components/ConnectButton/anatomy'
+import { Identifier } from '#src/components/Identifier'
+import { truncateIdentifier } from '#src/components/Identifier/truncate'
+import { ChevronDownIcon, LogoutIcon } from '#src/icons'
+import { cx } from '#src/utils/cx'
+import { SR_ONLY } from '#src/utils/srOnly'
 
 // The trigger sits in a header row, so the hint cannot keep the whole length a party may give it.
 const HINT_LENGTH = 12

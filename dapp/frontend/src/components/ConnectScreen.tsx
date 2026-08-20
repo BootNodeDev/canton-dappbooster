@@ -1,5 +1,5 @@
 import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
-import { ThemeToggle } from './ThemeToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 // Landing screen. The shell swaps to the app once a session exists, so a connected visitor never
 // reaches this screen and the button only ever needs its connect face.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cx } from './cx'
+import { cx } from '#src/utils/cx'
 
 describe('cx', () => {
   it('joins the classes it is given with a single space', () => {

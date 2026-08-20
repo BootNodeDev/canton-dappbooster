@@ -1,8 +1,8 @@
 import { useParty } from '@bootnodedev/canton-connect'
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react'
-import { AccountPopover } from './AccountPopover'
-import type { ConnectButtonMode } from './anatomy'
-import { Button } from './Button'
+import { AccountPopover } from '#src/components/ConnectButton/AccountPopover'
+import type { ConnectButtonMode } from '#src/components/ConnectButton/anatomy'
+import { Button } from '#src/components/ConnectButton/Button'
 
 /**
  * Props for {@link ConnectButton}.

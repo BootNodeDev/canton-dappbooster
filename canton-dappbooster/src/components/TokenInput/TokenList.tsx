@@ -6,15 +6,15 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { useTokenList } from '../../providers/TokenListProvider/useTokenList'
-import { SR_ONLY } from '../../utils/srOnly'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { NO_TOKENS, ROW_HEIGHT_REM } from './constants'
-import { filterTokens, toNeedle } from './filterTokens'
-import { TokenRow } from './TokenRow'
-import { useRemPx } from './useRemPx'
-import { useVirtualRows } from './useVirtualRows'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { NO_TOKENS, ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
+import { filterTokens, toNeedle } from '#src/components/TokenInput/filterTokens'
+import { TokenRow } from '#src/components/TokenInput/TokenRow'
+import { useRemPx } from '#src/components/TokenInput/useRemPx'
+import { useVirtualRows } from '#src/components/TokenInput/useVirtualRows'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
+import { SR_ONLY } from '#src/utils/srOnly'
 
 interface TokenListProps {
   onSelect: (token: Token) => void

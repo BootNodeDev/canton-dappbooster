@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { TokenListContext, type UseTokenListResult } from './context'
+import { TokenListContext, type UseTokenListResult } from '#src/providers/TokenListProvider/context'
 
 /**
  * Reads the token list

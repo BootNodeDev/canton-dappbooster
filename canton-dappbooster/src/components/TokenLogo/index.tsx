@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
-import { cx } from '../../utils/cx'
-import { anatomy } from './anatomy'
-import { swatchOf } from './swatch'
+import { anatomy } from '#src/components/TokenLogo/anatomy'
+import { swatchOf } from '#src/components/TokenLogo/swatch'
+import { cx } from '#src/utils/cx'
 
 const INITIALS = 3
 

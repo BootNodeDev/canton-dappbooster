@@ -81,7 +81,7 @@
       }
     },
     {
-      "includes": ["canton-connect/**", "canton-dappbooster/**", "dapp/frontend/**"],
+      "includes": ["canton-connect/**", "canton-dappbooster/**"],
       "linter": {
         "rules": {
           "style": {
@@ -92,6 +92,38 @@
                   {
                     "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
                     "message": "Do not include the file extension in imports."
+                  },
+                  {
+                    "group": [".", "..", "./*", "./**", "../*", "../**"],
+                    "message": "Reach an internal module through this package's #src/* subpath imports."
+                  },
+                  {
+                    "group": ["@/*", "@/**"],
+                    "message": "@/ is the app's alias and resolves into the consumer's tree here. Use #src/*."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["dapp/frontend/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+                    "message": "Do not include the file extension in imports."
+                  },
+                  {
+                    "group": [".", "..", "./*", "./**", "../*", "../**"],
+                    "message": "Reach an intra-src module through the @/ alias."
                   }
                 ]
               }
@@ -104,7 +136,6 @@
       "includes": [
         "canton-connect/src/**",
         "canton-dappbooster/src/**",
-        "dapp/frontend/src/**",
         "!**/*.test.ts",
         "!**/*.test.tsx",
         "!**/testing/**"
@@ -119,6 +150,42 @@
                   {
                     "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
                     "message": "Do not include the file extension in imports."
+                  },
+                  {
+                    "group": [".", "..", "./*", "./**", "../*", "../**"],
+                    "message": "Reach an internal module through this package's #src/* subpath imports."
+                  },
+                  {
+                    "group": ["@/*", "@/**"],
+                    "message": "@/ is the app's alias and resolves into the consumer's tree here. Use #src/*."
+                  },
+                  {
+                    "group": ["**/testing/**"],
+                    "message": "testing/ is test-only. Do not import it from source."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["dapp/frontend/src/**", "!**/*.test.ts", "!**/*.test.tsx", "!**/testing/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+                    "message": "Do not include the file extension in imports."
+                  },
+                  {
+                    "group": [".", "..", "./*", "./**", "../*", "../**"],
+                    "message": "Reach an intra-src module through the @/ alias."
                   },
                   {
                     "group": ["**/testing/**"],

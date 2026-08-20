@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import { CheckIcon } from '@/components/icons'
 import { cn } from '@/lib/cn'
-import { CheckIcon } from './icons'
 
 type ToastTone = 'success' | 'error' | 'info'
 

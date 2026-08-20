@@ -1,10 +1,10 @@
+import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
+import { CounterpartyId } from '@/components/CounterpartyId'
+import { StatusPill } from '@/components/StatusPill'
 import { formatCC, formatDate, relativeTime } from '@/lib/format'
 import { vestedFraction } from '@/lib/schedule'
 import type { Proposal } from '@/store/types'
-import { Button } from './Button'
-import { Card } from './Card'
-import { CounterpartyId } from './CounterpartyId'
-import { StatusPill } from './StatusPill'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
 // funder.

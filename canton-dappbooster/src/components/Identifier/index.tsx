@@ -1,15 +1,11 @@
 import type { HTMLAttributes, ReactElement } from 'react'
-import {
-  type CopyOutcome,
-  type CopyState,
-  useCopyToClipboard,
-} from '../../hooks/useCopyToClipboard'
-import { CheckIcon, CopyIcon } from '../../icons'
-import { cx } from '../../utils/cx'
-import { SR_ONLY } from '../../utils/srOnly'
-import { ExplorerLink } from '../ExplorerLink'
-import { anatomy } from './anatomy'
-import { type TruncateOptions, truncateIdentifier } from './truncate'
+import { ExplorerLink } from '#src/components/ExplorerLink'
+import { anatomy } from '#src/components/Identifier/anatomy'
+import { type TruncateOptions, truncateIdentifier } from '#src/components/Identifier/truncate'
+import { type CopyOutcome, type CopyState, useCopyToClipboard } from '#src/hooks/useCopyToClipboard'
+import { CheckIcon, CopyIcon } from '#src/icons'
+import { cx } from '#src/utils/cx'
+import { SR_ONLY } from '#src/utils/srOnly'
 
 /**
  * Props for {@link Identifier}. `label` is the accessible noun the controls are named after, and

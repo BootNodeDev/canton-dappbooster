@@ -1,8 +1,8 @@
-export { createAutoPicker } from './autoPicker'
-export { FakeSessionProvider, type FakeSessionProviderProps } from './fakeSession'
+export { createAutoPicker } from '#src/testing/autoPicker'
+export { FakeSessionProvider, type FakeSessionProviderProps } from '#src/testing/fakeSession'
 export {
   createFakeWallet,
   type FakeWallet,
   type FakeWalletAccount,
   type FakeWalletOptions,
-} from './fakeWallet'
+} from '#src/testing/fakeWallet'

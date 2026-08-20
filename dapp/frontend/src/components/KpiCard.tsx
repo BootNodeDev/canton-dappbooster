@@ -1,5 +1,5 @@
+import { AmountDisplay } from '@/components/AmountDisplay'
 import { cn } from '@/lib/cn'
-import { AmountDisplay } from './AmountDisplay'
 
 interface KpiCardProps {
   label: string

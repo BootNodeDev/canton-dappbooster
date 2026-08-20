@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
 import { describe, expect, it } from 'vitest'
-import { stubViewport } from '../../testing/viewport'
-import { useVirtualRows } from './useVirtualRows'
+import { useVirtualRows } from '#src/components/TokenInput/useVirtualRows'
+import { stubViewport } from '#src/testing/viewport'
 
 const ROW = 52
 // Four rows of viewport: jsdom lays nothing out, so the height every row reads from is stubbed.

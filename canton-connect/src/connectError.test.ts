@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ConnectCancelledError, toConnectError } from './connectError'
+import { ConnectCancelledError, toConnectError } from '#src/connectError'
 
 describe('toConnectError', () => {
   it('translates the picker dismissal, keeping the original as cause', () => {

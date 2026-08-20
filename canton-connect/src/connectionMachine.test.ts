@@ -2,7 +2,7 @@
 import type { ConnectResult } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine, type WalletStatus } from './connectionMachine'
+import { connectionMachine, type WalletStatus } from '#src/connectionMachine'
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

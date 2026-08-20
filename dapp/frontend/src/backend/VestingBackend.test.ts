@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { encodeSchedule } from './commands'
-import { composeNote, rowToClaim, rowToGrant, rowToProposal, splitNote } from './VestingBackend'
+import { encodeSchedule } from '@/backend/commands'
+import {
+  composeNote,
+  rowToClaim,
+  rowToGrant,
+  rowToProposal,
+  splitNote,
+} from '@/backend/VestingBackend'
 
 const linearEncoded = encodeSchedule({
   cliff: '2026-01-01T00:00:00Z',

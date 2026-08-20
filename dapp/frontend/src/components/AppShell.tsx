@@ -1,10 +1,10 @@
 import { Outlet, useLocation } from 'react-router-dom'
+import { ConnectScreen } from '@/components/ConnectScreen'
+import { Sidebar } from '@/components/Sidebar'
+import { TopBar } from '@/components/TopBar'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
 import { useParty } from '@/hooks/useParty'
 import { useUiStore } from '@/store/useUiStore'
-import { ConnectScreen } from './ConnectScreen'
-import { Sidebar } from './Sidebar'
-import { TopBar } from './TopBar'
 
 const titleFor = (pathname: string, role: string): { title: string; crumb: string } => {
   if (pathname.startsWith('/proposals')) {

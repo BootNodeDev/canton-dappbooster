@@ -1,6 +1,6 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { useCantonConnectContext } from '../CantonConnectProvider'
+import { useCantonConnectContext } from '#src/CantonConnectProvider'
 
 /** Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type. */
 export type { LedgerApiParams }

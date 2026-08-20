@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { TokenListProvider } from '../../providers/TokenListProvider'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { TOKENS } from '../../testing/tokens'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { MAX_FAVORITES } from './constants'
-import { TokenFavorites } from './TokenFavorites'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { MAX_FAVORITES } from '#src/components/TokenInput/constants'
+import { TokenFavorites } from '#src/components/TokenInput/TokenFavorites'
+import { TokenListProvider } from '#src/providers/TokenListProvider'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { TOKENS } from '#src/testing/tokens'
 
 const favorites = (
   props: Partial<React.ComponentProps<typeof TokenFavorites>> & {

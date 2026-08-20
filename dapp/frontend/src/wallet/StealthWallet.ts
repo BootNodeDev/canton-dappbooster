@@ -3,7 +3,7 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { walletServiceRequest } from '@/backend/ledgerApi'
 import type { PartyRef } from '@/backend/VestingBackend'
-import type { DisclosedContract, LedgerCommand, Wallet } from './Wallet'
+import type { DisclosedContract, LedgerCommand, Wallet } from '@/wallet/Wallet'
 
 type Account = { partyId: string; hint?: string }
 

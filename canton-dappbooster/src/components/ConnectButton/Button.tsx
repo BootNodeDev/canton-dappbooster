@@ -1,7 +1,7 @@
 import { useConnect } from '@bootnodedev/canton-connect'
 import type { ButtonHTMLAttributes, MouseEvent, ReactElement } from 'react'
-import { cx } from '../../utils/cx'
-import { anatomy } from './anatomy'
+import { anatomy } from '#src/components/ConnectButton/anatomy'
+import { cx } from '#src/utils/cx'
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
 

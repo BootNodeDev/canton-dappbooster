@@ -1,11 +1,11 @@
 // Backend construction point: no deployment config means the in-memory MockBackend, a real
 // vesting-lite-parties.json means a LiteBackend over the wallet-service ledgerApi proxy.
 
+import { LiteBackend } from '@/backend/LiteBackend'
+import type { Deployment, VestingBackend } from '@/backend/VestingBackend'
 import { MockBackend } from '@/mock/MockBackend'
 import { seedView } from '@/mock/seed'
 import type { Wallet } from '@/wallet/Wallet'
-import { LiteBackend } from './LiteBackend'
-import type { Deployment, VestingBackend } from './VestingBackend'
 
 export type BackendConfig = { rpcUrl: string; deployment: Deployment }
 

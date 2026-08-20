@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toNumber } from './amount'
+import { toNumber } from '@/lib/amount'
 import {
   MIN_GRANT_AMOUNT,
   meetsRelockFloor,
@@ -8,7 +8,7 @@ import {
   validVestingSchedule,
   vestedAmount,
   vestedFraction,
-} from './schedule'
+} from '@/lib/schedule'
 
 const ms = (iso: string): number => new Date(iso).getTime()
 

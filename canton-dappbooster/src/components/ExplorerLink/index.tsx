@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, ReactElement } from 'react'
-import { ExternalLinkIcon } from '../../icons'
-import { cx } from '../../utils/cx'
-import { anatomy } from './anatomy'
+import { anatomy } from '#src/components/ExplorerLink/anatomy'
+import { ExternalLinkIcon } from '#src/icons'
+import { cx } from '#src/utils/cx'
 
 /**
  * Props for {@link ExplorerLink}. The label and the href are both required: the only content is an

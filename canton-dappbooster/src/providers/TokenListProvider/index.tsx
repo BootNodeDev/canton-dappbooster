@@ -1,5 +1,9 @@
 import { type ReactElement, type ReactNode, useMemo } from 'react'
-import { type Token, TokenListContext, type UseTokenListResult } from './context'
+import {
+  type Token,
+  TokenListContext,
+  type UseTokenListResult,
+} from '#src/providers/TokenListProvider/context'
 
 /**
  * Props for {@link TokenListProvider}

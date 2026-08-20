@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { filterTokens } from './filterTokens'
+import { filterTokens } from '#src/components/TokenInput/filterTokens'
+import type { Token } from '#src/providers/TokenListProvider/context'
 
 const cc: Token = { id: '0xaaa1', name: 'Canton Coin', symbol: 'CC' }
 const weth: Token = { id: '0xbbb2', name: 'Wrapped Ether', symbol: 'WETH' }

@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef, type ReactElement, type RefObject } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TokenListProvider } from '../../providers/TokenListProvider'
-import type { Token } from '../../providers/TokenListProvider/context'
-import { TOKENS } from '../../testing/tokens'
-import { stubViewport } from '../../testing/viewport'
-import { dialogAnatomy as anatomy } from './anatomy'
-import { TokenSelectDialog } from './TokenSelectDialog'
+import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
+import { TokenSelectDialog } from '#src/components/TokenInput/TokenSelectDialog'
+import { TokenListProvider } from '#src/providers/TokenListProvider'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { TOKENS } from '#src/testing/tokens'
+import { stubViewport } from '#src/testing/viewport'
 
 const dialog = (
   props: Partial<React.ComponentProps<typeof TokenSelectDialog>> & {

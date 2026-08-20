@@ -1,4 +1,4 @@
-import { useCantonConnectContext } from '../CantonConnectProvider'
+import { useCantonConnectContext } from '#src/CantonConnectProvider'
 
 export interface UseConnectResult {
   connect: () => Promise<void>

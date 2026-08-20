@@ -1,9 +1,9 @@
 import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { stubPrefersDark } from '../../testing/matchMedia'
-import { ThemeProvider, type ThemeProviderProps } from '.'
-import { DEFAULT_STORAGE_KEY } from './constants'
-import { useTheme } from './useTheme'
+import { ThemeProvider, type ThemeProviderProps } from '#src/providers/ThemeProvider'
+import { DEFAULT_STORAGE_KEY } from '#src/providers/ThemeProvider/constants'
+import { useTheme } from '#src/providers/ThemeProvider/useTheme'
+import { stubPrefersDark } from '#src/testing/matchMedia'
 
 const Probe = (): React.JSX.Element => {
   const { mode, resolved, setMode, toggle } = useTheme()

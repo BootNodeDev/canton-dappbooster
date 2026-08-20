@@ -1,5 +1,5 @@
-import { useCantonConnectContext } from '../CantonConnectProvider'
-import type { ConnectionStatus, Party } from '../types'
+import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import type { ConnectionStatus, Party } from '#src/types'
 
 export interface UsePartyResult {
   party: Party | undefined

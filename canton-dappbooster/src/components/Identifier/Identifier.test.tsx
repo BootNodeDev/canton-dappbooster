@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { stubClipboard } from '../../testing/clipboard'
-import { Identifier } from '.'
-import { anatomy } from './anatomy'
-import { truncateIdentifier } from './truncate'
+import { Identifier } from '#src/components/Identifier'
+import { anatomy } from '#src/components/Identifier/anatomy'
+import { truncateIdentifier } from '#src/components/Identifier/truncate'
+import { stubClipboard } from '#src/testing/clipboard'
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const SHORT = 'cid-abc'

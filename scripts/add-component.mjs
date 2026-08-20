@@ -36,8 +36,8 @@ const files = {
 `,
 
   'index.tsx': `import type { HTMLAttributes, ReactElement } from 'react'
-import { cx } from '../../utils/cx'
-import { anatomy } from './anatomy'
+import { anatomy } from '#src/components/${name}/anatomy'
+import { cx } from '#src/utils/cx'
 
 /**
  * Props for {@link ${name}}.
@@ -62,8 +62,8 @@ export const ${name} = ({ children, className, ...rest }: ${name}Props): ReactEl
 
   [`${name}.test.tsx`]: `import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { ${name} } from '.'
-import { anatomy } from './anatomy'
+import { ${name} } from '#src/components/${name}'
+import { anatomy } from '#src/components/${name}/anatomy'
 
 describe('${name}', () => {
   it('renders with the root part', () => {
@@ -90,7 +90,7 @@ const section = (title) => `\n${ANSI.bold}${title}${ANSI.reset}\n`
 
 process.stdout.write(section('1. Paste into canton-dappbooster/src/index.ts:'))
 process.stdout.write(`
-export { ${name}, type ${name}Props } from './components/${name}'
+export { ${name}, type ${name}Props } from '#src/components/${name}'
 `)
 
 process.stdout.write(section('2. Paste into canton-theme/src/default.css, inside @layer cnc:'))

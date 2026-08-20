@@ -3,9 +3,9 @@ import { createAutoPicker, FakeSessionProvider } from '@bootnodedev/canton-conne
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { stubResizeObserver } from '../../testing/resizeObserver'
-import { ConnectButton } from '.'
-import { anatomy, popoverAnatomy } from './anatomy'
+import { ConnectButton } from '#src/components/ConnectButton'
+import { anatomy, popoverAnatomy } from '#src/components/ConnectButton/anatomy'
+import { stubResizeObserver } from '#src/testing/resizeObserver'
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const SHORT_PARTY = 'nico::1220df…0b1cbb46'

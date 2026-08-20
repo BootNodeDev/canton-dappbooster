@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { TokenListProvider } from '.'
-import type { Token } from './context'
-import { useTokenList } from './useTokenList'
+import { TokenListProvider } from '#src/providers/TokenListProvider'
+import type { Token } from '#src/providers/TokenListProvider/context'
+import { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
 
 const CC: Token = { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
 const USDC: Token = { id: 'usdc', name: 'USD Coin', symbol: 'USDC' }
