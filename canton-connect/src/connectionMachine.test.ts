@@ -84,7 +84,7 @@ describe('connectionMachine', () => {
   })
 
   describe('cancel', () => {
-    it('aborts the in-flight init', () => {
+    it('cancel signals abort to the invoked init actor', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
@@ -107,7 +107,7 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('aborts the in-flight connect attempt', () => {
+    it('cancel signals abort to the invoked connect actor', () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
         actors: {
