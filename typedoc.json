@@ -1,0 +1,54 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Canton dApp Booster",
+  "entryPointStrategy": "packages",
+  "entryPoints": [
+    "canton-dappbooster",
+    "canton-connect"
+  ],
+  "out": "typedoc",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "excludeExternals": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "rewrittenLink": true,
+    "invalidPath": true,
+    "notDocumented": true,
+    "unusedMergeModuleWith": true
+  },
+  "treatValidationWarningsAsErrors": true,
+  "requiredToBeDocumented": [
+    "Enum",
+    "EnumMember",
+    "Variable",
+    "Class",
+    "Interface",
+    "TypeAlias"
+  ],
+  "packagesRequiringDocumentation": [
+    "@bootnodedev/canton-dappbooster",
+    "@bootnodedev/canton-connect"
+  ],
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "mermaid",
+    "yaml",
+    "tsx",
+    "typescript"
+  ],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": false,
+    "includeFolders": true,
+    "compactFolders": true
+  }
+}
