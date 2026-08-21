@@ -44,7 +44,7 @@ export const createConnectionActors = (
           // original error will be the answer
           .catch(() => null)
 
-        if (status?.connection.isConnected) {
+        if (status?.connection?.isConnected) {
           return {
             connection: status.connection,
             session: status.session,
