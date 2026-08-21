@@ -8,6 +8,8 @@ import { ThemeContext, type UseThemeResult } from '#src/providers/ThemeProvider/
  * @example
  * const { resolved, toggle } = useTheme()
  * <button onClick={toggle}>{resolved === 'dark' ? 'Light' : 'Dark'} mode</button>
+ *
+ * @category Hooks
  */
 export const useTheme = (): UseThemeResult => {
   const value = useContext(ThemeContext)

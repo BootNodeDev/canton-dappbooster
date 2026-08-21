@@ -6,7 +6,13 @@ export const PARTY_SEPARATOR = '::'
  * copy, so the consumer maps these to their own wording.
  *
  * @example
- * const MESSAGES: Record<PartyIdError, string> = { 'missing-separator': 'Use hint::fingerprint', … }
+ * const MESSAGES: Record<PartyIdError, string> = {
+ *   'missing-separator': 'Use hint::fingerprint',
+ *   'invalid-hint': 'The hint cannot be blank or contain spaces',
+ *   'invalid-fingerprint': 'The fingerprint is 68 hex characters',
+ * }
+ *
+ * @category Utilities
  */
 export type PartyIdError = 'missing-separator' | 'invalid-hint' | 'invalid-fingerprint'
 
@@ -15,15 +21,17 @@ export type PartyIdError = 'missing-separator' | 'invalid-hint' | 'invalid-finge
 const FINGERPRINT = /^[0-9a-f]{68}$/i
 
 /**
- * Checks the shape of a party id: a non-blank hint, the `::` separator, and a hex fingerprint.
- * Returns `undefined` when nothing is wrong. Shape only — whether the party exists is the ledger's
- * answer, not this function's.
+ * Checks the shape of a party id: a non-blank hint, the `::` separator, and a 68-character hex
+ * fingerprint. Returns `undefined` when nothing is wrong. Shape only — whether the party exists is
+ * the ledger's answer, not this function's.
  *
  * Reach for this over {@link isValidPartyId} when the caller needs to say what went wrong.
  *
  * @example
  * validatePartyId('nico:1220df94') // 'missing-separator'
- * validatePartyId('nico::1220df94') // undefined
+ * validatePartyId('nico::1220df94') // 'invalid-fingerprint': 8 hex characters, not 68
+ *
+ * @category Utilities
  */
 export const validatePartyId = (value: string): PartyIdError | undefined => {
   const separator = value.indexOf(PARTY_SEPARATOR)
@@ -43,6 +51,9 @@ export const validatePartyId = (value: string): PartyIdError | undefined => {
  * matters.
  *
  * @example
- * isValidPartyId('nico::1220df94') // true
+ * isValidPartyId(partyId) // true
+ * isValidPartyId('nico::1220df94') // false: 8 hex characters where 68 are required
+ *
+ * @category Utilities
  */
 export const isValidPartyId = (value: string): boolean => validatePartyId(value) === undefined

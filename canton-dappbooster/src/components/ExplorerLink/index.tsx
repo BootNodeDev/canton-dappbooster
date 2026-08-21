@@ -8,7 +8,10 @@ import { cx } from '#src/utils/cx'
  * `aria-hidden` icon, and a link with nowhere to go is not rendered.
  *
  * @example
- * <ExplorerLink href={explorerLink(partyId)} aria-label="View party id in explorer" />
+ * const href = explorerLink(partyId)
+ * href !== undefined && <ExplorerLink href={href} aria-label="View party id in explorer" />
+ *
+ * @category Components
  */
 export interface ExplorerLinkProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'rel' | 'target'> {
@@ -25,6 +28,10 @@ export interface ExplorerLinkProps
  *
  * @example
  * <ExplorerLink href="https://scan.example/party/nico" aria-label="View party id in explorer" />
+ *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/components/ExplorerLink/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const ExplorerLink = ({ className, href, ...rest }: ExplorerLinkProps): ReactElement => {
   return (

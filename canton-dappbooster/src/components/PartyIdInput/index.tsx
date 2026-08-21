@@ -9,7 +9,12 @@ import { type PartyIdError, validatePartyId } from '#src/utils/partyId'
  * word the message and place it where it wants.
  *
  * @example
- * <PartyIdInput value={receiver} onChange={(next, error) => { setReceiver(next); setError(error) }} />
+ * <PartyIdInput
+ *   value={receiver}
+ *   onChange={(next, error) => { setReceiver(next); setError(error) }}
+ * />
+ *
+ * @category Components
  */
 export interface PartyIdInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'value'> {
@@ -30,6 +35,10 @@ const errorOf = (value: string): PartyIdError | undefined =>
  *
  * @example
  * <PartyIdInput value={receiver} onChange={setReceiver} aria-describedby="receiver-error" />
+ *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/components/PartyIdInput/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const PartyIdInput = ({
   'aria-invalid': ariaInvalid,

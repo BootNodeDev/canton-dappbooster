@@ -1,3 +1,10 @@
+/**
+ * Everything importable from `@bootnodedev/canton-dappbooster` itself. `<ConnectButton>` is not
+ * here: it reads the wallet session, so it lives on the `/connect` sub-path.
+ *
+ * @module Main
+ */
+
 export { ExplorerLink, type ExplorerLinkProps } from '#src/components/ExplorerLink'
 export { Identifier, type IdentifierProps } from '#src/components/Identifier'
 export {

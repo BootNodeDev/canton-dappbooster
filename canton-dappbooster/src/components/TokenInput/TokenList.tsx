@@ -78,7 +78,8 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
       ),
     [activeId, tokens],
   )
-  // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls focus.
+  // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls
+  // focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
 
