@@ -2,7 +2,7 @@
 // popup leaves connect() pending forever. See architecture.md.
 
 import type { DappSDK } from '@canton-network/dapp-sdk'
-import { PickerClosedError } from './connectError'
+import { PickerClosedError } from '#src/connectError'
 
 const POLL_MS = 400
 

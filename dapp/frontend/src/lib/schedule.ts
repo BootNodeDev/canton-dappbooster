@@ -1,7 +1,7 @@
 // Vesting math mirroring the on-ledger Schedule logic, for live figures and create-form
 // validation. Keep in sync with the DAML.
 
-import { compareAmounts, isZero, multiplyByFraction, subtractAmounts } from './amount'
+import { compareAmounts, isZero, multiplyByFraction, subtractAmounts } from '@/lib/amount'
 
 export type ISO = string
 

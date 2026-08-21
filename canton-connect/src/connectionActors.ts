@@ -1,7 +1,7 @@
 import type { DappSDK, StatusEvent } from '@canton-network/dapp-sdk'
 import { fromCallback, fromPromise } from 'xstate'
-import type { WalletStatusUpdate } from './connectionMachine'
-import { guardedConnect } from './guardedConnect'
+import type { WalletStatusUpdate } from '#src/connectionMachine'
+import { guardedConnect } from '#src/guardedConnect'
 
 // DappSDKConnectOptions is not exported from the package index; derived until it is
 type InitOptions = NonNullable<Parameters<DappSDK['init']>[0]>

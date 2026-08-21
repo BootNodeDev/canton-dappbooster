@@ -1,9 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, fromCallback, fromPromise, type StateValueFrom } from 'xstate'
-import { connectionMachine, toConnectionStatus, type WalletStatusUpdate } from './connectionMachine'
-// Not the './testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
-import { pause } from './testing/pause'
+import {
+  connectionMachine,
+  toConnectionStatus,
+  type WalletStatusUpdate,
+} from '#src/connectionMachine'
+// Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
+import { pause } from '#src/testing/pause'
 
 const recordStates = (actor: ReturnType<typeof createActor<typeof connectionMachine>>) => {
   const states: StateValueFrom<typeof connectionMachine>[] = []

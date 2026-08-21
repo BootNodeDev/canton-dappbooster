@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { partyHint, truncateIdentifier } from './truncate'
+import { partyHint, truncateIdentifier } from '#src/components/Identifier/truncate'
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const PLAIN = 'viewer1-1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2d05fe52e'

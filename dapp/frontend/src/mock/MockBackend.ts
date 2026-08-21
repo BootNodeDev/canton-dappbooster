@@ -2,8 +2,8 @@ import type { CreateVestInput, Mode, VestingBackend, VestingView } from '@/backe
 import { addAmounts, compareAmounts, isPositive, subtractAmounts } from '@/lib/amount'
 import { now } from '@/lib/clock'
 import { MIN_GRANT_AMOUNT, vestedAmount } from '@/lib/schedule'
+import { MOCK_OPERATOR } from '@/mock/seed'
 import type { Grant, Proposal, VestedClaim } from '@/store/types'
-import { MOCK_OPERATOR } from './seed'
 
 const mockId = (prefix: string): string => `${prefix}-${crypto.randomUUID().slice(0, 8)}`
 

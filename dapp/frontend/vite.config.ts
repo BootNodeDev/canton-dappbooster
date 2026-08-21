@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
+// biome-ignore lint/style/noRestrictedImports: this file defines the @ alias, so it cannot use it.
 import { parseEnv } from './src/lib/env'
 
 // Vite inlines `import.meta.env.VITE_*` as literals, so the environment is a build-time input. It

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingView } from '@/backend/VestingBackend'
 import type { VestingSchedule } from '@/lib/schedule'
+import { MockBackend } from '@/mock/MockBackend'
 import type { Grant, Proposal, VestedClaim } from '@/store/types'
-import { MockBackend } from './MockBackend'
 
 const OP = 'operator::mock'
 const ALICE = 'alice::mock' // funder / proposer

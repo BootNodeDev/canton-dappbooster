@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseEnv } from './env'
+import { parseEnv } from '@/lib/env'
 
 describe('parseEnv', () => {
   it('returns the parsed variables', () => {

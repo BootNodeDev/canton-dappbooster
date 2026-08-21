@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { getExplorerLink, useExplorerLink } from './useExplorerLink'
+import { getExplorerLink, useExplorerLink } from '#src/hooks/useExplorerLink'
 
 const FINGERPRINT = '1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c'
 const PARTY = `nico::${FINGERPRINT}`

@@ -1,11 +1,11 @@
 import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
+import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
+import { ScheduleBar } from '@/components/ScheduleBar'
 import { formatCC, formatPct } from '@/lib/format'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
-import { Button } from './Button'
-import { Card } from './Card'
-import { ScheduleBar } from './ScheduleBar'
 
 export interface GrantRow {
   grant: Grant

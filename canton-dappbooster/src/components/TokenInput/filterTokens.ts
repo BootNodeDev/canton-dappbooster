@@ -1,4 +1,4 @@
-import type { Token } from '../../providers/TokenListProvider/context'
+import type { Token } from '#src/providers/TokenListProvider/context'
 
 // Held per token rather than per keystroke: the same three strings would otherwise be lowercased
 // again for every character typed, over a list long enough to have needed windowing.

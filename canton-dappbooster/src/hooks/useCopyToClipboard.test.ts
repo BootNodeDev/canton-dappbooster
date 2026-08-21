@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { stubClipboard } from '../testing/clipboard'
-import { useCopyToClipboard } from './useCopyToClipboard'
+import { useCopyToClipboard } from '#src/hooks/useCopyToClipboard'
+import { stubClipboard } from '#src/testing/clipboard'
 
 describe('useCopyToClipboard', () => {
   beforeEach(() => {

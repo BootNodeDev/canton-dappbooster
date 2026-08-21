@@ -8,8 +8,13 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import { DARK_QUERY, DEFAULT_STORAGE_KEY } from './constants'
-import { type ResolvedTheme, ThemeContext, type ThemeMode, type UseThemeResult } from './context'
+import { DARK_QUERY, DEFAULT_STORAGE_KEY } from '#src/providers/ThemeProvider/constants'
+import {
+  type ResolvedTheme,
+  ThemeContext,
+  type ThemeMode,
+  type UseThemeResult,
+} from '#src/providers/ThemeProvider/context'
 
 const prefersDark = (): boolean => window.matchMedia(DARK_QUERY).matches
 

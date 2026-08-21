@@ -3,11 +3,11 @@
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import { createConnectionActors } from './connectionActors'
-import { connectionMachine, type WalletStatusUpdate } from './connectionMachine'
-import { createMockAdapter } from './mock/mockAdapter'
+import { createConnectionActors } from '#src/connectionActors'
+import { connectionMachine, type WalletStatusUpdate } from '#src/connectionMachine'
+import { createMockAdapter } from '#src/mock/mockAdapter'
 // Not the './testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
-import { pause } from './testing/pause'
+import { pause } from '#src/testing/pause'
 
 const pickerExploded = new Error('picker exploded')
 

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { ExplorerLink } from '.'
-import { anatomy } from './anatomy'
+import { ExplorerLink } from '#src/components/ExplorerLink'
+import { anatomy } from '#src/components/ExplorerLink/anatomy'
 
 const HREF = 'https://scan.example/party/nico'
 const LABEL = 'View party id in explorer'

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
 import { toNumber } from '@/lib/amount'
-import type { Grant } from './types'
-import { deriveGrant, useVestingStore } from './useVestingStore'
+import type { Grant } from '@/store/types'
+import { deriveGrant, useVestingStore } from '@/store/useVestingStore'
 
 const ms = (iso: string): number => new Date(iso).getTime()
 

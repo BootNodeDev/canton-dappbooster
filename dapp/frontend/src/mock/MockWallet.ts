@@ -1,6 +1,6 @@
 import type { PartyRef } from '@/backend/VestingBackend'
+import { MOCK_PARTIES } from '@/mock/seed'
 import type { Wallet } from '@/wallet/Wallet'
-import { MOCK_PARTIES } from './seed'
 
 // Party source for mock-first mode. `execute` is unreachable: MockBackend mutates its own
 // in-memory state instead of submitting to a ledger.

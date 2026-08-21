@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Svg } from './Svg'
+import { Svg } from '#src/icons/Svg'
 
 export const ChevronDownIcon = (): ReactElement => (
   <Svg>

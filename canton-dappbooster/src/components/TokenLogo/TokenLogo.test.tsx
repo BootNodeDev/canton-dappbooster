@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { TokenLogo } from '.'
-import { anatomy } from './anatomy'
-import { swatchOf } from './swatch'
+import { TokenLogo } from '#src/components/TokenLogo'
+import { anatomy } from '#src/components/TokenLogo/anatomy'
+import { swatchOf } from '#src/components/TokenLogo/swatch'
 
 const rendered = (container: HTMLElement): HTMLElement =>
   container.querySelector(`.${anatomy.parts.root}`) as HTMLElement

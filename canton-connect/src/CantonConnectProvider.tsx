@@ -20,10 +20,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import { PickerClosedError, toConnectError } from './connectError'
-import { guardedConnect } from './guardedConnect'
-import type { CantonConnectConfig, ConnectionStatus, Party } from './types'
-import { selectPrimaryAccount, toParty } from './walletAccount'
+import { PickerClosedError, toConnectError } from '#src/connectError'
+import { guardedConnect } from '#src/guardedConnect'
+import type { CantonConnectConfig, ConnectionStatus, Party } from '#src/types'
+import { selectPrimaryAccount, toParty } from '#src/walletAccount'
 
 /**
  * Mirrored from the SDK's `txChanged` event as a command moves through

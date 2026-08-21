@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import { stubResizeObserver } from './resizeObserver'
+import { stubResizeObserver } from '#src/testing/resizeObserver'
 
 /**
  * jsdom lays nothing out and ships no `ResizeObserver`, so a windowed list reads a height of zero

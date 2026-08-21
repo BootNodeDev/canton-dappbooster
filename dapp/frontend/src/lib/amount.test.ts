@@ -8,7 +8,7 @@ import {
   multiplyByFraction,
   roundAmount,
   subtractAmounts,
-} from './amount'
+} from '@/lib/amount'
 
 describe('addAmounts', () => {
   it('adds without float drift', () => {

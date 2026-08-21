@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { StealthWallet } from './StealthWallet'
+import { StealthWallet } from '@/wallet/StealthWallet'
 
 const rpcOk = (result: unknown) =>
   ({ ok: true, json: async () => ({ jsonrpc: '2.0', id: '1', result }) }) as unknown as Response
@@ -31,8 +31,8 @@ describe('StealthWallet.execute', () => {
     const wallet = new StealthWallet('http://localhost:3010/rpc')
     await wallet.execute(
       'alice::fp',
-      { ExerciseCommand: { x: 1 } } as unknown as import('./Wallet').LedgerCommand,
-      [{ createdEventBlob: 'b' }] as unknown as import('./Wallet').DisclosedContract[],
+      { ExerciseCommand: { x: 1 } } as unknown as import('@/wallet/Wallet').LedgerCommand,
+      [{ createdEventBlob: 'b' }] as unknown as import('@/wallet/Wallet').DisclosedContract[],
     )
     const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
     expect(body.method).toBe('ledgerApi')

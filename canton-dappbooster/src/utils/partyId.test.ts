@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isValidPartyId, validatePartyId } from './partyId'
+import { isValidPartyId, validatePartyId } from '#src/utils/partyId'
 
 // `1220` plus 64 hex: the 68 characters a live Canton fingerprint has.
 const FINGERPRINT = '1220bacae18ee76cbead16253ac8dbc811bdd759f99cbabc84bc4b2354a9f6a5e13c'

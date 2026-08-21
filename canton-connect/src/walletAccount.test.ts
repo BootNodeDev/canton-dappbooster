@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectPrimaryAccount, toParty } from './walletAccount'
+import { selectPrimaryAccount, toParty } from '#src/walletAccount'
 
 describe('selectPrimaryAccount', () => {
   it('returns undefined for an empty list', () => {

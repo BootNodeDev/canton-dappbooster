@@ -1,8 +1,8 @@
 import { type FocusEvent, type InputHTMLAttributes, type ReactElement, useState } from 'react'
-import { cx } from '../../utils/cx'
-import { resolveInvalid } from '../../utils/invalid'
-import { type PartyIdError, validatePartyId } from '../../utils/partyId'
-import { anatomy } from './anatomy'
+import { anatomy } from '#src/components/PartyIdInput/anatomy'
+import { cx } from '#src/utils/cx'
+import { resolveInvalid } from '#src/utils/invalid'
+import { type PartyIdError, validatePartyId } from '#src/utils/partyId'
 
 /**
  * Props for {@link PartyIdInput}. `onChange` reports the reason alongside the value, so the app can

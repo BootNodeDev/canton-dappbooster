@@ -2,7 +2,7 @@
 // the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
 
 import { formatAmount } from '@bootnodedev/canton-dappbooster'
-import { multiplyAmounts, roundAmount } from './amount'
+import { multiplyAmounts, roundAmount } from '@/lib/amount'
 
 // `Intl.NumberFormat.format` is typed for `number | bigint`, not the decimal strings amounts are
 // here — the kit's `formatAmount` groups the integer part via `BigInt` and carries the fraction as

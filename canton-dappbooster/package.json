@@ -35,6 +35,17 @@
       "import": "./dist/connect.js"
     }
   },
+  "imports": {
+    "#src/*": {
+      "types": [
+        "./src/*.ts",
+        "./src/*.tsx",
+        "./src/*/index.ts",
+        "./src/*/index.tsx"
+      ],
+      "default": "./src/*"
+    }
+  },
   "devDependencies": {
     "@bootnodedev/canton-connect": "workspace:*",
     "@testing-library/dom": "^10.4.1",

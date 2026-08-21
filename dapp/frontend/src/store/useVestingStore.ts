@@ -7,7 +7,7 @@ import { now } from '@/lib/clock'
 import { errorText } from '@/lib/errorText'
 import { MIN_GRANT_AMOUNT, vestedFraction } from '@/lib/schedule'
 import { useBackend } from '@/providers/BackendProvider'
-import type { Grant, Proposal, VestedClaim, WithdrawEvent } from './types'
+import type { Grant, Proposal, VestedClaim, WithdrawEvent } from '@/store/types'
 
 export type GrantStatus = 'in_cliff' | 'vesting' | 'fully_vested'
 

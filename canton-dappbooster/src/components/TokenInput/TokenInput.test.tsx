@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { TokenListProvider } from '../../providers/TokenListProvider'
-import { TOKENS } from '../../testing/tokens'
-import { stubViewport } from '../../testing/viewport'
-import { formatAmount } from '../../utils/tokenAmount'
-import { TokenInput, type TokenMeta } from '.'
-import { anatomy } from './anatomy'
+import { TokenInput, type TokenMeta } from '#src/components/TokenInput'
+import { anatomy } from '#src/components/TokenInput/anatomy'
+import { TokenListProvider } from '#src/providers/TokenListProvider'
+import { TOKENS } from '#src/testing/tokens'
+import { stubViewport } from '#src/testing/viewport'
+import { formatAmount } from '#src/utils/tokenAmount'
 
 const CC: TokenMeta = { symbol: 'CC' }
 

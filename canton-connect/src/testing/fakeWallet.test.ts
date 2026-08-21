@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFakeWallet } from './fakeWallet'
+import { createFakeWallet } from '#src/testing/fakeWallet'
 
 describe('createFakeWallet', () => {
   it('answers the extension handshake so detect resolves true', async () => {

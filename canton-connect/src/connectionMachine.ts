@@ -7,7 +7,7 @@ import {
   type SnapshotFrom,
   setup,
 } from 'xstate'
-import type { ConnectionStatus } from './types'
+import type { ConnectionStatus } from '#src/types'
 
 export type WalletStatusUpdate = Pick<StatusEvent, 'connection' | 'session'>
 

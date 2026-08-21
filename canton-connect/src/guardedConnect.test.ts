@@ -1,10 +1,10 @@
 import { DappSDK } from '@canton-network/dapp-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PickerClosedError } from './connectError'
-import { guardedConnect } from './guardedConnect'
-import { createAutoPicker } from './testing/autoPicker'
-import { createFakeWallet } from './testing/fakeWallet'
-import { type StubPopup, stubOpen, stubPopup } from './testing/stubPopup'
+import { PickerClosedError } from '#src/connectError'
+import { guardedConnect } from '#src/guardedConnect'
+import { createAutoPicker } from '#src/testing/autoPicker'
+import { createFakeWallet } from '#src/testing/fakeWallet'
+import { type StubPopup, stubOpen, stubPopup } from '#src/testing/stubPopup'
 
 type ConnectOnly = Pick<DappSDK, 'connect'>
 

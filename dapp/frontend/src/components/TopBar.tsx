@@ -1,7 +1,7 @@
 import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
-import { PartyAvatar } from './PartyAvatar'
-import { RoleToggle } from './RoleToggle'
-import { ThemeToggle } from './ThemeToggle'
+import { PartyAvatar } from '@/components/PartyAvatar'
+import { RoleToggle } from '@/components/RoleToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 interface TopBarProps {
   title: string
