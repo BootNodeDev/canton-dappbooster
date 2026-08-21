@@ -21,8 +21,19 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
   importable by consumers. A component that imports `@bootnodedev/canton-connect` goes in
   `connect.ts`, never `index.ts`: the barrel is the whole Canton SDK's entry point into a consumer's
   graph, and under the `development` condition nothing tree-shakes it back out.
-- Nothing in `src/providers/` renders DOM of its own, so those folders have no `anatomy.ts` and no
-  theme rules: there is no markup to style. The authoring steps below are for components that render.
+  Merging the two barrels would trade a guarantee for a hope, so do not, however tidy it looks. Two
+  entry files mean a consumer importing only `index` *cannot* have the SDK in their bundle. Merged,
+  they would need tree-shaking to reach through a re-export chain into `@canton-network/dapp-sdk`,
+  which declares no `sideEffects` field at all, so a bundler must keep the whole package once its
+  import survives into the graph. This package's own `sideEffects: false` does not help there.
+  The generated reference already lists `<ConnectButton>` beside the other components, so there is
+  no documentation argument for collapsing the split either; see the root `CLAUDE.md`.
+- Nothing in `src/providers/` renders DOM of its own, so those folders carry no theme rules and no
+  part classes: there is no markup to style. The authoring steps below are for components that
+  render. A provider that writes an attribute the theme selects on still owes an `anatomy.ts`,
+  states only and no `parts`, and writes the attribute through it — `ThemeProvider` and `data-theme`
+  are the case. Rendering nothing and placing no selector are different things, and only the second
+  earns the exemption.
 - `src/icons/` sits at the root ahead of the second-consumer rule: an icon is never one component's,
   and its shared `Svg` wrapper has no component folder to belong to. One icon per file, named after
   its export — the root `biome.json` enforces that filename.
@@ -43,6 +54,16 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
    theme selects a compound on one element rather than reaching down from an ancestor. A descendant
    selector would restyle every instance a consumer ever nests there, and leaves the DOM contract
    incomplete for anyone theming it themselves.
+   The `anatomy` const itself is never exported from `src/index.ts` or `src/connect.ts`: the DOM it
+   describes is the contract, and exporting the strings would owe consumers a stable object too.
+   Instead the component's own doc block carries one line pointing at it, so a reader of the
+   generated reference can still reach the parts and states:
+   `@see [anatomy.ts](<blob URL of the component's anatomy.ts>) for the part classes and state attributes the theme selects.`
+   One line per component, naming the file, even where the folder declares a second anatomy.
+   Absolute, per the link rule in the root `CLAUDE.md`: a relative path is republished as a copy the
+   host serves as `video/mp2t`, so the link downloads instead of showing the source it exists for.
+   The cost is typedoc's `invalidPath` validation no longer catching a moved file, so a rename
+   updates the link by hand. `pnpm check:anatomy` is what keeps the strings and the theme in step.
 2. **`index.tsx`** — take class names from `anatomy.parts.*`, merged with the consumer's `className`
    through `cx` from `src/utils/cx.ts`; never hand-roll the join. No CSS import. Keyboard-heavy
    widgets hand-roll on Zag prop-getters; display primitives use plain React state.
