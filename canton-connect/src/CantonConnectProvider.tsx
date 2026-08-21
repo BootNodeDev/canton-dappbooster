@@ -67,6 +67,8 @@ export const CantonConnectContext = createContext<CantonConnectContextValue | un
  * narrower hook unless a component needs several slices at once, since this one re-renders on any
  * change to any of them.
  *
+ * @throws with no {@link CantonConnectProvider} above it.
+ *
  * @example
  * const { sdk, config } = useCantonConnectContext()
  * await sdk.listAccounts()

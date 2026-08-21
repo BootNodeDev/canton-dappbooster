@@ -74,8 +74,8 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
 | Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
-| Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json`. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` |
-| Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, and description presence on exported functions (see the split below) |
+| Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
+| Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
 | Reference site | Vercel | Project `docs-canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Build settings live in `vercel.json` |
 | CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
@@ -210,6 +210,32 @@ props or result type, and 8 lines inside any one `@example`. The ceilings are de
 they catch a block that has become an essay, not one that spent a second sentence well. Whether the
 prose restates the type, inventories fields, or is merely long is the review call no check can make.
 
+Which tags a block may carry is decided the same way, so that two authors write the same block:
+
+| Tag | Owed by | Refused on |
+|-----|---------|------------|
+| `@category` | every barrel export, from that package's `categoryOrder` and nothing else | n/a |
+| `@example` | whatever the tier table asks for | a third one; a fourth is never the fix |
+| `@throws` | any hook or callable util that throws, saying what triggers it | n/a |
+| `@see` | a component whose folder holds an `anatomy.ts` | n/a |
+| `@param` | never required: one sentence plus a compiled example is the spec | a callable that takes no parameters |
+| `@returns` | never required | a hook, whose result type is the contract; any callable whose return type is itself an export |
+
+- **`typedoc.shared.json` holds every option that resolves *per package*, and both packages extend
+  it.** `blockTags`, `modifierTags`, `inlineTags` and `sourceLinkTemplate` all behave like
+  `categoryOrder` under `entryPointStrategy: "packages"`: set at the root they are accepted and
+  silently ignored, which reads as the option not working. Adding a tag is a decision about every
+  block in the repo, so it is a review conversation and not a free choice.
+- **`sourceLinkTemplate` looks redundant and is load-bearing.** It is character-for-character what
+  typedoc builds by itself, so deleting it changes no link. What it also does is skip the
+  `git remote get-url origin` call typedoc otherwise makes to learn the repo address for every
+  "Defined in" link. Vercel's checkout leaves no `origin`, so that call fails there, and the warning
+  it logs fails the whole build under `treatWarningsAsErrors`. A local run cannot see any of this:
+  the remote resolves, so the warning never fires and both templates emit the same URL. Force it
+  with `typedoc --gitRemote nope`.
+- **Typedoc owns that list, and `treatWarningsAsErrors` is what makes it bite.** An off-list tag is
+  a comment-parsing warning, which `treatValidationWarningsAsErrors` does not cover, so without it
+  an invented `@precondition` renders as prose and no gate objects.
 - **`@internal` is how a symbol stays out of the public reference.** Something deliberately not
   public carries it, is still documented in source, and never reaches the site. Nothing is promoted
   to the public barrel just so it can be documented.
@@ -222,6 +248,11 @@ prose restates the type, inventories fields, or is merely long is the review cal
   members one by one forbids.
 - Every `@example` is compiled. Each package carries a root `doc-fixtures.d.ts` declaring the
   placeholder vocabulary examples may lean on, and an example may use only what that file declares.
+- A throw is the callable's contract wherever inside it the `throw` sits, so the check descends into
+  nested closures and follows one hop through a `#src/*` import: every canton-connect hook throws
+  through `useCantonConnectContext`, and `getExplorerLink` through a module-level guard. It stops at
+  one hop, and at a throw the function's own `catch` swallows — `useCopyToClipboard` returns that
+  failure as a value and owes no `@throws`.
 
 ## The generated reference
 

@@ -2,8 +2,10 @@ import { useContext } from 'react'
 import { TokenListContext, type UseTokenListResult } from '#src/providers/TokenListProvider/context'
 
 /**
- * Reads the token list a {@link TokenListProvider} supplies, and throws without one. Reach for it
- * where a screen renders its own token UI; `<TokenInput onTokenSelect>` already reads it itself.
+ * Reads the token list a {@link TokenListProvider} supplies. Reach for it where a screen renders
+ * its own token UI; `<TokenInput onTokenSelect>` already reads it itself.
+ *
+ * @throws with no {@link TokenListProvider} above it.
  *
  * @example
  * const { tokens } = useTokenList()

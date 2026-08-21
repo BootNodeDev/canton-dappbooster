@@ -15,8 +15,10 @@ export interface UsePartyResult {
 
 /**
  * The connected account and status. `party` is `undefined` until a connect succeeds, and again
- * whenever a restored session is locked. Throws with no {@link CantonConnectProvider} above it.
+ * whenever a restored session is locked.
  * Wagmi: `useAccount`, with `party.partyId` for `address`.
+ *
+ * @throws with no {@link CantonConnectProvider} above it.
  *
  * @example
  * const { party, isConnected } = useParty()

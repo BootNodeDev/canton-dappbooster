@@ -59,6 +59,8 @@ export interface ThemeProviderProps {
  * flash is accepted, and `architecture.md` has the reasoning. Client-only, because it reads the OS
  * preference while picking its initial state, so a server render throws.
  *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/providers/ThemeProvider/anatomy.ts) for the state attribute the theme selects.
+ *
  * @example
  * createRoot(el).render(
  *   <ThemeProvider>

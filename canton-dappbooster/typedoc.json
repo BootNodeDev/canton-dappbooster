@@ -1,5 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
+  "extends": ["../typedoc.shared.json"],
   "entryPoints": ["src/index.ts", "src/connect.ts"],
   "categoryOrder": ["Components", "Hooks", "Types", "Utilities", "*"],
   "defaultCategory": "Types",

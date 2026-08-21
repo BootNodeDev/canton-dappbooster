@@ -14,7 +14,8 @@ export interface UseWalletStatusResult {
 /**
  * Whether a session exists and whether the wallet is locked. Connected-but-locked is a CIP-0103
  * state wagmi has no equivalent for, and it follows the wallet's own pushes, so never poll it.
- * Throws with no {@link CantonConnectProvider} above it.
+ *
+ * @throws with no {@link CantonConnectProvider} above it.
  *
  * @example
  * const { isLocked } = useWalletStatus()

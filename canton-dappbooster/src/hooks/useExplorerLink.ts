@@ -100,7 +100,9 @@ export const getExplorerLink = ({
 
 /**
  * Holds an explorer config so call sites pass only an identifier, and returns
- * {@link getExplorerLink} bound to it. An empty `baseUrl` throws on render.
+ * {@link getExplorerLink} bound to it.
+ *
+ * @throws on render when `explorer.baseUrl` is empty or blank, as {@link getExplorerLink} does.
  *
  * @example
  * const explorerLink = useExplorerLink({ baseUrl: 'https://scan.example' })

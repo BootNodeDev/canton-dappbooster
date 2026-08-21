@@ -62,8 +62,11 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
    One line per component, naming the file, even where the folder declares a second anatomy.
    Absolute, per the link rule in the root `CLAUDE.md`: a relative path is republished as a copy the
    host serves as `video/mp2t`, so the link downloads instead of showing the source it exists for.
-   The cost is typedoc's `invalidPath` validation no longer catching a moved file, so a rename
-   updates the link by hand. `pnpm check:anatomy` is what keeps the strings and the theme in step.
+   `pnpm docs:check` requires the line wherever an `anatomy.ts` sits beside the file, which is why
+   `ThemeProvider` carries one and the other two providers do not — placing a selector is what earns
+   it, not rendering markup. Because the URL is absolute, typedoc's `invalidPath` validation cannot
+   see a moved file, so the check matches the path inside it and a rename has to update both.
+   `pnpm check:anatomy` is what keeps the strings and the theme in step.
 2. **`index.tsx`** — take class names from `anatomy.parts.*`, merged with the consumer's `className`
    through `cx` from `src/utils/cx.ts`; never hand-roll the join. No CSS import. Keyboard-heavy
    widgets hand-roll on Zag prop-getters; display primitives use plain React state.

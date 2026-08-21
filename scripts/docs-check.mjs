@@ -4,8 +4,9 @@
 // has become an essay is valid TypeScript. Also compiles every snippet, which is the only way a
 // copy-paste example stays true as the API moves under it.
 //
-// Description presence is typedoc's job for everything except an exported function; see the Doc
-// blocks section of root CLAUDE.md for why that one is here.
+// Description presence is typedoc's job for everything except an exported function, and the tag
+// vocabulary is typedoc's outright — typedoc.shared.json is the allow-list. See the Doc blocks
+// section of root CLAUDE.md for both splits.
 //
 // Usage: node scripts/docs-check.mjs
 
@@ -16,15 +17,20 @@ import { createGate, repoRoot } from './lib/gate.mjs'
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
-// Both lists are read rather than restated: a package or an entry point added to the reference
-// would otherwise render on the site while escaping every check here.
-const PACKAGES = readJson(path.join(repoRoot, 'typedoc.json')).entryPoints.map((dir) => ({
-  dir,
-  barrels: readJson(path.join(repoRoot, dir, 'typedoc.json')).entryPoints,
-  componentsDir: existsSync(path.join(repoRoot, dir, 'src/components'))
-    ? 'src/components'
-    : undefined,
-}))
+// Every list is read rather than restated: a package or an entry point added to the reference
+// would otherwise render on the site while escaping every check here, and a category invented here
+// would disagree with the one typedoc sorts by.
+const PACKAGES = readJson(path.join(repoRoot, 'typedoc.json')).entryPoints.map((dir) => {
+  const config = readJson(path.join(repoRoot, dir, 'typedoc.json'))
+  return {
+    dir,
+    barrels: config.entryPoints,
+    categories: new Set((config.categoryOrder ?? []).filter((name) => name !== '*')),
+    componentsDir: existsSync(path.join(repoRoot, dir, 'src/components'))
+      ? 'src/components'
+      : undefined,
+  }
+})
 
 const MAX_COLUMNS = 100
 const EXAMPLE_LINE_CAP = 8
@@ -103,14 +109,18 @@ const parseDoc = (sourceFile, doc) => {
     const tag = /^@(\w+)/.exec(trimmed)
 
     if (tag !== null) {
-      tags.push({ name: tag[1], body: trimmed.slice(tag[0].length).trim(), line })
-      current = tag[1] === 'example' ? { line, lines: [] } : undefined
-      if (current !== undefined) examples.push(current)
+      const entry = { name: tag[1], body: trimmed.slice(tag[0].length).trim(), line }
+      tags.push(entry)
+      // A tag's continuation lines belong to the tag, not to the description: a wrapped @throws
+      // counted as prose would push a block over its tier's ceiling for saying one thing.
+      current = tag[1] === 'example' ? { line, lines: [] } : entry
+      if (tag[1] === 'example') examples.push(current)
       return
     }
     if (trimmed === '') return
-    if (current !== undefined) current.lines.push({ text: body, line })
-    else prose.push({ text: body, line })
+    if (current === undefined) prose.push({ text: body, line })
+    else if (current.lines !== undefined) current.lines.push({ text: body, line })
+    else current.body = `${current.body} ${trimmed}`
   })
 
   return { raw, prose, examples, tags, internal: /(^|\s)@internal(\s|$)/.test(raw) }
@@ -323,6 +333,17 @@ const checkPackage = (pkg) => {
     .filter(Boolean)
     .join('\n')
 
+  // `#src/*` maps to `./src/*`, so the four candidates are what tsc walks for one key. Only the
+  // throws hop needs this, and it wants the parsed file rather than the resolved specifier.
+  const resolveModule = (specifier) => {
+    const base = path.join(pkgDir, specifier.slice(1))
+    for (const candidate of ['.ts', '.tsx', '/index.ts', '/index.tsx']) {
+      const found = parsedFiles.get(`${base}${candidate}`)
+      if (found !== undefined) return found
+    }
+    return undefined
+  }
+
   // A snippet sees the whole public surface plus whatever its own module exports, so an @internal
   // component's example still resolves the component it documents.
   const importsFor = (file, localExports) => {
@@ -369,14 +390,21 @@ const checkPackage = (pkg) => {
     if (!inBarrel && !isComponentEntry(pkg, file, name)) continue
 
     const tier = tierOf(name, node)
-    if (inBarrel && !parsed.tags.some((tag) => tag.name === 'category')) {
+    const callable = callableOf(node)
+    const category = parsed.tags.find((tag) => tag.name === 'category')
+    if (inBarrel && category === undefined) {
       // Untagged, a new export falls into typedoc's TypeScript-kind buckets, so the reference goes
       // back to listing every interface together — which is what the groups exist to replace.
       report(file, lineOf(sourceFile, node), `${name} carries no @category`)
+    } else if (category !== undefined && !pkg.categories.has(category.body)) {
+      const known = [...pkg.categories].join(', ')
+      report(file, category.line, `${name}: @category ${category.body} is not one of ${known}`)
     }
-    checkTags(file, name, parsed)
-    checkProse(file, name, tier, parsed, callableOf(node) !== undefined)
+    checkTags(file, name, parsed, tier, callable, allBarrelNames)
+    checkProse(file, name, tier, parsed, callable !== undefined)
     checkExamples(file, name, tier, parsed, entry.localExports)
+    checkThrows(file, name, tier, parsed, callable, throwersFor(sourceFile, resolveModule))
+    checkAnatomyLink(file, name, tier, parsed)
 
     for (const example of parsed.examples) {
       if (example.lines.length > 0) {
@@ -450,7 +478,7 @@ const checkCommentWidth = (sourceFile) => {
 
 const TYPE_WORDS = /^(a|an|the|of|to|for|and|or|is|this|that|it|its|as)$/
 
-const checkTags = (file, name, parsed) => {
+const checkTags = (file, name, parsed, tier, callable, allBarrelNames) => {
   for (const tag of parsed.tags) {
     if (/^(param|returns|type|typedef)$/.test(tag.name) && tag.body.startsWith('{')) {
       const message = `@${tag.name} carries a {type} brace; TypeScript owns the type`
@@ -467,6 +495,113 @@ const checkTags = (file, name, parsed) => {
       report(file, tag.line, `${name}: @${tag.name} says nothing the type does not; drop it`)
     }
   }
+
+  if (callable === undefined) return
+  const returnType = callable.type?.getText().trim()
+  for (const tag of parsed.tags) {
+    if (tag.name === 'param' && callable.parameters.length === 0) {
+      report(file, tag.line, `${name}: @param on a callable that takes none`)
+    }
+    if (tag.name !== 'returns') continue
+    if (tier === 'hook') {
+      report(file, tag.line, `${name}: @returns on a hook; its result type is the return contract`)
+    } else if (returnType !== undefined && allBarrelNames.has(returnType)) {
+      report(file, tag.line, `${name}: @returns restates ${returnType}, itself an export`)
+    }
+  }
+}
+
+/* Throws */
+
+const THROWS_TIERS = new Set(['hook', 'util'])
+const THROWING_LOCALS = new WeakMap()
+
+// Descends into nested closures on purpose: canton-connect's hooks throw from inside the function
+// they hand back, not from the hook body, and that is still the caller's contract. A throw the
+// function's own catch swallows is not, so a guarded try block is skipped — `useCopyToClipboard`
+// throws `Clipboard unavailable` at itself and returns the failure as a value.
+const containsThrow = (node) => {
+  let found = false
+  const visit = (child) => {
+    if (found) return
+    if (ts.isThrowStatement(child)) found = true
+    else if (ts.isTryStatement(child) && child.catchClause !== undefined) {
+      visit(child.catchClause)
+      if (child.finallyBlock !== undefined) visit(child.finallyBlock)
+    } else ts.forEachChild(child, visit)
+  }
+  ts.forEachChild(node, visit)
+  return found
+}
+
+const calledNames = (node) => {
+  const names = new Set()
+  const visit = (child) => {
+    if (ts.isCallExpression(child) && ts.isIdentifier(child.expression)) {
+      names.add(child.expression.text)
+    }
+    ts.forEachChild(child, visit)
+  }
+  ts.forEachChild(node, visit)
+  return names
+}
+
+const localThrowers = (sourceFile) => {
+  const cached = THROWING_LOCALS.get(sourceFile)
+  if (cached !== undefined) return cached
+  const names = new Set()
+  for (const statement of sourceFile.statements) {
+    for (const { name, declaration } of namedDeclarations(statement)) {
+      const callable = callableOf(declaration)
+      if (callable !== undefined && containsThrow(callable)) names.add(name)
+    }
+  }
+  THROWING_LOCALS.set(sourceFile, names)
+  return names
+}
+
+// The hop crosses a module because most of these throws do: every canton-connect hook reaches its
+// guard through `useCantonConnectContext`, so stopping at the file would ask half of them for a
+// @throws and let the other half past. One hop only — deeper needs a type checker, not a parse.
+const throwersFor = (sourceFile, resolve) => {
+  const names = new Set(localThrowers(sourceFile))
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue
+    if (!statement.moduleSpecifier.text.startsWith('#')) continue
+    const bindings = statement.importClause?.namedBindings
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue
+
+    const target = resolve(statement.moduleSpecifier.text)
+    if (target === undefined) continue
+    const throwers = localThrowers(target)
+    for (const element of bindings.elements) {
+      if (throwers.has((element.propertyName ?? element.name).text)) names.add(element.name.text)
+    }
+  }
+  return names
+}
+
+const checkThrows = (file, name, tier, parsed, callable, throwers) => {
+  if (callable === undefined || !THROWS_TIERS.has(tier)) return
+  if (parsed.tags.some((tag) => tag.name === 'throws')) return
+
+  const throws =
+    containsThrow(callable) || [...calledNames(callable)].some((called) => throwers.has(called))
+  if (throws) {
+    report(file, parsed.prose[0]?.line ?? 0, `${name} throws but carries no @throws`)
+  }
+}
+
+// Conditional on the file rather than on the tier: a provider that places a selector owes the link
+// as much as a component does, and one that renders no DOM has no anatomy to point at.
+const checkAnatomyLink = (file, name, tier, parsed) => {
+  if (tier !== 'component') return
+  const anatomy = path.join(path.dirname(file), 'anatomy.ts')
+  if (!existsSync(anatomy)) return
+
+  const target = path.relative(repoRoot, anatomy).replace(/\\/g, '/')
+  if (parsed.tags.some((tag) => tag.name === 'see' && tag.body.includes(target))) return
+  report(file, parsed.prose[0]?.line ?? 0, `${name} has an anatomy.ts but no @see naming ${target}`)
 }
 
 const checkProse = (file, name, tier, parsed, callable) => {

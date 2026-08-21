@@ -20,8 +20,11 @@ export interface UseLedgerResult {
 
 /**
  * Escape hatch for ledger reads `useExecute` and `useSignMessage` do not cover: the participant's
- * JSON API, passed through untyped. Throws with no {@link CantonConnectProvider} above it.
+ * JSON API, passed through untyped.
  * Wagmi: `usePublicClient`.
+ *
+ * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
+ * is connected, which `isReady` is there to check first.
  *
  * @example
  * const { ledgerApi } = useLedger()

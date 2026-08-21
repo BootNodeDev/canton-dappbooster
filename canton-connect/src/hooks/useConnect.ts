@@ -17,9 +17,10 @@ export interface UseConnectResult {
 
 /**
  * Connects and disconnects the wallet, and reports that transition. `connect` takes no argument:
- * the picker chooses the wallet, so there is no mode to pass. Throws with no
- * {@link CantonConnectProvider} above it, as every hook here does.
+ * the picker chooses the wallet, so there is no mode to pass.
  * Wagmi: `useConnect` + `useDisconnect`, bundled because one provider owns the session.
+ *
+ * @throws with no {@link CantonConnectProvider} above it, as every hook here does.
  *
  * @example
  * const { connect, isConnecting } = useConnect()

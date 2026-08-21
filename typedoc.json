@@ -19,6 +19,7 @@
     "unusedMergeModuleWith": true
   },
   "treatValidationWarningsAsErrors": true,
+  "treatWarningsAsErrors": true,
   "requiredToBeDocumented": [
     "Enum",
     "EnumMember",

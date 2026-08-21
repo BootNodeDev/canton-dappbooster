@@ -24,9 +24,12 @@ export interface UseExecuteResult {
 
 /**
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
- * event. Throws with no {@link CantonConnectProvider} above it.
+ * event.
  * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, since `execute` resolves after
  * execution rather than at submission.
+ *
+ * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
+ * connected or the command fails, the failure also landing in `error`.
  *
  * @example
  * const { execute, lastTx } = useExecute()
