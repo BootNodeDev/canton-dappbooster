@@ -24,6 +24,9 @@
     "build": "pnpm -r run --if-present build",
     "test": "pnpm -r run --if-present test",
     "knip": "knip",
+    "docs:check": "typedoc --emit none && node scripts/docs-check.mjs",
+    "docs:build": "typedoc",
+    "check:anatomy": "node scripts/check-anatomy.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@
   "ignoreWorkspaces": ["dapp/daml"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.mjs!"]
+      "entry": ["scripts/**/*.mjs!", ".lintstagedrc.format.mjs"]
     },
     "canton-connect": {
       "entry": ["src/**/*.test.{ts,tsx}"]

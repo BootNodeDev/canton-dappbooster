@@ -1,4 +1,8 @@
 echo "Running lint-staged"
+# Two passes, because the formatter rewrites the files every gate parses and lint-staged runs tasks
+# for different globs concurrently, so in one pass a reformat lands mid-parse and fails at random.
+# Splitting it keeps that ordering while letting the gates, all read-only, still run concurrently.
+pnpm exec lint-staged --config .lintstagedrc.format.mjs
 pnpm exec lint-staged
 
 . "$(dirname "$0")/gitleaks.sh"
