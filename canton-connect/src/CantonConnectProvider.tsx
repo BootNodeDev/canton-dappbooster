@@ -20,7 +20,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { toConnectError } from '#src/connectError'
+import { PickerClosedError, toConnectError } from '#src/connectError'
+import { guardedConnect } from '#src/guardedConnect'
 import type { CantonConnectConfig, ConnectionStatus, Party } from '#src/types'
 import { selectPrimaryAccount, toParty } from '#src/walletAccount'
 
@@ -40,7 +41,7 @@ export interface TxStatusSnapshot {
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
-  /** One per `CantonConnectProvider`, recreated only when `config.walletPicker` changes. */
+  /** One per `CantonConnectProvider`; its identity churns, so read it, never cache it. */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
@@ -117,9 +118,15 @@ export const CantonConnectProvider = ({
 
   const networkId = config.networkId ?? 'canton:local'
 
+  // The SDK owns the picker surface unless the consumer supplied one.
+  const guardPicker = config.walletPicker === undefined
+
+  const [retirements, setRetirements] = useState(0)
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retirements rebuilds, it is not read
   const sdk = useMemo(
-    () => new DappSDK(config.walletPicker ? { walletPicker: config.walletPicker } : {}),
-    [config.walletPicker],
+    () => new DappSDK({ walletPicker: config.walletPicker }),
+    [config.walletPicker, retirements],
   )
 
   const additionalAdapters = useMemo(
@@ -227,7 +234,7 @@ export const CantonConnectProvider = ({
     teardownRef.current = undefined
 
     try {
-      const result = await sdk.connect() // opens the picker
+      const result = await (guardPicker ? guardedConnect(sdk) : sdk.connect())
       if (!result.isConnected) {
         throw new Error(result.reason ?? 'Wallet did not connect')
       }
@@ -256,9 +263,15 @@ export const CantonConnectProvider = ({
         await syncFromStatus(restored)
       }
 
+      // The connect we walked out on still listens for a picker result and would swap this SDK's
+      // client from under the wiring above; the mount effect re-restores the session.
+      if (err instanceof PickerClosedError) {
+        setRetirements((count) => count + 1)
+      }
+
       throw error
     }
-  }, [sdk, networkId, wireEvents, syncFromStatus])
+  }, [sdk, guardPicker, networkId, wireEvents, syncFromStatus])
 
   const disconnect = useCallback(async (): Promise<void> => {
     teardownRef.current?.()

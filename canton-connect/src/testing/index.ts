@@ -6,3 +6,4 @@ export {
   type FakeWalletAccount,
   type FakeWalletOptions,
 } from '#src/testing/fakeWallet'
+export { pause } from '#src/testing/pause'

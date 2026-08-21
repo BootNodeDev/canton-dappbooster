@@ -19,8 +19,8 @@ export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  * A connect button and account dropdown.
  *
  * @example
- * <ConnectButton>Connect wallet</ConnectButton>
- * <ConnectButton mode="connect">Connect wallet</ConnectButton>
+ * <ConnectButton mode="connect" />
+ * <ConnectButton>{label}</ConnectButton>
  */
 export const ConnectButton = ({
   avatar,

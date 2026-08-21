@@ -1,32 +1,79 @@
-import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
-import { assign, fromCallback, fromPromise, setup } from 'xstate'
+import type { StatusEvent } from '@canton-network/dapp-sdk'
+import {
+  assign,
+  type DoneActorEvent,
+  fromCallback,
+  fromPromise,
+  type SnapshotFrom,
+  setup,
+} from 'xstate'
+import type { ConnectionStatus } from '#src/types'
 
-export type WalletStatus = Pick<StatusEvent, 'connection' | 'session'>
+export type WalletStatusUpdate = Pick<StatusEvent, 'connection' | 'session'>
+
+export const toConnectionStatus = (
+  snapshot: SnapshotFrom<typeof connectionMachine>,
+): ConnectionStatus => {
+  if (snapshot.matches('connecting')) {
+    return 'connecting'
+  }
+
+  if (snapshot.matches('session')) {
+    return 'connected'
+  }
+
+  if (snapshot.matches('restoring') || snapshot.matches('initializing')) {
+    return 'idle'
+  }
+
+  // `failure` reads as disconnected to consumers; the error rides in context
+  return 'disconnected'
+}
+
+// one rule for landing an authenticated answer, shared by `connect` and `restore`
+const landAuthenticated = {
+  guard: {
+    type: 'isAuthenticated',
+    params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
+      connection: output.connection,
+    }),
+  },
+  target: 'session.authenticated',
+  actions: {
+    type: 'applyWalletStatus',
+    params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
+      status: output,
+    }),
+  },
+} as const
 
 export const connectionMachine = setup({
   actors: {
-    connect: fromPromise<ConnectResult>(() =>
+    connect: fromPromise<WalletStatusUpdate>(() =>
       Promise.reject(new Error('connect actor not provided')),
     ),
-    restore: fromPromise<WalletStatus>(() =>
+    init: fromPromise<void>(() => Promise.reject(new Error('init actor not provided'))),
+    restore: fromPromise<WalletStatusUpdate>(() =>
       Promise.reject(new Error('restore actor not provided')),
     ),
     walletEvents: fromCallback(() => {}),
   },
   actions: {
-    applyWalletStatus: assign(({ context }, params: { status: WalletStatus }) => ({
+    applyWalletStatus: assign(({ context }, params: { status: WalletStatusUpdate }) => ({
       connection: params.status.connection,
       session: params.status.session ?? context.session,
     })),
+    assignError: assign((_, params: { error: unknown }) => ({ error: params.error })),
   },
   guards: {
-    hasSession: (_, params: { session: WalletStatus['session'] }) => !!params.session,
-    isAuthenticated: (_, params: { connection: ConnectResult }) => params.connection.isConnected,
+    hasSession: (_, params: { session: WalletStatusUpdate['session'] }) => !!params.session,
+    isAuthenticated: (_, params: { connection: WalletStatusUpdate['connection'] }) =>
+      params.connection.isConnected,
   },
   types: {
     context: {} as {
-      connection: ConnectResult | undefined
-      session: WalletStatus['session']
+      connection: WalletStatusUpdate['connection'] | undefined
+      session: WalletStatusUpdate['session']
       error: unknown
     },
     events: {} as
@@ -34,7 +81,7 @@ export const connectionMachine = setup({
       | { type: 'cancel' }
       | { type: 'disconnect' }
       | { type: 'restore' }
-      | { type: 'wallet.statusChanged'; status: WalletStatus },
+      | { type: 'wallet.statusChanged'; status: WalletStatusUpdate },
   },
 }).createMachine({
   context: {
@@ -48,31 +95,27 @@ export const connectionMachine = setup({
     disconnected: {
       on: {
         connect: { target: 'connecting' },
-        restore: { target: 'restoring' },
+        restore: { target: 'initializing' },
       },
     },
     connecting: {
       invoke: {
         src: 'connect',
         onDone: [
-          {
-            guard: {
-              type: 'isAuthenticated',
-              params: ({ event: { output } }) => ({ connection: output }),
-            },
-            target: 'session.authenticated',
-            actions: assign({ connection: ({ event: { output } }) => output }),
-          },
+          landAuthenticated,
           {
             target: 'failure',
             actions: assign(({ event: { output } }) => ({
-              error: new Error(output.reason ?? 'wallet declined connection'),
+              error: new Error(output.connection.reason ?? 'wallet declined connection'),
             })),
           },
         ],
         onError: {
           target: 'failure',
-          actions: assign({ error: ({ event: { error } }) => error }),
+          actions: {
+            type: 'assignError',
+            params: ({ event: { error } }) => ({ error }),
+          },
         },
       },
       on: {
@@ -128,23 +171,14 @@ export const connectionMachine = setup({
       exit: assign({ error: undefined }),
       on: {
         connect: { target: 'connecting' },
+        restore: { target: 'initializing' },
       },
     },
     restoring: {
       invoke: {
         src: 'restore',
         onDone: [
-          {
-            guard: {
-              type: 'isAuthenticated',
-              params: ({ event: { output } }) => ({ connection: output.connection }),
-            },
-            target: 'session.authenticated',
-            actions: {
-              type: 'applyWalletStatus',
-              params: ({ event: { output } }) => ({ status: output }),
-            },
-          },
+          landAuthenticated,
           {
             guard: {
               type: 'hasSession',
@@ -156,6 +190,22 @@ export const connectionMachine = setup({
           { target: 'disconnected' },
         ],
         onError: { target: 'disconnected' },
+      },
+      on: {
+        cancel: { target: 'disconnected' },
+      },
+    },
+    initializing: {
+      invoke: {
+        src: 'init',
+        onDone: { target: 'restoring' },
+        onError: {
+          target: 'failure',
+          actions: {
+            type: 'assignError',
+            params: ({ event: { error } }) => ({ error }),
+          },
+        },
       },
       on: {
         cancel: { target: 'disconnected' },
