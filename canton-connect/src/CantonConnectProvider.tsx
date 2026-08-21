@@ -8,6 +8,8 @@ import type {
   StatusEvent,
   TxChangedEvent,
 } from '@canton-network/dapp-sdk'
+// dapp-sdk imports @walletconnect/sign-client statically, 1.5.1 included, so it is installed even
+// with no walletConnectProjectId set; see architecture.md before trusting its optional peer marker.
 import { DappSDK, WalletConnectAdapter } from '@canton-network/dapp-sdk'
 import {
   createContext,
@@ -28,6 +30,8 @@ import { selectPrimaryAccount, toParty } from '#src/walletAccount'
 /**
  * Mirrored from the SDK's `txChanged` event as a command moves through
  * pending, signed, executed or failed.
+ *
+ * @category Types
  */
 export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
@@ -36,31 +40,39 @@ export interface TxStatusSnapshot {
 }
 
 /**
- * The full connection state and actions behind every hook in this package.
- * Prefer the narrower hooks (`useConnect`, `useParty`, …); each picks a slice of this.
+ * Every slice of the session at once, plus the `DappSDK` the provider holds, whose identity churns
+ * as sessions are retired — read it, never cache it. Prefer the narrower hooks — `useConnect`,
+ * `useParty`, `useWalletStatus`, `useExecute`, `useSignMessage`, `useLedger` — one slice each.
+ *
+ * @category Hooks
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
-  /** One per `CantonConnectProvider`; its identity churns, so read it, never cache it. */
   sdk: DappSDK
   party: Party | undefined
   status: ConnectionStatus
-  /** Connected-but-locked: a session exists, but must be unlocked to serve requests. */
   isLocked: boolean
   connectError: Error | undefined
   isConnecting: boolean
   lastTx: TxStatusSnapshot | undefined
-  /** Opens the picker: the SDK's popup, or `config.walletPicker`. Rejects with
-   * `ConnectCancelledError` on cancel, which `connectError` mirrors. */
   connect: () => Promise<void>
-  /** Resets `party`, `status`, `isLocked` and `lastTx` even if the SDK's own call fails. */
   disconnect: () => Promise<void>
 }
 
 // Exported for src/testing's session double only; consumers reach it through the hooks.
 export const CantonConnectContext = createContext<CantonConnectContextValue | undefined>(undefined)
 
-/** Throws if called outside a `CantonConnectProvider`. */
+/**
+ * The whole context in one read, and the escape hatch behind every other hook here. Reach for a
+ * narrower hook unless a component needs several slices at once, since this one re-renders on any
+ * change to any of them.
+ *
+ * @example
+ * const { sdk, config } = useCantonConnectContext()
+ * await sdk.listAccounts()
+ *
+ * @category Hooks
+ */
 export const useCantonConnectContext = (): CantonConnectContextValue => {
   const ctx = useContext(CantonConnectContext)
   if (ctx === undefined) {
@@ -69,6 +81,16 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
   return ctx
 }
 
+/**
+ * Props for {@link CantonConnectProvider}. `config` is read field by field, so hoist or memoise
+ * `walletPicker` and `additionalAdapters`: a fresh one of either rebuilds the `DappSDK` or its
+ * adapters and re-runs discovery on every render.
+ *
+ * @example
+ * <CantonConnectProvider config={{ appName: 'Vesting' }}>{children}</CantonConnectProvider>
+ *
+ * @category Components
+ */
 export interface CantonConnectProviderProps {
   config: CantonConnectConfig
   children: ReactNode
@@ -86,7 +108,8 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
     adapters.push(
       WalletConnectAdapter.create({
         projectId: config.walletConnectProjectId,
-        // The CAIP-2 chain the wallet must serve is the configured Canton network id, not the SDK's devnet default.
+        // The CAIP-2 chain the wallet must serve is the configured Canton network id, not the
+        // SDK's devnet default.
         chainId: networkId,
         metadata: {
           name: config.appName,
@@ -102,9 +125,19 @@ const buildAdditionalAdapters = (config: AdapterConfig, networkId: string): Prov
 }
 
 /**
- * Owns the connection lifecycle: creates the `DappSDK` from `config`, restores a previous
- * session on mount, and wires wallet-pushed events into the state the hooks read.
- * Those hooks mirror wagmi's naming, not its TanStack Query result shapes.
+ * Owns the connection lifecycle: creates the `DappSDK` from `config`, restores a previous session
+ * on mount without opening the picker, and wires wallet-pushed events into the state hooks read.
+ * With no `walletPicker` configured it also guards the SDK's own popup, so a close the SDK misses
+ * settles the connect and retires the SDK under it. Those hooks mirror wagmi's naming, not its
+ * TanStack Query result shapes, and every one throws with no provider above it, there being no
+ * ambient session to fall back to. Renders no DOM of its own.
+ *
+ * @example
+ * <CantonConnectProvider config={{ appName: 'Vesting', networkId: 'canton:local' }}>
+ *   <App />
+ * </CantonConnectProvider>
+ *
+ * @category Components
  */
 export const CantonConnectProvider = ({
   config,
@@ -151,7 +184,8 @@ export const CantonConnectProvider = ({
     ],
   )
 
-  // A client must exist before wiring; teardownRef shares that wiring between mount-restore and connect().
+  // A client must exist before wiring; teardownRef shares that wiring between mount-restore and
+  // connect().
   const teardownRef = useRef<(() => void) | undefined>(undefined)
 
   const wireEvents = useCallback((): (() => void) => {
@@ -181,7 +215,8 @@ export const CantonConnectProvider = ({
     }
   }, [sdk, networkId])
 
-  // Shared by mount-restore and a failed connect() that left a live client behind — wires events (unless already wired) and syncs isLocked/status/party from a status() read.
+  // Shared by mount-restore and a failed connect() that left a live client behind: wires events
+  // unless already wired, then syncs isLocked, status and party from one status() read.
   const syncFromStatus = useCallback(
     async (restored: StatusEvent): Promise<void> => {
       // Wire events regardless of lock state so a later unlock push isn't dropped silently.
@@ -245,14 +280,15 @@ export const CantonConnectProvider = ({
       const primary = selectPrimaryAccount(accounts)
       setParty(primary === undefined ? undefined : toParty(primary, networkId))
 
-      // connect() only resolves for an unlocked wallet, so clear any lock left by a restored session.
+      // connect() only resolves for an unlocked wallet, so clear any lock a restored session left.
       setIsLocked(false)
       setStatus('connected')
     } catch (err) {
       const error = toConnectError(err)
       setConnectError(error)
 
-      // A cancelled picker fails before the SDK swaps its client — probe rather than assume a previous session is gone.
+      // A cancelled picker fails before the SDK swaps its client, so probe rather than assume a
+      // previous session is gone.
       const restored = await sdk.status().catch(() => undefined)
 
       if (restored === undefined) {

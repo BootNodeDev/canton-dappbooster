@@ -159,6 +159,13 @@ the SDK's bundled `localhost:3030` dev Wallet Gateway.
 field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId` (set in
 `wireEvents`, via `toParty`).
 
+**`@walletconnect/sign-client` is declared an optional peer and is not actually optional.**
+`dapp-sdk` imports it statically at the top of its bundle, so it has to be installed whether or not
+`walletConnectProjectId` is set. Only the *session* is lazy: `SignClient.init()` runs when a pairing
+starts, not at import. The `peerDependenciesMeta` entry marking it optional therefore describes what
+we want rather than what resolves — worth an upstream issue, and until then treat it as required.
+Still true at 1.5.1, the version pinned here (`dist/index.js:6`); re-check on the next bump.
+
 ### Hooks
 
 | Hook | Responsibility |

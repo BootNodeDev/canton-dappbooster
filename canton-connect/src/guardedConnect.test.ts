@@ -44,7 +44,8 @@ describe('guardedConnect', () => {
   })
 
   afterEach(async () => {
-    // Fake timers still live: closing the popups lets every pending guard reject and release the borrow.
+    // Fake timers still live: closing the popups lets every pending guard reject and release the
+    // borrow.
     for (const popup of popups.splice(0)) {
       popup.closed = true
     }
@@ -153,7 +154,8 @@ describe('guardedConnect', () => {
     expect(settled).toBe(false)
   })
 
-  // Dispatched, not posted: jsdom schedules postMessage on real timers, which fake ones never reach.
+  // Dispatched, not posted: jsdom schedules postMessage on real timers, which fake ones never
+  // reach.
   const pick = (walletType: string): void => {
     window.dispatchEvent(
       new MessageEvent('message', {

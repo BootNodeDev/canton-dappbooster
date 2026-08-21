@@ -21,7 +21,8 @@ export const stubPopup = (): StubPopup => ({
   removeEventListener: () => undefined,
 })
 
-// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the borrow.
+// Assigned, not `vi.spyOn`: jsdom's window.open is an accessor, and a spy on it survives the
+// borrow.
 export const stubOpen = (popup: object | null): (() => void) => {
   const original = window.open
   window.open = (() => popup) as unknown as typeof window.open

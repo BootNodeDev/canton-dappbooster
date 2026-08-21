@@ -1,8 +1,13 @@
 import type { WalletPickerFn } from '@canton-network/dapp-sdk'
 
 /**
- * A `walletPicker` that selects with no UI, for tests and headless dev flows: the entry
- * whose `providerId` matches `pick`, or the first discovered one. Throws if none match.
+ * A `walletPicker` that selects with no UI, for tests and headless dev flows: the entry whose
+ * `providerId` matches `pick`, or the first discovered one. Throws if none match.
+ *
+ * @example
+ * const config = { appName: 'Vesting', walletPicker: createAutoPicker('mock') }
+ *
+ * @category Utilities
  */
 export const createAutoPicker =
   (pick?: string): WalletPickerFn =>
