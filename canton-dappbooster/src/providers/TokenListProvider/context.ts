@@ -7,6 +7,8 @@ import { type Context, createContext } from 'react'
  *
  * @example
  * const cc: Token = { id: 'canton-coin', name: 'Canton Coin', symbol: 'CC' }
+ *
+ * @category Hooks
  */
 export interface Token {
   id: string
@@ -16,11 +18,13 @@ export interface Token {
 }
 
 /**
- * Return shape of {@link useTokenList}
+ * Return shape of {@link useTokenList}. `byId` is built from `tokens`, so the two never disagree.
  *
  * @example
  * const { tokens, byId } = useTokenList()
  * const selected = byId.get(storedId) ?? tokens[0]
+ *
+ * @category Hooks
  */
 export interface UseTokenListResult {
   byId: ReadonlyMap<string, Token>

@@ -6,6 +6,8 @@ import { isValidPartyId } from '#src/utils/partyId'
  *
  * @example
  * getExplorerLink({ explorer, value: contractId, entity: 'contract' })
+ *
+ * @category Utilities
  */
 export type ExplorerEntity = 'party' | 'contract' | 'update'
 
@@ -15,6 +17,8 @@ export type ExplorerEntity = 'party' | 'contract' | 'update'
  *
  * @example
  * const explorer: ExplorerConfig = { baseUrl: 'https://scan.example' }
+ *
+ * @category Utilities
  */
 export interface ExplorerConfig {
   baseUrl: string
@@ -25,6 +29,8 @@ export interface ExplorerConfig {
  *
  * @example
  * getExplorerLink({ explorer, value: partyId })
+ *
+ * @category Utilities
  */
 export interface GetExplorerLinkParams {
   explorer: ExplorerConfig
@@ -69,13 +75,14 @@ const requireBaseUrl = (baseUrl: string): string => {
  * missing link.
  *
  * @example
- * const explorer = { baseUrl: 'https://scan.example' }
- * getExplorerLink({ explorer, value: 'nico::1220df94a1' })
- * // 'https://scan.example/party/nico%3A%3A1220df94a1'
+ * getExplorerLink({ explorer, value: partyId })
+ * // 'https://scan.example/party/…', the party shape having matched on its own
  * getExplorerLink({ explorer, value: '1220df94a1', entity: 'update' })
- * // 'https://scan.example/update/1220df94a1'
+ * // 'https://scan.example/update/1220df94a1', the entity overriding a shape that matched nothing
  * getExplorerLink({ explorer, value: 'nico' })
  * // undefined: no shape matched, and no entity said otherwise
+ *
+ * @category Utilities
  */
 export const getExplorerLink = ({
   explorer,
@@ -93,14 +100,17 @@ export const getExplorerLink = ({
 
 /**
  * Holds an explorer config so call sites pass only an identifier, and returns
- * {@link getExplorerLink} bound to it. An empty `baseUrl` throws on render.
+ * {@link getExplorerLink} bound to it.
+ *
+ * @throws on render when `explorer.baseUrl` is empty or blank, as {@link getExplorerLink} does.
  *
  * @example
  * const explorerLink = useExplorerLink({ baseUrl: 'https://scan.example' })
- * <Identifier value="nico::1220df94a1" href={explorerLink('nico::1220df94a1')} />
- * // href="https://scan.example/party/nico%3A%3A1220df94a1"
+ * <Identifier value={partyId} href={explorerLink(partyId)} />
  * <Identifier value={cid} href={explorerLink(cid, 'contract')} />
- * // href="https://scan.example/contract/00a3…", or no link where the builder returns undefined
+ * // no href at all where the value matched no shape and no entity said otherwise
+ *
+ * @category Hooks
  */
 export const useExplorerLink = (
   explorer: ExplorerConfig,

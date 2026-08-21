@@ -2,11 +2,19 @@ import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback, useState } from 'react'
 import { type TxStatusSnapshot, useCantonConnectContext } from '#src/CantonConnectProvider'
 
-/** Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type. */
+/**
+ * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
+ */
 export type { PrepareExecuteParams }
 
+/**
+ * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
+ * at submission, and throws when nothing is connected; `lastTx` follows the wallet's own
+ * `txChanged` pushes, so it moves even while `execute` is still pending.
+ *
+ * @category Hooks
+ */
 export interface UseExecuteResult {
-  /** Resolves once the ledger has executed, not at submission. Throws if not connected. */
   execute: (params: PrepareExecuteParams) => Promise<unknown>
   lastTx: TxStatusSnapshot | undefined
   isExecuting: boolean
@@ -15,9 +23,20 @@ export interface UseExecuteResult {
 }
 
 /**
- * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's
- * `txChanged` event. Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`,
- * since `execute` resolves after execution rather than at submission.
+ * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
+ * event.
+ * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, since `execute` resolves after
+ * execution rather than at submission.
+ *
+ * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
+ * connected or the command fails, the failure also landing in `error`.
+ *
+ * @example
+ * const { execute, lastTx } = useExecute()
+ * await execute({ commandId: 'claim-1', commands })
+ * lastTx?.status // 'pending' | 'signed' | 'executed' | 'failed'
+ *
+ * @category Hooks
  */
 export const useExecute = (): UseExecuteResult => {
   const ctx = useCantonConnectContext()

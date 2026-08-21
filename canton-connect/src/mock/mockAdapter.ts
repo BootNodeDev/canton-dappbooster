@@ -16,24 +16,41 @@ type RequestResult = Awaited<ReturnType<MockProvider['request']>>
 type Listener = Parameters<MockProvider['on']>[1]
 type Wallet = dappAPI.Wallet
 
+/**
+ * One canned account the mock adapter reports. Only `partyId` is required; the rest is filled with
+ * obviously fake values, so nothing downstream mistakes a mock account for a real one.
+ *
+ * @category Utilities
+ */
 export interface MockAccount {
   partyId: string
   name?: string
   publicKey?: string
 }
 
+/**
+ * Wiring for {@link createMockAdapter}. `id` defaults to `'mock'`, which is the provider id
+ * `createAutoPicker('mock')` matches; `accounts` defaults to one generated account and treats the
+ * first entry as primary; omitting `networkId` lets `CantonConnectConfig.networkId` apply instead.
+ *
+ * @example
+ * const options: CreateMockAdapterOptions = { id: 'mock', accounts: [{ partyId }] }
+ *
+ * @category Utilities
+ */
 export interface CreateMockAdapterOptions {
-  /** Defaults to `'mock'`; also what `createAutoPicker` selects by. */
   id?: string
-  /** First entry is the primary. Defaults to one generated account. */
   accounts?: MockAccount[]
-  /** Omit to let `CantonConnectConfig.networkId` apply instead. */
   networkId?: string
 }
 
-/** See `createMockAdapter`. */
+/**
+ * What {@link createMockAdapter} returns: a `ProviderAdapter` plus `emit`, which simulates the
+ * wallet pushing an event to subscribers of `provider().on(...)`.
+ *
+ * @category Utilities
+ */
 export interface MockAdapter extends ProviderAdapter {
-  /** Simulates the wallet pushing `event` to subscribers of `provider().on(...)`. */
   emit: (event: string, payload: unknown) => void
 }
 
@@ -163,7 +180,13 @@ class MockProviderAdapter implements ProviderAdapter {
 /**
  * Answers the connect flow with canned data, so `CantonConnectProvider` runs with no wallet
  * installed; pass it via `CantonConnectConfig.additionalAdapters`. Anything outside that flow
- * throws naming the method; a canned result would be indistinguishable from a real one.
+ * throws naming the method; a canned result would be indistinguishable from a real one. Reach for
+ * `createFakeWallet` instead to exercise the SDK's real extension transport.
+ *
+ * @example
+ * const config = { appName: 'Vesting', additionalAdapters: [createMockAdapter()] }
+ *
+ * @category Utilities
  */
 export const createMockAdapter = (options: CreateMockAdapterOptions = {}): MockAdapter =>
   new MockProviderAdapter(options)

@@ -36,7 +36,8 @@ const throwingPicker: WalletPickerFn = async () => {
 
 let restoreOpen: (() => void) | undefined
 
-// Drives a connect to the point a close strands it: the window only gets a URL once the SDK opened it.
+// Drives a connect to the point a close strands it: the window only gets a URL once the SDK has
+// opened it.
 const strandOnClosedPicker = async (
   result: { current: { sdk: DappSDK; connect: () => Promise<void> } },
   popup: StubPopup,
@@ -199,7 +200,7 @@ describe('CantonConnectProvider', () => {
       JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
     )
 
-    // First status() is the SDK's internal restore check; the second is ours, which finds it locked.
+    // First status() is the SDK's internal restore check; the second is ours, finding it locked.
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',
@@ -322,7 +323,8 @@ describe('CantonConnectProvider', () => {
       JSON.stringify({ providerId: 'browser:ext:wallet-a' }),
     )
 
-    // Restore's internal check, our own restore check, and the post-failure probe all see the same still-live, connected client.
+    // Restore's internal check, our own restore check, and the post-failure probe all see the
+    // same still-live, connected client.
     const wallet = createFakeWallet({
       id: 'wallet-a',
       target: 'wallet-a',
@@ -498,7 +500,7 @@ describe('CantonConnectProvider', () => {
   it('does not re-init when a rerender passes a new config object with the same field values', async () => {
     const initSpy = vi.spyOn(DappSDK.prototype, 'init')
 
-    // Hoisted so this reference stays stable across renders — only the wrapping config object is fresh.
+    // Hoisted so this reference stays stable across renders; only the wrapping config is fresh.
     const walletPicker = createAutoPicker()
 
     const { rerender } = renderHook(() => useCantonConnectContext(), {
@@ -667,7 +669,7 @@ describe('CantonConnectProvider', () => {
       ])
     })
 
-    // waitFor exhausts its retry window trying to observe the change; rejecting proves it never arrived.
+    // waitFor exhausts its retry window observing the change; rejecting proves it never arrived.
     await expect(
       waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::deadbeef')),
     ).rejects.toThrow()

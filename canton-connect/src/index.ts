@@ -1,3 +1,10 @@
+/**
+ * Everything importable from `@bootnodedev/canton-connect` itself. The test doubles are not here:
+ * they live on the `/testing` sub-path.
+ *
+ * @module Main
+ */
+
 // canton-connect — wagmi-style React hooks for connecting Canton dApps
 // to CIP-0103 wallets. See README.md for the design rationale.
 

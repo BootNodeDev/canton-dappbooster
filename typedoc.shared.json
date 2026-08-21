@@ -1,0 +1,21 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "blockTags": [
+    "@category",
+    "@example",
+    "@mergeModuleWith",
+    "@module",
+    "@param",
+    "@returns",
+    "@see",
+    "@throws"
+  ],
+  "modifierTags": [
+    "@inline",
+    "@internal"
+  ],
+  "inlineTags": [
+    "@link"
+  ],
+  "sourceLinkTemplate": "https://github.com/BootNodeDev/canton-dappbooster/blob/{gitRevision}/{path}#L{line}"
+}

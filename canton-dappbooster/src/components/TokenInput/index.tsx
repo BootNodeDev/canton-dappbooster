@@ -33,12 +33,17 @@ const ZERO = formatAmount('0.00')
  *
  * @example
  * const CC: TokenMeta = { symbol: 'CC', logo: <CantonCoinIcon /> }
+ *
+ * @category Components
  */
 export interface TokenMeta {
   symbol: string
   logo?: ReactNode
 }
 
+// Inlined into TokenInputProps rather than exported: the intersection is the public type, and
+// typedoc otherwise reports a public type referencing something the reference cannot show.
+/** @inline */
 interface TokenInputOwnProps
   extends Omit<
     HTMLAttributes<HTMLDivElement>,
@@ -76,16 +81,26 @@ interface TokenInputOwnProps
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
  *   usdValue="0.10" onChange={(next, error) => { setAmount(next); setError(error) }} />
+ *
+ * @category Components
  */
 export type TokenInputProps = TokenInputOwnProps &
   ({ label: string } | { 'aria-label': string } | { 'aria-labelledby': string })
 
 /**
- * Component to enter a Canton token amount
+ * A controlled field for a Canton token amount. The value stays a decimal string end to end, since
+ * a `number` cannot carry `Numeric 10` without losing digits; grouping separators are added for
+ * reading and stripped on the way back. Max fills from `balance`, which is also the ceiling
+ * `onChange` validates against, so the button never offers more than the field will accept.
+ * Passing `onTokenSelect` turns the symbol into a picker over the `TokenListProvider` list.
  *
  * @example
  * <TokenInput label="Amount" token={{ symbol: 'CC' }} value={amount} balance={balance}
  *   onChange={(next, error) => { setAmount(next); setError(error) }} />
+ *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/components/TokenInput/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const TokenInput = ({
   'aria-describedby': describedBy,

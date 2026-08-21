@@ -7,6 +7,12 @@ import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 
 const JSON_RPC_METHOD_NOT_FOUND = -32601
 
+/**
+ * One account the fake wallet reports from `listAccounts`. Mark exactly one `primary`: that is the
+ * entry `selectPrimaryAccount` resolves to `Party`.
+ *
+ * @category Utilities
+ */
 export interface FakeWalletAccount {
   partyId: string
   primary?: boolean
@@ -14,28 +20,35 @@ export interface FakeWalletAccount {
   publicKey?: string
 }
 
+/**
+ * Wiring for {@link createFakeWallet}. `id` is announced to `window` and doubles as the postMessage
+ * target and the display name unless `target` or `name` override it, and `accounts` defaults to one
+ * account with `id` as its party prefix. `statusResponses` is `isConnected` per successive `status`
+ * call, last entry repeating, which is how a test restores a session and then reports it locked.
+ *
+ * @example
+ * const options: FakeWalletOptions = { id: 'mock', statusResponses: [true, false] }
+ *
+ * @category Utilities
+ */
 export interface FakeWalletOptions {
-  /** Provider id announced to `window`, and the postMessage `target` unless `target` is set. */
   id: string
-  /** Defaults to `id`. */
   name?: string
-  /** postMessage target frame id. Defaults to `id`. */
   target?: string
-  /** Defaults to a single account with `id` as its party prefix. */
   accounts?: FakeWalletAccount[]
-  /**
-   * `isConnected` per successive `status` call, the last entry repeating once exhausted;
-   * lets a test restore a connected session, then report it locked.
-   */
   statusResponses?: boolean[]
 }
 
+/**
+ * Handles on a running fake wallet: `announce` re-announces it as if the extension had just loaded,
+ * `push` sends an unsolicited notification the way a real one does (`'statusChanged'`, say), and
+ * `dispose` removes the `window` listeners it installed, which every test must do in teardown.
+ *
+ * @category Utilities
+ */
 export interface FakeWallet {
-  /** Re-announces the wallet, as if the extension had just loaded. */
   announce: () => void
-  /** Pushes an unsolicited notification the way a real extension does, e.g. `'statusChanged'`. */
   push: (method: string, params: unknown) => void
-  /** Removes the `window` listeners this fake installed. Call it in test teardown. */
   dispose: () => void
 }
 
@@ -47,8 +60,16 @@ interface IncomingMessage {
 
 /**
  * A fake CIP-0103 extension wallet for tests. It speaks the real postMessage protocol, so it
- * exercises the SDK's genuine `ExtensionAdapter` rather than a stub. Answers `connect`,
- * `status`, `listAccounts` and `disconnect`; anything else rejects naming the method.
+ * exercises the SDK's genuine `ExtensionAdapter` rather than a stub. Answers `connect`, `status`,
+ * `listAccounts` and `disconnect`; anything else rejects naming the method. Reach for
+ * `createMockAdapter` instead where the transport is not what is under test.
+ *
+ * @example
+ * const wallet = createFakeWallet({ id: 'mock' })
+ * wallet.push('statusChanged', { connection: { isConnected: false } })
+ * wallet.dispose()
+ *
+ * @category Utilities
  */
 export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const target = options.target ?? options.id

@@ -81,39 +81,16 @@ Closing the picker rejects with `ConnectCancelledError`, which `connectError`
 mirrors, so a cancel is told from a failure with `instanceof` rather than by
 matching an SDK message. A custom `walletPicker` should throw it too.
 
-## Hook reference
+## Reference
 
-Every hook throws if called outside `<CantonConnectProvider>`.
+Every hook and every config field is documented in JSDoc, which your editor surfaces at the call
+site and which is published at
+[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). There is no table
+here: a copy beside the code drifts from it, and a reader who trusted the copy has no way to tell.
 
-| Hook | Returns | Notes |
-|---|---|---|
-| `useConnect()` | `{ connect, disconnect, isConnecting, isConnected, connectError }` | `connect()` takes no argument — it opens the wallet picker and connects whatever the picker returns. |
-| `useParty()` | `{ party, status, isConnected }` | `party` (`Party \| undefined`: `partyId`, `networkId`, optional `name`/`publicKey`) updates when the wallet's primary account changes. |
-| `useWalletStatus()` | `{ isLocked, isConnected }` | Tracks the wallet's lock/connect events. |
-| `useSignMessage()` | `{ signMessage, signature, isSigning, error, reset }` | `signMessage(message)` resolves with the signature. |
-| `useExecute()` | `{ execute, lastTx, isExecuting, error, reset }` | `execute(params)` wraps the SDK's `prepareExecuteAndWait`. `lastTx` follows the live `txChanged` events (`pending → signed → executed / failed`). |
-| `useLedger()` | `{ ledgerApi, isReady }` | Raw participant JSON API pass-through for reads the other hooks don't cover. |
-
-`signMessage`, `execute`, and `ledgerApi` all throw `wallet is not connected —
-call useConnect().connect() first` if called before connecting.
-
-## Configuration
-
-`CantonConnectConfig`, passed to `<CantonConnectProvider config={...}>`:
-
-| Field | Default | Effect |
-|---|---|---|
-| `appName` | required | wallet-facing app name; today only read for the WalletConnect adapter's metadata |
-| `appDescription`, `appUrl` | unset | also WalletConnect metadata only — inert without `walletConnectProjectId` |
-| `networkId` | `'canton:local'` | the CIP-0103 network id; also the WalletConnect adapter's `chainId` |
-| `walletConnectProjectId` | unset | set to register the SDK's `WalletConnectAdapter` |
-| `walletPicker` | unset | omit for the SDK's built-in popup; inject `createAutoPicker()` in tests, a themed picker later |
-| `additionalAdapters` | `[]` | extra `ProviderAdapter`s to register, e.g. `createMockAdapter()` |
-
-`@walletconnect/sign-client` is declared an optional peer, but `dapp-sdk` 1.4 imports it
-statically at the top of its bundle (`dist/index.js:7`), so it has to be installed whether or not
-you set `walletConnectProjectId`. Only the *session* is lazy — `SignClient.init()` runs when a
-pairing starts, not at import. Worth an upstream issue; until then, treat it as required.
+Start at `CantonConnectProvider` and `CantonConnectConfig`; the hooks are `useConnect`, `useParty`,
+`useWalletStatus`, `useSignMessage`, `useExecute` and `useLedger`. Which wallets the picker offers is
+decided by three config fields: `walletConnectProjectId`, `walletPicker` and `additionalAdapters`.
 
 ## Testing helpers
 
@@ -142,7 +119,7 @@ const config = {
 
 ## Architecture
 
-See [`architecture.md`](architecture.md) for the facade wrapper, the
+See [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md) for the facade wrapper, the
 adapter/picker seams, and the event flow.
 
 ## Testing
