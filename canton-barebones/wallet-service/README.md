@@ -17,12 +17,6 @@ this service up alongside Postgres and Canton. Verify it from the repo root:
 pnpm run wallet-service:health
 ```
 
-For host-side iteration with no Docker, run it standalone in [mock mode](#mock-mode):
-
-```bash
-WALLET_SERVICE_MOCK=1 pnpm run wallet-service:dev
-```
-
 ## Token
 
 Real Canton calls require a bearer token accepted by Splice LocalNet.
@@ -37,8 +31,6 @@ pnpm run canton:token -- ledger-api-user
 
 Paste the printed `CANTON_BACKEND_TOKEN=...` line into
 `canton-barebones/.env`, then start the stack.
-
-Mock mode does not require a token.
 
 ## API Boundary
 
@@ -104,19 +96,3 @@ Carpincho uses these wallet-internal endpoints:
 
 These endpoints stay outside `/rpc` so the dApp API remains a projection of
 the CIP/OpenRPC surface.
-
-## Mock Mode
-
-`WALLET_SERVICE_MOCK=1` short-circuits Canton SDK calls and returns canned
-responses from [`src/mock.ts`](src/mock.ts). This is useful for wallet-only
-iteration with no Docker, Canton, or Daml SDK running.
-
-Mock mode reports `mock: true` from `GET /health` and
-`GET /wallet-service/info`; no Canton JWT is required.
-
-The mock intentionally implements only the participant read shape currently
-used by the dApp frontend for ACS reads:
-
-```text
-POST /v2/state/active-contracts
-```

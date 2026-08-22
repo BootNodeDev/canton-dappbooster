@@ -20,8 +20,6 @@
 #   ./scripts/dev-stack.sh down        # stop the dApp dev server and tear down containers
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status      # show what is currently running
-#   ./scripts/dev-stack.sh mock-up     # mock-only: mocked wallet-service (no Docker)
-#   ./scripts/dev-stack.sh mock-down   # stop the mocked wallet-service only
 #
 # What `up` starts (in order; Docker must already be running):
 #   1. Splice LocalNet bundle + wallet-service containers (pnpm run canton:up)
@@ -41,8 +39,6 @@ cd "$ROOT_DIR"
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
-MOCK_WS_LOG="$RUN_DIR/mock-wallet-service.log"
-MOCK_WS_PID="$RUN_DIR/mock-wallet-service.pid"
 
 # The prebuilt DAR, so the dev loop needs no dpm.
 DAR_PATH="canton-barebones/dars/vesting-lite-0.0.1.dar"
@@ -118,12 +114,9 @@ up() {
     cp canton-barebones/.env.example canton-barebones/.env
   fi
 
-  # Splice LocalNet requires CANTON_BACKEND_TOKEN unless wallet-service runs in
-  # mock mode; splice-common.sh's require_backend_token hard-fails without it.
-  if [ "${WALLET_SERVICE_MOCK:-}" = "1" ] \
-    || grep -qE '^[[:space:]]*WALLET_SERVICE_MOCK=1' canton-barebones/.env; then
-    log "WALLET_SERVICE_MOCK=1 — skipping CANTON_BACKEND_TOKEN."
-  elif grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' canton-barebones/.env; then
+  # Splice LocalNet requires CANTON_BACKEND_TOKEN; splice-common.sh's
+  # require_backend_token hard-fails without it.
+  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' canton-barebones/.env; then
     log "CANTON_BACKEND_TOKEN already set in canton-barebones/.env."
   else
     log "Minting CANTON_BACKEND_TOKEN for the LocalNet wallet-service..."
@@ -226,76 +219,20 @@ down() {
     || echo "   (docker daemon not running)"
 }
 
-wait_http() { # wait_http <seconds> <url> <label>
-  local timeout="$1" url="$2" label="$3" i
-  for ((i = 0; i < timeout; i++)); do
-    if curl -fsS "$url" >/dev/null 2>&1; then return 0; fi
-    sleep 1
-  done
-  warn "$label did not answer at $url within ${timeout}s"
-  return 1
-}
-
-mock_up() {
-  mkdir -p "$RUN_DIR"
-
-  # Mock mode needs no Docker — it short-circuits the Canton SDK. A fresh clone
-  # may have no deps yet; one root install links every workspace, including the
-  # wallet-service started below.
-  if [ ! -d node_modules ]; then
-    install_deps
-  fi
-
-  # Mocked data server (wallet-service in MOCK MODE) -> http://localhost:3010
-  if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "Port 3010 already in use; skipping mocked wallet-service."
-  else
-    log "Starting mocked wallet-service (MOCK MODE) -> http://localhost:3010"
-    WALLET_SERVICE_MOCK=1 nohup pnpm run wallet-service:dev >"$MOCK_WS_LOG" 2>&1 &
-    echo $! >"$MOCK_WS_PID"
-    wait_http 60 "http://localhost:3010/health" "mocked wallet-service" || true
-  fi
-
-  echo
-  log "Mock stack is up:"
-  cat <<EOF
-   mocked wallet-service  http://localhost:3010   (log: $MOCK_WS_LOG)
-EOF
-  echo "   No Docker / Canton / dApp frontend in this mode. Point the Carpincho wallet"
-  echo "   (from its own repo) at http://localhost:3010. Stop with: $0 mock-down"
-}
-
-mock_down() {
-  stop_pidfile "$MOCK_WS_PID" "mocked wallet-service"
-  # Belt-and-suspenders for stray processes on our port.
-  pkill -f "WALLET_SERVICE_MOCK" 2>/dev/null || true
-  pkill -f "tsx watch src/server.ts" 2>/dev/null || true
-
-  echo
-  log "Mock stack is down. Port 3010:"
-  if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
-  else
-    echo "   (free)"
-  fi
-}
-
 menu() {
   if [ ! -t 0 ] || [ ! -t 1 ]; then
     die "The menu needs an interactive terminal. Run a subcommand directly instead."
   fi
 
   # Display label per item; `keys` is the matching action dispatched on select.
-  local keys=(install docker-up docker-down up down mock-up mock-down quit)
-  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Mock up" "Mock down" "Quit")
+  local keys=(install docker-up docker-down up down quit)
+  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Quit")
   local descs=(
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start containers, dApp dev server, build DAR"
+    "start containers, deploy DAR, dApp dev server"
     "stop dApp dev server + tear down containers"
-    "start mocked wallet-service (no Docker)"
-    "stop the mocked wallet-service"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -349,8 +286,6 @@ menu() {
       docker-down) ( docker_down ) || warn "docker-down did not finish cleanly" ;;
       up)          ( up ) || warn "up did not finish cleanly (see output above)" ;;
       down)        ( down ) || warn "down did not finish cleanly" ;;
-      mock-up)     ( mock_up ) || warn "mock-up did not finish cleanly" ;;
-      mock-down)   ( mock_down ) || warn "mock-down did not finish cleanly" ;;
     esac
     printf '\n  \033[2mPress Enter to return to the menu...\033[0m'
     read -r _ || true
@@ -382,7 +317,5 @@ case "${1:-menu}" in
   down)        down ;;
   docker-down) docker_down ;;
   status)      status ;;
-  mock-up)     mock_up ;;
-  mock-down)   mock_down ;;
-  *)           die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status|mock-up|mock-down}" ;;
+  *)           die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status}" ;;
 esac

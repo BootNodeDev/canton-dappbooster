@@ -132,10 +132,7 @@ check_docker_memory() {
   fi
 }
 
-# Ensures the real wallet-service has the explicit token required by LocalNet.
+# Ensures wallet-service has the explicit token required by LocalNet.
 require_backend_token() {
-  if [ "${WALLET_SERVICE_MOCK:-}" = "1" ]; then
-    return 0
-  fi
   [ -n "${CANTON_BACKEND_TOKEN:-}" ] || die "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run canton:token -- ledger-api-user"
 }

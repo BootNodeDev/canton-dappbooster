@@ -75,9 +75,6 @@ Ledger API grpc://host.docker.internal:2901
 Admin API  grpc://host.docker.internal:2902
 ```
 
-Set `WALLET_SERVICE_MOCK=1` in `.env` to short-circuit Canton calls. Mock mode
-does not require `CANTON_BACKEND_TOKEN`.
-
 ## Services And Ports
 
 | Service | What It Is | URL / Port |
