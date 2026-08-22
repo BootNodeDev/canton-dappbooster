@@ -24,7 +24,8 @@
 # What `up` starts (in order; Docker must already be running):
 #   1. Splice LocalNet bundle + wallet-service containers (pnpm run canton:up)
 #   2. Health checks (canton + wallet-service)
-#   3. Deploys the prebuilt vesting DAR, then bootstraps the operator + factory config
+#   3. Builds and deploys the vesting DAR (name derived from daml.yaml), then
+#      bootstraps the operator + factory config
 #   4. dApp frontend dev server     -> http://localhost:3012  (background)
 #
 # `down` reverses 4 (kills the dApp dev server) and tears down the containers.
@@ -40,12 +41,19 @@ RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
 
-# The prebuilt DAR, so the dev loop needs no dpm.
-DAR_PATH="canton-barebones/dars/vesting-lite-0.0.1.dar"
+# Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
+DAML_DIR="dapp/daml/vesting-lite"
+DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
+DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+
+# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
+case "$DAR_NAME" in
+  -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
+esac
 
 wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   local timeout="$1" file="$2" pattern="$3" label="$4" i
@@ -108,6 +116,11 @@ up() {
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
 
+  # build-dar.sh needs dpm; check here so a missing SDK fails before the
+  # containers come up rather than after.
+  command -v dpm >/dev/null 2>&1 \
+    || die "dpm not found on PATH. Install the DAML SDK (3.4.11) — see README 'Installation' — then run 'up'."
+
   # canton .env (README step) — create from example if missing.
   if [ ! -f canton-barebones/.env ]; then
     log "Creating canton-barebones/.env from .env.example"
@@ -146,7 +159,9 @@ up() {
   log "Checking wallet-service health..."
   pnpm run wallet-service:health && echo
 
-  # 3. Deploy the DAR, then bootstrap the operator and its factory
+  # 3. Build + deploy the DAR, then bootstrap the operator and its factory
+  log "Building the $DAR_NAME DAR..."
+  pnpm run build-dar -- "$DAML_DIR"
   log "Deploying $DAR_PATH to Canton..."
   pnpm run deploy-dar -- "$DAR_PATH"
   log "Bootstrapping the vesting operator and factory..."
@@ -231,7 +246,7 @@ menu() {
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start containers, deploy DAR, dApp dev server"
+    "start containers, build + deploy DAR, dev server"
     "stop dApp dev server + tear down containers"
     "exit"
   )

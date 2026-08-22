@@ -16,5 +16,6 @@ pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
 
 The same DAR is checked in prebuilt at
 [`canton-barebones/dars/vesting-lite-0.0.1.dar`](../../canton-barebones/dars/vesting-lite-0.0.1.dar),
-which is what the local bring-up deploys when `dpm` is not installed. See the Canton barebones
+for deploying without a local build. `scripts/dev-stack.sh up` builds from source instead, so it
+requires `dpm`. See the Canton barebones
 [Deploy a DAR](../../canton-barebones/README.md#deploy-a-dar) step.
