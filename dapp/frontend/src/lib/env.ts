@@ -1,4 +1,4 @@
-// The local Splice Scan, so the mock-first app runs from a fresh clone with no `.env`.
+// The local Splice Scan, so the app runs from a fresh clone with no `.env`.
 const DEFAULT_EXPLORER_URL = 'http://scan.localhost:4000'
 
 export interface Env {

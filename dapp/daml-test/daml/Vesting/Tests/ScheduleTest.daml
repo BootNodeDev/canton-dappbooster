@@ -1,0 +1,84 @@
+module Vesting.Tests.ScheduleTest where
+
+import Daml.Script
+
+import DA.Assert ((===))
+import DA.Date (date, Month(Jan))
+import DA.Time (time, addRelTime, hours)
+import Vesting.Schedule
+
+-- A fixed reference epoch for building deterministic Time values.
+epoch : Time
+epoch = time (date 2026 Jan 1) 0 0 0
+
+at : Int -> Time
+at h = addRelTime epoch (hours h)
+
+-- vestedFraction is 0 before the cliff (linear curve, cliff after start).
+testFractionZeroBeforeCliff : Script ()
+testFractionZeroBeforeCliff = script do
+  let sched = VestingSchedule with
+        curve = LinearVesting with start = at 0; end = at 100
+        cliff = at 10
+  vestedFraction sched (at 5) === 0.0
+
+-- Linear midpoint is ~0.5 (cliff at start so it does not clamp).
+testLinearMidpoint : Script ()
+testLinearMidpoint = script do
+  let sched = VestingSchedule with
+        curve = LinearVesting with start = at 0; end = at 100
+        cliff = at 0
+  let frac = vestedFraction sched (at 50)
+  assertMsg ("midpoint fraction ~ 0.5, got " <> show frac)
+    (abs (frac - 0.5) < 0.0001)
+
+-- Milestone steps to the last-reached cumulative fraction.
+testMilestoneSteps : Script ()
+testMilestoneSteps = script do
+  let sched = VestingSchedule with
+        curve = MilestoneVesting with
+          points = [(at 10, 0.25), (at 20, 0.5), (at 30, 1.0)]
+        cliff = at 10
+  vestedFraction sched (at 5) === 0.0    -- before cliff
+  vestedFraction sched (at 15) === 0.25  -- first milestone reached
+  vestedFraction sched (at 25) === 0.5   -- second reached
+  vestedFraction sched (at 35) === 1.0   -- all reached
+
+-- validVestingSchedule accepts a good linear and a good milestone.
+testValidAccepts : Script ()
+testValidAccepts = script do
+  let linear = VestingSchedule with
+        curve = LinearVesting with start = at 0; end = at 100
+        cliff = at 10
+  let milestone = VestingSchedule with
+        curve = MilestoneVesting with
+          points = [(at 10, 0.25), (at 20, 0.5), (at 30, 1.0)]
+        cliff = at 10
+  validVestingSchedule linear === True
+  validVestingSchedule milestone === True
+
+-- validVestingSchedule rejects descending times, last != 1.0, and cliff < start.
+testValidRejects : Script ()
+testValidRejects = script do
+  -- descending milestone times
+  let descendingTimes = VestingSchedule with
+        curve = MilestoneVesting with
+          points = [(at 30, 0.25), (at 20, 0.5), (at 10, 1.0)]
+        cliff = at 0
+  validVestingSchedule descendingTimes === False
+
+  -- last cumulative fraction is not 1.0
+  let lastNotOne = VestingSchedule with
+        curve = MilestoneVesting with
+          points = [(at 10, 0.25), (at 20, 0.5), (at 30, 0.9)]
+        cliff = at 10
+  validVestingSchedule lastNotOne === False
+
+  -- cliff before start: the linear rule requires start <= cliff <= end, so a
+  -- cliff that precedes start is rejected. (The plan says "cliff>start"; the
+  -- ground-truth code actually constrains cliff to [start, end], so the genuine
+  -- rejection is cliff < start.)
+  let cliffBeforeStart = VestingSchedule with
+        curve = LinearVesting with start = at 50; end = at 100
+        cliff = at 10
+  validVestingSchedule cliffBeforeStart === False

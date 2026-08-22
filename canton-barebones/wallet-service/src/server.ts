@@ -3,19 +3,13 @@ import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
 import { loadConfig } from './config.ts'
-import { createMockPartyApi, createMockRpc, createMockState, isMockEnabled } from './mock.ts'
 import { createPartyApi } from './party.ts'
 import { createRpc, InvalidParams } from './rpc.ts'
 import type { JsonRpcRequest, JsonRpcResponse } from './types.ts'
 
 const config = loadConfig()
-const mockEnabled = isMockEnabled()
-const mockState = mockEnabled ? createMockState() : undefined
-const rpc = mockState !== undefined ? createMockRpc(config, mockState) : createRpc(config)
-const adminParty =
-  mockState !== undefined
-    ? createMockPartyApi(config, mockState)
-    : createPartyApi(config, { getSdk: () => rpc.getSdk() })
+const rpc = createRpc(config)
+const adminParty = createPartyApi(config, { getSdk: () => rpc.getSdk() })
 const app = express()
 
 app.use(
@@ -27,7 +21,7 @@ app.use(
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'wallet-service', network: config.network, mock: mockEnabled })
+  res.json({ ok: true, service: 'wallet-service', network: config.network })
 })
 
 app.get('/', (_req, res) => {
@@ -93,8 +87,5 @@ app.post('/rpc', async (req, res) => {
 })
 
 app.listen(config.port, () => {
-  const suffix = mockEnabled ? ' (MOCK MODE — no Canton calls)' : ''
-  console.log(
-    `wallet-service listening on ${config.port}${suffix} (token: ${config.canton.tokenSource})`,
-  )
+  console.log(`wallet-service listening on ${config.port} (token: ${config.canton.tokenSource})`)
 })

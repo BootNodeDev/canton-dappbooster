@@ -1,6 +1,7 @@
-// Party discovery + submission seam. StealthWallet (hosted) implements it today;
-// CarpinchoWallet (external keys) slots in later without touching the dApp.
-import type { PartyRef } from '@/backend/VestingBackend'
+// The two wallet-session calls the backend needs, injected as plain functions so LiteBackend stays
+// constructible outside React while the functions themselves come from canton-connect's hooks.
+
+import type { LedgerApiParams, PrepareExecuteParams } from '@bootnodedev/canton-connect'
 
 // JSON Ledger API v2 command — always an ExerciseCommand in this dApp.
 export type LedgerCommand = {
@@ -20,11 +21,7 @@ export type DisclosedContract = {
   synchronizerId?: string
 }
 
-export interface Wallet {
-  listParties(): Promise<PartyRef[]>
-  execute(
-    actingParty: string,
-    command: LedgerCommand,
-    disclosed?: DisclosedContract[],
-  ): Promise<unknown>
+export type WalletFns = {
+  execute: (params: PrepareExecuteParams) => Promise<unknown>
+  ledgerApi: (params: LedgerApiParams) => Promise<unknown>
 }

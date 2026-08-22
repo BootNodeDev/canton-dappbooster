@@ -75,9 +75,6 @@ Ledger API grpc://host.docker.internal:2901
 Admin API  grpc://host.docker.internal:2902
 ```
 
-Set `WALLET_SERVICE_MOCK=1` in `.env` to short-circuit Canton calls. Mock mode
-does not require `CANTON_BACKEND_TOKEN`.
-
 ## Services And Ports
 
 | Service | What It Is | URL / Port |
@@ -115,11 +112,18 @@ pnpm run build-dar -- <path/to/daml/project>
 pnpm run deploy-dar -- <path/to/file.dar>
 ```
 
-For the in-repo Tally package that means:
+For the in-repo `vesting-lite` package that means:
 
 ```bash
-pnpm run build-dar -- dapp/daml
-pnpm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
+pnpm run build-dar -- dapp/daml/vesting-lite
+pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
+```
+
+The same DAR is checked in prebuilt at [`dars/vesting-lite-0.0.1.dar`](dars/vesting-lite-0.0.1.dar),
+so deploying without `dpm` is one command:
+
+```bash
+pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
 ```
 
 Or call the upload script directly:

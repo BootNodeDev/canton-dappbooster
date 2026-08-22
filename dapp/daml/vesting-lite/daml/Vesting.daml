@@ -1,0 +1,115 @@
+module Vesting where
+
+import Vesting.Schedule (VestingSchedule, vestedAmount, validVestingSchedule, minGrantAmount)
+
+-- Observer-less factory: a non-stakeholder proposer can exercise this only via
+-- explicit disclosure (the provider hands over the createdEventBlob out-of-band).
+template VestingFactory
+  with
+    provider : Party
+  where
+    signatory provider
+
+    nonconsuming choice Factory_CreateVesting : ContractId VestingProposal
+      with
+        proposer : Party
+        beneficiary : Party
+        total : Decimal
+        schedule : VestingSchedule
+        note : Optional Text
+      controller proposer
+      do
+        assertMsg "schedule is not well-formed" (validVestingSchedule schedule)
+        assertMsg "total below minimum" (total >= minGrantAmount)
+        create VestingProposal with provider, proposer, beneficiary, total, schedule, note
+
+template VestingProposal
+  with
+    provider : Party
+    proposer : Party
+    beneficiary : Party
+    total : Decimal
+    schedule : VestingSchedule
+    note : Optional Text
+  where
+    signatory provider, proposer
+    observer beneficiary
+
+    choice Proposal_Accept : ContractId VestingContract
+      controller beneficiary
+      do
+        create VestingContract with
+          provider, proposer, beneficiary, total, schedule, note, claimed = 0.0
+
+template VestingContract
+  with
+    provider : Party
+    proposer : Party
+    beneficiary : Party
+    total : Decimal
+    schedule : VestingSchedule
+    claimed : Decimal
+    note : Optional Text
+  where
+    signatory provider, proposer, beneficiary
+    ensure
+      total > 0.0
+      && claimed >= 0.0
+      && claimed <= total
+      && validVestingSchedule schedule
+
+    -- Beneficiary withdraws vested-minus-claimed; real ledger time via getTime.
+    choice Contract_Claim : ContractId VestingContract
+      with
+        amount : Decimal
+      controller beneficiary
+      do
+        now <- getTime
+        assertMsg "cliff not reached" (now >= schedule.cliff)
+        let vested = vestedAmount schedule total now
+        assertMsg "amount must be positive" (amount > 0.0)
+        assertMsg "cannot exceed vested minus claimed" (amount <= vested - claimed)
+        create this with claimed = claimed + amount
+
+    -- Creator cancels: beneficiary keeps the earned-but-unclaimed residual as a
+    -- VestedClaim (value-preserving); contract archived. Numeric lite analog of the
+    -- real escrow split (no LockedAmulet).
+    choice Contract_Cancel : Optional (ContractId VestedClaim)
+      controller proposer
+      do
+        now <- getTime
+        let vested = vestedAmount schedule total now
+            owed   = vested - claimed
+        assertMsg "owed residual below minimum (drain or leave >= floor)"
+          (owed == 0.0 || owed >= minGrantAmount)
+        if owed > 0.0
+          then fmap Some $ create VestedClaim with
+                 provider, proposer, beneficiary, amount = owed, withdrawn = 0.0, note
+          else pure None
+
+-- Earned residual handed to the beneficiary at cancel. No cliff, no schedule.
+template VestedClaim
+  with
+    provider : Party
+    proposer : Party
+    beneficiary : Party
+    amount : Decimal
+    withdrawn : Decimal
+    note : Optional Text
+  where
+    signatory provider, proposer
+    observer beneficiary
+    ensure amount > 0.0 && withdrawn >= 0.0 && withdrawn <= amount
+
+    choice Claim_Withdraw : Optional (ContractId VestedClaim)
+      with
+        withdrawAmount : Decimal
+      controller beneficiary
+      do
+        let available = amount - withdrawn
+        assertMsg "withdrawAmount must be positive" (withdrawAmount > 0.0)
+        assertMsg "withdrawAmount exceeds available" (withdrawAmount <= available)
+        let nextWithdrawn = withdrawn + withdrawAmount
+        if nextWithdrawn >= amount
+          then pure None
+          else fmap Some $ create this with withdrawn = nextWithdrawn

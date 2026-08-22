@@ -1,0 +1,10 @@
+{
+  "name": "@canton-dappbooster/daml",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "dpm build",
+    "deploy": "../../../canton-barebones/scripts/deploy-dar.sh .daml/dist/vesting-lite-0.0.1.dar",
+    "daml:test": "LANG=C.UTF-8 dpm build && cd ../../daml-test && LANG=C.UTF-8 dpm test"
+  }
+}

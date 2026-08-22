@@ -1,5 +1,3 @@
-import { isMockEnabled } from './mock.ts'
-
 export type TokenSource = 'env' | 'none'
 
 export interface WalletServiceConfig {
@@ -45,9 +43,6 @@ const optionalNumber = (name: string, fallback: number): number => {
 
 // Resolves the explicit runtime bearer token without exposing the local signing recipe to services.
 const resolveToken = (): { token?: string; source: TokenSource } => {
-  if (isMockEnabled()) {
-    return { source: 'none' }
-  }
   const explicit = optional('CANTON_BACKEND_TOKEN')
   if (explicit !== undefined) {
     return { token: explicit, source: 'env' }

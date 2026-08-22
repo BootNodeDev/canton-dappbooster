@@ -1,5 +1,5 @@
 sdk-version: 3.4.11
-name: quickstart-tally
+name: vesting-lite
 source: daml
 version: 0.0.1
 dependencies:

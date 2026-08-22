@@ -1,50 +1,13 @@
-// JSON-Ledger-API v2 command builders, explicit-disclosure shaping, and the one curve
-// encode/decode pair. No I/O, so it is unit-tested directly in commands.test.ts.
+// JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
+// unit-tested directly in commands.test.ts.
 
 import { canonicalAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
 
-export type DisclosedRef = {
-  contractId: string
-  createdEventBlob: string
-  synchronizerId?: string
-}
-
-type AcsRow = {
-  contractEntry?: {
-    JsActiveContract?: {
-      createdEvent?: { contractId?: string; createdEventBlob?: string }
-      synchronizerId?: string
-    }
-  }
-}
-
-// Pull the disclosure payload out of a JSON-Ledger-API v2 active-contracts row
-// (requires the read to set includeCreatedEventBlob: true).
-export const extractCreatedEventBlob = (row: AcsRow): DisclosedRef | undefined => {
-  const active = row.contractEntry?.JsActiveContract
-  const event = active?.createdEvent
-  if (event?.contractId === undefined || event.createdEventBlob === undefined) {
-    return undefined
-  }
-  return {
-    contractId: event.contractId,
-    createdEventBlob: event.createdEventBlob,
-    synchronizerId: active?.synchronizerId,
-  }
-}
-
-export const buildDisclosedContract = (templateId: string, ref: DisclosedRef) => ({
-  templateId,
-  contractId: ref.contractId,
-  createdEventBlob: ref.createdEventBlob,
-  ...(ref.synchronizerId === undefined ? {} : { synchronizerId: ref.synchronizerId }),
-})
-
 // ── Curve variant encoding ────────────────────────────────────────────────────
 // The one place the JSON-LF convention lives, mirrored by decodeSchedule: a variant is
 // `{tag, value}`, a `(Time, Decimal)` tuple `{_1, _2}`, Time an ISO-8601 string and Decimal a
-// string. Unconfirmed against a real ledger: only the mock exercises it so far.
+// string.
 
 type EncodedCurve =
   | { tag: 'LinearVesting'; value: { start: string; end: string } }

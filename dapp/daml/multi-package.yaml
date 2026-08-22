@@ -1,0 +1,3 @@
+# Single-package umbrella for vesting-lite.
+packages:
+  - ./vesting-lite

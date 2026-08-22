@@ -1,39 +1,38 @@
 # @canton-dappbooster/frontend — Canton Coin vesting dApp
 
-Direct-access dApp for **Canton Coin vesting**: propose a grant, the beneficiary
-accepts, claim as it vests, or cancel into a residual claim. Grants render live
-vested/claimable figures from the pure schedule math in [`src/lib/schedule.ts`](src/lib/schedule.ts).
+dApp for **Canton Coin vesting**: propose a grant, the beneficiary accepts, claim as it
+vests, or cancel into a residual claim. Grants render live vested/claimable figures from
+the pure schedule math in [`src/lib/schedule.ts`](src/lib/schedule.ts).
 
-Its **data runs mock-first**: with no deployment config present it uses an in-memory
-`MockBackend` seeded with sample parties, grants, proposals, and a residual claim,
-so the whole app is explorable with **no wallet-service, Canton, or DAR**. The wallet
-session is not mocked — it is a real CIP-0103 one through `canton-connect`, so getting
-past the landing screen needs a wallet that answers it. See the root
-[README](../../README.md) for the wider stack.
+Every read and every write goes through the connected CIP-0103 wallet, so the app acts as
+the wallet's primary account and each write raises a real approval prompt. There is no
+mock mode: without a deployment config and a wallet session the pages show a connect
+placeholder. See the root [README](../../README.md) for the wider stack.
 
-> Imported from `cn-dappbooster@feat/vesting-lite` — see [`PROVENANCE.md`](PROVENANCE.md).
-> The live `LiteBackend` path (real ledger via the wallet-service proxy), its
-> `vesting-lite` DAML package, and the party-bootstrap script are **deferred**; only
-> the frontend + mock layer are in this repo today.
+> The frontend was imported from `cn-dappbooster@feat/vesting-lite` — see
+> [`PROVENANCE.md`](PROVENANCE.md). The DAML package it speaks to now lives in
+> [`../daml/vesting-lite`](../daml/vesting-lite).
 
 ## Run
 
 From the repo root (one `pnpm install` links every workspace):
 
 ```bash
-pnpm run app:dev   # → http://localhost:3012
+pnpm run canton:up
+pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
+node scripts/bootstrap-vesting-lite.mjs   # writes public/vesting-lite-parties.json
+pnpm run app:dev                          # → http://localhost:3012
 ```
 
-Connect from the landing screen with a CIP-0103 browser wallet; the party it reports
-is the one you act as, and the session is restored on reload by the wallet itself.
-No env vars needed: the one knob, the explorer party ids link to, defaults to the
-local Splice Scan. Override it by copying [`.env.example`](.env.example) to `.env.local`.
+The bootstrap file is the deployment: it carries the package id and the operator factory's
+explicit-disclosure payload, without which a grant cannot be created. It is git-ignored,
+so it is per-machine and re-runnable.
 
-## Going live (deferred)
-
-When the `vesting-lite` DAML package and bootstrap land, dropping the
-bootstrap-written `public/vesting-lite-parties.json` (`{pkg, operator, rpcUrl}`)
-flips the app to the real ledger with no code change.
+Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
+the session is restored on reload by the wallet itself. Changing the wallet's primary
+account changes the party the dApp acts as. The one env knob, the explorer party ids link
+to, defaults to the local Splice Scan; override it by copying [`.env.example`](.env.example)
+to `.env.local`.
 
 ## How it fits together
 

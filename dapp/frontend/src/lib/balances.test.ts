@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sumHoldings } from '@/hooks/useTokenBalance'
+import { sumHoldings } from '@/lib/balances'
 
 describe('sumHoldings', () => {
   it('sums exactly, across standards', () => {

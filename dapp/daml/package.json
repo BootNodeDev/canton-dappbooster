@@ -1,9 +1,0 @@
-{
-  "name": "@canton-dappbooster/daml",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "build": "dpm build",
-    "deploy": "../../canton-barebones/scripts/deploy-dar.sh .daml/dist/quickstart-counter-0.0.1.dar"
-  }
-}

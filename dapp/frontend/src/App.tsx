@@ -2,7 +2,7 @@ import { type CantonConnectConfig, CantonConnectProvider } from '@bootnodedev/ca
 import { ThemeProvider, TokenListProvider } from '@bootnodedev/canton-dappbooster'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Toaster } from '@/components/toast'
-import { TOKENS } from '@/mock/tokens'
+import { TOKENS } from '@/lib/tokens'
 import { BackendProvider } from '@/providers/BackendProvider'
 import { routes } from '@/routes'
 
