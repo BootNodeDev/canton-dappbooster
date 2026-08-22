@@ -1,0 +1,194 @@
+module Vesting.Tests.IntegrationTest where
+
+import Daml.Script
+
+import DA.Assert ((===))
+import DA.Time (addRelTime, hours)
+import DA.Optional (fromSome)
+
+import Vesting
+import Vesting.Schedule
+
+-- Build a linear schedule anchored at the given start time, cliff == start.
+linearSchedule : Time -> Time -> VestingSchedule
+linearSchedule start end = VestingSchedule with
+  curve = LinearVesting with start; end
+  cliff = start
+
+-- Full lifecycle: factory -> create -> accept -> partial claim -> full claim.
+testHappyPath : Script ()
+testHappyPath = script do
+  provider    <- allocateParty "provider"
+  proposer    <- allocateParty "proposer"
+  beneficiary <- allocateParty "beneficiary"
+
+  -- Anchor schedule before "now" so the contract is fully vested when claimed.
+  now <- getTime
+  let start = addRelTime now (hours (-100))
+      end   = addRelTime now (hours (-50))
+      sched = linearSchedule start end
+
+  factoryCid <- submit provider do
+    createCmd VestingFactory with provider
+
+  -- The factory is observer-less: the proposer can only exercise it via explicit
+  -- disclosure of the provider's created-event blob.
+  disclosedFactory <- fromSome <$> queryDisclosure provider factoryCid
+
+  proposalCid <- submit (actAs proposer <> disclose disclosedFactory) do
+    exerciseCmd factoryCid Factory_CreateVesting with
+      proposer
+      beneficiary
+      total = 100.0
+      schedule = sched
+      note = Some "grant"
+
+  contractCid <- submit beneficiary do
+    exerciseCmd proposalCid Proposal_Accept
+
+  -- Fully vested (end is in the past): claim a partial amount first.
+  contractCid2 <- submit beneficiary do
+    exerciseCmd contractCid Contract_Claim with amount = 40.0
+
+  Some c2 <- queryContractId beneficiary contractCid2
+  c2.claimed === 40.0
+
+  -- Then claim the remaining 60.0 (full).
+  contractCid3 <- submit beneficiary do
+    exerciseCmd contractCid2 Contract_Claim with amount = 60.0
+
+  Some c3 <- queryContractId beneficiary contractCid3
+  c3.claimed === 100.0
+
+  pure ()
+
+-- Cancel with sub-floor residual must be rejected.
+-- The 1.0 CC floor is intentional and mirrors the real cc-vesting-contracts: a
+-- Contract_Cancel that would strand 0 < owed < minGrantAmount is blocked because
+-- releasing dust below the minimum grant size is not a valid ledger state. The
+-- proposer must either let the beneficiary drain more first (owed reaches 0) or
+-- wait until vesting advances past the floor. This is faithful behaviour, not a bug.
+testCancelSubMinGrantAmountFails : Script ()
+testCancelSubMinGrantAmountFails = script do
+  provider    <- allocateParty "provider3"
+  proposer    <- allocateParty "proposer3"
+  beneficiary <- allocateParty "beneficiary3"
+
+  -- Tiny total of 1.5. Schedule barely started: only ~0.4 CC vested at cancel
+  -- time, leaving owed = 0.4 which is below minGrantAmount (1.0).
+  now <- getTime
+  let start = addRelTime now (hours (-4))
+      end   = addRelTime now (hours 96)   -- 100h total; 4h elapsed → 4% = 0.06 * 1.5 ≈ 0.06 CC
+      sched = linearSchedule start end
+      total = 1.5
+
+  factoryCid <- submit provider do
+    createCmd VestingFactory with provider
+
+  disclosedFactory <- fromSome <$> queryDisclosure provider factoryCid
+
+  proposalCid <- submit (actAs proposer <> disclose disclosedFactory) do
+    exerciseCmd factoryCid Factory_CreateVesting with
+      proposer; beneficiary; total; schedule = sched; note = None
+
+  contractCid <- submit beneficiary do
+    exerciseCmd proposalCid Proposal_Accept
+
+  -- owed at this point is total * (4/100) = 0.06, which is < minGrantAmount (1.0).
+  submitMustFail proposer do
+    exerciseCmd contractCid Contract_Cancel
+
+  pure ()
+
+-- Cancel after the grant is fully claimed: owed == 0, so the None branch is taken
+-- and no VestedClaim / residual contract is created.
+testCancelFullyClaimed : Script ()
+testCancelFullyClaimed = script do
+  provider    <- allocateParty "provider4"
+  proposer    <- allocateParty "proposer4"
+  beneficiary <- allocateParty "beneficiary4"
+
+  now <- getTime
+  let start = addRelTime now (hours (-100))
+      end   = addRelTime now (hours (-50))
+      sched = linearSchedule start end
+      total = 100.0
+
+  factoryCid <- submit provider do
+    createCmd VestingFactory with provider
+
+  disclosedFactory <- fromSome <$> queryDisclosure provider factoryCid
+
+  proposalCid <- submit (actAs proposer <> disclose disclosedFactory) do
+    exerciseCmd factoryCid Factory_CreateVesting with
+      proposer; beneficiary; total; schedule = sched; note = None
+
+  contractCid <- submit beneficiary do
+    exerciseCmd proposalCid Proposal_Accept
+
+  -- Fully vested and fully claimed before cancel.
+  contractCid2 <- submit beneficiary do
+    exerciseCmd contractCid Contract_Claim with amount = 100.0
+
+  -- owed == 0 → Contract_Cancel returns None (no residual contract created).
+  result <- submit proposer do
+    exerciseCmd contractCid2 Contract_Cancel
+  result === None
+
+  pure ()
+
+-- Cancel mid-vest yields a VestedClaim of (vested - claimed), then withdraw drains it.
+testCancelResidual : Script ()
+testCancelResidual = script do
+  provider    <- allocateParty "provider2"
+  proposer    <- allocateParty "proposer2"
+  beneficiary <- allocateParty "beneficiary2"
+
+  -- Half-vested at "now": start 50h ago, end 50h ahead, cliff at start.
+  now <- getTime
+  let start = addRelTime now (hours (-50))
+      end   = addRelTime now (hours 50)
+      sched = linearSchedule start end
+      total = 100.0
+
+  factoryCid <- submit provider do
+    createCmd VestingFactory with provider
+
+  -- Observer-less factory: disclose the provider's blob so the proposer can act.
+  disclosedFactory <- fromSome <$> queryDisclosure provider factoryCid
+
+  proposalCid <- submit (actAs proposer <> disclose disclosedFactory) do
+    exerciseCmd factoryCid Factory_CreateVesting with
+      proposer
+      beneficiary
+      total
+      schedule = sched
+      note = Some "grant2"
+
+  contractCid <- submit beneficiary do
+    exerciseCmd proposalCid Proposal_Accept
+
+  -- Claim a small amount before cancel, so claimed > 0.
+  contractCid2 <- submit beneficiary do
+    exerciseCmd contractCid Contract_Claim with amount = 10.0
+
+  -- Compute expected residual at cancel time using the same pure function.
+  cancelNow <- getTime
+  let vested  = vestedAmount sched total cancelNow
+      claimed = 10.0
+      owed    = vested - claimed
+
+  mClaimCid <- submit proposer do
+    exerciseCmd contractCid2 Contract_Cancel
+
+  let claimCid = fromSome mClaimCid
+  Some claim <- queryContractId beneficiary claimCid
+  claim.amount === owed
+  claim.withdrawn === 0.0
+
+  -- Drain the residual fully; choice returns None when fully withdrawn.
+  result <- submit beneficiary do
+    exerciseCmd claimCid Claim_Withdraw with withdrawAmount = owed
+  result === None
+
+  pure ()

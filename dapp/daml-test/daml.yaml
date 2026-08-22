@@ -1,0 +1,10 @@
+sdk-version: 3.4.11
+name: vesting-lite-test
+source: daml
+version: 0.0.1
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+data-dependencies:
+  - ../daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar

@@ -42,7 +42,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm -r --filter '!./dapp/daml' run --if-present build
+      - run: pnpm -r --filter '!./dapp/daml/vesting-lite' run --if-present build
       - run: pnpm knip
 
   test:

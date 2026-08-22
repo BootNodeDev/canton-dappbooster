@@ -1,0 +1,53 @@
+module Vesting.Schedule where
+
+import DA.Time (subTime, convertRelTimeToMicroseconds)
+import DA.List (last, head)
+
+-- How CC accrues over time. Fraction-based; cliff is curve-agnostic.
+data VestingCurve
+  = LinearVesting with start : Time; end : Time
+  | MilestoneVesting with points : [(Time, Decimal)]   -- (time, CUMULATIVE fraction), ascending, last == 1.0
+  deriving (Eq, Show)
+
+data VestingSchedule = VestingSchedule with
+    curve : VestingCurve
+    cliff : Time   -- nothing earned before this (true cliff)
+  deriving (Eq, Show)
+
+vestedFraction : VestingSchedule -> Time -> Decimal
+vestedFraction sched now
+  | now < sched.cliff = 0.0
+  | otherwise = case sched.curve of
+      LinearVesting start end
+        | now >= end   -> 1.0
+        | now <= start -> 0.0
+        | otherwise    ->
+            let elapsedUs  = convertRelTimeToMicroseconds (subTime now start)
+                durationUs = convertRelTimeToMicroseconds (subTime end start)
+            in intToDecimal elapsedUs / intToDecimal durationUs
+      MilestoneVesting points ->
+        case filter (\(t, _) -> t <= now) points of
+          []      -> 0.0
+          reached -> snd (last reached)
+
+vestedAmount : VestingSchedule -> Decimal -> Time -> Decimal
+vestedAmount sched total now = total * vestedFraction sched now
+
+-- Conservative minimum grant size (CC). Sanity floor.
+minGrantAmount : Decimal
+minGrantAmount = 1.0
+
+strictlyAscending : Ord b => (a -> b) -> [a] -> Bool
+strictlyAscending f xs = and (zipWith (\a b -> f a < f b) xs (drop 1 xs))
+
+validVestingSchedule : VestingSchedule -> Bool
+validVestingSchedule sched = case sched.curve of
+  LinearVesting start end ->
+    start < end && start <= sched.cliff && sched.cliff <= end
+  MilestoneVesting points ->
+    not (null points)
+      && strictlyAscending fst points
+      && strictlyAscending snd points
+      && all (\(_, fr) -> fr > 0.0 && fr <= 1.0) points
+      && snd (last points) == 1.0
+      && sched.cliff <= fst (head points)

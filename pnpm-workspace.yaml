@@ -4,7 +4,7 @@ packages:
   - canton-theme
   - canton-barebones
   - canton-barebones/wallet-service
-  - dapp/daml
+  - dapp/daml/vesting-lite
   - dapp/frontend
 
 # Pins for wallet-service's wallet-sdk. Held at the versions it was verified against;
