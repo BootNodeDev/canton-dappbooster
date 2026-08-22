@@ -14,7 +14,7 @@ describe('parseEnv', () => {
     expect(parsed).toEqual({ VITE_EXPLORER_URL: 'http://scan.localhost:4000' })
   })
 
-  // No `.env` at all is the zero-config case the mock-first app is meant to run in.
+  // No `.env` at all is the zero-config case the app is meant to run in.
   it('falls back to the local scan when the variable is absent', () => {
     expect(parseEnv({})).toEqual({ VITE_EXPLORER_URL: 'http://scan.localhost:4000' })
   })

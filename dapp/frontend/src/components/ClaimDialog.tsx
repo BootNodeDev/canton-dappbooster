@@ -10,7 +10,7 @@ import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { errorText } from '@/lib/errorText'
 import { formatCC, formatCCFull } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/lib/schedule'
-import { FAVORITE_IDS } from '@/mock/tokens'
+import { FAVORITE_IDS } from '@/lib/tokens'
 
 interface ClaimDialogProps {
   open: boolean

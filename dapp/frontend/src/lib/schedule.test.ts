@@ -4,6 +4,7 @@ import {
   MIN_GRANT_AMOUNT,
   meetsRelockFloor,
   nextMilestone,
+  residualMeetsFloor,
   type VestingSchedule,
   validVestingSchedule,
   vestedAmount,
@@ -234,5 +235,22 @@ describe('meetsRelockFloor', () => {
   // numbers this close in magnitude would lose that digit entirely.
   it('rejects a full-precision remainder of one unit at the 10th decimal place', () => {
     expect(meetsRelockFloor('8421337.1234567891', '8421337.1234567890')).toBe(false)
+  })
+})
+
+describe('residualMeetsFloor', () => {
+  it('accepts nothing owed, which cancels with no residual claim at all', () => {
+    expect(residualMeetsFloor('0')).toBe(true)
+  })
+
+  it('accepts a residual at or above the floor', () => {
+    expect(residualMeetsFloor('1')).toBe(true)
+    expect(residualMeetsFloor('250.5')).toBe(true)
+  })
+
+  // The window Contract_Cancel asserts on: owed is neither zero nor a fundable claim.
+  it('rejects a residual between zero and the floor', () => {
+    expect(residualMeetsFloor('0.0000000001')).toBe(false)
+    expect(residualMeetsFloor('0.99')).toBe(false)
   })
 })

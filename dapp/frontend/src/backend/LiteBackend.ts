@@ -1,5 +1,5 @@
-// The VestingBackend over the vesting-lite DAML templates, reached through the wallet-service
-// ledgerApi proxy.
+// The VestingBackend over the vesting-lite templates, reached through the connected wallet: reads
+// go out as the connected party, writes come back with a real approval prompt.
 
 import {
   buildAcceptCommand,
@@ -7,58 +7,50 @@ import {
   buildClaimCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
-  buildDisclosedContract,
-  extractCreatedEventBlob,
 } from '@/backend/commands'
-import { walletServiceRequest } from '@/backend/ledgerApi'
+import type { Deployment } from '@/backend/config'
 import {
+  type AcsRow,
   type CreateVestInput,
   composeNote,
-  type Deployment,
   rowToClaim,
   rowToGrant,
   rowToProposal,
   type VestingBackend,
   type VestingView,
 } from '@/backend/VestingBackend'
-import type { DisclosedContract, LedgerCommand, Wallet } from '@/wallet/Wallet'
+import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
+
+const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
+  rows.map(mapper).filter((value): value is T => value !== undefined)
 
 export class LiteBackend implements VestingBackend {
-  readonly mode = 'lite' as const
-  private readonly rpcUrl: string
-  private readonly wallet: Wallet
-  private readonly operator: string
-  private readonly factoryTid: string
+  private readonly wallet: WalletFns
+  private readonly factory: DisclosedContract
   private readonly proposalTid: string
   private readonly contractTid: string
   private readonly claimTid: string
 
-  constructor(rpcUrl: string, deployment: Deployment, wallet: Wallet) {
-    this.rpcUrl = rpcUrl
+  constructor(deployment: Deployment, wallet: WalletFns) {
     this.wallet = wallet
-    this.operator = deployment.operator
-    this.factoryTid = `${deployment.pkg}:Vesting:VestingFactory`
+    this.factory = {
+      templateId: `${deployment.pkg}:Vesting:VestingFactory`,
+      contractId: deployment.factoryCid,
+      createdEventBlob: deployment.factoryBlob,
+      ...(deployment.synchronizerId === undefined
+        ? {}
+        : { synchronizerId: deployment.synchronizerId }),
+    }
     this.proposalTid = `${deployment.pkg}:Vesting:VestingProposal`
     this.contractTid = `${deployment.pkg}:Vesting:VestingContract`
     this.claimTid = `${deployment.pkg}:Vesting:VestedClaim`
   }
 
-  // Pinging the ledger end is enough: the bootstrap guarantees the operator factory exists.
-  async isAvailable(): Promise<boolean> {
-    try {
-      await this.ledgerEnd()
-      return true
-    } catch {
-      return false
-    }
-  }
-
   private async ledgerEnd(): Promise<string | number> {
-    const result = await walletServiceRequest<{ offset?: string | number }>(
-      this.rpcUrl,
-      'ledgerApi',
-      { requestMethod: 'get', resource: '/v2/state/ledger-end' },
-    )
+    const result = (await this.wallet.ledgerApi({
+      requestMethod: 'get',
+      resource: '/v2/state/ledger-end',
+    })) as { offset?: string | number }
     if (result.offset === undefined) {
       throw new Error('Ledger API did not return an offset')
     }
@@ -69,23 +61,15 @@ export class LiteBackend implements VestingBackend {
     party: string,
     templateId: string,
     offset: string | number,
-  ): Promise<unknown[]> {
-    const rows = await walletServiceRequest<unknown>(this.rpcUrl, 'ledgerApi', {
+  ): Promise<AcsRow[]> {
+    const rows = await this.wallet.ledgerApi({
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
       body: {
         filter: {
           filtersByParty: {
             [party]: {
-              cumulative: [
-                {
-                  identifierFilter: {
-                    TemplateFilter: {
-                      value: { templateId, includeCreatedEventBlob: true },
-                    },
-                  },
-                },
-              ],
+              cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
             },
           },
         },
@@ -96,12 +80,19 @@ export class LiteBackend implements VestingBackend {
     return Array.isArray(rows) ? rows : []
   }
 
+  // actAs is explicit rather than left to the wallet's primary account, so a submission that would
+  // be signed by the wrong key is rejected by the participant instead of silently reassigned.
   private submit(
     actAs: string,
     command: LedgerCommand,
-    disclosed?: DisclosedContract[],
+    disclosedContracts?: DisclosedContract[],
   ): Promise<unknown> {
-    return this.wallet.execute(actAs, command, disclosed)
+    return this.wallet.execute({
+      actAs: [actAs],
+      readAs: [actAs],
+      commands: [command],
+      ...(disclosedContracts === undefined ? {} : { disclosedContracts }),
+    })
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
@@ -112,37 +103,26 @@ export class LiteBackend implements VestingBackend {
       this.readAcs(partyId, this.contractTid, offset),
       this.readAcs(partyId, this.claimTid, offset),
     ])
-    const proposals = proposalRows
-      .map((row) => rowToProposal(row as Parameters<typeof rowToProposal>[0]))
-      .filter((proposal): proposal is NonNullable<typeof proposal> => proposal !== undefined)
-    const grants = contractRows
-      .map((row) => rowToGrant(row as Parameters<typeof rowToGrant>[0]))
-      .filter((grant): grant is NonNullable<typeof grant> => grant !== undefined)
-    const claims = claimRows
-      .map((row) => rowToClaim(row as Parameters<typeof rowToClaim>[0]))
-      .filter((claim): claim is NonNullable<typeof claim> => claim !== undefined)
-    return { proposals, grants, claims }
+    return {
+      proposals: mapRows(proposalRows, rowToProposal),
+      grants: mapRows(contractRows, rowToGrant),
+      claims: mapRows(claimRows, rowToClaim),
+    }
   }
 
-  // The proposer is not a stakeholder of the operator's factory, so it arrives by explicit
-  // disclosure; the returned blob size lets the UI surface that mechanic.
+  // The funder is not a stakeholder of the operator's observer-less factory and cannot read it, so
+  // its disclosure payload comes from the bootstrap's config file; the blob size lets the UI surface
+  // that mechanic.
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
-    const factoryRows = await this.readAcs(this.operator, this.factoryTid, await this.ledgerEnd())
-    const ref = factoryRows
-      .map((row) => extractCreatedEventBlob(row as Parameters<typeof extractCreatedEventBlob>[0]))
-      .find((candidate) => candidate !== undefined)
-    if (ref === undefined) {
-      throw new Error('operator factory not found — run the vest-lite bootstrap')
-    }
-    const command = buildCreateVestingCommand(this.factoryTid, ref.contractId, {
+    const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
       proposer: args.proposer,
       beneficiary: args.receiver,
       total: args.totalAmount,
       schedule: args.schedule,
       note: composeNote(args.title, args.note),
     })
-    await this.submit(args.proposer, command, [buildDisclosedContract(this.factoryTid, ref)])
-    return { disclosedBytes: ref.createdEventBlob.length }
+    await this.submit(args.proposer, command, [this.factory])
+    return { disclosedBytes: this.factory.createdEventBlob.length }
   }
 
   async accept(args: { receiver: string; proposalCid: string }): Promise<void> {

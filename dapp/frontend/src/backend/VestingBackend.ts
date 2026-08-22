@@ -6,10 +6,6 @@ import { isAmount } from '@/lib/amount'
 import type { VestingSchedule } from '@/lib/schedule'
 import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
 
-export type PartyRef = { name: string; partyId: string }
-export type Deployment = { pkg: string; operator: string }
-export type Mode = 'lite'
-
 export interface VestingView {
   grants: Grant[]
   proposals: Proposal[]
@@ -26,8 +22,6 @@ export interface CreateVestInput {
 }
 
 export interface VestingBackend {
-  readonly mode: Mode
-  isAvailable(): Promise<boolean>
   viewAs(partyId: string): Promise<VestingView>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
@@ -40,7 +34,7 @@ export interface VestingBackend {
 // On-ledger `note` is `"${title}\n${note}"`, decimals arrive as strings, and the curve as a
 // JSON-LF variant. A row missing its createArgument maps to undefined so it never crashes a view.
 
-type AcsRow = {
+export type AcsRow = {
   contractEntry?: {
     JsActiveContract?: {
       createdEvent?: { contractId?: string; createArgument?: Record<string, unknown> }

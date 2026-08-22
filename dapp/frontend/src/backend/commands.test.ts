@@ -5,10 +5,8 @@ import {
   buildClaimCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
-  buildDisclosedContract,
   decodeSchedule,
   encodeSchedule,
-  extractCreatedEventBlob,
 } from '@/backend/commands'
 import type { VestingSchedule } from '@/lib/schedule'
 
@@ -68,49 +66,6 @@ describe('decodeSchedule', () => {
     expect(decodeSchedule(undefined)).toEqual({
       cliff: '',
       curve: { kind: 'linear', start: '', end: '' },
-    })
-  })
-})
-
-describe('extractCreatedEventBlob', () => {
-  it('pulls cid + blob + synchronizerId from an ACS row', () => {
-    const row = {
-      contractEntry: {
-        JsActiveContract: {
-          createdEvent: { contractId: 'cid1', createdEventBlob: 'BLOB' },
-          synchronizerId: 'sync1',
-        },
-      },
-    }
-    expect(extractCreatedEventBlob(row)).toEqual({
-      contractId: 'cid1',
-      createdEventBlob: 'BLOB',
-      synchronizerId: 'sync1',
-    })
-  })
-
-  it('returns undefined when the blob is missing', () => {
-    const row = { contractEntry: { JsActiveContract: { createdEvent: { contractId: 'c' } } } }
-    expect(extractCreatedEventBlob(row)).toBeUndefined()
-  })
-})
-
-describe('buildDisclosedContract', () => {
-  it('shapes a disclosedContracts entry', () => {
-    expect(
-      buildDisclosedContract('TID', {
-        contractId: 'c',
-        createdEventBlob: 'b',
-        synchronizerId: 's',
-      }),
-    ).toEqual({ templateId: 'TID', contractId: 'c', createdEventBlob: 'b', synchronizerId: 's' })
-  })
-
-  it('omits synchronizerId when absent', () => {
-    expect(buildDisclosedContract('TID', { contractId: 'c', createdEventBlob: 'b' })).toEqual({
-      templateId: 'TID',
-      contractId: 'c',
-      createdEventBlob: 'b',
     })
   })
 })
