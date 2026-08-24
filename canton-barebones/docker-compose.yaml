@@ -1,3 +1,10 @@
+# Same compose project as the Splice bundle, so both must name the project's default network
+# identically or each `up` removes the other's.
+networks:
+  default:
+    name: ${DOCKER_NETWORK:-localnet}
+    driver: bridge
+
 services:
   wallet-service:
     build:

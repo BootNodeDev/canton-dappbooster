@@ -8,7 +8,8 @@ source "$SCRIPT_DIR/splice-common.sh"
 cd "$ROOT"
 
 log "Stopping wallet-service"
-docker compose --project-directory "$ROOT" down
+
+docker compose --project-directory "$ROOT" rm -sf wallet-service
 
 if [ -f "$LOCALNET_DIR/compose.yaml" ]; then
   log "Stopping Splice LocalNet containers, preserving data volumes"
