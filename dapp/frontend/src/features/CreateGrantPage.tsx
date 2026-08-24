@@ -17,16 +17,12 @@ import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
 import { useParty } from '@/hooks/useParty'
 import { useToken } from '@/hooks/useToken'
-import { useTokenBalance } from '@/hooks/useTokenBalance'
-import { useTokenPrice } from '@/hooks/useTokenPrice'
 import { compareAmounts } from '@/lib/amount'
 import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
-import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
-import { FAVORITE_IDS } from '@/lib/tokens'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
 type CurveKind = 'linear' | 'milestone'
@@ -152,13 +148,6 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
   const [token, setToken] = useToken()
-  const { usdRate } = useTokenPrice(token)
-  const {
-    balance,
-    isLoading: balanceLoading,
-    error: balanceError,
-  } = useTokenBalance(party?.partyId, token)
-  const balanceState = balanceLoading ? 'loading' : balanceError !== undefined ? 'error' : undefined
 
   const [receiver, setReceiver] = useState('')
   // What the field is currently flagging: the kit reports it, this page words and places it.
@@ -199,9 +188,10 @@ export const CreateGrantPage = (): React.JSX.Element => {
   }, [curveKind, cliff, start, end, milestones])
 
   const scheduleValid = validVestingSchedule(schedule)
-  // The same bounds the field validates against, recomputed here rather than stored from the last
-  // keystroke, so the message can never outlive the value that produced it.
-  const amountError = validateAmount(amount, { max: balance?.total })
+  // Recomputed rather than stored from the last keystroke, so the message can never outlive the
+  // value that produced it. No ceiling: vesting-lite moves no holding, so there is no balance to
+  // grant against.
+  const amountError = validateAmount(amount)
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
   const amountMessage =
@@ -322,21 +312,11 @@ export const CreateGrantPage = (): React.JSX.Element => {
             <div>
               <TokenInput
                 aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
-                balance={balance?.total}
-                balanceState={balanceState}
                 className={'w-full'}
-                favoriteIds={FAVORITE_IDS}
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
-                // The pick only relabels the field: balance, validation and the grant itself stay
-                // CC until real per-token balances land.
                 onTokenSelect={setToken}
-                usdValue={
-                  usdRate === undefined || amount === ''
-                    ? undefined
-                    : formatUsdValue(amount, usdRate)
-                }
                 token={token}
                 value={amount}
               />

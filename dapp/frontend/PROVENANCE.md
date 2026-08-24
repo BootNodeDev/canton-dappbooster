@@ -41,6 +41,7 @@ Applied on import to fit this repo's conventions:
 ## Not imported (deferred)
 
 - The Playwright `e2e` suite (#38).
-- Amulet-backed vesting (`cc-vesting-contracts`, #39), and with it real token balances
-  and prices: `vesting-lite` moves no holding, so `src/lib/balances.ts` and
-  `useTokenPrice` stay placeholders.
+- Amulet-backed vesting (`cc-vesting-contracts`, #39), and with it token balances and USD
+  prices. `vesting-lite` moves no holding, so the create form has no balance to show and
+  no ceiling to validate against; the placeholder holdings and the hardcoded CC/USD rate
+  the import shipped are gone rather than kept as fiction.

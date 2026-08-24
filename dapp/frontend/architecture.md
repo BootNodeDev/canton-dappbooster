@@ -14,9 +14,9 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `BackendProvider`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | Two kinds. `useParty` narrows the `canton-connect` session to what the UI needs, and `useConnectErrorToast` gives a rejected connection somewhere to surface. `useToken`, `useTokenPrice`, and `useTokenBalance` are external reads the ledger cannot yet answer, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useToken` holds one field's token selection. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and the two placeholder reads (`tokens.ts`, `balances.ts`) the ledger has nothing to back yet. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.ts`, the one instrument this deployment knows. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -134,13 +134,11 @@ total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both 
 in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-Both fields also open the kit's token picker, and on both the pick is deliberately display-only: it
-relabels the field and nothing else. Everything around it is still Canton Coin — the balance and the
-`max` behind it, the USD rate, the re-lock floor's wording, the claim toast, and the grant that gets
-created. `useTokenBalance` reads no holdings for a symbol other than `CC`, so choosing another token
-empties the balance and Max rather than showing a wrong one; the rest of the CC wording stays put
-and will read as a mismatch until per-token balances land. The picker is wired ahead of them on
-purpose, so the list is exercised.
+Both fields also open the kit's token picker, and the list it shows is one entry:
+[`src/lib/tokens.ts`](src/lib/tokens.ts) holds `CC` and nothing else, because that is the only
+instrument this deployment knows. The pick is display-only — it relabels the field, and the re-lock
+floor's wording, the claim toast, and the grant that gets created are all still Canton Coin. The
+picker is wired ahead of a second instrument on purpose.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
@@ -157,14 +155,14 @@ on nothing else of the kit's. So the field's `balance` is the ceiling, while bot
 app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
 about the *remainder* and so about two amounts at once.
 
-Each form's ceiling comes from a different place. The claim dialog's is the grant's own `claimable`;
-the create form's is what the funder holds, read by
-[`useTokenBalance`](src/hooks/useTokenBalance.ts) — party-scoped, async, and summed exactly across
-holding contracts, since a balance on Canton is a set of them rather than a scalar and the standards
-(CIP-0056, CIP-0112) can mix within one party. While that read is in flight or has failed, no
-`balance` is passed and the field says so through `balanceState`: a gap in the read must not arrive
-as a ceiling of zero. The amounts behind it are placeholders — `vesting-lite` moves no holding, so
-there is nothing on this ledger to read — and only `readHoldings` changes when there is.
+Only one form has a ceiling, and it is the claim dialog's: the grant's own `claimable`, which is
+real ledger state. The create form passes no `balance`, so `validateAmount` applies no `max` there
+and the field renders the kit's own no-balance display, `Balance: 0` with `Max` disabled. That is
+accurate rather than a placeholder: `vesting-lite` locks an *amount*, moves no holding, and so
+takes nothing from the funder that a balance could bound. A real ceiling arrives with Amulet-backed
+vesting, and a Canton balance is a set of holding contracts rather than a scalar — CIP-0056 and
+CIP-0112 can mix within one party — so what lands then is a party-scoped async read summed exactly,
+not a number.
 
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
