@@ -182,7 +182,7 @@ importers:
 
   canton-theme: {}
 
-  dapp/daml/vesting-lite: {}
+  dapp/daml: {}
 
   dapp/frontend:
     dependencies:
