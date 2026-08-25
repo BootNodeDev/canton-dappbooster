@@ -47,6 +47,25 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   }
 }
 
+// A residual claim's counterpart to deriveGrant's `claimable`, so what the dashboard shows, sums
+// and submits is one rule rather than three copies of a subtraction.
+export const claimAvailable = (claim: VestedClaim): string =>
+  subtractAmounts(claim.amount, claim.withdrawn)
+
+// A claim archives the grant and re-creates it with `claimed` raised, so its contract id changes
+// under the UI. Everything else is preserved, which is what identifies the successor for a URL and
+// for the withdraw history.
+export const grantLineage = (grant: Grant): string =>
+  JSON.stringify([
+    grant.provider,
+    grant.creator,
+    grant.receiver,
+    grant.totalAmount,
+    grant.schedule,
+    grant.title,
+    grant.note,
+  ])
+
 // `history` is session-local: the lite contracts retain none, so it does not survive a reload.
 interface VestingState {
   grants: Grant[]
@@ -56,6 +75,7 @@ interface VestingState {
   loading: boolean
   error: string | undefined
 
+  clear: () => void
   refresh: (backend: VestingBackend, partyId: string) => Promise<void>
   createVesting: (
     backend: VestingBackend,
@@ -68,7 +88,7 @@ interface VestingState {
     partyId: string,
     contractCid: string,
     amount: string,
-  ) => Promise<void>
+  ) => Promise<string | undefined>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
@@ -92,12 +112,14 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   loading: false,
   error: undefined,
 
+  // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
+  clear: () => {
+    refreshEpoch++
+    set({ grants: [], proposals: [], claims: [], history: [], loading: false, error: undefined })
+  },
+
   refresh: async (backend, partyId) => {
     const epoch = ++refreshEpoch
-    if (partyId === '') {
-      set({ grants: [], proposals: [], claims: [] })
-      return
-    }
     set({ loading: true, error: undefined })
     try {
       const view = await backend.viewAs(partyId)
@@ -129,16 +151,24 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
+  // Returns the successor's contract id, since the claim replaced the one the caller passed.
   withdraw: async (backend, partyId, contractCid, amount) => {
+    const before = get().grants.find((grant) => grant.id === contractCid)
+    const lineage = before === undefined ? undefined : grantLineage(before)
     await backend.withdraw({ receiver: partyId, contractCid, amount })
-    const event: WithdrawEvent = {
-      id: uid('wd'),
-      grantId: contractCid,
-      amount,
-      at: new Date(now()).toISOString(),
+    if (lineage !== undefined) {
+      const event: WithdrawEvent = {
+        id: uid('wd'),
+        lineage,
+        amount,
+        at: new Date(now()).toISOString(),
+      }
+      set((state) => ({ history: [event, ...state.history] }))
     }
-    set((state) => ({ history: [event, ...state.history] }))
     await get().refresh(backend, partyId)
+    return lineage === undefined
+      ? undefined
+      : get().grants.find((grant) => grantLineage(grant) === lineage)?.id
   },
 
   cancel: async (backend, partyId, contractCid) => {
@@ -152,20 +182,27 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   },
 }))
 
-// Wires the store to the context backend + acting party and re-reads the ACS on
-// party / mode (backend) change. Components call this once near the top of a page.
+// Wires the store to the context backend + acting party and re-reads the ACS whenever either
+// changes. Components call this once near the top of a page; an undefined backend means no
+// deployment or no wallet session yet, so the page renders a connect placeholder instead.
 export const useVesting = (): {
-  backend: VestingBackend
+  backend: VestingBackend | undefined
   partyId: string
 } => {
-  const backend = useBackend()
+  const { backend } = useBackend()
   const { party } = useParty()
   const partyId = party?.partyId ?? ''
+  const clear = useVestingStore((state) => state.clear)
   const refresh = useVestingStore((state) => state.refresh)
 
   useEffect(() => {
+    // Dropping the rows on disconnect is the point: they belong to the party that has just gone.
+    if (backend === undefined || partyId === '') {
+      clear()
+      return
+    }
     void refresh(backend, partyId)
-  }, [backend, partyId, refresh])
+  }, [backend, clear, partyId, refresh])
 
   return { backend, partyId }
 }

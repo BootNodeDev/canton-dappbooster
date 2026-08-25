@@ -11,21 +11,18 @@ import { useNavigate } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { FieldError } from '@/components/FieldError'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { toast } from '@/components/toast'
 import { useParty } from '@/hooks/useParty'
 import { useToken } from '@/hooks/useToken'
-import { useTokenBalance } from '@/hooks/useTokenBalance'
-import { useTokenPrice } from '@/hooks/useTokenPrice'
 import { compareAmounts } from '@/lib/amount'
 import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { errorText } from '@/lib/errorText'
-import { formatUsdValue } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/lib/schedule'
-import { FAVORITE_IDS } from '@/mock/tokens'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 
 type CurveKind = 'linear' | 'milestone'
@@ -40,6 +37,17 @@ interface MilestoneInput {
 interface DemoPreset {
   kind: CurveKind
   durationMs: number
+}
+
+// One state for the whole schedule, because no edit touches only one field: every manual one also
+// has to clear `demo`, and a preset rewrites most of the rest.
+interface ScheduleForm {
+  curveKind: CurveKind
+  cliff: string
+  start: string
+  end: string
+  milestones: MilestoneInput[]
+  demo: DemoPreset | null
 }
 
 // Schedule timestamps are full ISO so demo presets can build sub-day windows; the date inputs bind
@@ -96,6 +104,35 @@ const buildDemoSchedule = (preset: DemoPreset, anchorMs: number): VestingSchedul
 const labelClass = 'block text-xs font-bold uppercase tracking-[0.06em] text-fg-muted'
 const inputClass =
   'mt-1.5 h-11 w-full rounded-xl border border-border bg-bg px-3 text-fg outline-none focus:shadow-[var(--ring)]'
+const chipClass =
+  'rounded-full border border-border px-3 py-1 text-xs font-semibold text-fg-muted transition-colors hover:border-primary hover:text-primary'
+
+// One of the schedule's three labelled dates. It hands back a full ISO string, so the caller never
+// sees the calendar-day form the input binds to.
+const DateField = ({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (iso: string) => void
+}): React.JSX.Element => (
+  <div>
+    <label htmlFor={id} className={labelClass}>
+      {label}
+    </label>
+    <input
+      id={id}
+      type="date"
+      value={dateOf(value)}
+      onChange={(e) => onChange(atMidnight(e.target.value))}
+      className={inputClass}
+    />
+  </div>
+)
 
 // The kit ships codes, not copy, so the wording is the app's. Exhaustive by construction: a new
 // code stops this compiling rather than rendering nothing.
@@ -111,30 +148,20 @@ export const CreateGrantPage = (): React.JSX.Element => {
   const { backend, partyId } = useVesting()
   const createVesting = useVestingStore((s) => s.createVesting)
   const [token, setToken] = useToken()
-  const { usdRate } = useTokenPrice(token)
-  const {
-    balance,
-    isLoading: balanceLoading,
-    error: balanceError,
-  } = useTokenBalance(party?.partyId, token)
-  const balanceState = balanceLoading ? 'loading' : balanceError !== undefined ? 'error' : undefined
 
-  const today = new Date(now())
-  const initial = defaultSchedule(today)
   const [receiver, setReceiver] = useState('')
   // What the field is currently flagging: the kit reports it, this page words and places it.
   const [receiverError, setReceiverError] = useState<PartyIdError | undefined>(undefined)
   const [amount, setAmount] = useState('')
-  const [curveKind, setCurveKind] = useState<CurveKind>('linear')
-  const [cliff, setCliff] = useState(initial.cliff)
-  const [start, setStart] = useState(initial.start)
-  const [end, setEnd] = useState(initial.end)
-  const [milestones, setMilestones] = useState<MilestoneInput[]>(initial.milestones)
+  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>(() => ({
+    curveKind: 'linear',
+    ...defaultSchedule(new Date(now())),
+    demo: null,
+  }))
+  const { curveKind, cliff, start, end, milestones, demo } = scheduleForm
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [disclosedBytes, setDisclosedBytes] = useState<number | null>(null)
-  // When set, the schedule is a quick-demo preset and gets re-anchored to submit time.
-  const [demo, setDemo] = useState<DemoPreset | null>(null)
 
   // Editing the grant's identity clears the created panel, restoring the submit button.
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
@@ -161,9 +188,10 @@ export const CreateGrantPage = (): React.JSX.Element => {
   }, [curveKind, cliff, start, end, milestones])
 
   const scheduleValid = validVestingSchedule(schedule)
-  // The same bounds the field validates against, recomputed here rather than stored from the last
-  // keystroke, so the message can never outlive the value that produced it.
-  const amountError = validateAmount(amount, { max: balance?.total })
+  // Recomputed rather than stored from the last keystroke, so the message can never outlive the
+  // value that produced it. No ceiling: vesting-lite moves no holding, so there is no balance to
+  // grant against.
+  const amountError = validateAmount(amount)
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
   const amountMessage =
@@ -182,44 +210,48 @@ export const CreateGrantPage = (): React.JSX.Element => {
       : isSelf
         ? 'Cannot grant to your own party.'
         : undefined
-  const valid = scheduleValid && amountValid && receiverValid
+  const valid = scheduleValid && amountValid && receiverValid && backend !== undefined
 
-  // Any manual schedule edit drops the demo flag so the entered dates are used verbatim.
-  const setMilestone = (i: number, patch: Partial<MilestoneInput>): void => {
-    setDemo(null)
-    setMilestones((list) => list.map((m, idx) => (idx === i ? { ...m, ...patch } : m)))
-  }
+  // Any manual schedule edit drops the demo flag so the entered dates are used verbatim, which is
+  // why every one of them goes through here.
+  const editSchedule = (patch: Partial<ScheduleForm>): void =>
+    setScheduleForm((current) => ({ ...current, ...patch, demo: null }))
+  const editMilestones = (update: (list: MilestoneInput[]) => MilestoneInput[]): void =>
+    setScheduleForm((current) => ({
+      ...current,
+      milestones: update(current.milestones),
+      demo: null,
+    }))
+  const setMilestone = (i: number, patch: Partial<MilestoneInput>): void =>
+    editMilestones((list) => list.map((m, idx) => (idx === i ? { ...m, ...patch } : m)))
 
-  const demoLinear = (durationMs: number): void => {
-    setCurveKind('linear')
-    setStart(relIso(0))
-    setCliff(relIso(0))
-    setEnd(relIso(durationMs))
-    setDemo({ kind: 'linear', durationMs })
-  }
-  const demoMilestones = (): void => {
-    setCurveKind('milestone')
-    setCliff(relIso(0))
-    setMilestones([
-      { id: 'd1', date: relIso(30_000), pct: '34' },
-      { id: 'd2', date: relIso(60_000), pct: '67' },
-      { id: 'd3', date: relIso(90_000), pct: '100' },
-    ])
-    setDemo({ kind: 'milestone', durationMs: 90_000 })
-  }
+  const demoLinear = (durationMs: number): void =>
+    setScheduleForm((current) => ({
+      ...current,
+      curveKind: 'linear',
+      start: relIso(0),
+      cliff: relIso(0),
+      end: relIso(durationMs),
+      demo: { kind: 'linear', durationMs },
+    }))
+  const demoMilestones = (): void =>
+    setScheduleForm((current) => ({
+      ...current,
+      curveKind: 'milestone',
+      cliff: relIso(0),
+      milestones: [
+        { id: 'd1', date: relIso(30_000), pct: '34' },
+        { id: 'd2', date: relIso(60_000), pct: '67' },
+        { id: 'd3', date: relIso(90_000), pct: '100' },
+      ],
+      demo: { kind: 'milestone', durationMs: 90_000 },
+    }))
   // Restore the default months-out schedule (undo a quick-demo preset).
-  const resetSchedule = (): void => {
-    const next = defaultSchedule(new Date(now()))
-    setDemo(null)
-    setCurveKind('linear')
-    setStart(next.start)
-    setCliff(next.cliff)
-    setEnd(next.end)
-    setMilestones(next.milestones)
-  }
+  const resetSchedule = (): void =>
+    setScheduleForm({ curveKind: 'linear', ...defaultSchedule(new Date(now())), demo: null })
 
   const submit = async (): Promise<void> => {
-    if (!valid || party === undefined) {
+    if (!valid || party === undefined || backend === undefined) {
       return
     }
     // Re-anchor a demo preset to now, or its short window is mostly vested before the receiver
@@ -280,21 +312,11 @@ export const CreateGrantPage = (): React.JSX.Element => {
             <div>
               <TokenInput
                 aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
-                balance={balance?.total}
-                balanceState={balanceState}
                 className={'w-full'}
-                favoriteIds={FAVORITE_IDS}
                 id="amount"
                 label="Total amount"
                 onChange={editAmount}
-                // Mock-first: the pick only relabels the field. Balance, validation and the grant
-                // itself stay CC until real per-token balances land.
                 onTokenSelect={setToken}
-                usdValue={
-                  usdRate === undefined || amount === ''
-                    ? undefined
-                    : formatUsdValue(amount, usdRate)
-                }
                 token={token}
                 value={amount}
               />
@@ -312,10 +334,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                 <button
                   key={k}
                   type="button"
-                  onClick={() => {
-                    setDemo(null)
-                    setCurveKind(k)
-                  }}
+                  onClick={() => editSchedule({ curveKind: k })}
                   className={cn(
                     'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors',
                     curveKind === k ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
@@ -331,25 +350,13 @@ export const CreateGrantPage = (): React.JSX.Element => {
             <span className="text-[0.65rem] font-bold uppercase tracking-[0.06em] text-fg-muted">
               Quick demo
             </span>
-            <button
-              type="button"
-              onClick={() => demoLinear(60_000)}
-              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-fg-muted transition-colors hover:border-primary hover:text-primary"
-            >
+            <button type="button" onClick={() => demoLinear(60_000)} className={chipClass}>
               Linear · 1 min
             </button>
-            <button
-              type="button"
-              onClick={() => demoLinear(120_000)}
-              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-fg-muted transition-colors hover:border-primary hover:text-primary"
-            >
+            <button type="button" onClick={() => demoLinear(120_000)} className={chipClass}>
               Linear · 2 min
             </button>
-            <button
-              type="button"
-              onClick={demoMilestones}
-              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-fg-muted transition-colors hover:border-primary hover:text-primary"
-            >
+            <button type="button" onClick={demoMilestones} className={chipClass}>
               Milestones · 90s
             </button>
             <button
@@ -368,53 +375,26 @@ export const CreateGrantPage = (): React.JSX.Element => {
           )}
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="cliff" className={labelClass}>
-                Cliff date
-              </label>
-              <input
-                id="cliff"
-                type="date"
-                value={dateOf(cliff)}
-                onChange={(e) => {
-                  setDemo(null)
-                  setCliff(atMidnight(e.target.value))
-                }}
-                className={inputClass}
-              />
-            </div>
+            <DateField
+              id="cliff"
+              label="Cliff date"
+              value={cliff}
+              onChange={(iso) => editSchedule({ cliff: iso })}
+            />
             {curveKind === 'linear' ? (
               <>
-                <div>
-                  <label htmlFor="start" className={labelClass}>
-                    Start date
-                  </label>
-                  <input
-                    id="start"
-                    type="date"
-                    value={dateOf(start)}
-                    onChange={(e) => {
-                      setDemo(null)
-                      setStart(atMidnight(e.target.value))
-                    }}
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="end" className={labelClass}>
-                    End date
-                  </label>
-                  <input
-                    id="end"
-                    type="date"
-                    value={dateOf(end)}
-                    onChange={(e) => {
-                      setDemo(null)
-                      setEnd(atMidnight(e.target.value))
-                    }}
-                    className={inputClass}
-                  />
-                </div>
+                <DateField
+                  id="start"
+                  label="Start date"
+                  value={start}
+                  onChange={(iso) => editSchedule({ start: iso })}
+                />
+                <DateField
+                  id="end"
+                  label="End date"
+                  value={end}
+                  onChange={(iso) => editSchedule({ end: iso })}
+                />
               </>
             ) : (
               <div className="sm:col-span-2">
@@ -438,10 +418,7 @@ export const CreateGrantPage = (): React.JSX.Element => {
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          setDemo(null)
-                          setMilestones((l) => l.filter((_, idx) => idx !== i))
-                        }}
+                        onClick={() => editMilestones((l) => l.filter((_, idx) => idx !== i))}
                         disabled={milestones.length <= 1}
                         className="shrink-0 rounded-xl border border-border px-3 text-fg-muted transition-colors hover:border-danger hover:text-danger disabled:opacity-40"
                       >
@@ -451,17 +428,16 @@ export const CreateGrantPage = (): React.JSX.Element => {
                   ))}
                   <button
                     type="button"
-                    onClick={() => {
-                      setDemo(null)
-                      setMilestones((l) => [
+                    onClick={() =>
+                      editMilestones((l) => [
                         ...l,
                         {
                           id: crypto.randomUUID().slice(0, 8),
-                          date: addMonths(today, 24).toISOString(),
+                          date: addMonths(new Date(now()), 24).toISOString(),
                           pct: '100',
                         },
                       ])
-                    }}
+                    }
                     className="self-start text-xs font-bold text-primary hover:underline"
                   >
                     + Add milestone
@@ -529,6 +505,10 @@ export const CreateGrantPage = (): React.JSX.Element => {
               <Button size="sm" className="mt-3" onClick={() => navigate('/proposals')}>
                 View proposals
               </Button>
+            </div>
+          ) : backend === undefined ? (
+            <div className="mt-6">
+              <ConnectPrompt description="Creating a grant submits a command your wallet has to sign." />
             </div>
           ) : (
             <>

@@ -4,22 +4,19 @@ The app's internal seams and the reasoning behind them. What this is and how to 
 [`README.md`](README.md); repo-wide rules live in [`../../CLAUDE.md`](../../CLAUDE.md) and the
 cross-component picture in [`../../architecture.md`](../../architecture.md).
 
-Everything here follows from one constraint: the app shipped with its data mocked, and the live
-ledger path has to arrive without a UI rewrite. Two interfaces carry that, and every other decision
-hangs off them. The wallet session is not one of them — it comes from
-`@bootnodedev/canton-connect` and is a real CIP-0103 session whichever backend is behind it.
+Everything here follows from one constraint: the wallet is the only way in. It holds the keys, so it
+is both the submitter and the reader, and the app never sees a party it is not connected as. Two
+interfaces carry that, and every other decision hangs off them.
 
 ## Parts
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LiteBackend` (live ledger), and the pure ACS→domain mappers. `createBackend` picks the implementation. |
-| `src/mock/` | `MockBackend` (in-memory grants/proposals/claims + command mutations), `MockWallet` (seeded party pool), `seed.ts` (the sample dataset, relative to now), `tokens.ts` (CC plus the padded list the picker shows), and `balances.ts` (per-party holding contracts behind one delayed `readHoldings`). |
-| `src/wallet/` | The `Wallet` interface and `StealthWallet`, its live-ledger implementation. |
-| `src/providers/` | `BackendProvider`: resolves which backend the app runs on, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | Two kinds. `useParty` narrows the `canton-connect` session to what the UI needs, and `useConnectErrorToast` gives a rejected connection somewhere to surface. `useToken`, `useTokenPrice`, and `useTokenBalance` are mocked external reads instead, each behind the shape its live counterpart will satisfy — the latter two pair their result with `isLoading` and `error` because a real rate fetch or holdings read can fail. |
+| `src/backend/` | The `VestingBackend` interface, `LiteBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, and `config.ts`, which loads the deployment. |
+| `src/providers/` | `BackendProvider`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useToken` holds one field's token selection. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, and `config.ts`, which reads the literals that validation left behind. |
+| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.ts`, the one instrument this deployment knows. |
 | `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
 | `src/features/` | Dashboard, proposals, create, grant detail. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -28,62 +25,78 @@ hangs off them. The wallet session is not one of them — it comes from
 
 **`VestingBackend`** ([`src/backend/VestingBackend.ts`](src/backend/VestingBackend.ts)) is what the
 UI depends on. It speaks grants, proposals, and claims — never DAML templates, contract payloads, or
-transport. `MockBackend` satisfies it from memory; `LiteBackend` satisfies it against the
-`vesting-lite` DAML package through the wallet-service `ledgerApi` proxy. Because the mappers that
-turn active-contract rows into domain types live behind this interface, no component knows the
+transport. `LiteBackend` satisfies it against the `vesting-lite` DAML package. Because the mappers
+that turn active-contract rows into domain types live behind this interface, no component knows the
 ledger exists.
 
-**`Wallet`** ([`src/wallet/Wallet.ts`](src/wallet/Wallet.ts)) is the narrower one: sign and submit
-commands. `MockWallet` is what `MockBackend` is built with and never submits anything, since the
-mock mutates its own memory; `StealthWallet` talks to a real participant. Its `listParties` has no
-caller left now that the acting party comes from the wallet session, and survives against the live
-path needing it back.
+**`WalletFns`** ([`src/backend/wallet.ts`](src/backend/wallet.ts)) is the narrower one: the two
+session calls `LiteBackend` makes, `execute` and `ledgerApi`, injected as plain functions rather
+than implemented by a class. They come straight from `canton-connect`'s `useExecute` and `useLedger`,
+which is why they are injected at all: hooks cannot be called from a class, and `LiteBackend`'s unit
+tests need it constructible without React.
 
-The pairing is decided once, at startup.
-[`createBackend`](src/backend/createBackend.ts) reads `/vesting-lite-parties.json`, a slim
-`{pkg, operator, rpcUrl}` file the bootstrap writes into `public/`. Absent or malformed, it returns
-an empty config and the app builds `MockWallet` + `MockBackend`. Present, it builds `StealthWallet` +
-`LiteBackend`. That file is the entire switch: dropping it in flips the app live with no code change.
+Both halves of the pairing are runtime state. The deployment comes from
+[`config.ts`](src/backend/config.ts), which reads `/vesting-lite-parties.json` — `pkg`, the factory's
+contract id, and its `createdEventBlob` — written into `public/` by
+[`scripts/bootstrap-vesting-lite.mjs`](../../scripts/bootstrap-vesting-lite.mjs). Absent or
+malformed is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
+nothing to query and without the blob there is no factory to disclose.
 
 ## Data flow
 
 ```
-createBackend ─┐
-               ├─▶ BackendProvider ──▶ useBackend ──▶ useVestingStore ──▶ components
-Wallet ────────┘                                                            ▲
-CantonConnectProvider ──▶ useParty ─────────────────────────────────────────┘
+config.ts ────────────┐
+                      ├─▶ BackendProvider ──▶ useBackend ──▶ useVestingStore ──▶ components
+CantonConnectProvider ┤                                                            ▲
+                      └─▶ useParty ───────────────────────────────────────────────┘
 ```
 
-Two provider chains, meeting only in the components.
-
 `BackendProvider` ([`src/providers/BackendProvider.tsx`](src/providers/BackendProvider.tsx)) is the
-only place the two seams above meet. It loads the config, constructs the pair, and provides the
-resulting backend. That is its whole job: it starts on the in-memory backend and swaps once the
-config resolves, so the tree always has one.
+only place the two seams above meet. Its backend is `undefined` until both a deployment and a wallet
+*party* exist, because neither half alone can reach the ledger, and a page with no backend renders
+`ConnectPrompt` where its data would be. The party rather than the connection status is the gate: a
+restored-but-locked session reports itself connected while reporting no party, and the party is what
+every read filters on and every submit acts as. The shell holds the pages until the deployment has
+resolved either way, so inside a page a missing backend can only mean a missing party — which is
+what makes `ConnectPrompt`'s copy, and the kit `ConnectButton` inside it, correct wherever it
+renders.
 
 The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it,
 `ConnectButton` from the kit drives it, and `useParty`
 ([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none. `AppShell` gates the
-whole app on it. A connect that fails reaches the user through
+standing the party hint in as a display name for the wallets that report none. The shell no longer
+gates on it: it always mounts, so the top bar's connect button and the theme toggle stay reachable
+and the wallet's own account switch is the only way the acting party changes. A connect that fails
+reaches the user through
 [`useConnectErrorToast`](src/hooks/useConnectErrorToast.ts), because the kit ships no user-facing
 copy and would otherwise fail silently; a cancel is a choice, not a failure, and stays quiet, which
 the hook reads off `canton-connect`'s `ConnectCancelledError` rather than off a message.
 
 `useVestingStore` takes the resolved backend from `useBackend` and owns the grant data. Every action
-submits through the backend and then refreshes; there is no optimistic local mutation, because the
-mock and the ledger must converge on the same observable behaviour.
+submits through the backend and then refreshes; there is no optimistic local mutation, because a
+write is only real once the ledger has it and the read is the only thing that knows. It also drops
+every row when the party goes, because the rows were that party's.
+
+A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
+`Contract_Claim` archives the contract and re-creates it with `claimed` raised, so a claim changes
+the id of the grant it acted on. `grantLineage` is that identity — everything the choice preserves —
+and it is what the withdraw history keys on and what `withdraw` uses to hand the grant-detail page
+its successor's id, so a URL survives a claim rather than becoming "Grant not found". `Contract_Cancel`
+archives for good, and the page navigates away instead.
 
 ## Where the numbers come from
 
 `deriveGrant` in [`src/store/useVestingStore.ts`](src/store/useVestingStore.ts) is a pure projection
 of a grant at a moment in time — vested, claimable, claimed, status. It and
 [`src/lib/schedule.ts`](src/lib/schedule.ts) are the single source of every per-grant figure, and
-they mirror the on-ledger math deliberately, so the mock and the live path agree. A component that
-derives a grant's own vesting figures is a bug. Two components legitimately compute on top of that
-projection rather than beside it: `MilestoneTimeline` splits a total across milestone steps for
-display, and `DashboardPage` sums `deriveGrant`'s output into the KPI row. Both take the projection
-as their input; neither re-derives it.
+they mirror the on-ledger math deliberately, so a preview and the choice that follows it agree — the
+contracts recompute `vestedAmount` themselves and reject anything above it. A component that
+derives a grant's own vesting figures is a bug. `claimAvailable`, beside it, is the same rule for a
+residual claim, which carries no schedule and so has no projection of its own: what the dashboard
+shows, sums and submits for one is a single subtraction in a single place. Two components
+legitimately compute on top of that projection rather than beside it: `MilestoneTimeline` splits a
+total across milestone steps for display, and `DashboardPage` sums `deriveGrant`'s output into the
+KPI row. Both take the projection as their input; neither re-derives it.
 
 Under both sits [`src/lib/amount.ts`](src/lib/amount.ts), the arithmetic floor. Every add,
 subtract, floor-at-zero, fraction scale, and round in the app goes through it, on scaled `bigint`s,
@@ -106,9 +119,7 @@ holds no truncation or copy-to-clipboard logic of its own.
 Entry is the other half. [`CreateGrantPage`](src/features/CreateGrantPage.tsx)'s receiver field is
 the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
 the two can never disagree about what a party id is. Party ids are exact strings here: nothing
-trims, so a stray space is invalid rather than silently stripped on the way to the ledger. The seed
-fingerprints in [`src/mock/seed.ts`](src/mock/seed.ts) are the full 68 characters a real one has,
-because anything shorter now fails that check.
+trims, so a stray space is invalid rather than silently stripped on the way to the ledger.
 
 That field is also where the layering is easiest to read. The kit sets `aria-invalid` and hands back
 an error *code*; this app owns the sentence, where it sits, and what it looks like. The wording lives
@@ -123,13 +134,11 @@ total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both 
 in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-Both fields also open the kit's token picker, and on both the pick is deliberately display-only: it
-relabels the field and nothing else. Everything around it is still Canton Coin — the balance and the
-`max` behind it, the USD rate, the re-lock floor's wording, the claim toast, and the grant that gets
-created. `useTokenBalance` reads no holdings for a symbol other than `CC`, so choosing another token
-empties the balance and Max rather than showing a wrong one; the rest of the CC wording stays put
-and will read as a mismatch until per-token balances land. The picker is wired ahead of them on
-purpose, so the mock exercises the list.
+Both fields also open the kit's token picker, and the list it shows is one entry:
+[`src/lib/tokens.ts`](src/lib/tokens.ts) holds `CC` and nothing else, because that is the only
+instrument this deployment knows. The pick is display-only — it relabels the field, and the re-lock
+floor's wording, the claim toast, and the grant that gets created are all still Canton Coin. The
+picker is wired ahead of a second instrument on purpose.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
@@ -146,13 +155,14 @@ on nothing else of the kit's. So the field's `balance` is the ceiling, while bot
 app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
 about the *remainder* and so about two amounts at once.
 
-Each form's ceiling comes from a different place. The claim dialog's is the grant's own `claimable`;
-the create form's is what the funder holds, read by
-[`useTokenBalance`](src/hooks/useTokenBalance.ts) — party-scoped, async, and summed exactly across
-holding contracts, since a balance on Canton is a set of them rather than a scalar and the standards
-(CIP-0056, CIP-0112) can mix within one party. While that read is in flight or has failed, no
-`balance` is passed and the field says so through `balanceState`: a gap in the read must not arrive
-as a ceiling of zero.
+Only one form has a ceiling, and it is the claim dialog's: the grant's own `claimable`, which is
+real ledger state. The create form passes no `balance`, so `validateAmount` applies no `max` there
+and the field renders the kit's own no-balance display, `Balance: 0` with `Max` disabled. That is
+accurate rather than a placeholder: `vesting-lite` locks an *amount*, moves no holding, and so
+takes nothing from the funder that a balance could bound. A real ceiling arrives with Amulet-backed
+vesting, and a Canton balance is a set of holding contracts rather than a scalar — CIP-0056 and
+CIP-0112 can mix within one party — so what lands then is a party-scoped async read summed exactly,
+not a number.
 
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
@@ -177,18 +187,10 @@ That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 all. [`src/lib/env.ts`](src/lib/env.ts) holds that contract, and is the only module under `src/`
 that runs outside the browser.
 
-The connect button's copy is this app's, and one place where it reaches past the kit. `ConnectButton`
-renders `children` in every state, pending included, so
-[`useConnectLabel`](src/hooks/useConnectLabel.ts) supplies all three strings and names the wallet as
-what a pending connect is waiting on once one is chosen. Nothing public reports that pick, so the hook
-listens for the SDK picker's own `SPLICE_WALLET_PICKER_RESULT` message to the opener — the same
-message `canton-connect`'s close guard reads, and the only app-side coupling to an SDK internal.
-
-Two consequences. A `dapp-sdk` bump that renames that message leaves the label stuck on
-"Connecting…", silently, with nothing failing. And the guard posts a result of its own to settle a
-connect abandoned by a closed picker, so the hook accepts only messages carrying a wallet `name`,
-which a real pick always has and that synthetic one deliberately omits. Both are why the manual pass
-in [`canton-connect/CLAUDE.md`](../../canton-connect/CLAUDE.md) exists.
+The connect button's copy is the kit's: passed no `children` it renders its own label and swaps it
+for "Connecting…" while a connect is in flight, so neither `ConnectPrompt` nor `TopBar` supplies one.
+An app-side label meant duplicating the pending state, which is what the earlier `useConnectLabel`
+did by listening for the SDK picker's private `SPLICE_WALLET_PICKER_RESULT` message.
 
 Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
 default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own

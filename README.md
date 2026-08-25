@@ -60,19 +60,20 @@ Start the stack:
 ```bash
 pnpm run canton:up
 pnpm run canton:health
-```
-
-Build and deploy the sample DAR:
-
-```bash
-pnpm run build-dar -- dapp/daml
-pnpm run deploy-dar -- dapp/daml/.daml/dist/quickstart-tally-0.0.1.dar
-```
-
-Verify wallet-service:
-
-```bash
 pnpm run wallet-service:health
+```
+
+Deploy the vesting DAR. It is checked in prebuilt, so `dpm` is only needed to rebuild it:
+
+```bash
+pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
+```
+
+Bootstrap the operator party and the factory the dApp discloses. This writes
+`dapp/frontend/public/vesting-lite-parties.json`, which the dApp cannot run without:
+
+```bash
+node scripts/bootstrap-vesting-lite.mjs
 ```
 
 Start the dApp:
@@ -91,10 +92,9 @@ Open the dApp:
 http://localhost:3012
 ```
 
-The vesting dApp's **data** runs mock-first (in-memory backend), so it needs none of
-the stack above. Its wallet session is real, over CIP-0103 through `canton-connect`,
-so connecting needs a wallet that answers it. The live wallet-service backend path is
-deferred.
+The vesting dApp needs the whole stack above: the wallet reads and submits, so a
+connected CIP-0103 wallet and a deployed, bootstrapped `vesting-lite` are both
+required. Every write raises an approval prompt in the wallet.
 
 ## Extension
 
@@ -139,7 +139,7 @@ Root scripts, run from the repo root:
 | --- | --- |
 | `pnpm lint` | Biome check across the JS workspaces (fails on warnings) |
 | `pnpm typecheck` | `tsc --noEmit` in every TS workspace |
-| `pnpm build` | Build every workspace (`dapp/daml` needs `dpm`) |
+| `pnpm build` | Build every workspace (`dapp/daml/vesting-lite` needs `dpm`) |
 | `pnpm test` | Run each workspace's test suite |
 | `pnpm knip` | Dead-code and unused-dependency scan |
 

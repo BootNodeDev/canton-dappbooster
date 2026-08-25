@@ -1,22 +1,21 @@
-# Tally Daml
+# dApp Daml
 
-The Daml package for the dApp's demo feature.
+The vesting dApp's Daml code. One package, [`vesting-lite/`](vesting-lite/), whose own README
+covers building and testing it; its scenarios live in a separate test package,
+[`../daml-test/`](../daml-test/), so the shipped DAR carries no `daml-script` dependency.
+Vendoring details are in [`PROVENANCE.md`](PROVENANCE.md).
 
-This folder owns the app Daml code. The Canton barebones does not keep app DARs checked in.
+## Build and deploy
 
-## Build
+From the repo root:
 
 ```bash
-dpm build
+pnpm run build-dar -- dapp/daml/vesting-lite
+pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
 ```
 
-The compiled DAR is written to:
-
-```text
-.daml/dist/quickstart-tally-0.0.1.dar
-```
-
-## Deploy
-
-For local deployment, see the Canton barebones
+The same DAR is checked in prebuilt at
+[`canton-barebones/dars/vesting-lite-0.0.1.dar`](../../canton-barebones/dars/vesting-lite-0.0.1.dar),
+for deploying without a local build. `scripts/dev-stack.sh up` builds from source instead, so it
+requires `dpm`. See the Canton barebones
 [Deploy a DAR](../../canton-barebones/README.md#deploy-a-dar) step.

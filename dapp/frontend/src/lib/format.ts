@@ -2,7 +2,7 @@
 // the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
 
 import { formatAmount } from '@bootnodedev/canton-dappbooster'
-import { multiplyAmounts, roundAmount } from '@/lib/amount'
+import { roundAmount } from '@/lib/amount'
 
 // `Intl.NumberFormat.format` is typed for `number | bigint`, not the decimal strings amounts are
 // here — the kit's `formatAmount` groups the integer part via `BigInt` and carries the fraction as
@@ -13,17 +13,6 @@ export const formatCC = (amount: string): string => formatAmount(roundAmount(amo
 
 // Full ledger precision, grouped, no trailing zeros.
 export const formatCCFull = (amount: string): string => formatAmount(roundAmount(amount, 10))
-
-// Pads the fraction to exactly `digits`, the way a fixed-decimal display (e.g. currency) needs —
-// unlike `roundAmount`'s canonical, trailing-zeros-trimmed output.
-const padFraction = (amount: string, digits: number): string => {
-  const [int, frac = ''] = amount.split('.')
-  return `${int}.${frac.padEnd(digits, '0')}`
-}
-
-// Exact product, rounded for display only.
-export const formatUsdValue = (amount: string, usdRate: string): string =>
-  `${formatAmount(padFraction(roundAmount(multiplyAmounts(amount, usdRate), 2), 2))}`
 
 export const formatPct = (fraction: number): string => `${(fraction * 100).toFixed(1)}%`
 

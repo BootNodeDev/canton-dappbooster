@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/Button'
+import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
 import { PrivacyNote } from '@/components/PrivacyNote'
 import { ProposalCard } from '@/components/ProposalCard'
@@ -25,6 +26,13 @@ export const ProposalsPage = (): React.JSX.Element => {
       ),
     [proposals, direction, partyId],
   )
+
+  // Above the handler, so it closes over a backend that is known to exist.
+  if (backend === undefined) {
+    return (
+      <ConnectPrompt description="Proposals sent to you, and the ones you have sent, are read from the ledger as your connected party." />
+    )
+  }
 
   const onAccept = async (proposal: Proposal): Promise<void> => {
     try {

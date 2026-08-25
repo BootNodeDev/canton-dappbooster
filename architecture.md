@@ -6,8 +6,8 @@
 | --- | --- | --- |
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
 | `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
-| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; mock-first data (in-memory backend, no services), real CIP-0103 session via `canton-connect`. Live ledger deferred |
-| `dapp/daml/` | DAML | `quickstart-tally` DAR |
+| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
+| `dapp/daml/vesting-lite/` | DAML | `vesting-lite` DAR: the vesting factory, proposal, contract and residual-claim templates |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
@@ -22,18 +22,18 @@ flowchart TD
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
   scan["Scan<br/>http://scan.localhost:4000"]
-  dar["dapp/daml DAR"]
+  dar["vesting-lite DAR"]
 
-  fe <-->|"CIP-0103 provider"| wallet
-  wallet -->|"external-party onboarding"| ws
+  fe <-->|"CIP-0103 provider: reads, writes, session"| wallet
+  wallet -->|"onboarding, prepare/execute, JSON API"| ws
   ws -->|"CANTON_BACKEND_TOKEN"| au
   au <--> sv
   dar --> au
 ```
 
-> `dapp/frontend` hosts the Canton Coin vesting dApp. Its **data** is mock-first (in-memory
-> backend), but its wallet session takes the CIP-0103 path above through `canton-connect`.
-> The wallet-service leg returns when the vesting live backend lands (deferred).
+> `dapp/frontend` hosts the Canton Coin vesting dApp. It never talks to wallet-service itself:
+> every ledger read and every submission goes through the wallet over CIP-0103, so the dApp
+> only ever acts as the connected account and each write is signed by the account's own key.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
@@ -43,7 +43,7 @@ containers still expose app-provider backend ports.
 
 State boundaries:
 
-- The CIP-0103 path: a dApp talks to Carpincho through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session; only its ledger data is still mocked.
+- The CIP-0103 path: a dApp talks to Carpincho through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session, its ledger reads, and its submissions.
 - Carpincho owns user keys and signs locally.
 - wallet-service holds `CANTON_BACKEND_TOKEN` and remains the external-party onboarding bridge.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.

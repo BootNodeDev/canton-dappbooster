@@ -5,18 +5,19 @@ import { Button } from '@/components/Button'
 import { CancelGrantDialog } from '@/components/CancelGrantDialog'
 import { Card } from '@/components/Card'
 import { ClaimDialog } from '@/components/ClaimDialog'
+import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
 import { GrantCard } from '@/components/GrantCard'
 import { type GrantRow, GrantTable } from '@/components/GrantTable'
 import { KpiCard } from '@/components/KpiCard'
 import { PrivacyNote } from '@/components/PrivacyNote'
-import { addAmounts, isPositive, subtractAmounts } from '@/lib/amount'
+import { addAmounts, isPositive } from '@/lib/amount'
 import { now, useNow } from '@/lib/clock'
 import { cn } from '@/lib/cn'
 import { formatCC } from '@/lib/format'
 import type { Grant, VestedClaim } from '@/store/types'
 import { useUiStore } from '@/store/useUiStore'
-import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
+import { claimAvailable, deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
 
 type Filter = 'all' | 'claimable' | 'cliff' | 'milestone'
 const filters: { value: Filter; label: string }[] = [
@@ -90,11 +91,15 @@ export const DashboardPage = (): React.JSX.Element => {
     return acc
   }, [rows])
 
-  const residualClaimable = myClaims.reduce(
-    (sum, c) => addAmounts(sum, subtractAmounts(c.amount, c.withdrawn)),
-    '0',
-  )
+  const residualClaimable = myClaims.reduce((sum, c) => addAmounts(sum, claimAvailable(c)), '0')
   const isEmpty = rows.length === 0 && myClaims.length === 0
+
+  // Above the handlers, so they close over a backend that is known to exist.
+  if (backend === undefined) {
+    return (
+      <ConnectPrompt description="Your grants, what has vested and what you can claim are read from the ledger as your connected party." />
+    )
+  }
 
   const onConfirmClaim = async (amount: string): Promise<void> => {
     if (claimTarget === null) {
@@ -116,11 +121,7 @@ export const DashboardPage = (): React.JSX.Element => {
     })
   }
   const openResidual = (claim: VestedClaim): void => {
-    setClaimTarget({
-      kind: 'claim',
-      id: claim.id,
-      available: subtractAmounts(claim.amount, claim.withdrawn),
-    })
+    setClaimTarget({ kind: 'claim', id: claim.id, available: claimAvailable(claim) })
   }
 
   return (
@@ -246,7 +247,7 @@ export const DashboardPage = (): React.JSX.Element => {
                     Claimable
                   </div>
                   <AmountDisplay
-                    value={subtractAmounts(claim.amount, claim.withdrawn)}
+                    value={claimAvailable(claim)}
                     className="text-lg font-semibold text-success"
                   />
                 </div>

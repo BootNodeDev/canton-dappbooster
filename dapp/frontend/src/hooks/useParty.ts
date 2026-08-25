@@ -1,11 +1,11 @@
 import { useParty as useWalletParty } from '@bootnodedev/canton-connect'
 import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { useMemo } from 'react'
-import type { PartyRef } from '@/backend/VestingBackend'
+
+export type PartyRef = { name: string; partyId: string }
 
 export interface UsePartyResult {
   party: PartyRef | undefined
-  isConnected: boolean
 }
 
 // The wallet names a party only sometimes, so the hint stands in as the display name.
@@ -20,5 +20,5 @@ export const useParty = (): UsePartyResult => {
     [party],
   )
 
-  return { party: ref, isConnected: ref !== undefined }
+  return { party: ref }
 }

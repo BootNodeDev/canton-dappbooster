@@ -10,7 +10,6 @@ import { AMOUNT_ERROR_TEXT } from '@/lib/amountErrorText'
 import { errorText } from '@/lib/errorText'
 import { formatCC, formatCCFull } from '@/lib/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/lib/schedule'
-import { FAVORITE_IDS } from '@/mock/tokens'
 
 interface ClaimDialogProps {
   open: boolean
@@ -86,7 +85,6 @@ export const ClaimDialog = ({
       <TokenInput
         aria-describedby={message === undefined ? undefined : 'claim-amount-error'}
         balance={available}
-        favoriteIds={FAVORITE_IDS}
         id="claim-amount"
         label="Amount"
         onChange={(next) => setRaw(next)}

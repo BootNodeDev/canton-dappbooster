@@ -1,10 +1,9 @@
 import type { VestingSchedule } from '@/lib/schedule'
 
-// Domain types mirror the DAML templates 1:1 so this mock store can be swapped for
-// a Canton ledger / JSON-API client without touching components.
+// Domain types mirror the DAML templates 1:1, so the components never see a contract payload.
 
-// A Canton party id (`hint::fingerprint`). Distinct from the wallet's `Party`
-// object (`src/wallet/types.ts`), which carries the id plus network metadata.
+// A Canton party id (`hint::fingerprint`). Distinct from `canton-connect`'s `Party`, which carries
+// the id plus network metadata.
 export type PartyId = string
 
 // Amounts are decimal strings: they are Daml Numeric, and a double loses 10 dp past six integer
@@ -50,10 +49,11 @@ export interface VestedClaim {
 
 export type Role = 'receiver' | 'funder'
 
-// A single record of a completed withdraw, for the grant-detail history list.
+// A single record of a completed withdraw, for the grant-detail history list. Keyed on the grant's
+// lineage rather than its contract id, which the claim itself replaces.
 export interface WithdrawEvent {
   id: string
-  grantId: string
+  lineage: string
   amount: string
   at: string
 }

@@ -13,14 +13,8 @@ This dApp was vendored, frontend-only, from the vesting-lite branch of the
 
 ## Integration deltas
 
-Applied on import to fit this repo's conventions and land green **mock-first**:
+Applied on import to fit this repo's conventions:
 
-- **Mock-first data layer (new):** added `src/mock/` — `MockBackend` (in-memory
-  grants/proposals/claims with command mutations), `MockWallet` (seeded party
-  pool), and `seed.ts` (sample dataset relative to now). `createBackend` now
-  returns `MockBackend` when no deployment config is present, so the app runs with
-  zero services. `WalletProvider` picks `MockWallet` in that same case. The live
-  `LiteBackend` code is kept in-tree but inert until a deployment config appears.
 - **Shared kit + theme (new):** added `@bootnodedev/canton-dappbooster` and
   `@bootnodedev/canton-theme`; `src/styles/index.css` imports the theme CSS. The
   source's own party-id truncation and copy helpers were dropped in favour of the
@@ -35,12 +29,19 @@ Applied on import to fit this repo's conventions and land green **mock-first**:
 - **Kit-from-source resolution:** `tsconfig.app.json` gains
   `customConditions: ["development"]` so tsc resolves the workspace kit from source.
 - **knip / lint fixes:** pruned three unused vendored exports (`HistoryIcon`,
-  `WalletIcon`, `useWalletStatus`) and fixed one `noUnsafeOptionalChaining` in
-  `StealthWallet.test.ts`; unit-test runner is `vitest` (was already in the source).
+  `WalletIcon`, `useWalletStatus`); unit-test runner is `vitest` (was already in the source).
+- **Wallet-signed reads and writes:** the source's `StealthWallet` submitted through
+  wallet-service, which can act as any party. Both now go through `canton-connect`'s
+  `useExecute` / `useLedger`, so the dApp acts only as the connected account and the
+  operator's factory arrives by explicit disclosure from the bootstrap's config file
+  rather than from an operator-scoped ACS read.
+- **Mock data layer removed:** the import added an in-memory `MockBackend` and a seeded
+  party pool so the app ran with no services. Both are gone; there is no zero-service mode.
 
 ## Not imported (deferred)
 
-- The `vesting-lite` DAML package and the party-bootstrap script.
-- The live wallet-service / Canton wiring and the Playwright `e2e` suite.
-- Migration onto `canton-connect` (CIP-0103) — deferred at import, done since: the DirectWallet
-  party-picker is gone and the session comes from `CantonConnectProvider`.
+- The Playwright `e2e` suite (#38).
+- Amulet-backed vesting (`cc-vesting-contracts`, #39), and with it token balances and USD
+  prices. `vesting-lite` moves no holding, so the create form has no balance to show and
+  no ceiling to validate against; the placeholder holdings and the hardcoded CC/USD rate
+  the import shipped are gone rather than kept as fiction.

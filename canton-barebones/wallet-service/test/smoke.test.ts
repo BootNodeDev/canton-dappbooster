@@ -9,7 +9,6 @@ const CANTON_VARS = [
   'SPLICE_VALIDATOR_URL',
   'SPLICE_SCAN_API_URL',
   'SPLICE_REGISTRY_API_URL',
-  'WALLET_SERVICE_MOCK',
 ] as const
 
 const snapshot = (): Record<string, string | undefined> =>
@@ -103,16 +102,5 @@ describe('config loader', () => {
       scanApiUrl: 'http://scan.example/api/scan',
       registryApiUrl: 'http://registry.example/api/registry',
     })
-  })
-
-  it('mock mode skips minting and leaves backendToken undefined', () => {
-    // Scenario: mock mode is used for wallet-only UI iteration and must not
-    // require any LocalNet token because all Canton calls are short-circuited.
-    process.env.WALLET_SERVICE_MOCK = '1'
-    process.env.CANTON_AUTH_AUDIENCE = 'https://canton.network.global'
-    process.env.CANTON_AUTH_SECRET = 'unsafe'
-    const config = loadConfig()
-    assert.equal(config.canton.tokenSource, 'none')
-    assert.equal(config.canton.backendToken, undefined)
   })
 })
