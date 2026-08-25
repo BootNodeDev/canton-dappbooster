@@ -9,6 +9,8 @@ import { Button } from '#src/components/ConnectButton/Button'
  *
  * @example
  * <ConnectButton avatar={(partyId) => <PartyAvatar partyId={partyId} />} />
+ *
+ * @category Components
  */
 export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   mode?: ConnectButtonMode
@@ -16,11 +18,22 @@ export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 }
 
 /**
- * A connect button and account dropdown.
+ * One button that follows the wallet session: a connect trigger with no session, the account
+ * popover with one, read from `useParty` rather than a prop so nothing can contradict a connect
+ * already in flight. A `<CantonConnectProvider>` above it is required, alone among the components
+ * here. `mode` pins it to one face, which renders nothing rather than the other one; `children`
+ * replace the whole label, the pending copy included, so word that off `useConnect().isConnecting`.
+ * Imported from `/connect`, the sub-path that pulls the Canton SDK into a consumer's graph.
  *
  * @example
+ * import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
+ *
  * <ConnectButton mode="connect" />
  * <ConnectButton>{label}</ConnectButton>
+ *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/components/ConnectButton/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const ConnectButton = ({
   avatar,

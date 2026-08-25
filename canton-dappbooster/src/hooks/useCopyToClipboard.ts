@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  *
  * @example
  * <button data-state={state}>{state === 'copied' ? <CheckIcon /> : <CopyIcon />}</button>
+ *
+ * @category Hooks
  */
 export type CopyState = 'idle' | 'copied' | 'error'
 
@@ -14,6 +16,8 @@ export type CopyState = 'idle' | 'copied' | 'error'
  * @example
  * const outcome = await copy(partyId)
  * if (!outcome.ok) toast.error(outcome.error.message)
+ *
+ * @category Hooks
  */
 export type CopyOutcome = { ok: true; value: string } | { ok: false; error: Error }
 
@@ -23,6 +27,8 @@ export type CopyOutcome = { ok: true; value: string } | { ok: false; error: Erro
  *
  * @example
  * useCopyToClipboard({ resetMs: 4000 }) // hold `copied` long enough to read a toast alongside it
+ *
+ * @category Hooks
  */
 export interface UseCopyToClipboardOptions {
   resetMs?: number
@@ -35,6 +41,8 @@ export interface UseCopyToClipboardOptions {
  * @example
  * const clipboard: UseCopyToClipboardResult = useCopyToClipboard()
  * <CopyButton {...clipboard} value={partyId} />
+ *
+ * @category Hooks
  */
 export interface UseCopyToClipboardResult {
   state: CopyState
@@ -53,6 +61,8 @@ const RESET_MS = 1200
  * @example
  * const { state, copy } = useCopyToClipboard({ resetMs: 500 })
  * <button onClick={() => void copy(partyId)} data-state={state}>Copy</button>
+ *
+ * @category Hooks
  */
 export const useCopyToClipboard = (
   options?: UseCopyToClipboardOptions,

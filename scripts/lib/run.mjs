@@ -13,7 +13,7 @@ const ANSI = {
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
-  cyan: '\x1b[36m'
+  cyan: '\x1b[36m',
 }
 
 const LABEL_COLOURS = [ANSI.cyan, ANSI.magenta, ANSI.yellow, ANSI.blue, ANSI.green]
@@ -57,13 +57,19 @@ export const runStep = (label, command, args, options = {}) =>
     const child = spawn(command, args, {
       cwd,
       env: { ...process.env, ...(options.env ?? {}) },
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
     const stdoutCarry = { value: '' }
     const stderrCarry = { value: '' }
-    process.stdout.write(`${colour}${label}${ANSI.reset} ${ANSI.dim}> ${command} ${args.join(' ')}${ANSI.reset}\n`)
-    child.stdout.on('data', (chunk) => writePrefixed(process.stdout, label, colour, chunk, stdoutCarry))
-    child.stderr.on('data', (chunk) => writePrefixed(process.stderr, label, colour, chunk, stderrCarry))
+    process.stdout.write(
+      `${colour}${label}${ANSI.reset} ${ANSI.dim}> ${command} ${args.join(' ')}${ANSI.reset}\n`,
+    )
+    child.stdout.on('data', (chunk) =>
+      writePrefixed(process.stdout, label, colour, chunk, stdoutCarry),
+    )
+    child.stderr.on('data', (chunk) =>
+      writePrefixed(process.stderr, label, colour, chunk, stderrCarry),
+    )
     child.on('error', (error) => reject(error))
     child.on('exit', (code, signal) => {
       flushCarry(process.stdout, label, colour, stdoutCarry)
@@ -82,12 +88,16 @@ export const captureStep = (label, command, args, options = {}) =>
     const child = spawn(command, args, {
       cwd,
       env: { ...process.env, ...(options.env ?? {}) },
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (chunk) => { stdout += chunk.toString('utf8') })
-    child.stderr.on('data', (chunk) => { stderr += chunk.toString('utf8') })
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8')
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString('utf8')
+    })
     child.on('error', (error) => reject(error))
     child.on('exit', (code, signal) => {
       if (code === 0) {
@@ -111,14 +121,16 @@ export const isPortFree = (port) =>
 
 export const requirePortsFree = async (ports) => {
   const results = await Promise.all(
-    ports.map(async (entry) => ({ entry, free: await isPortFree(entry.port) }))
+    ports.map(async (entry) => ({ entry, free: await isPortFree(entry.port) })),
   )
   const busy = results.filter((r) => !r.free).map((r) => r.entry)
   if (busy.length === 0) {
     return
   }
   const detail = busy.map((entry) => `${entry.port} (${entry.label})`).join(', ')
-  fail(`port(s) already in use: ${detail}. Stop the previous dev process or free the port and retry.`)
+  fail(
+    `port(s) already in use: ${detail}. Stop the previous dev process or free the port and retry.`,
+  )
 }
 
 const signalProcessGroup = (entry, sig) => {
@@ -169,13 +181,19 @@ export class DevSupervisor {
       cwd,
       env: { ...process.env, ...(options.env ?? {}) },
       stdio: ['ignore', 'pipe', 'pipe'],
-      detached: true
+      detached: true,
     })
-    process.stdout.write(`${colour}${label}${ANSI.reset} ${ANSI.dim}started: ${command} ${args.join(' ')}${ANSI.reset}\n`)
+    process.stdout.write(
+      `${colour}${label}${ANSI.reset} ${ANSI.dim}started: ${command} ${args.join(' ')}${ANSI.reset}\n`,
+    )
     const stdoutCarry = { value: '' }
     const stderrCarry = { value: '' }
-    child.stdout.on('data', (chunk) => writePrefixed(process.stdout, label, colour, chunk, stdoutCarry))
-    child.stderr.on('data', (chunk) => writePrefixed(process.stderr, label, colour, chunk, stderrCarry))
+    child.stdout.on('data', (chunk) =>
+      writePrefixed(process.stdout, label, colour, chunk, stdoutCarry),
+    )
+    child.stderr.on('data', (chunk) =>
+      writePrefixed(process.stderr, label, colour, chunk, stderrCarry),
+    )
     const exited = new Promise((resolve) => {
       let settled = false
       const settle = () => {
@@ -188,7 +206,9 @@ export class DevSupervisor {
       child.on('error', (error) => {
         flushCarry(process.stdout, label, colour, stdoutCarry)
         flushCarry(process.stderr, label, colour, stderrCarry)
-        process.stderr.write(`${colour}${label}${ANSI.reset} ${ANSI.dim}spawn error: ${error.message}${ANSI.reset}\n`)
+        process.stderr.write(
+          `${colour}${label}${ANSI.reset} ${ANSI.dim}spawn error: ${error.message}${ANSI.reset}\n`,
+        )
         if (!this.shuttingDown) {
           this.exitCode = this.exitCode === 0 ? 1 : this.exitCode
           this.shutdown('spawn-error')
@@ -199,7 +219,9 @@ export class DevSupervisor {
         flushCarry(process.stdout, label, colour, stdoutCarry)
         flushCarry(process.stderr, label, colour, stderrCarry)
         const reason = signal === null ? `code ${code}` : `signal ${signal}`
-        process.stdout.write(`${colour}${label}${ANSI.reset} ${ANSI.dim}exited (${reason})${ANSI.reset}\n`)
+        process.stdout.write(
+          `${colour}${label}${ANSI.reset} ${ANSI.dim}exited (${reason})${ANSI.reset}\n`,
+        )
         if (!this.shuttingDown) {
           if (code !== 0 && signal === null) {
             this.exitCode = code ?? 1
@@ -260,9 +282,10 @@ export const parseEnvFile = (filePath) => {
     }
     const key = line.slice(0, eq).trim()
     const raw = line.slice(eq + 1).trim()
-    const value = (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
-      ? raw.slice(1, -1)
-      : raw
+    const value =
+      (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
+        ? raw.slice(1, -1)
+        : raw
     result[key] = value
   }
   return result

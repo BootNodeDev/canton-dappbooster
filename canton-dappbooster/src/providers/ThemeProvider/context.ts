@@ -5,6 +5,8 @@ import { type Context, createContext } from 'react'
  *
  * @example
  * setMode('system') // keeps following the OS afterwards, unlike setMode(resolved)
+ *
+ * @category Hooks
  */
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -13,6 +15,8 @@ export type ThemeMode = 'light' | 'dark' | 'system'
  *
  * @example
  * const sheet: Record<ResolvedTheme, string> = { light: lightSheet, dark: darkSheet }
+ *
+ * @category Hooks
  */
 export type ResolvedTheme = 'light' | 'dark'
 
@@ -23,6 +27,8 @@ export type ResolvedTheme = 'light' | 'dark'
  * @example
  * const { mode, resolved } = useTheme()
  * mode === 'system' ? `Auto (${resolved})` : mode // 'Auto (dark)' vs 'light'
+ *
+ * @category Hooks
  */
 export interface UseThemeResult {
   mode: ThemeMode

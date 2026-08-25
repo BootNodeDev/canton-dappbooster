@@ -5,6 +5,8 @@
  *
  * @example
  * <ConnectButton mode="account" /> // header: nothing until there is a session
+ *
+ * @category Components
  */
 export type ConnectButtonMode = 'account' | 'connect'
 

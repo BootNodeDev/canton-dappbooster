@@ -6,9 +6,10 @@ other half: a token-amount field, plus the exact-decimal utilities under it, bec
 cannot carry a Canton amount without losing digits.
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
-the call site. `<ConnectButton>` sits behind the `/connect` sub-path instead, because it is the one
+the call site and that is published at
+[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). `<ConnectButton>` sits behind the `/connect` sub-path instead, because it is the one
 component that reaches for the wallet session and so pulls in the Canton SDK. Authoring rules for
-new components live in [`CLAUDE.md`](CLAUDE.md).
+new components live in [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/CLAUDE.md).
 
 ## Scripts
 
@@ -37,7 +38,7 @@ is the fix.
 ## Styling: components carry none
 
 Components (L2) ship zero styling opinion. Styling lives in the separate
-[`@bootnodedev/canton-theme`](../canton-theme) package (L3), which consumers import explicitly:
+[`@bootnodedev/canton-theme`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-theme/README.md) package (L3), which consumers import explicitly:
 
 ```ts
 import '@bootnodedev/canton-theme/tokens.css'
@@ -45,7 +46,7 @@ import '@bootnodedev/canton-theme/default.css'
 ```
 
 The contract between the two is the DOM each component renders — not code. See
-[`architecture.md`](architecture.md) for the seam and the reasoning.
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md) for the seam and the reasoning.
 
 ## Light / dark / system
 
@@ -54,7 +55,7 @@ The one styling-adjacent runtime this package does ship. `<ThemeProvider>` owns 
 sets it. No token names live here.
 
 A reload flashes the page background before React applies the attribute, and this package ships
-nothing to prevent it. [`architecture.md`](architecture.md) has the reasoning.
+nothing to prevent it. [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md) has the reasoning.
 
 Client-only: the provider reads the OS preference as it mounts, so a server render throws.
 

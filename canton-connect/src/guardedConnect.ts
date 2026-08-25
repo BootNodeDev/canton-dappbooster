@@ -38,7 +38,8 @@ const borrowOpen = (): void => {
   }
 }
 
-// Only for a connect that captured nothing; the wrapper hands `open` back itself once it has a popup.
+// Only for a connect that captured nothing; the wrapper hands `open` back itself once it has a
+// popup.
 const returnOpen = (): void => {
   if (nativeOpen === undefined || inFlight > 0) {
     return

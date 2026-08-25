@@ -25,7 +25,11 @@ interface UseVirtualRowsResult {
  * the hook's back leaves pointing at the offset it was computed for.
  *
  * @example
- * const { end, offset, start, totalHeight } = useVirtualRows({ count: rows.length, rowHeight: 56, scrollRef })
+ * const { end, offset, start, totalHeight } = useVirtualRows({
+ *   count: rows.length,
+ *   rowHeight: 56,
+ *   scrollRef,
+ * })
  * rows.slice(start, end)
  */
 export const useVirtualRows = ({

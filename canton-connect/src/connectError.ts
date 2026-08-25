@@ -8,6 +8,8 @@ const PICKER_DISMISSED = 'User closed the wallet picker'
  *
  * @example
  * if (err instanceof PickerClosedError) discardSdk()
+ *
+ * @internal
  */
 export class PickerClosedError extends Error {
   constructor() {
@@ -23,6 +25,8 @@ export class PickerClosedError extends Error {
  * if (connectError !== undefined && !(connectError instanceof ConnectCancelledError)) {
  *   toast.error(connectError.message)
  * }
+ *
+ * @category Errors
  */
 export class ConnectCancelledError extends Error {
   constructor(cause?: unknown) {

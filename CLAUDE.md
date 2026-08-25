@@ -32,6 +32,7 @@ Use one reader per doc type, layered by scope:
 | `CLAUDE.md` | Agent: what local rules change how I edit here? | Root always. Subproject only when local conventions differ from root enough that an agent editing only that directory would get it wrong. Deltas only; link upward for repo-wide rules. |
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, non-trivial control flow, or named abstractions. |
+| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. |
 
 Current distribution:
 
@@ -65,15 +66,19 @@ A README may state that a contract exists and link to it. It may not restate it.
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash for canton-barebones scripts |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
-| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. The four subprojects that declare `engines.node` floor it at `>=24.15.0`, which is what jsdom 30 requires |
+| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Used by `canton-barebones/` for the local participant + Postgres |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
-| Pre-commit | lint-staged | Root `.lintstagedrc.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, and `canton-barebones/` |
+| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, and `canton-barebones/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
 | Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
-| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
+| Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
+| Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
+| Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
+| Reference site | Vercel | Project `docs-canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Build settings live in `vercel.json` |
+| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
 ## Subprojects
@@ -156,9 +161,10 @@ Placement:
 - A component folder is PascalCase, its entry is `index.tsx`, and its subcomponents are PascalCase
   files beside it.
 - `testing/` holds test-only helpers and doubles, never imported from non-test code.
-- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, where
-  a caller could reasonably pick a different export, when to reach for it, and at least one
-  `@example`. Do not restate the type.
+- Every symbol a package exports from its public barrel carries a JSDoc block: what it does, and
+  where a caller could reasonably pick a different export, when to reach for it. Do not restate the
+  type. How much prose, and whether an `@example` is required at all, follows the tier table under
+  Doc blocks below.
 - **A module has one legal spelling, and it is never relative.** `./components/toast` and
   `@/components/toast` both resolved, so which one landed was down to who or what wrote the file.
   Relative specifiers (`.`, `..`, `./*`, `../*`) are now a Biome error in `dapp/frontend`,
@@ -183,6 +189,111 @@ Placement:
   load-bearing, so its imports keep `.ts`; and `tsc -p .` emits to `dist/` while an `imports` map
   would still point at `./src/*.ts`, so a compiled `dist/server.js` would resolve back into
   TypeScript source. Relative specifiers with extensions are correct there and lint allows them.
+
+## Doc blocks
+
+The tier decides how much prose a doc block carries and whether it owes an `@example`. Every tier is
+derivable from the repo's own naming, which is what makes the floors and the ceilings checkable.
+
+| Tier | Detected by | Prose | Example |
+|------|-------------|-------|---------|
+| Component | exported function returning `ReactElement` | 2 to 6 lines: what it renders, which neighbour to pick instead, any a11y or state contract it owns | 1 to 2 |
+| Hook | `use` prefix | 2 to 4 lines: what it does, when to reach for it over the component that wraps it | 1 |
+| Callable util | any other exported function | aim for one sentence, because the example is the spec | 1, input to output |
+| Props type | `Props` suffix | one sentence, only where a prop carries a non-obvious contract | optional |
+| Result type, status union | `Result` suffix, or a union of string literals | one sentence | none required |
+| Config object | reached by the caller passing it in rather than being handed one back | 1 to 3 lines, defaults included | 1 |
+
+`scripts/docs-check.mjs` enforces the example requirement and a ceiling per tier that sits above the
+table: 6 prose lines for a component or a callable util, 4 for a hook or a config object, 3 for a
+props or result type, and 8 lines inside any one `@example`. The ceilings are deliberately loose —
+they catch a block that has become an essay, not one that spent a second sentence well. Whether the
+prose restates the type, inventories fields, or is merely long is the review call no check can make.
+
+Which tags a block may carry is decided the same way, so that two authors write the same block:
+
+| Tag | Owed by | Refused on |
+|-----|---------|------------|
+| `@category` | every barrel export, from that package's `categoryOrder` and nothing else | n/a |
+| `@example` | whatever the tier table asks for | a third one; a fourth is never the fix |
+| `@throws` | any hook or callable util that throws, saying what triggers it | n/a |
+| `@see` | a component whose folder holds an `anatomy.ts` | n/a |
+| `@param` | never required: one sentence plus a compiled example is the spec | a callable that takes no parameters |
+| `@returns` | never required | a hook, whose result type is the contract; any callable whose return type is itself an export |
+
+- **`typedoc.shared.json` holds every option that resolves *per package*, and both packages extend
+  it.** `blockTags`, `modifierTags`, `inlineTags` and `sourceLinkTemplate` all behave like
+  `categoryOrder` under `entryPointStrategy: "packages"`: set at the root they are accepted and
+  silently ignored, which reads as the option not working. Adding a tag is a decision about every
+  block in the repo, so it is a review conversation and not a free choice.
+- **`sourceLinkTemplate` looks redundant and is load-bearing.** It is character-for-character what
+  typedoc builds by itself, so deleting it changes no link. What it also does is skip the
+  `git remote get-url origin` call typedoc otherwise makes to learn the repo address for every
+  "Defined in" link. Vercel's checkout leaves no `origin`, so that call fails there, and the warning
+  it logs fails the whole build under `treatWarningsAsErrors`. A local run cannot see any of this:
+  the remote resolves, so the warning never fires and both templates emit the same URL. Force it
+  with `typedoc --gitRemote nope`.
+- **Typedoc owns that list, and `treatWarningsAsErrors` is what makes it bite.** An off-list tag is
+  a comment-parsing warning, which `treatValidationWarningsAsErrors` does not cover, so without it
+  an invented `@precondition` renders as prose and no gate objects.
+- **`@internal` is how a symbol stays out of the public reference.** Something deliberately not
+  public carries it, is still documented in source, and never reaches the site. Nothing is promoted
+  to the public barrel just so it can be documented.
+- **A change that invalidates a doc block, a README, or an `architecture.md` seam updates it in the
+  same commit.** A doc corrected one PR later was wrong in `main` for as long as that took.
+- Description presence is split between the two gates: typedoc owns interfaces, type aliases,
+  classes, enums and plain variables, `docs-check.mjs` owns exported functions. Not a preference —
+  typedoc reaches a function only through its call signature, and asking it to check those also makes
+  it demand a caption on every function-typed interface member, which the rule against annotating
+  members one by one forbids.
+- Every `@example` is compiled. Each package carries a root `doc-fixtures.d.ts` declaring the
+  placeholder vocabulary examples may lean on, and an example may use only what that file declares.
+- A throw is the callable's contract wherever inside it the `throw` sits, so the check descends into
+  nested closures and follows one hop through a `#src/*` import: every canton-connect hook throws
+  through `useCantonConnectContext`, and `getExplorerLink` through a module-level guard. It stops at
+  one hop, and at a throw the function's own `catch` swallows — `useCopyToClipboard` returns that
+  failure as a value and owes no `@throws`.
+
+## The generated reference
+
+Its shape was chosen by reading wagmi, Mantine and TanStack Query rather than invented, because a
+reader arrives with habits from those. All three group the sidebar by *what a symbol is*, make every
+leaf something you call or render, and keep parameter and return types inside that symbol's page.
+
+- **Every barrel export carries an `@category`, and the vocabulary is closed**: `Components`,
+  `Hooks`, `Utilities`, plus `Configuration`, `Types` and `Errors` where a package needs them. A new
+  name is a decision about the whole reference, so it is a review conversation and not a free
+  choice. `docs-check.mjs` errors on an untagged export; untagged, it would fall back into typedoc's
+  TypeScript-kind buckets, which is the flat "every interface together" listing the categories exist
+  to replace.
+- **The tag is `@category`, never `@group`.** Both render the same headings, but `includeGroups`
+  also wraps each package's modules in a `Modules` node, while categories nest under the module.
+- **A category holds a symbol and its supporting types**, so `Identifier` and `IdentifierProps` sit
+  together. That is what `sort: alphabetical-ignoring-documents` is for: typedoc's default sorts by
+  kind first, which lists every `*Props` ahead of every component it belongs to.
+- **A sub-path that exists for packaging reasons is merged, not filed separately.** `src/connect.ts`
+  is a separate entry point because of what it pulls into a consumer's graph, which is no reason
+  to file a component away from the others, so it carries `@mergeModuleWith Main`. The tag
+  needs a bare `@module` beside it or the comment is not read as a module comment and the merge is
+  skipped in silence, with the `unusedMergeModuleWith` validation not catching it either. Where a
+  sub-path is merged, the component's own block states the import path, since the tree no longer
+  shows it. `canton-connect`'s `testing` module stays separate: those are doubles, and a fake
+  provider listed beside the real one is a trap rather than a convenience.
+- **A re-export cannot be tagged.** typedoc resolves it to the upstream declaration, so a local
+  `@category` on `export type { PrepareExecuteParams }` is ignored. `defaultCategory` catches those,
+  which is safe only because everything with a local declaration is required to be tagged.
+- **`categoryOrder`, `defaultCategory`, `categorizeByGroup`, `groupOrder` and `sort` resolve per
+  package** under `entryPointStrategy: "packages"`, so they live in each package's own
+  `typedoc.json`. At the root they are accepted and silently ignored, which reads as the tag not
+  working rather than the option being in the wrong file. Root `typedoc.json` owns entry points,
+  validation, and `navigation`.
+- **A link in a README or doc block is absolute, or it is not a link.** typedoc copies every
+  relative link target into the published site and points the link at the copy, and no option
+  disables it. So a relative path silently republishes the file, frozen at build time, and a `.ts`
+  target is served as `video/mp2t` and downloads instead of rendering. A file worth reaching from
+  the reference gets its full `https://github.com/BootNodeDev/canton-dappbooster/blob/main/…` URL;
+  a contributor-infrastructure file nobody reaches from the site is named in backticks and not
+  linked. Nothing enforces this, so it is a review check.
 
 ## Authoring a Component or Hook
 
@@ -225,7 +336,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
-- `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they live on the ranges in its own `package.json`; bump those directly and test the connect flow, not `pnpm-workspace.yaml`. Its `core-types` devDependency is pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer range stays caret so consumers keep a range. `dapp-sdk` `^1.4.0` still has this exposure.
+- `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they live on the ranges in its own `package.json`; bump those directly and test the connect flow, not `pnpm-workspace.yaml`. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
 - Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
@@ -243,6 +354,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`).
+- `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`) and `pnpm run check:anatomy` do not fan out: both read the two library packages directly, and typedoc has one config over both. `pnpm docs:build` writes the reference site to `typedoc/`.
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
 ## Commit Standards
@@ -323,7 +435,7 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`.
+- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
 - For the full end-to-end loop (Canton up → DAR built → DAR deployed → wallet-service → wallet → dApp), follow [`README.md`](README.md) §1–6.

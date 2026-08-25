@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { anatomy } from '#src/providers/ThemeProvider/anatomy'
 import { DARK_QUERY, DEFAULT_STORAGE_KEY } from '#src/providers/ThemeProvider/constants'
 import {
   type ResolvedTheme,
@@ -41,6 +42,8 @@ const readMode = (storageKey: string): ThemeMode => {
  *
  * @example
  * <ThemeProvider storageKey="vesting-theme">{children}</ThemeProvider>
+ *
+ * @category Components
  */
 export interface ThemeProviderProps {
   children: ReactNode
@@ -52,11 +55,11 @@ export interface ThemeProviderProps {
  * key across tabs, and writes the resolved value to `data-theme` on `<html>`, which is what
  * `@bootnodedev/canton-theme` keys its dark values on. Renders no DOM of its own.
  *
- * The attribute lands before the tree below it paints, but not before the page background, which the
- * browser paints before the bundle runs. That flash is accepted; see `architecture.md`.
+ * The attribute lands before the tree below it paints, but not before the page background; that
+ * flash is accepted, and `architecture.md` has the reasoning. Client-only, because it reads the OS
+ * preference while picking its initial state, so a server render throws.
  *
- * Client-only: it reads the OS preference while picking its initial state, so a server render
- * throws. There is no ambient default to render instead that would not hydrate to a mismatch.
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/providers/ThemeProvider/anatomy.ts) for the state attribute the theme selects.
  *
  * @example
  * createRoot(el).render(
@@ -64,6 +67,8 @@ export interface ThemeProviderProps {
  *     <App />
  *   </ThemeProvider>,
  * )
+ *
+ * @category Components
  */
 export const ThemeProvider = ({
   children,
@@ -75,7 +80,7 @@ export const ThemeProvider = ({
 
   // Layout, not passive: the attribute has to land before the browser paints the tree below.
   useLayoutEffect(() => {
-    document.documentElement.dataset.theme = resolved
+    document.documentElement.setAttribute(anatomy.states.theme, resolved)
   }, [resolved])
 
   // Another tab switching mode would otherwise leave this one showing the old theme until reload.
