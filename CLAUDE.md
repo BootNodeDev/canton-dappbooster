@@ -357,7 +357,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-barebones`: `pnpm test` (Node `node:test` against the scripts)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
-- From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml/vesting-lite`'s build (needs `dpm`).
+- From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build (needs `dpm`). The filter names the workspace package, not the DAML package inside it: `dapp/daml/vesting-lite` has no `package.json`, so pnpm matches nothing and the build runs anyway.
 - `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`) and `pnpm run check:anatomy` do not fan out: both read the two library packages directly, and typedoc has one config over both. `pnpm docs:build` writes the reference site to `typedoc/`.
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
