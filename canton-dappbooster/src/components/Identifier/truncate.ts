@@ -8,6 +8,8 @@ import { PARTY_SEPARATOR } from '#src/utils/partyId'
  * @example
  * truncateIdentifier(partyId, { head: 4, tail: 4, threshold: 22 })
  * truncateIdentifier(partyId, { hint: 12 })
+ *
+ * @category Utilities
  */
 export interface TruncateOptions {
   head?: number
@@ -33,20 +35,21 @@ const middle = (value: string, head: number, tail: number, threshold: number): s
 }
 
 /**
- * Truncates an identifier for display. A Canton party id is `hint::fingerprint`: the hint is
- * meaningful, so it survives whole and only the fingerprint shrinks, unless `hint` bounds it too.
- * Anything else is middle-truncated as one segment. Output is never longer than the input, and cuts
- * land on UTF-16 code units, so a non-ASCII value can split a surrogate pair.
+ * Truncates an identifier for display. A Canton party id is `hint::fingerprint`, so the hint
+ * survives whole and only the fingerprint shrinks, unless `hint` bounds it too. Anything else is
+ * middle-truncated as one segment, never longer than the input, and cut on UTF-16 code units, so a
+ * non-ASCII value can split a surrogate pair.
  *
- * Reach for this over `<Identifier>` when the value sits inside a sentence, or inside another
- * `<button>`, where the component's copy control would nest a button in a button. Pass `hint`
- * wherever the result has to fit a bounded width, since an unbounded hint has no display length.
+ * Reach for this over `<Identifier>` inside a sentence or another `<button>`, where the copy
+ * control would nest a button in a button. Pass `hint` where the result must fit a bounded width.
  *
  * @example
  * truncateIdentifier('nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46')
  * // 'nico::1220df…0b1cbb46'
  * truncateIdentifier('treasury-operations::1220df94…', { hint: 12 })
  * // 'treasury-ope…::1220df94…'
+ *
+ * @category Utilities
  */
 export const truncateIdentifier = (value: string, options?: TruncateOptions): string => {
   const tail = options?.tail ?? TAIL
@@ -72,6 +75,8 @@ export const truncateIdentifier = (value: string, options?: TruncateOptions): st
  *
  * @example
  * partyHint('nico::1220df94') // 'nico'
+ *
+ * @category Utilities
  */
 export const partyHint = (value: string): string => {
   const separator = value.indexOf(PARTY_SEPARATOR)

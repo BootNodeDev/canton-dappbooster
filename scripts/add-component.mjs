@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 const ANSI = { reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', green: '\x1b[32m' }
 
+const BLOB = 'https://github.com/BootNodeDev/canton-dappbooster/blob/main'
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const componentsDir = path.join(repoRoot, 'canton-dappbooster/src/components')
 
@@ -44,6 +46,8 @@ import { cx } from '#src/utils/cx'
  *
  * @example
  * <${name} className="…" />
+ *
+ * @category Components
  */
 export type ${name}Props = HTMLAttributes<HTMLDivElement>
 
@@ -52,6 +56,10 @@ export type ${name}Props = HTMLAttributes<HTMLDivElement>
  *
  * @example
  * <${name}>…</${name}>
+ *
+ * @see [anatomy.ts](${BLOB}/canton-dappbooster/src/components/${name}/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const ${name} = ({ children, className, ...rest }: ${name}Props): ReactElement => (
   <div {...rest} className={cx(anatomy.parts.root, className)}>
@@ -99,4 +107,3 @@ process.stdout.write(`
     color: var(--cnc-text);
   }
 `)
-

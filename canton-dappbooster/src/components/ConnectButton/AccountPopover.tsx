@@ -17,7 +17,7 @@ export type AccountPopoverProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   partyId: string
 }
 
-/** The component shown when connected. */
+/** The face shown with a session: the party trigger and the popover it opens. */
 export const AccountPopover = ({
   avatar,
   className,

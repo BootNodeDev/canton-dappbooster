@@ -2,25 +2,6 @@
 
 Local Canton Network stack for wallet-first dApp experiments.
 
-```mermaid
-flowchart TD
-  fe["dapp/frontend<br/>dApp frontend<br/>http://localhost:3012"]
-  wallet["carpincho-wallet (separate repo)<br/>Vault + signer<br/>http://localhost:3011"]
-  ws["canton-barebones/wallet-service<br/>External-party bridge<br/>http://localhost:3010"]
-  au["Splice app-user<br/>primary local validator<br/>JSON API http://localhost:2975"]
-  sv["Splice sv<br/>SV / DSO / synchronizer side"]
-  scan["Scan<br/>Splice read model<br/>http://scan.localhost:4000"]
-  dar["dapp/daml/vesting-lite<br/>vesting-lite DAR"]
-
-  fe <-->|"Injected CIP-0103 provider<br/>optional WalletConnect"| wallet
-  wallet -->|"external-party onboarding"| ws
-  wallet -->|"Scan API / token metadata"| scan
-  ws -->|"Bearer CANTON_BACKEND_TOKEN"| au
-  au <--> sv
-  sv -->|"indexed Splice read model"| scan
-  dar -->|"deploy package"| au
-```
-
 `canton:up` activates the official Splice LocalNet `sv` and `app-user` Docker
 profiles, then starts wallet-service. It does not start Keycloak or OIDC.
 The app-provider UI containers are not started; a local compose override
@@ -166,21 +147,20 @@ Root scripts, run from the repo root:
 
 The husky hooks scan for secrets with gitleaks: `pre-commit` on staged changes and
 `pre-push` on the outgoing commit range. On first run they install the pinned gitleaks into
-`bin/` (git-ignored) via [`scripts/install-gitleaks.sh`](scripts/install-gitleaks.sh) —
-checksum-verified, version read from [`.gitleaks-version`](.gitleaks-version), the same
-install CI uses. Accepted non-secret findings (test fixtures, legacy history) are listed in
-[`.gitleaksignore`](.gitleaksignore); a new secret still fails the scan.
+`bin/` (git-ignored) via `scripts/install-gitleaks.sh` — checksum-verified, version read
+from `.gitleaks-version`, the same install CI uses. Accepted non-secret findings (test
+fixtures, legacy history) are listed in `.gitleaksignore`; a new secret still fails the scan.
 
 ### Continuous integration
 
-Every pull request runs the [`pr`](.github/workflows/pr.yml) gate: biome, typecheck + build
+Every pull request runs the `pr` gate in `.github/workflows/`: biome, typecheck + build
 + knip, tests, commitlint (commit range + PR title), and a full-history gitleaks scan. `main`
 is protected — a PR needs one approval and all checks green to merge. New issues and PRs are
-added to the project board ([`add-to-project`](.github/workflows/add-to-project.yml)) and PRs
-are assigned to their author ([`pr-assign`](.github/workflows/pr-assign.yml)).
+added to the project board (`add-to-project`) and PRs are assigned to their author
+(`pr-assign`).
 
 ### Dependency updates
 
-[Renovate](renovate.json) batches non-major updates into one weekly PR. The `@canton-network/*`
+Renovate (`renovate.json`) batches non-major updates into one weekly PR. The `@canton-network/*`
 SDK graph is pinned in `pnpm-workspace.yaml` and held for manual approval on the Dependency
 Dashboard, so it is never bumped without a deliberate review.

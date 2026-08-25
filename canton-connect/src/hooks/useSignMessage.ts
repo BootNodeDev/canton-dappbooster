@@ -1,8 +1,13 @@
 import { useCallback, useState } from 'react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
 
+/**
+ * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected, and
+ * `reset` clears the last signature and error without touching the session.
+ *
+ * @category Hooks
+ */
 export interface UseSignMessageResult {
-  /** Throws if no wallet is connected. */
   signMessage: (message: string) => Promise<string>
   signature: string | undefined
   isSigning: boolean
@@ -11,8 +16,17 @@ export interface UseSignMessageResult {
 }
 
 /**
- * Signs an arbitrary message with the connected wallet; the SDK owns encoding.
+ * Signs an arbitrary message with the connected wallet; the SDK owns the encoding.
  * Wagmi: `useSignMessage`, same name and job.
+ *
+ * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
+ * connected or the wallet rejects, the rejection also landing in `error`.
+ *
+ * @example
+ * const { signMessage } = useSignMessage()
+ * const signed = await signMessage('Approve vesting claim')
+ *
+ * @category Hooks
  */
 export const useSignMessage = (): UseSignMessageResult => {
   const ctx = useCantonConnectContext()

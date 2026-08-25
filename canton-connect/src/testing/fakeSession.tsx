@@ -12,13 +12,18 @@ const SDK = new Proxy({} as DappSDK, {
   },
 })
 
+/**
+ * Props for {@link FakeSessionProvider}. `party` is what a connect resolves to, and omitting it
+ * stands for a wallet reporting none; `status` starts the session mid-flight, and its default of
+ * `'disconnected'` makes a component's connect face render first.
+ *
+ * @category Components
+ */
 export interface FakeSessionProviderProps {
   children: ReactNode
   connectError?: Error
   isLocked?: boolean
-  /** The party a connect resolves to. Omit for a wallet that reports none. */
   party?: Party
-  /** Start mid-session with `'connected'`; the default makes the connect face render first. */
   status?: ConnectionStatus
 }
 
@@ -34,6 +39,8 @@ export interface FakeSessionProviderProps {
  *     <ConnectButton />
  *   </FakeSessionProvider>,
  * )
+ *
+ * @category Components
  */
 export const FakeSessionProvider = ({
   children,

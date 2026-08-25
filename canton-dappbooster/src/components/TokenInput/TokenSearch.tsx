@@ -9,7 +9,7 @@ interface TokenSearchProps {
 }
 
 /**
- * The token select's filter field
+ * The token select's filter field.
  *
  * @example
  * <TokenSearch onChange={setQuery} ref={searchRef} value={query} />

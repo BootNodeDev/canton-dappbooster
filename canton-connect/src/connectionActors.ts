@@ -12,8 +12,8 @@ export const createConnectionActors = (
 ) => {
   let initialization: Promise<void> | undefined
 
-  // SDK's `defaultAdapters` include a localhost dev gateway; override them
-  // connect() inits with no options internally, so only an early options-carrying init registers the caller's adapters
+  // SDK's `defaultAdapters` include a localhost dev gateway; override them. connect() inits with no
+  // options internally, so only an early options-carrying init registers the caller's adapters
   const ensureInit = () => {
     if (!initialization) {
       initialization = sdk.init({ defaultAdapters: [], ...options }).catch((error) => {

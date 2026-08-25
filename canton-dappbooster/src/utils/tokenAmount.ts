@@ -8,6 +8,8 @@
  *
  * @example
  * parseAmount('1.5', DEFAULT_PRECISION)
+ *
+ * @category Utilities
  */
 export const DEFAULT_PRECISION = 10
 
@@ -19,7 +21,15 @@ const TOTAL_DIGITS = 38
  * consumer maps these to their own wording.
  *
  * @example
- * const MESSAGES: Record<TokenAmountError, string> = { 'above-max': 'More than you hold', … }
+ * const MESSAGES: Record<TokenAmountError, string> = {
+ *   'not-a-number': 'Enter an amount',
+ *   'too-many-decimals': 'At most 10 decimal places',
+ *   'too-large': 'Larger than the ledger can hold',
+ *   'above-max': 'More than you hold',
+ *   'invalid-max': 'Balance unavailable',
+ * }
+ *
+ * @category Utilities
  */
 export type TokenAmountError =
   | 'not-a-number'
@@ -71,6 +81,8 @@ const split = (value: string): [string, string] => {
  *
  * @example
  * parseAmount('1.5') // 15000000000n
+ *
+ * @category Utilities
  */
 export const parseAmount = (
   value: string,
@@ -88,6 +100,8 @@ export const parseAmount = (
  *
  * @example
  * formatScaled(15000000000n) // '1.5'
+ *
+ * @category Utilities
  */
 export const formatScaled = (scaled: bigint, precision: number = DEFAULT_PRECISION): string => {
   const digits = scaled.toString().padStart(precision + 1, '0')
@@ -104,6 +118,8 @@ export const formatScaled = (scaled: bigint, precision: number = DEFAULT_PRECISI
  *
  * @example
  * formatAmount('8421337.1234567891') // '8,421,337.1234567891'
+ *
+ * @category Utilities
  */
 export const formatAmount = (value: string, locale?: string): string => {
   if (!DECIMAL.test(value)) return value
@@ -115,8 +131,8 @@ export const formatAmount = (value: string, locale?: string): string => {
 
 /**
  * Reduces raw field input to a decimal: grouping separators and anything that can never belong to
- * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`. A sign or an
- * exponent is kept instead of stripped, so `-5` and `1.5e3` reach {@link validateAmount} as
+ * an amount are dropped rather than flagged, so a paste of `1,234.5` lands as `1234.5`. A sign or
+ * an exponent is kept instead of stripped, so `-5` and `1.5e3` reach {@link validateAmount} as
  * `not-a-number` rather than being salvaged into an amount nobody entered.
  *
  * The inverse of {@link formatAmount}, and it must be passed the same `locale`: under a
@@ -124,6 +140,8 @@ export const formatAmount = (value: string, locale?: string): string => {
  *
  * @example
  * sanitizeAmountInput('.5') // '0.5'
+ *
+ * @category Utilities
  */
 export const sanitizeAmountInput = (input: string, locale?: string): string => {
   const { group, decimal } = partsOf(locale)
@@ -142,6 +160,8 @@ export const sanitizeAmountInput = (input: string, locale?: string): string => {
  *
  * @example
  * settleAmount('1.') // '1'
+ *
+ * @internal
  */
 export const settleAmount = (value: string): string =>
   value.endsWith('.') ? value.slice(0, -1) : value
@@ -154,6 +174,8 @@ export const settleAmount = (value: string): string =>
  *
  * @example
  * validateAmount('1.5000000001', { max: '1.5' }) // 'above-max'
+ *
+ * @category Utilities
  */
 export const validateAmount = (
   value: string,

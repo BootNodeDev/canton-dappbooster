@@ -19,6 +19,12 @@ all transports. Browser-only. A stopgap, meant to stay cheap to delete.
 - **Never import `@canton-network/core-wallet-ui-components`.** It is `dapp-sdk`'s private popup layer, and declaring it to reach `pickWallet` puts a second copy of its module-level popup state in the store, which kills the SDK's retry prompt with `"Wallet picker is not open"`. This rules out reusing the SDK's picker component; it does not rule out writing our own.
 - **The mock adapter answers the connect flow only.** `createMockAdapter()` implements `connect`/`disconnect`/`status`/`listAccounts` and throws naming the method for anything else. Don't extend it to fake `execute` or `signMessage` — a canned result there is indistinguishable from a real wallet's.
 - **Keep hooks thin.** Read `CantonConnectProvider` context or delegate straight to a facade method. Shared state transitions belong in `CantonConnectProvider.tsx`.
+- **The hook and config surface is documented in JSDoc, and nowhere else.** No hook table and no
+  config table in `README.md`: root [`CLAUDE.md`](../CLAUDE.md) puts reference material out of a
+  README, and both are generated from the doc blocks now. A table copied beside the code drifts from
+  it, and a reader who trusted the copy has no way to tell. Which wallets the picker offers is
+  decided by three fields, so `CantonConnectConfig` is where that is written down:
+  `walletConnectProjectId`, `walletPicker`, `additionalAdapters`.
 - Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
 - Internal modules are reached through this package's `#src/*` subpath imports, never a relative path, and imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
 

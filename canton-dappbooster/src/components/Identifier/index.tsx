@@ -13,6 +13,8 @@ import { SR_ONLY } from '#src/utils/srOnly'
  *
  * @example
  * <Identifier value={partyId} label="party id" truncate={{ head: 4, tail: 4 }} />
+ *
+ * @category Components
  */
 export interface IdentifierProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'onCopy'> {
   announce?: boolean
@@ -41,6 +43,10 @@ const statusText = (state: CopyState, label: string): string => {
  *
  * @example
  * <Identifier value={partyId} label="party id" href={explorerLink(partyId)} announce={false} />
+ *
+ * @see [anatomy.ts](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/src/components/Identifier/anatomy.ts) for the part classes and state attributes the theme selects.
+ *
+ * @category Components
  */
 export const Identifier = ({
   value,

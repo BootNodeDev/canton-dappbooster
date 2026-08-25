@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
     "canton:up": "pnpm -C canton-barebones run up",
     "canton:down": "pnpm -C canton-barebones run down",
@@ -21,15 +24,21 @@
     "build": "pnpm -r run --if-present build",
     "test": "pnpm -r run --if-present test",
     "knip": "knip",
+    "docs:check": "typedoc --emit none && node scripts/docs-check.mjs",
+    "docs:build": "typedoc",
+    "check:anatomy": "node scripts/check-anatomy.mjs",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.8",
+    "@biomejs/biome": "2.5.10",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@mermaid-js/mermaid-cli": "^11.15.0",
     "husky": "^9.1.7",
     "knip": "6.32.2",
-    "lint-staged": "^17.0.4"
+    "lint-staged": "^17.0.4",
+    "postcss": "^8.5.26",
+    "typedoc": "^0.28.20",
+    "typescript": "^5.9.3"
   }
 }
