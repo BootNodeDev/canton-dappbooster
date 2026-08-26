@@ -216,9 +216,9 @@ describe('LiteBackend.viewAs', () => {
     expect(reads[0]?.resource).toBe('/v2/state/ledger-end')
     const acsReads = reads.slice(1)
     expect(acsReads.map(filteredTemplate)).toEqual([
-      'pkg1:Vesting:VestingProposal',
-      'pkg1:Vesting:VestingContract',
-      'pkg1:Vesting:VestedClaim',
+      '#vesting-lite:Vesting:VestingProposal',
+      '#vesting-lite:Vesting:VestingContract',
+      '#vesting-lite:Vesting:VestedClaim',
     ])
     expect(acsReads.map(filteredParty)).toEqual(['receiver::1', 'receiver::1', 'receiver::1'])
     expect(acsReads.every((read) => read.body?.activeAtOffset === 42)).toBe(true)
@@ -227,7 +227,7 @@ describe('LiteBackend.viewAs', () => {
   it('maps the rows it gets back into the domain view', async () => {
     const { backend } = harness({
       acs: {
-        'pkg1:Vesting:VestingContract': [
+        '#vesting-lite:Vesting:VestingContract': [
           row('c1', {
             provider: 'operator::1',
             proposer: 'funder::1',

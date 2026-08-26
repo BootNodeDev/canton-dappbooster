@@ -29,11 +29,18 @@ const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[]
   rows.map(mapper).filter((value): value is T => value !== undefined)
 
 // The JSON Ledger API's party/template filter, shared by the ACS read and the update stream. Built
-// in one place because a typo in this nesting yields a silent empty read rather than an error.
-const templateFilter = (party: string, templateId: string): Record<string, unknown> => ({
+// in one place because a typo in this nesting yields a silent empty read rather than an error, and
+// because a filter takes the package-name reference where a command takes the resolved package id.
+const templateFilter = (party: string, entity: string): Record<string, unknown> => ({
   filtersByParty: {
     [party]: {
-      cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
+      cumulative: [
+        {
+          identifierFilter: {
+            TemplateFilter: { value: { templateId: `#vesting-lite:Vesting:${entity}` } },
+          },
+        },
+      ],
     },
   },
 })
@@ -80,16 +87,12 @@ export class LiteBackend implements VestingBackend {
     return result.offset
   }
 
-  private async readAcs(
-    party: string,
-    templateId: string,
-    offset: string | number,
-  ): Promise<AcsRow[]> {
+  private async readAcs(party: string, entity: string, offset: string | number): Promise<AcsRow[]> {
     const rows = await this.wallet.ledgerApi({
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
       body: {
-        filter: templateFilter(party, templateId),
+        filter: templateFilter(party, entity),
         activeAtOffset: offset,
         verbose: true,
       },
@@ -116,9 +119,9 @@ export class LiteBackend implements VestingBackend {
     // One ledger-end fetch for all three reads, so they share a consistent snapshot offset.
     const offset = await this.ledgerEnd()
     const [proposalRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, this.proposalTid, offset),
-      this.readAcs(partyId, this.contractTid, offset),
-      this.readAcs(partyId, this.claimTid, offset),
+      this.readAcs(partyId, 'VestingProposal', offset),
+      this.readAcs(partyId, 'VestingContract', offset),
+      this.readAcs(partyId, 'VestedClaim', offset),
     ])
     return {
       proposals: mapRows(proposalRows, rowToProposal),
@@ -161,7 +164,7 @@ export class LiteBackend implements VestingBackend {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
             eventFormat: {
               verbose: true,
-              ...templateFilter(partyId, this.contractTid),
+              ...templateFilter(partyId, 'VestingContract'),
             },
           },
         },

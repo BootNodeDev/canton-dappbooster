@@ -114,8 +114,13 @@ const main = async () => {
           cumulative: [
             {
               identifierFilter: {
+                // A filter takes the package-name reference; a participant rejects the package id
+                // the CreateCommand above carries.
                 TemplateFilter: {
-                  value: { templateId: factoryTid, includeCreatedEventBlob: true },
+                  value: {
+                    templateId: `#${PACKAGE_NAME}:Vesting:VestingFactory`,
+                    includeCreatedEventBlob: true,
+                  },
                 },
               },
             },
