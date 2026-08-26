@@ -47,6 +47,20 @@ describe('useSignMessage', () => {
     expect(result.current.isSigning).toBe(false)
   })
 
+  it('publishes a refusal that arrived as a JSON-RPC object as an Error', async () => {
+    const rpcError = { code: 4001, message: 'user refused to sign' }
+    const signMessage = vi.fn<WalletSdk['signMessage']>().mockRejectedValue(rpcError)
+    const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }))
+
+    await act(async () => {
+      await expect(result.current.signMessage('hello')).rejects.toBeInstanceOf(Error)
+    })
+
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.error?.message).toBe('user refused to sign')
+    expect(result.current.error?.cause).toBe(rpcError)
+  })
+
   it('forgets a signature, and a refusal, on reset', async () => {
     const refused = new Error('user refused to sign')
     const signMessage = vi

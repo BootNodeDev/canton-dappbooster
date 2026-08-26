@@ -1,6 +1,7 @@
 import { useSelector } from '@xstate/react'
 import { useCallback, useState } from 'react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import { toError } from '#src/connectError'
 import { toConnectionStatus } from '#src/machine/connectionMachine'
 import type { ConnectionStatus, ConnectionSubscription, WalletSdk } from '#src/types'
 
@@ -63,7 +64,7 @@ export const useWalletCall = (): UseWalletCallResult => {
         setState(IDLE)
         return result
       } catch (err) {
-        const error = err as Error
+        const error = toError(err)
         setState({ isBusy: false, error })
         throw error
       }

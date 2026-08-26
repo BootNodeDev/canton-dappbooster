@@ -44,6 +44,35 @@ describe('useConnectBridge', () => {
     actor.stop()
   })
 
+  it('rejects with an Error when the account read fails with a JSON-RPC object', async () => {
+    const rpcError = { code: -32000, message: 'wallet locked' }
+    const machine = connectionMachine.provide({
+      actors: {
+        init: fromPromise<void, InitInput>(() => Promise.resolve()),
+        connect: fromPromise<WalletStatusUpdate, ConnectInput>(() =>
+          Promise.resolve({ connection }),
+        ),
+        accounts: readingAccounts(() => Promise.reject(rpcError)),
+      },
+    })
+    const actor = startConnection(machine)
+
+    const { result } = renderHook(() => useConnectBridge(actor))
+
+    await act(async () => {
+      await expect(result.current()).rejects.toMatchObject({
+        message: 'wallet locked',
+        cause: rpcError,
+      })
+      await expect(result.current()).rejects.toBeInstanceOf(Error)
+    })
+
+    // the machine keeps what the wallet sent; the classification is the bridge's
+    expect(actor.getSnapshot().context.lastConnectError).toBe(rpcError)
+
+    actor.stop()
+  })
+
   it('rejects when the provider goes away mid-connect', async () => {
     const machine = connectionMachine.provide({
       actors: {
