@@ -70,7 +70,7 @@ describe('rpc dispatcher', () => {
     assert.equal(res.error.code, -32601)
   })
 
-  it('returns -32004 for prepareExecute (carpincho signs)', async () => {
+  it('returns -32004 for prepareExecute (the wallet signs)', async () => {
     const rpc = createRpc(baseConfig())
     const res = (await rpc.handle({
       jsonrpc: '2.0',
@@ -195,7 +195,7 @@ describe('ledgerApi pass-through', () => {
 describe('CIP-56 token helpers', () => {
   it('lists pending transfers through the SDK token namespace without reshaping contracts', async () => {
     // Scenario: wallet-service owns the Node-only wallet-sdk dependency, but
-    // Carpincho should still see the SDK contract payload directly so future
+    // the wallet should still see the SDK contract payload directly so future
     // browser-SDK migration does not need a second DTO translation.
     const pendingContracts = [
       {
@@ -253,7 +253,7 @@ describe('CIP-56 token helpers', () => {
 
   it('prepares an accept-transfer command through the SDK token namespace', async () => {
     // Scenario: accepting a pending CIP-56 transfer requires SDK registry
-    // context, but Carpincho must still sign the prepared transaction itself.
+    // context, but the wallet must still sign the prepared transaction itself.
     // wallet-service returns the SDK command and disclosed contracts only.
     const disclosedContracts = [{ contractId: 'registry-context-cid', createdEventBlob: 'blob' }]
     const seen: { transferInstructionCid?: string; registryUrl?: string } = {}
@@ -289,7 +289,7 @@ describe('CIP-56 token helpers', () => {
 
   it('prepares a token transfer command through the SDK token namespace', async () => {
     // Scenario: sending CIP-56 tokens requires wallet-service to ask the
-    // Node-only SDK for transfer commands, while Carpincho remains responsible
+    // Node-only SDK for transfer commands, while the wallet remains responsible
     // for signing the prepared transaction hash with the sender's local key.
     const disclosedContracts = [{ contractId: 'transfer-context-cid', createdEventBlob: 'blob' }]
     const expirationDate = '2026-06-10T15:00:00.000Z'
@@ -341,7 +341,7 @@ describe('CIP-56 token helpers', () => {
   })
 
   it('looks up an Amulet transfer preapproval through the SDK Amulet namespace', async () => {
-    // Scenario: Carpincho needs to know whether the selected party already
+    // Scenario: the wallet needs to know whether the selected party already
     // allows automatic Amulet receipts before rendering the enable/disable UI.
     const preapproval = {
       contract: {
@@ -466,7 +466,7 @@ describe('CIP-56 token helpers', () => {
   })
 
   it('prepares a fixed DevNet Amulet tap command for the receiver party', async () => {
-    // Scenario: Carpincho needs a test-only faucet button that requests a fixed
+    // Scenario: the wallet needs a test-only faucet button that requests a fixed
     // 100 AMT for the selected external party while preserving local signing.
     const disclosedContracts = [{ contractId: 'tap-context-cid', createdEventBlob: 'blob' }]
     const seen: { receiver?: string; amount?: string } = {}
@@ -499,7 +499,7 @@ describe('CIP-56 token helpers', () => {
   })
 
   it('accepts an Amulet transfer preapproval proposal as the validator provider', async () => {
-    // Scenario: after Carpincho creates the receiver-signed proposal, the local
+    // Scenario: after the wallet creates the receiver-signed proposal, the local
     // validator provider must accept it with a normal participant submit.
     const seen: { acs?: unknown; submit?: unknown; inputOwner?: string } = {}
     const rpc = createRpc(withToken(), {
@@ -771,7 +771,7 @@ describe('CIP-56 token helpers', () => {
   })
 
   it('lists token holding UTXOs through the SDK token namespace without reshaping contracts', async () => {
-    // Scenario: Carpincho needs the active CIP-56 holdings for a party, but the
+    // Scenario: the wallet needs the active CIP-56 holdings for a party, but the
     // Node-only wallet SDK must stay behind wallet-service. The RPC returns the
     // SDK holding contracts unchanged so the browser boundary remains thin.
     const holdingContracts = [
@@ -1030,7 +1030,7 @@ describe('CIP-56 token helpers', () => {
   })
 
   it('rejects CIP-56 helper calls without required params', async () => {
-    // Scenario: malformed Carpincho calls should fail as JSON-RPC invalid
+    // Scenario: malformed wallet calls should fail as JSON-RPC invalid
     // params before the SDK is initialized or any Splice service is contacted.
     const rpc = createRpc(withToken(), {
       sdkFactory: async () => {

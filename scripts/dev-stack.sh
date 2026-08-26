@@ -2,10 +2,9 @@
 #
 # dev-stack.sh — start or stop the local Canton dApp stack.
 #
-# The Carpincho wallet lives in its own repository
-# (github.com/BootNodeDev/carpincho-wallet) and is run from there. This script
-# brings up everything the wallet talks to: the Splice LocalNet containers,
-# wallet-service, and the dApp frontend.
+# The CIP-0103 browser wallet lives outside this repository and is run from
+# there. This script brings up everything the wallet talks to: the Splice
+# LocalNet containers, wallet-service, and the dApp frontend.
 #
 # Docker lifecycle is managed separately from the stack: start/quit Docker with
 # `docker-up` / `docker-down` (macOS only), the Docker app, or your CLI. `up`
@@ -190,7 +189,7 @@ up() {
    SV UI                   http://sv.localhost:4000
    PostgreSQL              localhost:5432
 EOF
-  echo "   Run the Carpincho wallet from its own repo (github.com/BootNodeDev/carpincho-wallet) at http://localhost:3011"
+  echo "   Run a CIP-0103 browser wallet from its own repo (it serves on http://localhost:3011)"
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>

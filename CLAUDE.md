@@ -13,8 +13,9 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`dapp/frontend/CLAUDE.md`](dapp/frontend/CLAUDE.md) — app layout and naming deltas; its seams are in [`dapp/frontend/architecture.md`](dapp/frontend/architecture.md)
 - `canton-barebones/`, `dapp/daml/vesting-lite/` — see each subproject's `README.md`
 
-The Carpincho wallet (CIP-0103 browser wallet) lives in its own repository at
-[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet); it is no longer part of this monorepo.
+The dApp connects through any CIP-0103 browser wallet; no wallet lives in this monorepo. This stack
+was developed against Carpincho, which has its own repository at
+[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet).
 
 For the system shape (data flow, components, ports), see [`architecture.md`](architecture.md).
 

@@ -72,7 +72,7 @@ describe('config loader', () => {
   })
 
   it('defaults Splice service URLs for token and Amulet SDK helpers', () => {
-    // Scenario: wallet-service owns SDK helper configuration so Carpincho can
+    // Scenario: wallet-service owns SDK helper configuration so the wallet can
     // keep a single wallet-service URL. LocalNet defaults should match the
     // Splice services exposed by canton-barebones.
     process.env.CANTON_BACKEND_TOKEN = 'explicit.jwt.value'
@@ -88,7 +88,7 @@ describe('config loader', () => {
 
   it('allows Splice service URLs to be overridden by environment', () => {
     // Scenario: non-default LocalNet layouts can move Splice endpoints without
-    // changing Carpincho runtime config. wallet-service reads these values once
+    // changing the wallet runtime config. wallet-service reads these values once
     // at startup and passes them to the SDK namespaces.
     process.env.CANTON_BACKEND_TOKEN = 'explicit.jwt.value'
     process.env.SPLICE_VALIDATOR_URL = 'http://validator.example/api/validator'

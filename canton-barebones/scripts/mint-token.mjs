@@ -72,7 +72,7 @@ const main = () => {
   process.stdout.write(`${token}\n\n`)
   process.stdout.write('For wallet-service:\n')
   process.stdout.write(`  CANTON_BACKEND_TOKEN=${token}\n\n`)
-  process.stdout.write('For Carpincho LocalNet settings:\n')
+  process.stdout.write('For the wallet LocalNet settings:\n')
   process.stdout.write('  Use this token as the LocalNet bearer token.\n')
   process.stdout.write(
     '  You may reuse it for local dev or generate another token with this script.\n',

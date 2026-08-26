@@ -279,7 +279,7 @@ export const rpcError = (
 const unsupported = (id: JsonRpcId, method: string): JsonRpcError =>
   rpcError(id, -32004, 'Method not supported', {
     method,
-    reason: 'This wallet-service has no private keys. Carpincho signs.',
+    reason: 'This wallet-service has no private keys. The wallet signs.',
   })
 
 // SDK rejections are plain JsCantonError objects ({ code, cause, ... }), not
@@ -401,7 +401,7 @@ const isAmuletInstrument = (instrumentId?: TokenInstrumentId): boolean =>
     instrumentId.id.trim().toLowerCase(),
   )
 
-// Creates the same grouping key Carpincho uses for token rows.
+// Creates the same grouping key the wallet uses for token rows.
 const instrumentKey = (instrumentId?: TokenInstrumentId): string =>
   `${instrumentId?.admin ?? 'unknown-admin'}:${instrumentId?.id ?? 'unknown-token'}`
 
@@ -861,7 +861,7 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
     return { commands, disclosedContracts }
   }
 
-  // Normalizes SDK preapproval status into a stable JSON-RPC shape for Carpincho.
+  // Normalizes SDK preapproval status into a stable JSON-RPC shape for the wallet.
   const amuletPreapprovalStatus = async (params: unknown): Promise<AmuletPreapprovalStatus> => {
     const p = objectParam<Record<string, unknown>>(params, 'amulet.preapproval.status')
     const receiver = requiredStringParam(p, 'receiver')
@@ -882,7 +882,7 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
     }
   }
 
-  // Prepares the fixed DevNet tap command so Carpincho can sign as the receiver.
+  // Prepares the fixed DevNet tap command so the wallet can sign as the receiver.
   const amuletTap = async (
     params: unknown,
   ): Promise<{ commands: unknown; disclosedContracts: unknown[] }> => {
@@ -1136,8 +1136,8 @@ export const createRpc = (config: WalletServiceConfig, deps: RpcDependencies = {
   const serviceInfo = (): Record<string, unknown> => ({
     service: 'wallet-service',
     rpcEndpoint: '/rpc',
-    api: 'Carpincho service bridge over JSON-RPC 2.0',
-    dappApi: 'CIP-0103 is exposed by Carpincho over WalletConnect; this service has no signer.',
+    api: 'Wallet service bridge over JSON-RPC 2.0',
+    dappApi: 'CIP-0103 is exposed by the wallet over WalletConnect; this service has no signer.',
     supportedMethods: [
       'status',
       'connect',
