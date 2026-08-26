@@ -34,9 +34,9 @@ export const useCantonConnectContext = (): CantonConnectContextValue => {
 }
 
 /**
- * Props for {@link CantonConnectProvider}. `config` is read field by field, so hoist or memoise
- * `walletPicker` and `additionalAdapters`: a fresh one of either rebuilds the adapters and re-runs
- * discovery on every render.
+ * Props for {@link CantonConnectProvider}. `config` is read once, when the connection actor is
+ * created: a `walletPicker` or `additionalAdapters` swapped later reaches `config` on the context,
+ * never the connection, which keeps the adapters it booted with. Pass the final values first.
  *
  * @example
  * <CantonConnectProvider config={{ appName: 'Vesting' }}>{children}</CantonConnectProvider>

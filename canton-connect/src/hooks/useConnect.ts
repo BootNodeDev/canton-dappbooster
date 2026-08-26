@@ -6,8 +6,8 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
 
 /**
  * Return shape of {@link useConnect}. `connect` opens the picker and rejects with
- * {@link ConnectCancelledError} where the user closed it, which `connectError` mirrors;
- * `disconnect` clears the local party and status even if the wallet's own call fails.
+ * {@link ConnectCancelledError} where the user closed it; `connectError` records failures, not a
+ * cancel the guard saw. `disconnect` clears party and status even if the wallet never answers.
  *
  * @category Hooks
  */

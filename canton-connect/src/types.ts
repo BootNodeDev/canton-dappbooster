@@ -130,7 +130,10 @@ export interface CantonConnectContextValue {
    * locked resolves with no party, since a locked wallet answers no account read.
    */
   connect: () => Promise<void>
-  /** Ends the session, and the party, lock and error with it, even if the SDK's own call fails. */
+  /**
+   * Ends the session, and the party, lock and error with it, even if the SDK's own call fails or
+   * goes unanswered for 10 s.
+   */
   disconnect: () => Promise<void>
   /** Forgets the last connect error. Touches neither the wallet nor the session. */
   resetConnectError: () => void

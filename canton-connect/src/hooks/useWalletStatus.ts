@@ -10,8 +10,9 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
  */
 export interface UseWalletStatusResult {
   /**
-   * Connected-but-locked: a session exists, but must be unlocked to serve requests. The party and
-   * the status are unchanged while locked, because the session is what owns them.
+   * Connected-but-locked: a session exists, but must be unlocked to serve requests. `status` stays
+   * `'connected'`; the party is dropped until the unlock, since a wallet that will not serve
+   * requests has no party to offer.
    */
   isLocked: boolean
   isConnected: boolean
