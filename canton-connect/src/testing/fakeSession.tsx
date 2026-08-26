@@ -157,7 +157,7 @@ export const FakeSessionProvider = ({
       connection,
       connect,
       disconnect,
-      resetConnectError: () => undefined,
+      resetConnectError: () => connection.send({ type: 'connectError.reset' }),
     }),
     [connection, connect, disconnect],
   )
