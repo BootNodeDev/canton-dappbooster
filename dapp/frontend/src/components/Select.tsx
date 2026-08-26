@@ -4,7 +4,7 @@ interface SelectProps<T extends string> {
   className?: string
   label: string
   onChange: (value: T) => void
-  options: { value: T; label: string }[]
+  options: { label: string; value: T }[]
   value: T
 }
 

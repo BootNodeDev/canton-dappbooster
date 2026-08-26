@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckIcon } from '@/icons'
 import { cn } from '@/utils/cn'
@@ -12,14 +11,6 @@ const toneStyles: Record<ToastTone, string> = {
 
 export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
   const dismiss = useToastStore((s) => s.dismiss)
-  const stays = item.sticky === true || item.action !== undefined
-  useEffect(() => {
-    if (stays) {
-      return
-    }
-    const timer = setTimeout(() => dismiss(item.id), 3200)
-    return () => clearTimeout(timer)
-  }, [item.id, dismiss, stays])
   return (
     <div
       className={cn(

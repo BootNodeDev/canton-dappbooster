@@ -1,15 +1,16 @@
 import { TokenInput, validateAmount } from '@bootnodedev/canton-dappbooster'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
-import { useToken } from '@/hooks/useToken'
+import { SpinnerIcon } from '@/icons'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
-import { formatCC, formatCCFull } from '@/utils/format'
+import { formatCCFull } from '@/utils/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
+import { CC } from '@/utils/tokens'
 
 interface ClaimProps {
   available: string
@@ -28,21 +29,8 @@ export const Claim = ({
   available,
   onConfirm,
 }: ClaimProps): React.JSX.Element => {
-  const [token, setToken] = useToken()
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  // Seed the max only on the open transition: `available` reticks each second on a live grant, and
-  // re-seeding would overwrite what the user types.
-  const seeded = useRef(false)
-  useEffect(() => {
-    if (open && !seeded.current) {
-      seeded.current = true
-      setRaw(available)
-    } else if (!open) {
-      seeded.current = false
-    }
-  }, [open, available])
 
   // Recomputed from `available` rather than stored from the last keystroke: it drops each second
   // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
@@ -66,7 +54,9 @@ export const Claim = ({
     setSubmitting(true)
     try {
       await onConfirm(raw)
-      toast.success(`Claimed ${formatCC(raw)} CC`)
+      // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
+      // tooltip to recover the digits from.
+      toast.success(`Claimed ${formatCCFull(raw)} ${CC.symbol}`)
       onClose()
     } catch (err) {
       toast.error(errorText(err))
@@ -76,33 +66,36 @@ export const Claim = ({
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={title}
-      description={`Available to claim: ${formatCCFull(available)} CC`}
-    >
+    <Modal open={open} onClose={onClose} title={title}>
       <TokenInput
         aria-describedby={message === undefined ? undefined : 'claim-amount-error'}
         balance={available}
+        className="border-0 p-0"
         id="claim-amount"
-        label="Amount"
+        label="Available to claim"
         onChange={(next) => setRaw(next)}
-        onTokenSelect={setToken}
-        token={token}
+        token={CC}
+        usdValue="Not Available"
         value={raw}
       />
       {message !== undefined && (
         <FieldError id="claim-amount-error" message={message} className="mt-2" />
       )}
-      <div className="mt-6 flex justify-end gap-2.5">
-        <Button variant="secondary" size="sm" onClick={onClose} disabled={submitting}>
-          Cancel
-        </Button>
-        <Button size="sm" onClick={() => void submit()} disabled={!valid || submitting}>
-          {submitting ? 'Submitting…' : 'Claim'}
-        </Button>
-      </div>
+      <Button
+        className="mt-6 w-full"
+        size="sm"
+        onClick={() => void submit()}
+        disabled={!valid || submitting}
+      >
+        {submitting ? (
+          <>
+            <SpinnerIcon width={16} height={16} />
+            Submitting…
+          </>
+        ) : (
+          'Claim'
+        )}
+      </Button>
     </Modal>
   )
 }

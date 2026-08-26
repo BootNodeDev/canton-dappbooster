@@ -21,9 +21,20 @@ export interface CreateVestInput {
   totalAmount: string
 }
 
+// One `Contract_Claim` off the ledger: the amount and ledger time from the transaction, plus the
+// two contract ids it sits between. `replaces` is what the claim consumed and `grant` what it
+// created, so a caller can walk a grant's ancestry rather than match on fields two grants can share.
+export interface ClaimRecord {
+  amount: string
+  at: string
+  grant: Grant
+  replaces: string
+}
+
 export interface VestingBackend {
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
+  claimHistory(partyId: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   viewAs(partyId: string): Promise<VestingView>
@@ -138,6 +149,64 @@ export const rowToGrant = (row: AcsRow): Grant | undefined => {
     note: base.note,
   }
 }
+
+// A ledger-effects transaction, as `/v2/updates` returns it. Only the two events a claim produces
+// are read: the exercise carries the amount, the create carries which grant it left behind.
+type UpdateEntry = {
+  update?: {
+    Transaction?: {
+      value?: {
+        effectiveAt?: string
+        events?: {
+          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          ExercisedEvent?: {
+            choice?: string
+            choiceArgument?: Record<string, unknown>
+            contractId?: string
+          }
+        }[]
+        offset?: number
+      }
+    }
+  }
+}
+
+// Where a page of updates ended, which is where the next one resumes.
+export const lastUpdateOffset = (updates: unknown): number | undefined => {
+  const entries = Array.isArray(updates) ? (updates as UpdateEntry[]) : []
+  return entries.at(-1)?.update?.Transaction?.value?.offset
+}
+
+export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
+  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
+    const transaction = entry.update?.Transaction?.value
+    const events = transaction?.events ?? []
+    const claim = events.find(
+      (event) => event.ExercisedEvent?.choice === 'Contract_Claim',
+    )?.ExercisedEvent
+    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
+    const amount = claim?.choiceArgument?.amount
+    const replaces = claim?.contractId
+    if (
+      created === undefined ||
+      transaction?.effectiveAt === undefined ||
+      amount === undefined ||
+      replaces === undefined
+    ) {
+      return []
+    }
+    const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
+    return grant === undefined
+      ? []
+      : [
+          {
+            amount: amountOf(amount, 'amount', grant.id),
+            at: transaction.effectiveAt,
+            grant,
+            replaces,
+          },
+        ]
+  })
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
   const base = decodeBase(row)

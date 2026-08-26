@@ -11,6 +11,9 @@ import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
+import { DateField } from '@/components/CreateGrant/DateField'
+import { atMidnight, dateOf, inputClass, labelClass } from '@/components/CreateGrant/fields'
+import { LiveScheduleCurve } from '@/components/CreateGrant/LiveScheduleCurve'
 import { FieldError } from '@/components/FieldError'
 import { InfoTip } from '@/components/InfoTip'
 import { Modal } from '@/components/Modal'
@@ -18,9 +21,6 @@ import { Select } from '@/components/Select'
 import { useParty } from '@/hooks/useParty'
 import { useToken } from '@/hooks/useToken'
 import { TrashIcon } from '@/icons'
-import { DateField } from '@/pages/Dashboard/CreateGrant/DateField'
-import { atMidnight, dateOf, inputClass, labelClass } from '@/pages/Dashboard/CreateGrant/fields'
-import { LiveScheduleCurve } from '@/pages/Dashboard/CreateGrant/LiveScheduleCurve'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
@@ -310,12 +310,13 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
             <div>
               <TokenInput
                 aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
-                className={'w-full'}
+                className="w-full border-0 p-0"
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
                 onTokenSelect={setToken}
                 token={token}
+                usdValue="Not Available"
                 value={amount}
               />
               {amountMessage !== undefined && (
@@ -480,7 +481,7 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
 
           {backend === undefined ? (
             <div className="mt-6">
-              <ConnectPrompt description="Creating a grant submits a command your wallet has to sign." />
+              <ConnectPrompt />
             </div>
           ) : (
             <p className="mt-5 text-xs text-fg-muted">

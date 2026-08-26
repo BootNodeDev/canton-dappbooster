@@ -4,6 +4,8 @@ import { Logo } from '@/components/TopBar/Logo'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useParty } from '@/hooks/useParty'
+import { SpinnerIcon } from '@/icons'
+import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
 
@@ -14,6 +16,7 @@ const items = [
 
 export const TopBar = (): React.JSX.Element => {
   const { party } = useParty()
+  const { sessionPending } = useBackend()
   const proposals = useVestingStore((s) => s.proposals)
   const incoming =
     party === undefined ? 0 : proposals.filter((p) => p.receiver === party.partyId).length
@@ -47,8 +50,17 @@ export const TopBar = (): React.JSX.Element => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <ConnectButton avatar={(partyId) => <PartyAvatar partyId={partyId} />} />
           <ThemeToggle />
+          {sessionPending ? (
+            <span
+              role="status"
+              className="inline-flex size-9 items-center justify-center text-fg-muted"
+            >
+              <SpinnerIcon width={18} height={18} />
+            </span>
+          ) : (
+            <ConnectButton avatar={(partyId) => <PartyAvatar partyId={partyId} />} />
+          )}
         </div>
       </div>
     </header>

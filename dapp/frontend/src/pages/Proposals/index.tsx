@@ -1,11 +1,15 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
+import { CreateGrant } from '@/components/CreateGrant'
 import { EmptyState } from '@/components/EmptyState'
+import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { RoleSelect } from '@/components/RoleSelect'
+import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { ProposalCard } from '@/pages/Proposals/ProposalCard'
+import { useBackend } from '@/providers/Backend'
 import type { Proposal } from '@/store/types'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
@@ -15,8 +19,11 @@ import { toast } from '@/utils/toast'
 export const Proposals = (): React.JSX.Element => {
   const nowMs = useNow()
   const { backend, partyId } = useVesting()
+  const { sessionPending } = useBackend()
   const [role, setRole] = useRoleLens()
+  const [creating, setCreating] = useCreateGrant()
   const proposals = useVestingStore((s) => s.proposals)
+  const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
 
   const direction = role === 'receiver' ? 'incoming' : 'outgoing'
@@ -30,9 +37,7 @@ export const Proposals = (): React.JSX.Element => {
 
   // Above the handler, so it closes over a backend that is known to exist.
   if (backend === undefined) {
-    return (
-      <ConnectPrompt description="Proposals sent to you, and the ones you have sent, are read from the ledger as your connected party." />
-    )
+    return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
   const onAccept = async (proposal: Proposal): Promise<void> => {
@@ -51,17 +56,18 @@ export const Proposals = (): React.JSX.Element => {
       <div className="flex flex-wrap items-center justify-end gap-3">
         <RoleSelect value={role} onChange={setRole} />
       </div>
-      {visible.length === 0 ? (
+      {loading && proposals.length === 0 ? (
+        <Loading />
+      ) : visible.length === 0 ? (
         <EmptyState
-          title={direction === 'incoming' ? 'No pending proposals' : 'No outstanding offers'}
-          description={
+          title={
             direction === 'incoming'
-              ? 'Grant proposals sent to you will appear here to accept.'
-              : 'Grants you propose to others appear here until they are accepted.'
+              ? 'No grant proposals pending your approval'
+              : 'No grants created by you are waiting to be approved'
           }
           action={
             role === 'funder' ? (
-              <Button asLink to="/create" size="sm">
+              <Button size="sm" onClick={() => setCreating(true)}>
                 Create a grant
               </Button>
             ) : undefined
@@ -80,6 +86,8 @@ export const Proposals = (): React.JSX.Element => {
           ))}
         </div>
       )}
+
+      {creating && <CreateGrant open onClose={() => setCreating(false)} />}
     </div>
   )
 }

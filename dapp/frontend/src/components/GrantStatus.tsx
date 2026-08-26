@@ -1,5 +1,5 @@
 import { StatusPill } from '@/components/StatusPill'
-import { LockIcon } from '@/icons'
+import { CheckIcon, LockIcon } from '@/icons'
 import type { GrantStatus } from '@/store/useVestingStore'
 
 const LABEL: Record<GrantStatus, string> = {
@@ -9,26 +9,22 @@ const LABEL: Record<GrantStatus, string> = {
   fully_vested: 'Fully vested',
 }
 
-const WAITING_ON: Record<'in_cliff' | 'not_started', string> = {
-  in_cliff: 'Locked until cliff',
-  not_started: 'Nothing vested yet',
-}
-
 export const GrantStatusPill = ({ status }: { status: GrantStatus }): React.JSX.Element => (
   <StatusPill tone={status === 'vesting' || status === 'fully_vested' ? 'success' : 'neutral'}>
     {LABEL[status]}
   </StatusPill>
 )
 
-// Stands in for the claim button while nothing is claimable, saying which wait it is.
-export const GrantLock = ({
-  status,
-  className,
-}: {
-  status: 'in_cliff' | 'not_started'
-  className?: string
-}): React.JSX.Element => (
+// Stands in for the claim button while nothing is claimable.
+export const GrantLock = ({ className }: { className?: string }): React.JSX.Element => (
   <span className={className}>
-    <LockIcon width={14} height={14} /> {WAITING_ON[status]}
+    <LockIcon width={14} height={14} /> Locked
+  </span>
+)
+
+// Stands in for the claim button once the grant has been drained.
+export const GrantClaimed = ({ className }: { className?: string }): React.JSX.Element => (
+  <span className={className}>
+    <CheckIcon width={14} height={14} /> Fully claimed
   </span>
 )

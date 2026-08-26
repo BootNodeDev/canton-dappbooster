@@ -107,6 +107,7 @@ const raceBackend = (routes: Record<string, Promise<VestingView>>): VestingBacke
     withdraw: async () => {},
     cancel: async () => {},
     claimResidual: async () => {},
+    claimHistory: async () => [],
   }) as unknown as VestingBackend
 
 describe('useVestingStore.refresh', () => {
@@ -145,12 +146,11 @@ describe('useVestingStore.refresh', () => {
 })
 
 describe('useVestingStore.clear', () => {
-  it('drops the previous party rows, its history and its error', () => {
+  it('drops the previous party rows and its error', () => {
     useVestingStore.setState({
       grants: [grant()],
       proposals: [],
       claims: [],
-      history: [{ id: 'wd-1', lineage: 'whatever', amount: '5', at: '2026-01-01T00:00:00.000Z' }],
       error: 'stale failure',
     })
 
@@ -158,7 +158,6 @@ describe('useVestingStore.clear', () => {
 
     const state = useVestingStore.getState()
     expect(state.grants).toEqual([])
-    expect(state.history).toEqual([])
     expect(state.error).toBeUndefined()
   })
 })
@@ -187,7 +186,7 @@ describe('useVestingStore.withdraw', () => {
     }) as unknown as VestingBackend
 
   it('returns the successor contract id the claim created', async () => {
-    useVestingStore.setState({ grants: [grant('0')], history: [] })
+    useVestingStore.setState({ grants: [grant('0')] })
 
     const next = await useVestingStore
       .getState()
@@ -196,14 +195,29 @@ describe('useVestingStore.withdraw', () => {
     expect(next).toBe('g2')
   })
 
-  it('keys the history entry on the lineage, so it still matches after the claim', async () => {
-    useVestingStore.setState({ grants: [grant('0')], history: [] })
+  it('finds the successor by lineage, which the claim leaves untouched', async () => {
+    useVestingStore.setState({ grants: [grant('0')] })
 
     await useVestingStore.getState().withdraw(claimedBackend('g2'), 'r::1', 'g1', '250')
 
-    const [event] = useVestingStore.getState().history
-    expect(event?.amount).toBe('250')
     expect(useVestingStore.getState().grants[0]?.id).toBe('g2')
-    expect(event?.lineage).toBe(grantLineage(grant('250')))
+    expect(grantLineage(grant('250'))).toBe(grantLineage(grant('0')))
+  })
+
+  it('picks the new id when an identical twin grant shares the lineage', async () => {
+    const twin: Grant = { ...grant('0'), id: 'twin' }
+    useVestingStore.setState({ grants: [grant('0'), twin] })
+    const backend = {
+      viewAs: async () => ({
+        grants: [twin, { ...grant('250'), id: 'g2' }],
+        proposals: [],
+        claims: [],
+      }),
+      withdraw: async () => {},
+    } as unknown as VestingBackend
+
+    const next = await useVestingStore.getState().withdraw(backend, 'r::1', 'g1', '250')
+
+    expect(next).toBe('g2')
   })
 })

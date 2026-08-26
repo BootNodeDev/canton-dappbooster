@@ -3,6 +3,7 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
+import { SpinnerIcon } from '@/icons'
 import type { Grant } from '@/store/types'
 import { deriveGrant } from '@/store/useVestingStore'
 import { errorText } from '@/utils/errorText'
@@ -68,20 +69,23 @@ export const CancelGrant = ({
             message={`The residual must be 0 or at least ${MIN_GRANT_AMOUNT} CC. Cancel once more has vested, or let the receiver claim it down to zero.`}
           />
         )}
-        <div className="flex justify-end gap-2.5">
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={submitting}>
-            Keep grant
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => void submit()}
-            disabled={submitting || !floorOk}
-            aria-describedby={floorOk ? undefined : 'cancel-residual-floor'}
-          >
-            {submitting ? 'Submitting…' : 'Cancel grant'}
-          </Button>
-        </div>
+        <Button
+          className="mt-2 w-full"
+          variant="danger"
+          size="sm"
+          onClick={() => void submit()}
+          disabled={submitting || !floorOk}
+          aria-describedby={floorOk ? undefined : 'cancel-residual-floor'}
+        >
+          {submitting ? (
+            <>
+              <SpinnerIcon width={16} height={16} />
+              Submitting…
+            </>
+          ) : (
+            'Cancel grant'
+          )}
+        </Button>
       </div>
     </Modal>
   )

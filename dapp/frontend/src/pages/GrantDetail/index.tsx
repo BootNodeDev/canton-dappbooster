@@ -1,66 +1,104 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import type { ClaimRecord } from '@/backend/VestingBackend'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
 import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
-import { GrantLock, GrantStatusPill } from '@/components/GrantStatus'
+import { EmptyState } from '@/components/EmptyState'
+import { GrantClaimed, GrantLock, GrantStatusPill } from '@/components/GrantStatus'
+import { KpiCard } from '@/components/KpiCard'
+import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { StatusPill } from '@/components/StatusPill'
-import { ArrowLeftIcon } from '@/icons'
+import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
-import { deriveGrant, grantLineage, useVesting, useVestingStore } from '@/store/useVestingStore'
+import { useBackend } from '@/providers/Backend'
+import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
-import { formatCC, formatDate } from '@/utils/format'
+import { formatCCCompact, formatDate } from '@/utils/format'
 import { copyToast } from '@/utils/toast'
-
-const Stat = ({
-  label,
-  amount,
-  tone,
-}: {
-  label: string
-  amount: string
-  tone?: string
-}): React.JSX.Element => (
-  <div className="rounded-xl border border-border bg-bg/40 p-4">
-    <div className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-fg-muted">
-      {label}
-    </div>
-    <AmountDisplay value={amount} className={`mt-1 text-lg font-semibold ${tone ?? 'text-fg'}`} />
-  </div>
-)
 
 export const GrantDetail = (): React.JSX.Element => {
   const nowMs = useNow()
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const { backend, partyId } = useVesting()
+  const { sessionPending } = useBackend()
   const grant = useVestingStore((s) => s.grants.find((g) => g.id === id))
-  const history = useVestingStore((s) => s.history)
+  const loading = useVestingStore((s) => s.loading)
   const withdraw = useVestingStore((s) => s.withdraw)
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  // Undefined until the read lands, which is what the card shows a spinner for. Re-read whenever
+  // the contract id changes, since a claim of ours is exactly what replaces it.
+  const [claims, setClaims] = useState<ClaimRecord[] | undefined>(undefined)
+
+  const contractId = grant?.id
+
+  useEffect(() => {
+    if (backend === undefined || partyId === '' || contractId === undefined) {
+      return
+    }
+    let cancelled = false
+    setClaims(undefined)
+    void backend.claimHistory(partyId).then(
+      (records) => {
+        if (!cancelled) setClaims(records)
+      },
+      () => {
+        if (!cancelled) setClaims([])
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [backend, partyId, contractId])
+
+  // A claim consumes the contract and creates its successor, so a grant's history is its ancestry:
+  // walk back from the id on screen. Matching on the fields instead merges two grants a funder made
+  // identical, and the walk arrives newest-first, which is the order the card wants.
+  const grantClaims = useMemo(() => {
+    if (claims === undefined || contractId === undefined) {
+      return undefined
+    }
+    const bySuccessor = new Map(claims.map((record) => [record.grant.id, record]))
+    const history: ClaimRecord[] = []
+    for (
+      let record = bySuccessor.get(contractId);
+      record !== undefined;
+      record = bySuccessor.get(record.replaces)
+    ) {
+      history.push(record)
+    }
+    return history
+  }, [claims, contractId])
 
   if (backend === undefined) {
-    return (
-      <ConnectPrompt description="This grant is read from the ledger as your connected party." />
-    )
+    return sessionPending ? <Loading /> : <ConnectPrompt />
+  }
+
+  // Without this a direct link reads as a missing grant until the first ACS read lands.
+  if (grant === undefined && loading) {
+    return <Loading />
   }
 
   if (grant === undefined) {
     return (
-      <Card className="p-10 text-center">
-        <h2 className="text-lg font-bold text-fg">Grant not found</h2>
-        <p className="mt-1 text-sm text-fg-muted">It may have been fully claimed or cancelled.</p>
-        <Button asLink to="/" size="sm" className="mt-4">
-          Back to grants
-        </Button>
-      </Card>
+      <EmptyState
+        title="Grant not found"
+        description="It may have been fully claimed or cancelled."
+        action={
+          <Button asLink to="/" size="sm">
+            Back to grants
+          </Button>
+        }
+      />
     )
   }
 
@@ -68,21 +106,22 @@ export const GrantDetail = (): React.JSX.Element => {
   const isReceiver = grant.receiver === partyId
   const isCreator = grant.creator === partyId
   const isMilestone = grant.schedule.curve.kind === 'milestone'
-  const lineage = grantLineage(grant)
-  const grantHistory = history.filter((h) => h.lineage === lineage)
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        to="/"
+      {/* A real history back, so the dashboard's lens and scroll return with it; a deep link has no
+          entry to go back to, hence the fallback. */}
+      <button
+        type="button"
+        onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg"
       >
         <ArrowLeftIcon width={16} height={16} /> Back
-      </Link>
+      </button>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-fg">{grant.title}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-2xl font-extrabold tracking-tight text-fg">{grant.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusPill tone={isMilestone ? 'milestone' : 'linear'}>
               {isMilestone ? 'Milestone' : 'Linear'}
@@ -92,18 +131,17 @@ export const GrantDetail = (): React.JSX.Element => {
         </div>
         <div className="flex gap-2.5">
           {isReceiver &&
-            (derived.locked ? (
-              <GrantLock
-                status={derived.status === 'in_cliff' ? 'in_cliff' : 'not_started'}
-                className="inline-flex items-center gap-1.5 self-center font-mono text-xs text-fg-muted"
-              />
+            (derived.fullyClaimed ? (
+              <GrantClaimed className="inline-flex items-center gap-1.5 self-center font-mono text-xs text-fg-muted" />
+            ) : derived.locked ? (
+              <GrantLock className="inline-flex items-center gap-1.5 self-center font-mono text-xs text-fg-muted" />
             ) : (
               <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
-                Claim {formatCC(derived.claimable)} CC
+                Claim {formatCCCompact(derived.claimable)} CC
               </Button>
             ))}
           {isCreator && (
-            <Button variant="danger" onClick={() => setCancelOpen(true)}>
+            <Button size="sm" variant="danger" onClick={() => setCancelOpen(true)}>
               Cancel grant
             </Button>
           )}
@@ -111,11 +149,11 @@ export const GrantDetail = (): React.JSX.Element => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Stat label="Total" amount={grant.totalAmount} />
-        <Stat label="Vested" amount={derived.vested} />
-        <Stat label="Claimable" amount={derived.claimable} tone="text-success" />
-        <Stat label="Claimed" amount={derived.claimed} tone="text-fg-muted" />
-        <Stat label="Unvested" amount={derived.unvested} tone="text-fg-muted" />
+        <KpiCard label="Total" amount={grant.totalAmount} />
+        <KpiCard label="Vested" amount={derived.vested} />
+        <KpiCard label="Claimable" amount={derived.claimable} tone="success" />
+        <KpiCard label="Claimed" amount={derived.claimed} tone="muted" />
+        <KpiCard label="Unvested" amount={derived.unvested} tone="muted" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
@@ -186,25 +224,28 @@ export const GrantDetail = (): React.JSX.Element => {
               </div>
             ))}
           </dl>
-          {grant.note !== undefined && (
-            <p className="mt-4 border-t border-border pt-4 text-sm text-fg-muted">{grant.note}</p>
-          )}
         </Card>
 
         <Card className="p-6">
           <h2 className="text-sm font-extrabold text-fg">Withdraw history</h2>
-          {grantHistory.length === 0 ? (
-            <p className="mt-4 text-sm text-fg-muted">No withdrawals this session.</p>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-2.5">
-              {grantHistory.map((h) => (
-                <li key={h.id} className="flex items-center justify-between text-sm">
-                  <span className="font-mono text-xs text-fg-muted">{formatDate(h.at)}</span>
-                  <span className="font-mono font-semibold text-fg">{formatCC(h.amount)} CC</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mt-4 h-40 overflow-y-auto">
+            {grantClaims === undefined ? (
+              <div className="flex h-full items-center justify-center text-fg-muted">
+                <SpinnerIcon width={20} height={20} />
+              </div>
+            ) : grantClaims.length === 0 ? (
+              <p className="text-sm text-fg-muted">No withdrawals yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2.5 pr-1">
+                {grantClaims.map((record) => (
+                  <li key={record.grant.id} className="flex items-center justify-between text-sm">
+                    <span className="font-mono text-xs text-fg-muted">{formatDate(record.at)}</span>
+                    <AmountDisplay value={record.amount} className="font-semibold" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </Card>
       </div>
 

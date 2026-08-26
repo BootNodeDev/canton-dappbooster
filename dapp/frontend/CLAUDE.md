@@ -20,6 +20,23 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
 - `providers/` names what it provides, not the role the folder already states: `Backend`, not
   `BackendProvider`.
 
+## Shared pieces to reach for
+
+One implementation each, so a second one is a bug and not a choice:
+
+- **Hover explanation: `components/InfoTip`.** Never a native `title` (a one-second delay, no touch,
+  unstyled) and never a hand-rolled bubble. With a string child it dash-underlines the words; with an
+  element it does not, so an icon trigger is a legal child. Childless it is a `?` badge.
+- **A figure: `components/AmountDisplay`.** It owns the grouping, the forced two decimals, and the
+  Canton Coin mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
+  Where the surrounding text already spells out the unit, reach for `components/CompactAmount`, the
+  same figure without the mark: it is what keeps the exact value in a tooltip and in the accessible
+  name once an outsized amount is abbreviated, so a hand-rolled `formatCCCompact` loses it.
+- **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
+  own buttons take a `className` but cannot render ours.
+- **A blank state: `components/EmptyState`,** and `components/Loading` while a first read is in
+  flight. `Loading` is for an empty collection only: a refresh after a write keeps its rows.
+
 ## Naming
 
 - No name repeats what its folder, its parent, or its own markup already says. `Claim`, not

@@ -16,7 +16,7 @@ interfaces carry that, and every other decision hangs off them.
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useToken` holds one field's token selection. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.ts`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
 | `src/components/` | What two or more places render: the shell, the top bar, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
 | `src/pages/` | Dashboard, proposals and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
@@ -117,7 +117,7 @@ downstream.
 Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
 holds no truncation or copy-to-clipboard logic of its own.
 
-Entry is the other half. [`CreateGrant`](src/pages/Dashboard/CreateGrant/index.tsx)'s receiver field is
+Entry is the other half. [`CreateGrant`](src/components/CreateGrant/index.tsx)'s receiver field is
 the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
 the two can never disagree about what a party id is. Party ids are exact strings here: nothing
 trims, so a stray space is invalid rather than silently stripped on the way to the ledger.
@@ -129,14 +129,14 @@ rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rathe
 `canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
 [`src/styles/index.css`](src/styles/index.css)).
 
-Amounts run that same split twice more. [`CreateGrant`](src/pages/Dashboard/CreateGrant/index.tsx)'s
+Amounts run that same split twice more. [`CreateGrant`](src/components/CreateGrant/index.tsx)'s
 total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 `<TokenInput>`: the field sets `aria-invalid` and reports an error *code*, and this app words it
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
 Both fields also open the kit's token picker, and the list it shows is one entry:
-[`src/utils/tokens.ts`](src/utils/tokens.ts) holds `CC` and nothing else, because that is the only
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `CC` and nothing else, because that is the only
 instrument this deployment knows. The pick is display-only — it relabels the field, and the re-lock
 floor's wording, the claim toast, and the grant that gets created are all still Canton Coin. The
 picker is wired ahead of a second instrument on purpose.

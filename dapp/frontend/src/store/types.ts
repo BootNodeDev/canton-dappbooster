@@ -48,12 +48,3 @@ export interface VestedClaim {
 }
 
 export type Role = 'receiver' | 'funder'
-
-// A single record of a completed withdraw, for the grant-detail history list. Keyed on the grant's
-// lineage rather than its contract id, which the claim itself replaces.
-export interface WithdrawEvent {
-  amount: string
-  at: string
-  id: string
-  lineage: string
-}

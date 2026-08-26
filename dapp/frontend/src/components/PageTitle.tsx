@@ -4,8 +4,8 @@ export const PageTitle = ({
   title,
   action,
 }: {
-  title: string
   action?: ReactNode
+  title: string
 }): React.JSX.Element => (
   <div className="flex flex-wrap items-center gap-4 border-b border-border pb-4">
     <h1 className="text-xl font-extrabold tracking-tight text-fg">{title}</h1>

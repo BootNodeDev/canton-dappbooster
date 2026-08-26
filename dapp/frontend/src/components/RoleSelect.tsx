@@ -1,7 +1,7 @@
 import { Select } from '@/components/Select'
 import type { Role } from '@/store/types'
 
-const roles: { value: Role; label: string }[] = [
+const roles: { label: string; value: Role }[] = [
   { value: 'receiver', label: 'Receiver' },
   { value: 'funder', label: 'Funder' },
 ]
@@ -12,8 +12,8 @@ export const RoleSelect = ({
   value,
   onChange,
 }: {
-  value: Role
   onChange: (role: Role) => void
+  value: Role
 }): React.JSX.Element => (
   <Select label="View as" value={value} options={roles} onChange={onChange} />
 )

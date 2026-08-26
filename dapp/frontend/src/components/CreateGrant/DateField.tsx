@@ -1,4 +1,4 @@
-import { atMidnight, dateOf, inputClass, labelClass } from '@/pages/Dashboard/CreateGrant/fields'
+import { atMidnight, dateOf, inputClass, labelClass } from '@/components/CreateGrant/fields'
 
 // One of the schedule's three labelled dates. It hands back a full ISO string, so the caller never
 // sees the calendar-day form the input binds to.
@@ -9,11 +9,11 @@ export const DateField = ({
   onChange,
   className,
 }: {
+  className?: string
   id: string
   label: string
-  value: string
   onChange: (iso: string) => void
-  className?: string
+  value: string
 }): React.JSX.Element => (
   <div className={className}>
     <label htmlFor={id} className={labelClass}>

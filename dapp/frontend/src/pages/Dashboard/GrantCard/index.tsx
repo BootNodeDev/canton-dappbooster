@@ -4,18 +4,21 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CounterpartyId } from '@/components/CounterpartyId'
-import { GrantLock, GrantStatusPill } from '@/components/GrantStatus'
+import { GrantClaimed, GrantLock, GrantStatusPill } from '@/components/GrantStatus'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
+import { EyeIcon, TrashIcon } from '@/icons'
 import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
+import { cn } from '@/utils/cn'
 import { EXPLORER } from '@/utils/config'
 import { formatDate, formatPct, relativeTime } from '@/utils/format'
 import { nextMilestone } from '@/utils/schedule'
 
 interface GrantCardProps {
+  className?: string
   derived: GrantDerived
   grant: Grant
   nowMs: number
@@ -38,7 +41,9 @@ const scheduleMeta = (
     }
   }
   if (derived.status === 'fully_vested') {
-    return { value: 'Fully vested' }
+    const curve = grant.schedule.curve
+    const end = curve.kind === 'linear' ? curve.end : curve.points[curve.points.length - 1].time
+    return { prefix: 'Ended', value: relativeTime(end, nowMs), date: formatDate(end) }
   }
   if (grant.schedule.curve.kind === 'linear') {
     return { prefix: 'Ends', value: formatDate(grant.schedule.curve.end) }
@@ -54,6 +59,7 @@ export const GrantCard = ({
   derived,
   role,
   nowMs,
+  className,
   onClaim,
   onCancel,
 }: GrantCardProps): React.JSX.Element => {
@@ -65,11 +71,16 @@ export const GrantCard = ({
   const meta = scheduleMeta(grant, derived, nowMs)
 
   return (
-    <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
+    <Card
+      className={cn(
+        'grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7',
+        className,
+      )}
+    >
       <div className="min-w-0">
         <Link
           to={`/grants/${grant.id}`}
-          className="text-base font-bold tracking-tight text-fg transition-colors hover:text-primary"
+          className="block truncate text-base font-bold tracking-tight text-fg transition-colors hover:text-primary"
         >
           {grant.title}
         </Link>
@@ -92,7 +103,7 @@ export const GrantCard = ({
         <div className="mb-2 flex items-center justify-between text-xs text-fg-muted">
           <span>Vested {formatPct(derived.fraction)}</span>
           <span className="flex items-center gap-1">
-            {meta.prefix}
+            {meta.prefix !== undefined && <span>{meta.prefix}</span>}
             {meta.date === undefined ? (
               meta.value
             ) : (
@@ -127,11 +138,10 @@ export const GrantCard = ({
                 className="text-xl font-semibold text-success"
               />
             </div>
-            {derived.locked ? (
-              <GrantLock
-                status={derived.status === 'in_cliff' ? 'in_cliff' : 'not_started'}
-                className="inline-flex items-center justify-center gap-1.5 font-mono text-xs text-fg-muted"
-              />
+            {derived.fullyClaimed ? (
+              <GrantClaimed className="inline-flex items-center justify-center gap-1.5 font-mono text-xs text-fg-muted" />
+            ) : derived.locked ? (
+              <GrantLock className="inline-flex items-center justify-center gap-1.5 font-mono text-xs text-fg-muted" />
             ) : (
               <Button
                 size="sm"
@@ -152,11 +162,22 @@ export const GrantCard = ({
               <AmountDisplay value={derived.unvested} className="text-xl font-semibold text-fg" />
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="secondary" asLink to={`/grants/${grant.id}`}>
-                Details
+              <Button
+                aria-label="Grant details"
+                size="icon"
+                variant="ghost"
+                asLink
+                to={`/grants/${grant.id}`}
+              >
+                <EyeIcon width={16} height={16} />
               </Button>
-              <Button size="sm" variant="danger" onClick={() => onCancel?.(grant)}>
-                Cancel
+              <Button
+                aria-label="Cancel grant"
+                size="icon"
+                variant="danger-ghost"
+                onClick={() => onCancel?.(grant)}
+              >
+                <TrashIcon width={16} height={16} />
               </Button>
             </div>
           </>

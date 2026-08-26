@@ -14,17 +14,13 @@ export const AppShell = (): React.JSX.Element => {
     <div className="flex min-h-screen">
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8">
-          {/* The card swaps in asynchronously with no focus move, so `role="alert"` is what
-              carries it to a reader. */}
+        <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8">
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <h2 className="text-base font-bold text-danger">No deployment</h2>
               <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
             </Card>
           )}
-          {/* Every page needs the deployment, so none mounts before it has resolved either way: a
-              page without one renders a connect placeholder a connected user does not need. */}
           {configError === undefined && !configPending && <Outlet />}
         </main>
         <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
@@ -32,7 +28,6 @@ export const AppShell = (): React.JSX.Element => {
           Canton · direct ledger
         </footer>
       </div>
-      {/* Inside the router: a toast can carry a `<Link>`, which throws without router context. */}
       <Toaster />
     </div>
   )

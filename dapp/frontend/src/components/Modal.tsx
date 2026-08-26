@@ -75,7 +75,7 @@ export const Modal = ({
       {open && (
         <div
           className={cn(
-            'relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
+            'relative w-full max-w-md overflow-x-clip rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
             className,
           )}
         >

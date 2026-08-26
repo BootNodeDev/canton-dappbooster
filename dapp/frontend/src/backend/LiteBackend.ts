@@ -11,11 +11,14 @@ import {
 import type { Deployment } from '@/backend/config'
 import {
   type AcsRow,
+  type ClaimRecord,
   type CreateVestInput,
   composeNote,
+  lastUpdateOffset,
   rowToClaim,
   rowToGrant,
   rowToProposal,
+  updatesToClaims,
   type VestingBackend,
   type VestingView,
 } from '@/backend/VestingBackend'
@@ -23,6 +26,15 @@ import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wall
 
 const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
   rows.map(mapper).filter((value): value is T => value !== undefined)
+
+// A page of claims, and how long the stream may sit quiet before it returns what it has: the
+// endpoint is a stream, so without the idle timeout the read never completes.
+const CLAIM_HISTORY_LIMIT = 1000
+const STREAM_IDLE_MS = 1000
+// `limit` counts forward from `beginExclusive` and the endpoint offers no reverse order, so a party
+// past one page keeps its oldest claims and loses the recent ones unless the pages are followed.
+// Bounded so an offset that fails to advance cannot spin.
+const CLAIM_HISTORY_PAGES = 20
 
 export class LiteBackend implements VestingBackend {
   private readonly wallet: WalletFns
@@ -123,6 +135,62 @@ export class LiteBackend implements VestingBackend {
     })
     await this.submit(args.proposer, command, [this.factory])
     return { disclosedBytes: this.factory.createdEventBlob.length }
+  }
+
+  // `TRANSACTION_SHAPE_LEDGER_EFFECTS` is what carries the exercise; the default ACS-delta shape
+  // would only show the contract being replaced.
+  private readUpdates(
+    partyId: string,
+    beginExclusive: string | number,
+    endInclusive: string | number,
+  ): Promise<unknown> {
+    return this.wallet.ledgerApi({
+      requestMethod: 'post',
+      resource: '/v2/updates',
+      query: { limit: CLAIM_HISTORY_LIMIT, stream_idle_timeout_ms: STREAM_IDLE_MS },
+      body: {
+        beginExclusive,
+        endInclusive,
+        updateFormat: {
+          includeTransactions: {
+            transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
+            eventFormat: {
+              verbose: true,
+              filtersByParty: {
+                [partyId]: {
+                  cumulative: [
+                    {
+                      identifierFilter: {
+                        TemplateFilter: { value: { templateId: this.contractTid } },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+  }
+
+  // The ledger keeps no claim log of its own, so the history is the transaction stream: every
+  // `Contract_Claim` this party can see, read once rather than followed, since the page asks again
+  // after each claim.
+  async claimHistory(partyId: string): Promise<ClaimRecord[]> {
+    const endInclusive = await this.ledgerEnd()
+    const records: ClaimRecord[] = []
+    let beginExclusive: string | number = 0
+    for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
+      const updates = await this.readUpdates(partyId, beginExclusive, endInclusive)
+      records.push(...updatesToClaims(updates))
+      const last = lastUpdateOffset(updates)
+      if (!Array.isArray(updates) || updates.length < CLAIM_HISTORY_LIMIT || last === undefined) {
+        break
+      }
+      beginExclusive = last
+    }
+    return records
   }
 
   async accept(args: { receiver: string; proposalCid: string }): Promise<void> {

@@ -20,12 +20,22 @@ interface ToastState {
   toasts: ToastItem[]
 }
 
+// Counted from the push, not from the row that renders it: the viewport moves between the body and
+// an open dialog, and remounting there would hand every toast on screen a fresh full life.
+const AUTO_DISMISS_MS = 3200
+
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
-  push: (tone, message, options) =>
-    set((state) => ({
-      toasts: [...state.toasts, { id: crypto.randomUUID(), tone, message, ...options }],
-    })),
+  push: (tone, message, options) => {
+    const id = crypto.randomUUID()
+    set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
+    if (options?.sticky !== true && options?.action === undefined) {
+      setTimeout(
+        () => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+        AUTO_DISMISS_MS,
+      )
+    }
+  },
   dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 }))
 

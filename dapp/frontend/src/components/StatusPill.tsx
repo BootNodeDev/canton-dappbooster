@@ -25,7 +25,7 @@ export const StatusPill = ({
 }: StatusPillProps): React.JSX.Element => (
   <span
     className={cn(
-      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-[0.04em]',
+      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em]',
       tones[tone],
       className,
     )}

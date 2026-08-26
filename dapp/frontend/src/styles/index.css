@@ -39,6 +39,23 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+
+  --animate-claimed: claimed 5s linear both;
+}
+
+/* Just-claimed row */
+@keyframes claimed {
+  0%,
+  100% {
+    background-color: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  5%,
+  85% {
+    background-color: var(--primary-soft);
+    box-shadow: 0 0 16px color-mix(in oklab, var(--primary) 40%, transparent);
+  }
 }
 
 @layer base {

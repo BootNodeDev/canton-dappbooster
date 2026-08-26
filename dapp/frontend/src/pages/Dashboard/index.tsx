@@ -1,21 +1,24 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
-import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
 import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
+import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
+import { CreateGrant } from '@/components/CreateGrant'
 import { EmptyState } from '@/components/EmptyState'
+import { KpiCard } from '@/components/KpiCard'
+import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { RoleSelect } from '@/components/RoleSelect'
 import { Select } from '@/components/Select'
+import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { PlusIcon } from '@/icons'
-import { CreateGrant } from '@/pages/Dashboard/CreateGrant'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
-import { KpiCard } from '@/pages/Dashboard/KpiCard'
+import { useBackend } from '@/providers/Backend'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
   claimAvailable,
@@ -26,20 +29,38 @@ import {
 } from '@/store/useVestingStore'
 import { addAmounts, isPositive } from '@/utils/amount'
 import { now, useNow } from '@/utils/clock'
-import { formatCC } from '@/utils/format'
+import { cn } from '@/utils/cn'
+import { CC } from '@/utils/tokens'
 
 interface GrantRow {
   derived: GrantDerived
   grant: Grant
 }
 
-type Filter = 'all' | 'claimable' | 'not_started' | 'milestone'
-const filters: { value: Filter; label: string }[] = [
+// The two status entries carry their GrantStatus name and the pill's own wording, so a row can
+// never sit under a heading its own badge contradicts.
+type Filter =
+  | 'all'
+  | 'claimable'
+  | 'fully_claimed'
+  | 'in_cliff'
+  | 'not_started'
+  | 'linear'
+  | 'milestone'
+const filters: { label: string; value: Filter }[] = [
   { value: 'all', label: 'All' },
   { value: 'claimable', label: 'Claimable' },
+  { value: 'fully_claimed', label: 'Fully claimed' },
+  { value: 'in_cliff', label: 'In cliff' },
   { value: 'not_started', label: 'Not started' },
+  { value: 'linear', label: 'Linear' },
   { value: 'milestone', label: 'Milestone' },
 ]
+
+// Marks the row a claim just landed on: it moves nothing, so a reader looking elsewhere can still
+// find what changed. The keyframes hold, then fade back to the card's own surface and shadow.
+const HIGHLIGHT = 'animate-claimed'
+const HIGHLIGHT_MS = 5000
 
 interface ClaimTarget {
   available: string
@@ -49,27 +70,14 @@ interface ClaimTarget {
 
 export const Dashboard = (): React.JSX.Element => {
   const nowMs = useNow()
-  const [searchParams, setSearchParams] = useSearchParams()
   const { backend, partyId } = useVesting()
+  const { sessionPending } = useBackend()
   const [role, setRole] = useRoleLens()
-  // Kept in the URL so /create can redirect here and open it, and so closing frees that link to
-  // open it again.
-  const creating = searchParams.get('create') === '1'
-  const setCreating = (on: boolean): void =>
-    setSearchParams(
-      (params) => {
-        if (on) {
-          params.set('create', '1')
-        } else {
-          params.delete('create')
-        }
-        return params
-      },
-      { replace: true },
-    )
+  const [creating, setCreating] = useCreateGrant()
 
   const grants = useVestingStore((s) => s.grants)
   const claims = useVestingStore((s) => s.claims)
+  const loading = useVestingStore((s) => s.loading)
   const withdraw = useVestingStore((s) => s.withdraw)
   const claimResidual = useVestingStore((s) => s.claimResidual)
   const cancel = useVestingStore((s) => s.cancel)
@@ -77,6 +85,15 @@ export const Dashboard = (): React.JSX.Element => {
   const [filter, setFilter] = useState<Filter>('all')
   const [claimTarget, setClaimTarget] = useState<ClaimTarget | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
+  const [justClaimed, setJustClaimed] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (justClaimed === null) {
+      return
+    }
+    const timer = setTimeout(() => setJustClaimed(null), HIGHLIGHT_MS)
+    return () => clearTimeout(timer)
+  }, [justClaimed])
 
   const rows = useMemo<GrantRow[]>(() => {
     const mine = grants.filter((g) =>
@@ -91,11 +108,14 @@ export const Dashboard = (): React.JSX.Element => {
         if (filter === 'claimable') {
           return isPositive(derived.claimable)
         }
-        if (filter === 'not_started') {
-          return derived.locked
+        if (filter === 'fully_claimed') {
+          return derived.fullyClaimed
         }
-        if (filter === 'milestone') {
-          return grant.schedule.curve.kind === 'milestone'
+        if (filter === 'in_cliff' || filter === 'not_started') {
+          return derived.status === filter
+        }
+        if (filter === 'linear' || filter === 'milestone') {
+          return grant.schedule.curve.kind === filter
         }
         return true
       }),
@@ -120,23 +140,24 @@ export const Dashboard = (): React.JSX.Element => {
   }, [rows])
 
   const residualClaimable = myClaims.reduce((sum, c) => addAmounts(sum, claimAvailable(c)), '0')
+  // A refresh after a write keeps the rows on screen; only a read with nothing to show waits.
+  const firstRead = loading && grants.length === 0
 
   // Above the handlers, so they close over a backend that is known to exist.
   if (backend === undefined) {
-    return (
-      <ConnectPrompt description="Your grants, what has vested and what you can claim are read from the ledger as your connected party." />
-    )
+    return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
   const onConfirmClaim = async (amount: string): Promise<void> => {
     if (claimTarget === null) {
       return
     }
-    if (claimTarget.kind === 'grant') {
-      await withdraw(backend, partyId, claimTarget.id, amount)
-    } else {
-      await claimResidual(backend, partyId, claimTarget.id, amount)
-    }
+    // The claim replaces the contract, so the successor's id is what identifies the row to flag.
+    const successor =
+      claimTarget.kind === 'grant'
+        ? await withdraw(backend, partyId, claimTarget.id, amount)
+        : await claimResidual(backend, partyId, claimTarget.id, amount)
+    setJustClaimed(successor ?? null)
   }
 
   const openClaim = (grant: Grant): void => {
@@ -192,12 +213,14 @@ export const Dashboard = (): React.JSX.Element => {
             />
             <KpiCard label="Vested to date" amount={totals.vested} />
             <KpiCard label="Unvested (clawbackable)" amount={totals.unvested} />
-            <KpiCard label="Active grants" amount={String(rows.length)} unit="" />
+            <KpiCard label="Active grants" amount={String(rows.length)} count />
           </>
         )}
       </div>
 
-      {filtered.length === 0 ? (
+      {firstRead ? (
+        <Loading />
+      ) : filtered.length === 0 ? (
         <EmptyState
           title="No grants here"
           description={
@@ -207,7 +230,7 @@ export const Dashboard = (): React.JSX.Element => {
           }
           action={
             role === 'funder' ? (
-              <Button asLink to="/create" size="sm">
+              <Button size="sm" onClick={() => setCreating(true)}>
                 Create a grant
               </Button>
             ) : undefined
@@ -222,6 +245,7 @@ export const Dashboard = (): React.JSX.Element => {
               derived={derived}
               role={role}
               nowMs={nowMs}
+              className={cn(grant.id === justClaimed && HIGHLIGHT)}
               onClaim={openClaim}
               onCancel={setCancelTarget}
             />
@@ -234,11 +258,21 @@ export const Dashboard = (): React.JSX.Element => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold text-fg">Residual claims</h2>
             <span className="font-mono text-xs text-fg-muted">
-              {isPositive(residualClaimable) ? `${formatCC(residualClaimable)} CC claimable` : ''}
+              {isPositive(residualClaimable) && (
+                <>
+                  <CompactAmount value={residualClaimable} /> {CC.symbol} claimable
+                </>
+              )}
             </span>
           </div>
           {myClaims.map((claim) => (
-            <Card key={claim.id} className="flex items-center justify-between gap-4 p-5">
+            <Card
+              key={claim.id}
+              className={cn(
+                'flex items-center justify-between gap-4 p-5',
+                claim.id === justClaimed && HIGHLIGHT,
+              )}
+            >
               <div>
                 <div className="text-base font-bold text-fg">{claim.title}</div>
                 <p className="mt-1 text-sm text-fg-muted">{claim.note}</p>

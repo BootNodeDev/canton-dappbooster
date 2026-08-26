@@ -3,11 +3,16 @@ import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
-import type { Grant, Proposal, VestedClaim, WithdrawEvent } from '@/store/types'
-import { compareAmounts, multiplyByFraction, subtractAmounts, toNumber } from '@/utils/amount'
-import { now } from '@/utils/clock'
+import type { Grant, Proposal, VestedClaim } from '@/store/types'
+import {
+  compareAmounts,
+  isPositive,
+  multiplyByFraction,
+  subtractAmounts,
+  toNumber,
+} from '@/utils/amount'
 import { errorText } from '@/utils/errorText'
-import { MIN_GRANT_AMOUNT, toMs, vestedFraction } from '@/utils/schedule'
+import { toMs, vestedFraction } from '@/utils/schedule'
 
 // `not_started` is past the cliff with nothing vested yet: a linear curve whose start is still
 // ahead, or a milestone curve before its first point. It used to report as in_cliff, which read as
@@ -20,6 +25,7 @@ export interface GrantDerived {
   claimed: string
   claimedFraction: number
   fraction: number
+  fullyClaimed: boolean
   locked: boolean
   status: GrantStatus
   unvested: string
@@ -52,7 +58,8 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
     claimed,
     claimedFraction,
     unvested,
-    canClaim: compareAmounts(claimable, MIN_GRANT_AMOUNT) >= 0,
+    canClaim: isPositive(claimable),
+    fullyClaimed: compareAmounts(claimed, grant.totalAmount) >= 0,
     locked: fraction <= 0,
     status,
   }
@@ -77,12 +84,24 @@ export const grantLineage = (grant: Grant): string =>
     grant.note,
   ])
 
-// `history` is session-local: the lite contracts retain none, so it does not survive a reload.
+// A claim archives the claim and re-creates it with `withdrawn` raised, so the same reasoning as
+// grantLineage applies: identity is everything but the moving figure.
+const claimLineage = (claim: VestedClaim): string =>
+  JSON.stringify([claim.provider, claim.creator, claim.receiver, claim.amount, claim.title])
+
+// The ACS read carries no order guarantee and a claim replaces the contract, so an unsorted view
+// makes rows jump position the moment their figures change. The key is computed once per item
+// rather than inside the comparator, which called it O(log n) times on a full JSON.stringify.
+const sortBy = <T>(items: T[], key: (item: T) => string): T[] =>
+  items
+    .map((item): [string, T] => [key(item), item])
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, item]) => item)
+
 interface VestingState {
   claims: VestedClaim[]
   error: string | undefined
   grants: Grant[]
-  history: WithdrawEvent[]
   loading: boolean
   proposals: Proposal[]
 
@@ -93,7 +112,7 @@ interface VestingState {
     partyId: string,
     claimCid: string,
     amount: string,
-  ) => Promise<void>
+  ) => Promise<string | undefined>
   clear: () => void
   createVesting: (
     backend: VestingBackend,
@@ -109,8 +128,6 @@ interface VestingState {
   ) => Promise<string | undefined>
 }
 
-const uid = (prefix: string): string => `${prefix}-${crypto.randomUUID().slice(0, 8)}`
-
 // Only the newest refresh may commit: over the network a slow read for the previous party can
 // resolve last and clobber the fresh view.
 let refreshEpoch = 0
@@ -119,14 +136,13 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   grants: [],
   proposals: [],
   claims: [],
-  history: [],
   loading: false,
   error: undefined,
 
   // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
   clear: () => {
     refreshEpoch++
-    set({ grants: [], proposals: [], claims: [], history: [], loading: false, error: undefined })
+    set({ grants: [], proposals: [], claims: [], loading: false, error: undefined })
   },
 
   refresh: async (backend, partyId) => {
@@ -138,9 +154,9 @@ export const useVestingStore = create<VestingState>((set, get) => ({
         return
       }
       set({
-        grants: view.grants,
-        proposals: view.proposals,
-        claims: view.claims,
+        grants: sortBy(view.grants, grantLineage),
+        proposals: sortBy(view.proposals, (proposal) => proposal.id),
+        claims: sortBy(view.claims, claimLineage),
         loading: false,
       })
     } catch (err) {
@@ -162,24 +178,18 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
-  // Returns the successor's contract id, since the claim replaced the one the caller passed.
+  // Returns the successor's contract id, since the claim replaced the one the caller passed. A
+  // grant the funder made identical shares the lineage, so the successor is the match whose id the
+  // read before the claim had not seen.
   withdraw: async (backend, partyId, contractCid, amount) => {
     const before = get().grants.find((grant) => grant.id === contractCid)
     const lineage = before === undefined ? undefined : grantLineage(before)
+    const seen = new Set(get().grants.map((grant) => grant.id))
     await backend.withdraw({ receiver: partyId, contractCid, amount })
-    if (lineage !== undefined) {
-      const event: WithdrawEvent = {
-        id: uid('wd'),
-        lineage,
-        amount,
-        at: new Date(now()).toISOString(),
-      }
-      set((state) => ({ history: [event, ...state.history] }))
-    }
     await get().refresh(backend, partyId)
     return lineage === undefined
       ? undefined
-      : get().grants.find((grant) => grantLineage(grant) === lineage)?.id
+      : get().grants.find((grant) => !seen.has(grant.id) && grantLineage(grant) === lineage)?.id
   },
 
   cancel: async (backend, partyId, contractCid) => {
@@ -187,9 +197,17 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
+  // Like withdraw: the claim is replaced, and a drained one is archived outright, so the successor
+  // is what the caller can point at and undefined means there is nothing left to point at.
   claimResidual: async (backend, partyId, claimCid, amount) => {
+    const before = get().claims.find((claim) => claim.id === claimCid)
+    const lineage = before === undefined ? undefined : claimLineage(before)
+    const seen = new Set(get().claims.map((claim) => claim.id))
     await backend.claimResidual({ receiver: partyId, claimCid, amount })
     await get().refresh(backend, partyId)
+    return lineage === undefined
+      ? undefined
+      : get().claims.find((claim) => !seen.has(claim.id) && claimLineage(claim) === lineage)?.id
   },
 }))
 

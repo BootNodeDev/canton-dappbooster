@@ -2,10 +2,13 @@ import type { ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
-type Size = 'sm' | 'md'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
+type Size = 'sm' | 'md' | 'lg' | 'icon'
 
+// `aria-label` is declared here rather than left to the DOM props because the link form takes no
+// DOM props, and an icon-only button has no text to read.
 interface BaseProps {
+  'aria-label'?: string
   className?: string
   size?: Size
   variant?: Variant
@@ -26,6 +29,8 @@ type ButtonProps = ButtonAsButton | ButtonAsLink
 const sizes: Record<Size, string> = {
   sm: 'h-9 px-4 text-sm',
   md: 'h-11 px-6 text-[0.95rem]',
+  lg: 'h-12 px-7 text-base',
+  icon: 'size-9',
 }
 
 // Primary carries the Aurora accent: brand gradient + glow on hover.
@@ -38,10 +43,12 @@ const variants: Record<Variant, string> = {
   secondary:
     'border border-border-strong bg-surface text-fg enabled:hover:border-primary enabled:hover:text-primary',
   ghost: 'border border-transparent text-fg-muted enabled:hover:bg-muted enabled:hover:text-fg',
-  danger: 'border border-danger/40 bg-surface text-danger enabled:hover:bg-danger-soft',
+  danger: 'border border-danger bg-danger text-white enabled:hover:bg-danger/90',
+  'danger-ghost': 'border border-transparent text-danger enabled:hover:bg-danger-soft',
 }
 
-const classesFor = (variant: Variant, size: Size, className?: string): string =>
+// Exported for the kit's own buttons, which cannot render this component but can take its classes.
+export const buttonClass = (variant: Variant, size: Size, className?: string): string =>
   cn(
     'inline-flex items-center justify-center gap-2 rounded-[8px] font-semibold transition-colors',
     'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
@@ -55,7 +62,11 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
   if (props.asLink === true) {
     const { variant = 'primary', size = 'md', className, to, children } = props
     return (
-      <Link to={to} className={classesFor(variant, size, className)}>
+      <Link
+        to={to}
+        aria-label={props['aria-label']}
+        className={buttonClass(variant, size, className)}
+      >
         {children}
       </Link>
     )
@@ -68,5 +79,5 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
     asLink: _a,
     ...rest
   } = props
-  return <button type={type} className={classesFor(variant, size, className)} {...rest} />
+  return <button type={type} className={buttonClass(variant, size, className)} {...rest} />
 }

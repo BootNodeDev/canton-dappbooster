@@ -1,7 +1,9 @@
+import { CompactAmount } from '@/components/CompactAmount'
 import { multiplyByFraction } from '@/utils/amount'
 import { cn } from '@/utils/cn'
-import { formatCC, formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import type { VestingSchedule } from '@/utils/schedule'
+import { CC } from '@/utils/tokens'
 
 interface MilestoneTimelineProps {
   nowMs: number
@@ -55,7 +57,7 @@ export const MilestoneTimeline = ({
                 </span>
               </div>
               <div className="mt-0.5 font-mono text-xs text-fg-muted">
-                {formatDate(point.time)} · +{formatCC(unlocked)} CC
+                {formatDate(point.time)} · +<CompactAmount value={unlocked} /> {CC.symbol}
               </div>
             </div>
           </li>

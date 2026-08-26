@@ -10,10 +10,10 @@ import type { VestingSchedule } from '@/utils/schedule'
 // string.
 
 type EncodedCurve =
-  | { tag: 'LinearVesting'; value: { start: string; end: string } }
+  | { tag: 'LinearVesting'; value: { end: string; start: string } }
   | { tag: 'MilestoneVesting'; value: { points: { _1: string; _2: string }[] } }
 
-export type EncodedSchedule = { curve: EncodedCurve; cliff: string }
+export type EncodedSchedule = { cliff: string; curve: EncodedCurve }
 
 export const encodeSchedule = (schedule: VestingSchedule): EncodedSchedule => {
   const curve = schedule.curve
