@@ -1,65 +1,100 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { loadBackendConfig } from '@/backend/config'
+import { describe, expect, it } from 'vitest'
+import { type LedgerApi, loadBackendConfig } from '@/backend/config'
 
-const respond = (init: { ok?: boolean; status?: number; body?: unknown; text?: string }): void => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => ({
-      ok: init.ok ?? true,
-      status: init.status ?? 200,
-      json: async () => {
-        if (init.text !== undefined) {
-          throw new SyntaxError('Unexpected token < in JSON')
-        }
-        return init.body
-      },
-    })),
-  )
+const OPERATOR = 'vesting-operator-1700000000001::ns'
+const OLDER = 'vesting-operator-1600000000000::ns'
+
+const factoryRow = (
+  createdEvent: Record<string, unknown>,
+  synchronizerId?: string,
+): Record<string, unknown> => ({
+  contractEntry: {
+    JsActiveContract: { createdEvent, ...(synchronizerId ? { synchronizerId } : {}) },
+  },
+})
+
+const created = {
+  contractId: '00cid',
+  createdEventBlob: 'YmxvYg==',
+  templateId: 'abc123:Vesting:VestingFactory',
 }
 
-const valid = {
-  pkg: 'abc123',
-  factoryCid: '00cid',
-  factoryBlob: 'YmxvYg==',
-  synchronizerId: 'sync::1',
+// The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
+// about. `acs` doubles as the record of which party the last filter named.
+const ledger = (
+  overrides: { rights?: unknown[]; acs?: unknown[]; user?: unknown } = {},
+): { ledgerApi: LedgerApi; filteredParty: () => string | undefined } => {
+  let filteredParty: string | undefined
+  const ledgerApi: LedgerApi = async (params) => {
+    const resource = params.resource as string
+    if (resource === '/v2/authenticated-user') {
+      return overrides.user ?? { user: { id: 'user-1' } }
+    }
+    if (resource.endsWith('/rights')) {
+      return {
+        rights: overrides.rights ?? [
+          { kind: { CanActAs: { value: { party: OLDER } } } },
+          { kind: { CanActAs: { value: { party: OPERATOR } } } },
+          { kind: { ParticipantAdmin: { value: {} } } },
+        ],
+      }
+    }
+    if (resource === '/v2/state/ledger-end') {
+      return { offset: 42 }
+    }
+    const filter = (params.body as { filter?: { filtersByParty?: Record<string, unknown> } })
+      ?.filter
+    filteredParty = Object.keys(filter?.filtersByParty ?? {})[0]
+    return overrides.acs ?? [factoryRow(created, 'sync::1')]
+  }
+  return { ledgerApi, filteredParty: () => filteredParty }
 }
 
 describe('loadBackendConfig', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
+  it('returns the deployment it reads back, synchronizer id included', async () => {
+    const { ledgerApi } = ledger()
+    await expect(loadBackendConfig(ledgerApi)).resolves.toEqual({
+      factoryBlob: 'YmxvYg==',
+      factoryCid: '00cid',
+      pkg: 'abc123',
+      synchronizerId: 'sync::1',
+    })
   })
 
-  it('returns the deployment, synchronizer id included', async () => {
-    respond({ body: valid })
-    await expect(loadBackendConfig()).resolves.toEqual(valid)
+  it('omits the synchronizer id when the row carries none', async () => {
+    const { ledgerApi } = ledger({ acs: [factoryRow(created)] })
+    await expect(loadBackendConfig(ledgerApi)).resolves.not.toHaveProperty('synchronizerId')
   })
 
-  it('accepts a config with no synchronizer id, which is optional', async () => {
-    const { synchronizerId, ...rest } = valid
-    respond({ body: rest })
-    await expect(loadBackendConfig()).resolves.toEqual(rest)
+  // Every run leaves its operator behind, so the newest is the one whose factory the config means.
+  it('reads as the newest operator among the rights', async () => {
+    const { ledgerApi, filteredParty } = ledger()
+    await loadBackendConfig(ledgerApi)
+    expect(filteredParty()).toBe(OPERATOR)
   })
 
-  it('names the bootstrap script when the file is missing', async () => {
-    respond({ ok: false, status: 404 })
-    await expect(loadBackendConfig()).rejects.toThrow(
-      /is missing \(HTTP 404\).*bootstrap-vesting-lite/,
+  it('names the bootstrap script when no operator was ever created', async () => {
+    const { ledgerApi } = ledger({ rights: [{ kind: { ParticipantAdmin: { value: {} } } }] })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+      /no vesting operator.*bootstrap-vesting-lite/,
     )
   })
 
-  // A dev server answers a missing file with index.html, so a 200 proves nothing.
-  it('rejects the SPA fallback rather than reading it as a deployment', async () => {
-    respond({ text: '<!doctype html>' })
-    await expect(loadBackendConfig()).rejects.toThrow(/is not a JSON object/)
+  // A factory with no blob cannot be disclosed, so it is as good as absent.
+  it('rejects a factory row that came back without its disclosure blob', async () => {
+    const { ledgerApi } = ledger({ acs: [factoryRow({ contractId: '00cid' })] })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
   })
 
-  it('rejects a JSON body that is not an object, null included', async () => {
-    respond({ body: null })
-    await expect(loadBackendConfig()).rejects.toThrow(/is not a JSON object/)
+  it('rejects an empty active-contracts read', async () => {
+    const { ledgerApi } = ledger({ acs: [] })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
   })
 
-  it('names every required key that is absent or blank', async () => {
-    respond({ body: { pkg: 'abc123', factoryCid: '', factoryBlob: undefined } })
-    await expect(loadBackendConfig()).rejects.toThrow(/has no factoryCid, factoryBlob/)
+  it('throws when the wallet reports no authenticated user', async () => {
+    const { ledgerApi } = ledger({ user: {} })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+      /did not report an authenticated user/,
+    )
   })
 })

@@ -6,19 +6,19 @@ import type { LedgerApiParams, PrepareExecuteParams } from '@bootnodedev/canton-
 // JSON Ledger API v2 command — always an ExerciseCommand in this dApp.
 export type LedgerCommand = {
   ExerciseCommand: {
-    templateId: string
-    contractId: string
     choice: string
     choiceArgument: Record<string, unknown>
+    contractId: string
+    templateId: string
   }
 }
 
 // Explicitly-disclosed contract (JSON Ledger API v2 disclosedContracts entry).
 export type DisclosedContract = {
-  templateId: string
   contractId: string
   createdEventBlob: string
   synchronizerId?: string
+  templateId: string
 }
 
 export type WalletFns = {

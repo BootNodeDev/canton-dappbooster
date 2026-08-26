@@ -2,32 +2,59 @@
 // transport details. The mappers below turn active-contract rows into those domain types.
 
 import { decodeSchedule } from '@/backend/commands'
-import { isAmount } from '@/lib/amount'
-import type { VestingSchedule } from '@/lib/schedule'
 import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
+import { isAmount } from '@/utils/amount'
+import type { VestingSchedule } from '@/utils/schedule'
 
 export interface VestingView {
+  claims: VestedClaim[]
   grants: Grant[]
   proposals: Proposal[]
-  claims: VestedClaim[]
 }
 
 export interface CreateVestInput {
+  note?: string
   proposer: string
   receiver: string
-  totalAmount: string
   schedule: VestingSchedule
   title: string
-  note?: string
+  totalAmount: string
+}
+
+// One `Contract_Claim` off the ledger: the amount and ledger time from the transaction, plus the
+// two contract ids it sits between. `replaces` is what the claim consumed and `grant` what it
+// created, so a caller can walk a grant's ancestry rather than match on fields two grants can share.
+export interface ClaimRecord {
+  amount: string
+  at: string
+  grant: Grant
+  replaces: string
 }
 
 export interface VestingBackend {
-  viewAs(partyId: string): Promise<VestingView>
-  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
-  withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
+  claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
+  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  viewAs(partyId: string): Promise<VestingView>
+  withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
+}
+
+// A claim consumes the contract and creates its successor, so one grant's history is its ancestry:
+// walk back from the id asked about. Matching on the fields instead merges two grants a funder made
+// identical, and the walk arrives newest-first, which is the order a caller wants to render.
+export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRecord[] => {
+  const bySuccessor = new Map(records.map((record) => [record.grant.id, record]))
+  const chain: ClaimRecord[] = []
+  for (
+    let record = bySuccessor.get(contractCid);
+    record !== undefined;
+    record = bySuccessor.get(record.replaces)
+  ) {
+    chain.push(record)
+  }
+  return chain
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────
@@ -78,12 +105,12 @@ export const splitNote = (
 // The fields every template carries alike; each mapper layers its own on top.
 type DecodedBase = {
   arg: Record<string, unknown>
+  funder: PartyId
   id: string
-  title: string
   note?: string
   provider: PartyId
-  funder: PartyId
   receiver: PartyId
+  title: string
 }
 
 const decodeBase = (row: AcsRow): DecodedBase | undefined => {
@@ -138,6 +165,64 @@ export const rowToGrant = (row: AcsRow): Grant | undefined => {
     note: base.note,
   }
 }
+
+// A ledger-effects transaction, as `/v2/updates` returns it. Only the two events a claim produces
+// are read: the exercise carries the amount, the create carries which grant it left behind.
+type UpdateEntry = {
+  update?: {
+    Transaction?: {
+      value?: {
+        effectiveAt?: string
+        events?: {
+          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          ExercisedEvent?: {
+            choice?: string
+            choiceArgument?: Record<string, unknown>
+            contractId?: string
+          }
+        }[]
+        offset?: number
+      }
+    }
+  }
+}
+
+// Where a page of updates ended, which is where the next one resumes.
+export const lastUpdateOffset = (updates: unknown): number | undefined => {
+  const entries = Array.isArray(updates) ? (updates as UpdateEntry[]) : []
+  return entries.at(-1)?.update?.Transaction?.value?.offset
+}
+
+export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
+  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
+    const transaction = entry.update?.Transaction?.value
+    const events = transaction?.events ?? []
+    const claim = events.find(
+      (event) => event.ExercisedEvent?.choice === 'Contract_Claim',
+    )?.ExercisedEvent
+    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
+    const amount = claim?.choiceArgument?.amount
+    const replaces = claim?.contractId
+    if (
+      created === undefined ||
+      transaction?.effectiveAt === undefined ||
+      amount === undefined ||
+      replaces === undefined
+    ) {
+      return []
+    }
+    const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
+    return grant === undefined
+      ? []
+      : [
+          {
+            amount: amountOf(amount, 'amount', grant.id),
+            at: transaction.effectiveAt,
+            grant,
+            replaces,
+          },
+        ]
+  })
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
   const base = decodeBase(row)

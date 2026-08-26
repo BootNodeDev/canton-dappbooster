@@ -1,21 +1,19 @@
 import { useId, useMemo } from 'react'
-import { formatDate } from '@/lib/format'
-import { type VestingSchedule, vestedFraction } from '@/lib/schedule'
+import { formatDate, formatPct } from '@/utils/format'
+import { toMs, type VestingSchedule, vestedFraction } from '@/utils/schedule'
 
 interface ScheduleCurveProps {
-  schedule: VestingSchedule
   nowMs: number
+  schedule: VestingSchedule
 }
 
-const ms = (iso: string): number => new Date(iso).getTime()
-
 const domain = (schedule: VestingSchedule): [number, number] => {
-  const cliff = ms(schedule.cliff)
+  const cliff = toMs(schedule.cliff)
   if (schedule.curve.kind === 'linear') {
-    return [Math.min(cliff, ms(schedule.curve.start)), ms(schedule.curve.end)]
+    return [Math.min(cliff, toMs(schedule.curve.start)), toMs(schedule.curve.end)]
   }
   const points = schedule.curve.points
-  return [Math.min(cliff, ms(points[0].time)), ms(points[points.length - 1].time)]
+  return [Math.min(cliff, toMs(points[0].time)), toMs(points[points.length - 1].time)]
 }
 
 const W = 100
@@ -26,6 +24,7 @@ const PAD = 2
 // milestone steps render exactly. A "now" marker tracks the live clock.
 export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JSX.Element => {
   const gradId = useId()
+  const titleId = useId()
 
   // The curve geometry depends only on the schedule, so memoize it; the live
   // "now" marker below recomputes every tick and must stay out of the memo.
@@ -45,7 +44,7 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
     const fill = `${path}L${px(e).toFixed(2)} ${py(0)} L${px(s).toFixed(2)} ${py(0)} Z`
     const points =
       schedule.curve.kind === 'milestone'
-        ? schedule.curve.points.map((p) => ({ x: px(ms(p.time)), y: py(p.fraction) }))
+        ? schedule.curve.points.map((p) => ({ x: px(toMs(p.time)), y: py(p.fraction) }))
         : []
     return {
       x: px,
@@ -54,7 +53,7 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
       end: e,
       d: path,
       area: fill,
-      cliffX: px(ms(schedule.cliff)),
+      cliffX: px(toMs(schedule.cliff)),
       milestonePoints: points,
     }
   }, [schedule])
@@ -65,8 +64,19 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" preserveAspectRatio="none">
-        <title>Vesting schedule curve</title>
+      {/* `role` and `aria-labelledby` both, because a bare <title> is exposed inconsistently: some
+          readers announce the element as a graphic with no name without them. */}
+      <svg
+        aria-labelledby={titleId}
+        role="img"
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-40 w-full"
+        preserveAspectRatio="none"
+      >
+        <title id={titleId}>
+          Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
+          {formatDate(new Date(end).toISOString())}, {formatPct(nowF)} vested now
+        </title>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />

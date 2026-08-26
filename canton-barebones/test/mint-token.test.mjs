@@ -16,8 +16,8 @@ const b64urlDecode = (value) => {
 describe('Canton token generation', () => {
   it('creates the HS256 JWT Splice LocalNet accepts for local auth', () => {
     // Scenario: Splice LocalNet services share the unsafe local JWT recipe.
-    // The generated token is what operators paste into wallet-service or
-    // Carpincho dev settings, while the signing secret stays in .env.
+    // The generated token is what operators paste into wallet-service or the
+    // wallet's dev settings, while the signing secret stays in .env.
     const token = createCantonToken({
       subject: 'ledger-api-user',
       audience: 'https://canton.network.global',
@@ -56,6 +56,6 @@ describe('Canton token generation', () => {
 
     assert.match(output, /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/)
     assert.match(output, /CANTON_BACKEND_TOKEN=/)
-    assert.match(output, /Carpincho LocalNet settings/)
+    assert.match(output, /wallet LocalNet settings/)
   })
 })

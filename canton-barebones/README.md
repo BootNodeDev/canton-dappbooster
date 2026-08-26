@@ -24,8 +24,8 @@ that config in.
 Splice and wallet-service share the `canton-barebones` Docker Compose project,
 so Docker groups the full local stack together.
 
-`app-user` is Splice's primary local validator name. It is not the Carpincho
-user and not a product user.
+`app-user` is Splice's primary local validator name. It is not a wallet user
+and not a product user.
 
 ## Start
 
@@ -60,7 +60,7 @@ CANTON_AUTH_SECRET
 It prints a JWT. It does not edit `.env`. Pass a subject as the first argument
 only if LocalNet expects something other than `ledger-api-user`.
 
-Do not put `CANTON_AUTH_SECRET` in Carpincho. Generate a token and paste only
+Do not put `CANTON_AUTH_SECRET` in the wallet. Generate a token and paste only
 the token.
 
 ## Wallet Service
@@ -79,7 +79,7 @@ Admin API  grpc://host.docker.internal:2902
 
 | Service | What It Is | URL / Port |
 | --- | --- | --- |
-| wallet-service | Carpincho bridge | `http://localhost:3010` |
+| wallet-service | wallet bridge | `http://localhost:3010` |
 | app-user Wallet UI | official Splice wallet UI | `http://wallet.localhost:2000` |
 | app-user Ledger API | gRPC Ledger API | `grpc://localhost:2901` |
 | app-user Admin API | gRPC Admin API | `grpc://localhost:2902` |

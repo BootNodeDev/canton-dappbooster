@@ -31,7 +31,7 @@ check_http "Scan UI" "http://scan.localhost:4000"
 check_http "SV UI" "http://sv.localhost:4000"
 
 echo ""
-echo "Carpincho bridge"
+echo "Wallet bridge"
 check_http "wallet-service" "http://localhost:${WALLET_SERVICE_PORT:-3010}/health"
 
 echo ""

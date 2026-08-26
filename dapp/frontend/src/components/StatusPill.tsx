@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/cn'
+import { cn } from '@/utils/cn'
 
 type Tone = 'linear' | 'milestone' | 'neutral' | 'success' | 'warning' | 'danger'
 
 const tones: Record<Tone, string> = {
-  linear: 'text-accent bg-accent/12 border-accent/30',
+  linear: 'text-accent-strong bg-accent/12 border-accent/30',
   milestone: 'text-warning bg-warning-soft border-warning/40',
   neutral: 'text-fg-muted bg-muted border-border',
   success: 'text-success bg-success-soft border-success/30',
@@ -13,9 +13,9 @@ const tones: Record<Tone, string> = {
 }
 
 interface StatusPillProps {
-  tone?: Tone
   children: ReactNode
   className?: string
+  tone?: Tone
 }
 
 export const StatusPill = ({
@@ -25,7 +25,7 @@ export const StatusPill = ({
 }: StatusPillProps): React.JSX.Element => (
   <span
     className={cn(
-      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-[0.04em]',
+      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em]',
       tones[tone],
       className,
     )}

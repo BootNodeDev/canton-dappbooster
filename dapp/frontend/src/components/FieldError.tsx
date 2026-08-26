@@ -1,10 +1,10 @@
-import { cn } from '@/lib/cn'
+import { cn } from '@/utils/cn'
 
 interface FieldErrorProps {
+  className?: string
   // Referenced by the field's `aria-describedby`, so the two have to agree.
   id: string
   message: string
-  className?: string
 }
 
 // One place for the error handshake every field repeats: the id the field points at, and the live

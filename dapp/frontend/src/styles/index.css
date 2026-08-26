@@ -22,8 +22,11 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-fg: var(--primary-fg);
+  --color-primary-strong: var(--primary-strong);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --color-pink: var(--pink);
+  --color-pink-strong: var(--pink-strong);
 
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
@@ -39,6 +42,23 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+
+  --animate-claimed: claimed 5s linear both;
+}
+
+/* Just-claimed row */
+@keyframes claimed {
+  0%,
+  100% {
+    background-color: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  5%,
+  85% {
+    background-color: var(--primary-soft);
+    box-shadow: 0 0 16px color-mix(in oklab, var(--primary) 40%, transparent);
+  }
 }
 
 @layer base {
@@ -50,6 +70,19 @@
 
   :is(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
+  }
+
+  select {
+    appearance: none;
+    cursor: pointer;
+    background-image:
+      linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      right 0.95rem center,
+      right 0.65rem center;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
   }
 }
 
@@ -80,6 +113,13 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Text inputs */
+
+.cnc-token-input__field,
+.cnc-party-id-input {
+  border-radius: 8px;
 }
 
 .gradient-text {

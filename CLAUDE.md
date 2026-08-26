@@ -10,13 +10,12 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
 - [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md) — L3 `--cnc-*` token naming convention
 - [`canton-barebones/wallet-service/CLAUDE.md`](canton-barebones/wallet-service/CLAUDE.md) — wallet-service bridge rules
-- `canton-barebones/`, `dapp/daml/vesting-lite/`, `dapp/frontend/` — see each subproject's `README.md`
+- [`dapp/frontend/CLAUDE.md`](dapp/frontend/CLAUDE.md) — app layout and naming deltas; its seams are in [`dapp/frontend/architecture.md`](dapp/frontend/architecture.md)
+- `canton-barebones/`, `dapp/daml/vesting-lite/` — see each subproject's `README.md`
 
-`dapp/frontend/` has no `CLAUDE.md`; its seams are in
-[`dapp/frontend/architecture.md`](dapp/frontend/architecture.md).
-
-The Carpincho wallet (CIP-0103 browser wallet) lives in its own repository at
-[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet); it is no longer part of this monorepo.
+The dApp connects through any CIP-0103 browser wallet; no wallet lives in this monorepo. This stack
+was developed against Carpincho, which has its own repository at
+[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet).
 
 For the system shape (data flow, components, ports), see [`architecture.md`](architecture.md).
 
@@ -41,7 +40,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect/` | yes | shim | yes | yes | Public hook API, the facade's adapter/picker seams, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp; root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
+| `dapp/frontend/` | yes | shim | yes | yes | Canton Coin vesting dApp; `CLAUDE.md` carries the page-owns-its-components layout and the naming rules an agent would otherwise get wrong, architecture.md its internal seams. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package (`vesting-lite`) plus its `daml-test` scenarios. Carries a `PROVENANCE.md` recording the vendored source. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
@@ -77,7 +76,8 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
-| Reference site | Vercel | Project `docs-canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Build settings live in `vercel.json` |
+| Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` is its build settings and nobody else's |
+| Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. No git integration yet, so nothing deploys on push |
 | CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
@@ -149,8 +149,9 @@ Placement:
   never rejects a file, so each of its modules is named for what it holds (`partyId.ts`, `cx.ts`),
   never `helpers.ts` or an `index.ts` barrel.
 - Components live in `components/`, which is a kind folder like the rest and gets no special case.
-  Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
-  than a parent composing them.
+  Routed pages are the one thing kept apart, in `pages/`, because the router enters them rather
+  than a parent composing them. A page is a consumer like any other, so what only one page renders
+  lives beside it.
 - A component whose job is to supply context rather than render markup lives in `providers/`, named
   `<Thing>Provider`, so what wraps the tree is one place to look instead of a hunt through feature
   folders.
@@ -165,8 +166,8 @@ Placement:
   where a caller could reasonably pick a different export, when to reach for it. Do not restate the
   type. How much prose, and whether an `@example` is required at all, follows the tier table under
   Doc blocks below.
-- **A module has one legal spelling, and it is never relative.** `./components/toast` and
-  `@/components/toast` both resolved, so which one landed was down to who or what wrote the file.
+- **A module has one legal spelling, and it is never relative.** `./utils/toast` and
+  `@/utils/toast` both resolved, so which one landed was down to who or what wrote the file.
   Relative specifiers (`.`, `..`, `./*`, `../*`) are now a Biome error in `dapp/frontend`,
   `canton-dappbooster`, and `canton-connect`, in all four positions: `import … from`,
   `export … from`, `export *`, and dynamic `import()`.
@@ -334,10 +335,10 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   - `pnpm run app:dev`
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
-- `node scripts/bootstrap-vesting-lite.mjs` creates the vesting operator and its factory and writes
-  `dapp/frontend/public/vesting-lite-parties.json`, which the dApp cannot start without. Run it after
-  the DAR is deployed. It takes the package id from the participant, never a default, because a stale
-  one shows as an empty dashboard with no error.
+- `node scripts/bootstrap-vesting-lite.mjs` creates the vesting operator and its factory, which the
+  dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
+  both back off the ledger once a wallet connects, so nothing can go stale between the two, and
+  pointing the wallet at another participant is the whole of switching networks.
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they live on the ranges in its own `package.json`; bump those directly and test the connect flow, not `pnpm-workspace.yaml`. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.

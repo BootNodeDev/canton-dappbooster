@@ -1,51 +1,59 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Card } from '@/components/Card'
-import { Sidebar } from '@/components/Sidebar'
+import { CreateGrant } from '@/components/CreateGrant'
+import { Loading } from '@/components/Loading'
+import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
-import { useBackend } from '@/providers/BackendProvider'
-import { useUiStore } from '@/store/useUiStore'
-
-const titleFor = (pathname: string, role: string): { title: string; crumb: string } => {
-  if (pathname.startsWith('/proposals')) {
-    return { title: 'Proposals', crumb: role }
-  }
-  if (pathname.startsWith('/create')) {
-    return { title: 'Create grant', crumb: 'Funder' }
-  }
-  if (pathname.startsWith('/grants/')) {
-    return { title: 'Grant detail', crumb: role }
-  }
-  return { title: role === 'funder' ? 'Granted by me' : 'Dashboard', crumb: role }
-}
+import { useCreateGrant } from '@/hooks/useCreateGrant'
+import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const role = useUiStore((s) => s.role)
-  const location = useLocation()
-  const { configPending, configError } = useBackend()
+  const { backend, configPending, configError } = useBackend()
+  // Mounted here rather than per page, because `?create=1` is route state: every page that offers
+  // the action would otherwise repeat the mount, and a reader can open it from any of them. Held
+  // until there is a backend so a deep link with no session still lands on the page's connect card.
+  const [creating, setCreating] = useCreateGrant()
 
   useConnectErrorToast()
-  const { title, crumb } = titleFor(location.pathname, role)
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar title={title} crumb={crumb} />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8">
-          {/* The card swaps in asynchronously with no focus move, so `role="alert"` is what
-              carries it to a reader. */}
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <a
+          href="#main"
+          className="absolute left-4 top-4 z-50 -translate-y-24 rounded-[8px] border border-border bg-surface px-4 py-2 text-sm font-semibold text-fg shadow-[var(--shadow-popover)] transition-transform focus-visible:translate-y-0"
+        >
+          Skip to main content
+        </a>
+        <TopBar />
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
+        >
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-              <h2 className="text-base font-bold text-danger">No deployment</h2>
+              <h1 className="text-base font-bold text-danger">No deployment</h1>
               <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
             </Card>
           )}
-          {/* Every page needs the deployment, so none mounts before it has resolved either way: a
-              page without one renders a connect placeholder a connected user does not need. */}
-          {configError === undefined && !configPending && <Outlet />}
+          {configPending && <Loading />}
+          {configError === undefined && !configPending && (
+            <>
+              <Outlet />
+              {creating && backend !== undefined && (
+                <CreateGrant onClose={() => setCreating(false)} />
+              )}
+            </>
+          )}
         </main>
+        <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
+          <span className="size-1.5 rounded-full bg-success" />
+          Canton · direct ledger
+        </footer>
       </div>
+      <Toaster />
     </div>
   )
 }

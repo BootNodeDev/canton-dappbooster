@@ -1,37 +1,42 @@
 import { AmountDisplay } from '@/components/AmountDisplay'
-import { cn } from '@/lib/cn'
+import { Card } from '@/components/Card'
+import { cn } from '@/utils/cn'
 
 interface KpiCardProps {
-  label: string
   amount: string
-  unit?: string
+  count?: boolean
+  hero?: boolean
+  label: string
   sub?: string
   subTone?: 'muted' | 'success'
-  hero?: boolean
+  tone?: 'muted' | 'success'
+}
+
+const TONES: Record<'muted' | 'success', string> = {
+  muted: 'text-fg-muted',
+  success: 'text-success',
 }
 
 export const KpiCard = ({
   label,
   amount,
-  unit = 'CC',
+  count = false,
   sub,
   subTone = 'muted',
+  tone,
   hero = false,
 }: KpiCardProps): React.JSX.Element => (
-  <div
-    className={cn(
-      'relative overflow-hidden rounded-2xl border p-5',
-      hero
-        ? 'border-accent/35 bg-[image:linear-gradient(135deg,color-mix(in_oklab,var(--primary)_30%,transparent),color-mix(in_oklab,var(--pink)_16%,transparent))] shadow-[var(--shadow-card)]'
-        : 'border-border bg-surface shadow-[var(--shadow-card)]',
-    )}
-  >
+  <Card className={cn('p-5', hero && 'border-accent/35')}>
     <div className="mb-3 text-xs font-semibold text-fg-muted">{label}</div>
     <AmountDisplay
       value={amount}
-      unit={unit}
+      count={count}
       gradient={hero}
-      className={cn('text-[1.7rem] font-semibold tracking-tight', hero && 'text-[1.9rem]')}
+      className={cn(
+        'text-[1.7rem] font-semibold tracking-tight',
+        hero && 'text-[1.9rem]',
+        tone !== undefined && TONES[tone],
+      )}
     />
     {sub !== undefined && (
       <div
@@ -43,8 +48,5 @@ export const KpiCard = ({
         {sub}
       </div>
     )}
-    {hero && (
-      <span className="pointer-events-none absolute -bottom-10 -right-8 size-36 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--pink)_40%,transparent),transparent_70%)] blur-md" />
-    )}
-  </div>
+  </Card>
 )

@@ -8,7 +8,7 @@ import {
   decodeSchedule,
   encodeSchedule,
 } from '@/backend/commands'
-import type { VestingSchedule } from '@/lib/schedule'
+import type { VestingSchedule } from '@/utils/schedule'
 
 const linear: VestingSchedule = {
   cliff: '2026-01-01T00:00:00Z',

@@ -1,8 +1,8 @@
 // JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
 // unit-tested directly in commands.test.ts.
 
-import { canonicalAmount } from '@/lib/amount'
-import type { VestingSchedule } from '@/lib/schedule'
+import { canonicalAmount } from '@/utils/amount'
+import type { VestingSchedule } from '@/utils/schedule'
 
 // ── Curve variant encoding ────────────────────────────────────────────────────
 // The one place the JSON-LF convention lives, mirrored by decodeSchedule: a variant is
@@ -10,10 +10,10 @@ import type { VestingSchedule } from '@/lib/schedule'
 // string.
 
 type EncodedCurve =
-  | { tag: 'LinearVesting'; value: { start: string; end: string } }
+  | { tag: 'LinearVesting'; value: { end: string; start: string } }
   | { tag: 'MilestoneVesting'; value: { points: { _1: string; _2: string }[] } }
 
-export type EncodedSchedule = { curve: EncodedCurve; cliff: string }
+export type EncodedSchedule = { cliff: string; curve: EncodedCurve }
 
 export const encodeSchedule = (schedule: VestingSchedule): EncodedSchedule => {
   const curve = schedule.curve
@@ -68,11 +68,11 @@ export const decodeSchedule = (raw: unknown): VestingSchedule => {
 // ── Command builders ────────────────────────────────────────────────────────
 
 type CreateVestingArgs = {
-  proposer: string
   beneficiary: string
-  total: string
-  schedule: VestingSchedule
   note?: string
+  proposer: string
+  schedule: VestingSchedule
+  total: string
 }
 
 export const buildCreateVestingCommand = (

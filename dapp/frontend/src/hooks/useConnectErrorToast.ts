@@ -1,7 +1,7 @@
 import { ConnectCancelledError, useConnect } from '@bootnodedev/canton-connect'
 import { useEffect, useRef } from 'react'
-import { toast } from '@/components/toast'
-import { errorText } from '@/lib/errorText'
+import { errorText } from '@/utils/errorText'
+import { toast } from '@/utils/toast'
 
 /** False for a cancelled connect, which is a choice rather than a failure. */
 export const isReportableConnectError = (error: Error): boolean =>

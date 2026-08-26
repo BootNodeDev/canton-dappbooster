@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
-import { toNumber } from '@/lib/amount'
 import type { Grant } from '@/store/types'
 import { deriveGrant, grantLineage, useVestingStore } from '@/store/useVestingStore'
+import { toNumber } from '@/utils/amount'
 
 const ms = (iso: string): number => new Date(iso).getTime()
 
@@ -29,6 +29,27 @@ describe('deriveGrant', () => {
     expect(d.claimable).toBe('0')
     expect(d.unvested).toBe('1000')
     expect(d.status).toBe('in_cliff')
+    expect(d.locked).toBe(true)
+  })
+
+  it('reports not_started past the cliff while the first milestone is ahead', () => {
+    const milestoneGrant: Grant = {
+      ...grant(),
+      schedule: {
+        cliff: '2025-06-01T00:00:00Z',
+        curve: {
+          kind: 'milestone',
+          points: [
+            { time: '2025-09-01T00:00:00Z', fraction: 0.5 },
+            { time: '2025-12-01T00:00:00Z', fraction: 1 },
+          ],
+        },
+      },
+    }
+    const d = deriveGrant(milestoneGrant, ms('2025-07-01T00:00:00Z'))
+    expect(d.fraction).toBe(0)
+    expect(d.status).toBe('not_started')
+    expect(d.locked).toBe(true)
   })
 
   it('subtracts already-withdrawn from claimable while vesting', () => {
@@ -86,6 +107,7 @@ const raceBackend = (routes: Record<string, Promise<VestingView>>): VestingBacke
     withdraw: async () => {},
     cancel: async () => {},
     claimResidual: async () => {},
+    claimHistory: async () => [],
   }) as unknown as VestingBackend
 
 describe('useVestingStore.refresh', () => {
@@ -124,12 +146,11 @@ describe('useVestingStore.refresh', () => {
 })
 
 describe('useVestingStore.clear', () => {
-  it('drops the previous party rows, its history and its error', () => {
+  it('drops the previous party rows and its error', () => {
     useVestingStore.setState({
       grants: [grant()],
       proposals: [],
       claims: [],
-      history: [{ id: 'wd-1', lineage: 'whatever', amount: '5', at: '2026-01-01T00:00:00.000Z' }],
       error: 'stale failure',
     })
 
@@ -137,7 +158,6 @@ describe('useVestingStore.clear', () => {
 
     const state = useVestingStore.getState()
     expect(state.grants).toEqual([])
-    expect(state.history).toEqual([])
     expect(state.error).toBeUndefined()
   })
 })
@@ -166,7 +186,7 @@ describe('useVestingStore.withdraw', () => {
     }) as unknown as VestingBackend
 
   it('returns the successor contract id the claim created', async () => {
-    useVestingStore.setState({ grants: [grant('0')], history: [] })
+    useVestingStore.setState({ grants: [grant('0')] })
 
     const next = await useVestingStore
       .getState()
@@ -175,14 +195,29 @@ describe('useVestingStore.withdraw', () => {
     expect(next).toBe('g2')
   })
 
-  it('keys the history entry on the lineage, so it still matches after the claim', async () => {
-    useVestingStore.setState({ grants: [grant('0')], history: [] })
+  it('finds the successor by lineage, which the claim leaves untouched', async () => {
+    useVestingStore.setState({ grants: [grant('0')] })
 
     await useVestingStore.getState().withdraw(claimedBackend('g2'), 'r::1', 'g1', '250')
 
-    const [event] = useVestingStore.getState().history
-    expect(event?.amount).toBe('250')
     expect(useVestingStore.getState().grants[0]?.id).toBe('g2')
-    expect(event?.lineage).toBe(grantLineage(grant('250')))
+    expect(grantLineage(grant('250'))).toBe(grantLineage(grant('0')))
+  })
+
+  it('picks the new id when an identical twin grant shares the lineage', async () => {
+    const twin: Grant = { ...grant('0'), id: 'twin' }
+    useVestingStore.setState({ grants: [grant('0'), twin] })
+    const backend = {
+      viewAs: async () => ({
+        grants: [twin, { ...grant('250'), id: 'g2' }],
+        proposals: [],
+        claims: [],
+      }),
+      withdraw: async () => {},
+    } as unknown as VestingBackend
+
+    const next = await useVestingStore.getState().withdraw(backend, 'r::1', 'g1', '250')
+
+    expect(next).toBe('g2')
   })
 })

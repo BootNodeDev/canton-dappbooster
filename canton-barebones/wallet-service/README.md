@@ -1,10 +1,10 @@
 # Wallet Service
 
-Express JSON-RPC bridge between Carpincho and the Splice LocalNet `app-user`
-participant.
+Express JSON-RPC bridge between a CIP-0103 wallet and the Splice LocalNet
+`app-user` participant.
 
 It is intentionally app-agnostic: app-specific Daml commands come from the
-consumer, Carpincho owns signing and approval UI, and this service only handles
+consumer, the wallet owns signing and approval UI, and this service only handles
 Canton connectivity, participant reads, prepared transaction execution, and
 wallet-internal party onboarding.
 
@@ -34,8 +34,8 @@ Paste the printed `CANTON_BACKEND_TOKEN=...` line into
 
 ## API Boundary
 
-The public dApp surface is CIP-0103. Carpincho exposes that provider to dApps;
-this service exposes only the HTTP JSON-RPC bridge Carpincho needs at:
+The public dApp surface is CIP-0103. The wallet exposes that provider to dApps;
+this service exposes only the HTTP JSON-RPC bridge the wallet needs at:
 
 ```text
 POST /rpc
@@ -49,9 +49,9 @@ Service-specific methods:
 
 | Method               | Caller                          | Purpose                                                                                                          |
 | -------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `prepareTransaction` | Carpincho                       | Calls Canton interactive submission prepare and returns the prepared transaction payload/hash for local signing. |
-| `executePrepared`    | Carpincho                       | Submits Carpincho's signature over a prepared transaction to Canton.                                             |
-| `ledgerApi`          | Carpincho on behalf of the dApp | Proxies app-user JSON API reads/writes and injects `CANTON_BACKEND_TOKEN`.                                       |
+| `prepareTransaction` | the wallet                      | Calls Canton interactive submission prepare and returns the prepared transaction payload/hash for local signing. |
+| `executePrepared`    | the wallet                      | Submits the wallet's signature over a prepared transaction to Canton.                                            |
+| `ledgerApi`          | the wallet on behalf of the dApp | Proxies app-user JSON API reads/writes and injects `CANTON_BACKEND_TOKEN`.                                       |
 
 ### CIP-56 token methods
 
@@ -70,10 +70,10 @@ These add Canton token-standard reads and transfers plus Amulet (Canton Coin) pr
 | `amulet.preapproval.acceptProposal` | Accepts a `TransferPreapprovalProposal` for the receiver. |
 | `amulet.tap` | Prepares the fixed 100 AMT Splice DevNet faucet tap for a receiver (DevNet only). |
 
-The write methods (`create*`, `acceptTransfer`, `amulet.preapproval.create/cancel/acceptProposal`, `amulet.tap`) return prepared transactions; Carpincho signs locally and submits via `executePrepared`.
+The write methods (`create*`, `acceptTransfer`, `amulet.preapproval.create/cancel/acceptProposal`, `amulet.tap`) return prepared transactions; the wallet signs locally and submits via `executePrepared`.
 
-`prepareExecute`, `prepareExecuteAndWait`, and `signMessage` stay in
-Carpincho because they require the user's key and approval UI.
+`prepareExecute`, `prepareExecuteAndWait`, and `signMessage` stay in the
+wallet because they require the user's key and approval UI.
 
 For `ledgerApi` semantics, read the upstream spec instead of duplicating it:
 
@@ -87,7 +87,7 @@ External party onboarding is wallet/provider operational logic, not generic
 dApp API. See
 [CIP-0103 topology-related capabilities](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md#topology-related-capabilities).
 
-Carpincho uses these wallet-internal endpoints:
+The wallet uses these wallet-internal endpoints:
 
 | Endpoint                     | Purpose                                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------- |

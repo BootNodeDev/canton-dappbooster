@@ -5,7 +5,7 @@
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
 | `canton-barebones/` | Bash + Docker Compose + official Splice LocalNet bundle | Starts `sv + app-user`, health checks, token helper, DAR upload |
-| `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge Carpincho uses for external-party onboarding and participant JSON API calls |
+| `canton-barebones/wallet-service/` | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls |
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
 | `dapp/daml/vesting-lite/` | DAML | `vesting-lite` DAR: the vesting factory, proposal, contract and residual-claim templates |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
@@ -17,7 +17,7 @@
 ```mermaid
 flowchart TD
   fe["dapp/frontend<br/>http://localhost:3012"]
-  wallet["carpincho-wallet (separate repo)<br/>http://localhost:3011"]
+  wallet["CIP-0103 browser wallet (separate repo)<br/>http://localhost:3011"]
   ws["wallet-service<br/>http://localhost:3010"]
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
@@ -43,30 +43,30 @@ containers still expose app-provider backend ports.
 
 State boundaries:
 
-- The CIP-0103 path: a dApp talks to Carpincho through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session, its ledger reads, and its submissions.
-- Carpincho owns user keys and signs locally.
+- The CIP-0103 path: a dApp talks to the wallet through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session, its ledger reads, and its submissions.
+- The wallet owns user keys and signs locally.
 - wallet-service holds `CANTON_BACKEND_TOKEN` and remains the external-party onboarding bridge.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
 - Splice and wallet-service share the `canton-barebones` Docker Compose project.
-- Carpincho should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
+- The wallet should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
 
 ## Services And Ports
 
 | Service | URL / Port | Purpose |
 | --- | --- | --- |
-| wallet-service | `http://localhost:3010` | Carpincho bridge for onboarding and JSON API calls |
-| Carpincho wallet | `http://localhost:3011` | browser wallet UI/provider |
+| wallet-service | `http://localhost:3010` | wallet bridge for onboarding and JSON API calls |
+| CIP-0103 browser wallet | `http://localhost:3011` | browser wallet UI/provider, run from its own repo |
 | dApp frontend | `http://localhost:3012` | example dApp |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
 | app-user Admin API | `grpc://localhost:2902` | wallet-service/tools |
 | app-user Validator API | `http://localhost:2903` | health/tools |
 | app-user JSON API | `http://localhost:2975` | wallet-service/tools |
-| app-user Validator proxy | `http://localhost:2000/api/validator` | Carpincho/tools |
+| app-user Validator proxy | `http://localhost:2000/api/validator` | wallet/tools |
 | app-provider backend APIs | `grpc://localhost:3901`, `grpc://localhost:3902`, `http://localhost:3903`, `http://localhost:3975` | official bundle wiring, unused |
 | app-provider UI port | `http://localhost:3000` | exposed by Nginx, routes disabled |
 | Scan UI | `http://scan.localhost:4000` | explorer/read model UI |
-| Scan API | `http://scan.localhost:4000/api/scan` | Carpincho/tools |
+| Scan API | `http://scan.localhost:4000/api/scan` | wallet/tools |
 | Amulet Registry | `http://localhost:2000/api/validator/v0/scan-proxy` | token metadata |
 | SV UI | `http://sv.localhost:4000` | Super Validator operations UI |
 | sv Ledger/Admin/JSON APIs | `grpc://localhost:4901`, `grpc://localhost:4902`, `http://localhost:4975` | Splice internals/tools |
@@ -83,7 +83,7 @@ State boundaries:
 
 `CANTON_AUTH_AUDIENCE` plus `CANTON_AUTH_SECRET` is the local signing recipe.
 `CANTON_BACKEND_TOKEN` is the generated token. The token script defaults the
-JWT subject to `ledger-api-user`; Carpincho can use a separate token generated
+JWT subject to `ledger-api-user`; the wallet can use a separate token generated
 with the same script, configured manually in its LocalNet settings.
 
 ## Orchestration
