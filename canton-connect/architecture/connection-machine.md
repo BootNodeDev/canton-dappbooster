@@ -1,0 +1,136 @@
+# The connection machine
+
+Reference for `machine/connectionMachine.ts`: the states, what each one means to a caller, and what
+settles `connect()` and `disconnect()`. The code is the authority; when the two disagree, fix this
+file.
+
+## The spine
+
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> initializing: restore
+    initializing --> restoring: onDone
+    initializing --> failure: onError
+    restoring --> session: onDone [isAuthenticated]
+    restoring --> disconnected: nothing to restore
+    idle --> connecting: connect
+    disconnected --> connecting: connect
+    failure --> connecting: connect
+    session --> connecting: connect, to change wallet
+    connecting --> session: onDone [isAuthenticated]
+    connecting --> failure: declined or threw
+    connecting --> retiring: the picker was closed
+    retiring --> restoring: onDone, on the replacement
+    session --> disconnecting: disconnect
+    disconnecting --> disconnected: settled
+    disconnecting --> connecting: settled, a connect was queued
+```
+
+`session` holds `unauthenticated` (the wallet reports it will not serve requests) and
+`authenticated`, whose three substates mirror the accounts child: `reading`, `ready`, `unavailable`.
+Entry always targets `authenticated`; only a wallet push reaches `unauthenticated`.
+`disconnecting` holds `ending`, and `reconnecting` for a connect that arrived behind it.
+
+Three events reach further than the diagram shows. `connect` is taken everywhere except `connecting`
+and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
+`disconnecting`. `restore` is taken by `idle`, `disconnected`, `session` and `failure`. A fourth,
+`connectError.reset`, is taken everywhere and changes no state.
+
+## States
+
+| state | means | public `status` |
+|---|---|---|
+| `idle` | nothing attempted yet | `idle` |
+| `initializing` | SDK cold start | `idle` |
+| `restoring` | asking the wallet for a session | `idle` |
+| `connecting` | the wallet is deciding | `connecting` |
+| `session.unauthenticated` | session alive, wallet not authenticated, party dropped | `connected` |
+| `session.authenticated.reading` | account read in flight | `connected` |
+| `session.authenticated.ready` | party known | `connected` |
+| `session.authenticated.unavailable` | the read failed, session intact | `connected` |
+| `failure` | the attempt failed; the error stays in context until exit | `disconnected` |
+| `retiring` | the closed picker's instance is abandoned, its replacement booting | `disconnected` |
+| `disconnecting.ending` | the wallet is being asked to end it | `disconnected` |
+| `disconnecting.reconnecting` | a connect is queued behind the disconnect | `disconnected` |
+| `disconnected` | asked, and there is nothing | `disconnected` |
+
+## What each actor reaches for
+
+| actor | invoked by | reaches |
+|---|---|---|
+| `init` | `initializing`, `retiring` | `sdk.init`, once per SDK instance; the SDK caches a rejection forever, so only a replacement retries |
+| `connect` | `connecting` | `init`, then `guardedConnect` or `sdk.connect`, then `sdk.status` when the answer is not connected |
+| `restore` | `restoring` | `sdk.status` |
+| `disconnect` | `disconnecting` | `sdk.disconnect` |
+| `walletEvents` | `session` | `sdk.onStatusChanged` |
+| `accounts` | `session.authenticated` | `accountsMachine` |
+| `readAccounts` | `accounts.reading` | `sdk.listAccounts`, then `selectUsableAccounts`, `selectPrimaryAccount`, `toParty` |
+| `accountsEvents` | the accounts root | `sdk.onAccountsChanged` |
+
+Each reads its sdk off the invoke's input, resolved from context when the invoke starts, so leaving
+the state stops the actor and drops the listener with it.
+
+## What settles a promise
+
+| machine state | tags | `connect()` | `disconnect()` |
+|---|---|---|---|
+| `idle` | `disconnect.settled` | waits | resolves |
+| `initializing`, `restoring` | none | waits | waits |
+| `connecting` | `connecting` | waits | already answered, one state earlier |
+| `session.authenticated.reading` | `connecting` | waits | waits |
+| `session.authenticated.ready` | `connect.settled` | resolves | waits |
+| `session.authenticated.unavailable` | `connect.failed` | rejects, wallet's error | waits |
+| `session.unauthenticated` | `connect.settled`, `unauthenticated` | resolves, no party | waits |
+| `failure` | `connect.failed` | rejects, recorded error | waits |
+| `retiring` | `connect.cancelled` | rejects, `ConnectCancelledError` | waits |
+| `disconnecting.ending` | none | waits | waits |
+| `disconnecting.reconnecting` | `disconnect.superseded` | waits | resolves |
+| `disconnected` | `connect.cancelled`, `disconnect.settled` | rejects, `ConnectCancelledError` | resolves |
+
+The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('connecting')` and
+`isLocked` is `hasTag('unauthenticated')`. A four-way enum stays a selector's job, so `status` is
+`toConnectionStatus`.
+
+Three placements carry weight:
+
+- **`session.unauthenticated` settles a connect.** A wallet that connects locked answers no account
+  read, so waiting for a party would wait forever.
+- **Entering it drops the party.** A wallet that will not serve requests has no party to offer, and
+  a lock and a wallet-side disconnect arrive as the same push, so the two cannot be told apart. The
+  session itself stays, which is what keeps the listener alive: an unlock pushes `isConnected: true`
+  and the party is read again with no reconnect.
+- **`disconnecting.reconnecting` is superseded, not settled.** The wallet has not answered there,
+  but the machine goes on to `connecting` and never to `disconnected`, so a caller waiting for the
+  disconnect would wait forever. The connect that took over owns the session now.
+- **`retiring` cancels rather than fails.** The user closed the picker, so nothing failed, even
+  though the machine goes on to boot a replacement and restore on it.
+
+## The last connect error
+
+`lastConnectError` rides in context and outlives the state that produced it, so a recovered session
+can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`
+and `disconnecting`, by `connectError.reset` (behind `useConnect().reset()`), and by a push that
+recovers a failed read.
+
+The two ways a picker close reaches the caller differ. A close the watchdog catches records nothing:
+`connecting` goes to `retiring`, which clears the error, and `connect()` rejects with a fresh
+`ConnectCancelledError`. A dismissal the SDK itself rejects (`'User closed the wallet picker'`) goes
+to `failure` and is recorded, with `toConnectError` classifying it as `ConnectCancelledError` on the
+way to `connectError`. Either way a consumer filters by `instanceof`, never by message.
+
+## The accounts machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> reading
+    reading --> ready: onDone
+    reading --> unavailable: onError
+    reading --> ready: accounts.changed
+    ready --> ready: accounts.changed
+    unavailable --> ready: accounts.changed
+```
+
+A push wins from any state, an in-flight read included. `ready` may still carry no `party`, which is
+a wallet reporting no usable account. The parent mirrors the three states into
+`session.authenticated` through the invoke's `onSnapshot`.
