@@ -71,7 +71,7 @@ export const Modal = ({
           className,
         )}
       >
-        <h2 id={titleId} className="pr-9 text-lg font-bold leading-7 tracking-tight text-fg">
+        <h2 id={titleId} className="pr-14 text-lg font-bold leading-7 tracking-tight text-fg">
           {title}
         </h2>
         {description !== undefined && (
@@ -84,7 +84,7 @@ export const Modal = ({
           type="button"
           aria-label="Close"
           onClick={onClose}
-          className="absolute right-6 top-6 flex h-7 items-center text-fg-muted transition-colors hover:text-fg"
+          className="absolute right-6 top-6 grid size-7 place-items-center text-fg-muted transition-colors hover:text-fg"
         >
           ✕
         </button>

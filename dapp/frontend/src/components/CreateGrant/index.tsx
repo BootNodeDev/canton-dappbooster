@@ -28,6 +28,7 @@ import { now } from '@/utils/clock'
 import { cn } from '@/utils/cn'
 import { EXPLORER } from '@/utils/config'
 import { errorText } from '@/utils/errorText'
+import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { copyToast, toast } from '@/utils/toast'
 import { CC } from '@/utils/tokens'
@@ -325,6 +326,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 <button
                   key={k}
                   type="button"
+                  aria-pressed={curveKind === k}
                   onClick={() => editSchedule({ curveKind: k })}
                   className={cn(
                     'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors',
@@ -383,12 +385,14 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                     <div key={m.id} className="flex gap-2">
                       <input
                         type="date"
+                        aria-label={`Milestone ${i + 1} date`}
                         value={dateOf(m.date)}
                         onChange={(e) => setMilestone(i, { date: atMidnight(e.target.value) })}
                         className={cn(inputClass, 'mt-0 flex-1')}
                       />
                       <input
                         inputMode="numeric"
+                        aria-label={`Milestone ${i + 1} cumulative percent`}
                         value={m.pct}
                         onChange={(e) =>
                           setMilestone(i, { pct: e.target.value.replace(/[^0-9]/g, '') })
@@ -397,10 +401,10 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                       />
                       <button
                         type="button"
-                        aria-label="Remove milestone"
+                        aria-label={`Remove milestone ${i + 1}`}
                         onClick={() => editMilestones((l) => l.filter((_, idx) => idx !== i))}
                         disabled={milestones.length <= 1}
-                        className="shrink-0 text-danger disabled:opacity-40"
+                        className="grid h-11 w-9 shrink-0 place-items-center text-danger disabled:opacity-40"
                       >
                         <TrashIcon />
                       </button>
@@ -412,13 +416,13 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                       editMilestones((l) => [
                         ...l,
                         {
-                          id: crypto.randomUUID().slice(0, 8),
+                          id: randomId().slice(0, 8),
                           date: addMonths(new Date(now()), 24).toISOString(),
                           pct: '100',
                         },
                       ])
                     }
-                    className="self-start text-xs font-bold text-primary hover:underline"
+                    className="self-start text-xs font-bold text-primary-strong hover:underline"
                   >
                     + Add milestone
                   </button>

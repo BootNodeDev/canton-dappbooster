@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatPct } from '@/utils/format'
 import { toMs, type VestingSchedule, vestedFraction } from '@/utils/schedule'
 
 interface ScheduleCurveProps {
@@ -24,6 +24,7 @@ const PAD = 2
 // milestone steps render exactly. A "now" marker tracks the live clock.
 export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JSX.Element => {
   const gradId = useId()
+  const titleId = useId()
 
   // The curve geometry depends only on the schedule, so memoize it; the live
   // "now" marker below recomputes every tick and must stay out of the memo.
@@ -63,8 +64,19 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" preserveAspectRatio="none">
-        <title>Vesting schedule curve</title>
+      {/* `role` and `aria-labelledby` both, because a bare <title> is exposed inconsistently: some
+          readers announce the element as a graphic with no name without them. */}
+      <svg
+        aria-labelledby={titleId}
+        role="img"
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-40 w-full"
+        preserveAspectRatio="none"
+      >
+        <title id={titleId}>
+          Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
+          {formatDate(new Date(end).toISOString())}, {formatPct(nowF)} vested now
+        </title>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />

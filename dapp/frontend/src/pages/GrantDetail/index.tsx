@@ -17,6 +17,7 @@ import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -41,6 +42,8 @@ export const GrantDetail = (): React.JSX.Element => {
   const [claims, setClaims] = useState<ClaimRecord[] | undefined>(undefined)
 
   const contractId = grant?.id
+
+  useDocumentTitle(grant?.title ?? 'Grant')
 
   useEffect(() => {
     if (backend === undefined || partyId === '' || contractId === undefined) {
@@ -73,6 +76,7 @@ export const GrantDetail = (): React.JSX.Element => {
   if (grant === undefined) {
     return (
       <EmptyState
+        level={1}
         title="Grant not found"
         description="It may have been fully claimed or cancelled."
         action={
@@ -210,8 +214,9 @@ export const GrantDetail = (): React.JSX.Element => {
           <h2 className="text-sm font-extrabold text-fg">Withdraw history</h2>
           <div className="mt-4 h-40 overflow-y-auto">
             {claims === undefined ? (
-              <div className="flex h-full items-center justify-center text-fg-muted">
+              <div role="status" className="flex h-full items-center justify-center text-fg-muted">
                 <SpinnerIcon width={20} height={20} />
+                <span className="sr-only">Loading withdraw history</span>
               </div>
             ) : claims.length === 0 ? (
               <p className="text-sm text-fg-muted">No withdrawals yet.</p>

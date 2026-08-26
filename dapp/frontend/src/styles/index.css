@@ -22,8 +22,11 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-fg: var(--primary-fg);
+  --color-primary-strong: var(--primary-strong);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --color-pink: var(--pink);
+  --color-pink-strong: var(--pink-strong);
 
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);

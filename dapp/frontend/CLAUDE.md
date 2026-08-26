@@ -40,6 +40,12 @@ One implementation each, so a second one is a bug and not a choice:
   and base classes, so a caller passes alignment at most and never re-spells the mapping.
 - **A blank state: `components/EmptyState`,** and `components/Loading` while a first read is in
   flight. `Loading` is for an empty collection only: a refresh after a write keeps its rows.
+  `EmptyState` takes the heading rank the page leaves free: the default 2 sits under a `PageTitle`,
+  and 1 is for a state that replaces the page and has no other heading above it.
+- **A brand colour that has to be read: the `-strong` token.** `--primary`, `--accent` and `--pink`
+  are fill and graphic values, and each falls below 4.5:1 as small text in one theme or the other.
+  Text takes `text-primary-strong`, `text-accent-strong` or `bg-pink-strong`, defined per theme to
+  clear AA; the plain tokens stay for fills, borders and gradients.
 
 ## Naming
 

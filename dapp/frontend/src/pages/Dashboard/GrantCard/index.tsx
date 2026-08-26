@@ -79,12 +79,14 @@ export const GrantCard = ({
       )}
     >
       <div className="min-w-0">
-        <Link
-          to={`/grants/${grant.id}`}
-          className="block truncate text-base font-bold tracking-tight text-fg transition-colors hover:text-primary"
-        >
-          {grant.title}
-        </Link>
+        <h2>
+          <Link
+            to={`/grants/${grant.id}`}
+            className="block truncate text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
+          >
+            {grant.title}
+          </Link>
+        </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <CurvePill curve={curve} />
           <GrantStatusPill status={derived.status} />

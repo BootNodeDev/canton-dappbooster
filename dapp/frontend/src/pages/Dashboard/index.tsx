@@ -14,6 +14,7 @@ import { PageTitle } from '@/components/PageTitle'
 import { RoleSelect } from '@/components/RoleSelect'
 import { Select } from '@/components/Select'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { PlusIcon } from '@/icons'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
@@ -78,6 +79,7 @@ interface ClaimTarget {
 }
 
 export const Dashboard = (): React.JSX.Element => {
+  useDocumentTitle('Grants')
   const nowMs = useNow()
   const { backend, partyId, sessionPending } = useVesting()
   const [role, setRole] = useRoleLens()

@@ -6,7 +6,7 @@ import { type ToastItem, type ToastTone, useToastStore } from '@/utils/toast'
 const toneStyles: Record<ToastTone, string> = {
   success: 'border-success/40 text-success',
   error: 'border-danger/40 text-danger',
-  info: 'border-accent/40 text-accent',
+  info: 'border-accent/40 text-accent-strong',
 }
 
 export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
@@ -25,7 +25,7 @@ export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
           <Link
             to={item.action.to}
             onClick={() => dismiss(item.id)}
-            className="mt-1 block text-xs font-bold text-primary hover:underline"
+            className="mt-1 block text-xs font-bold text-primary-strong hover:underline"
           >
             {item.action.label}
           </Link>
@@ -35,7 +35,7 @@ export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
         type="button"
         aria-label="Dismiss"
         onClick={() => dismiss(item.id)}
-        className="shrink-0 text-fg-muted transition-colors hover:text-fg"
+        className="grid size-6 shrink-0 place-items-center text-fg-muted transition-colors hover:text-fg"
       >
         ✕
       </button>

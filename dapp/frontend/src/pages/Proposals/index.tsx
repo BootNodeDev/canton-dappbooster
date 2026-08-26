@@ -6,6 +6,7 @@ import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { ProposalCard } from '@/pages/Proposals/ProposalCard'
 import type { Proposal } from '@/store/types'
@@ -15,6 +16,7 @@ import { errorText } from '@/utils/errorText'
 import { toast } from '@/utils/toast'
 
 export const Proposals = (): React.JSX.Element => {
+  useDocumentTitle('Proposals')
   const nowMs = useNow()
   const { backend, partyId, sessionPending } = useVesting()
   const [role, setRole] = useRoleLens()

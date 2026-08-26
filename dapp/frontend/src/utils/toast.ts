@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { randomId } from '@/utils/randomId'
 
 export type ToastTone = 'success' | 'error' | 'info'
 
@@ -37,7 +38,7 @@ export const useToastStore = create<ToastState>((set) => {
   return {
     toasts: [],
     push: (tone, message, options) => {
-      const id = crypto.randomUUID()
+      const id = randomId()
       set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
       if (options?.sticky !== true && options?.action === undefined) {
         timers.set(

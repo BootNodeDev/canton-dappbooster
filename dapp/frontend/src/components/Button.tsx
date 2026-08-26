@@ -45,7 +45,7 @@ const variants: Record<Variant, string> = {
     'before:opacity-0 before:transition-opacity enabled:hover:border-transparent ' +
     'enabled:hover:shadow-[var(--glow)] enabled:hover:before:opacity-100',
   secondary:
-    'border border-border-strong bg-surface text-fg enabled:hover:border-primary enabled:hover:text-primary',
+    'border border-border-strong bg-surface text-fg enabled:hover:border-primary enabled:hover:text-primary-strong',
   ghost: 'border border-transparent text-fg-muted enabled:hover:bg-muted enabled:hover:text-fg',
   danger: 'border border-danger bg-danger text-white enabled:hover:bg-danger/90',
   'danger-ghost': 'border border-transparent text-danger enabled:hover:bg-danger-soft',
@@ -89,6 +89,7 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
   return (
     <button
       type={type}
+      aria-busy={pending || undefined}
       className={buttonClass(variant, size, className)}
       disabled={disabled || pending}
       {...rest}

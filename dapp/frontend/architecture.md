@@ -238,3 +238,10 @@ pointing at a `--cnc-*` token inherits the kit's dark value and so needs no coun
 by construction, which the brand hues (`--accent`, `--pink`, `--gradient-brand`) are. `--surface-2`
 and `--muted` resolve to the same grey and stay separate names because components already pick one
 or the other.
+
+Those hues are mode-independent because they are fills, and a fill answers to 3:1 while the text
+over it answers to 4.5:1. Each one a component also wanted to set text in fails that in one mode or
+the other, so `--accent-strong`, `--primary-strong` and `--pink-strong` carry the readable value and
+are per-theme wherever the plain hue is not. Which to reach for is in
+[`CLAUDE.md`](CLAUDE.md); that they are separate names rather than a darker `--accent` is because
+`--primary` also has to keep white legible on `bg-primary`, so one value cannot serve both sides.

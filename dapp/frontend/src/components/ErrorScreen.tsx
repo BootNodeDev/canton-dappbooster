@@ -17,6 +17,7 @@ export const ErrorScreen = (): React.JSX.Element => {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center gap-4 px-5">
       <EmptyState
+        level={1}
         title="Something broke"
         description={messageOf(error)}
         action={

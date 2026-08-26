@@ -33,7 +33,7 @@ export const ProposalCard = ({
   return (
     <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
       <div className="min-w-0">
-        <h3 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h3>
+        <h2 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <CurvePill curve={curve} />
           <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>

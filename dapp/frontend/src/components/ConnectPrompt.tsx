@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState'
 // here it is the call to action rather than the header's quiet chip.
 export const ConnectPrompt = (): React.JSX.Element => (
   <EmptyState
+    level={1}
     title="Canton Vesting"
     action={<ConnectButton className={buttonClass('primary', 'lg')} mode="connect" />}
   />

@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn'
 type Tone = 'linear' | 'milestone' | 'neutral' | 'success' | 'warning' | 'danger'
 
 const tones: Record<Tone, string> = {
-  linear: 'text-accent bg-accent/12 border-accent/30',
+  linear: 'text-accent-strong bg-accent/12 border-accent/30',
   milestone: 'text-warning bg-warning-soft border-warning/40',
   neutral: 'text-fg-muted bg-muted border-border',
   success: 'text-success bg-success-soft border-success/30',
