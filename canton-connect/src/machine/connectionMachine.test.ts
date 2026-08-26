@@ -5,7 +5,7 @@ import {
   connectionMachine,
   toConnectionStatus,
   type WalletStatusUpdate,
-} from '#src/connectionMachine'
+} from '#src/machine/connectionMachine'
 // Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a
 // DOM.
 import { pause } from '#src/testing/pause'
