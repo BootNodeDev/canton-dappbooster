@@ -347,6 +347,24 @@ describe('connectionActors', () => {
       noted.mockRestore()
       actor.stop()
     })
+
+    it('rejects a status that carries no connection, so nothing is restored', async () => {
+      const noted = vi.spyOn(console, 'debug').mockImplementation(() => {})
+      const sdk = sdkAllowing({
+        status: () => Promise.resolve({ provider: liveStatus.provider } as unknown as StatusEvent),
+      })
+      const actor = createActor(restoreActor, { input: { sdk } })
+
+      actor.subscribe({ error: () => {} })
+
+      actor.start()
+      await pause(0)
+
+      expect(actor.getSnapshot().status).toBe('error')
+
+      noted.mockRestore()
+      actor.stop()
+    })
   })
 
   describe('walletEvents actor, through the machine', () => {
@@ -408,6 +426,35 @@ describe('connectionActors', () => {
       actor.send({ type: 'disconnect' })
 
       expect(removeOnStatusChanged).toHaveBeenCalledWith(captured)
+
+      actor.stop()
+    })
+
+    it('drops a status push that carries no connection', async () => {
+      let captured: ((event: StatusEvent) => void) | undefined
+
+      const restorable: StatusEvent = liveStatus
+      const sdk = sdkAllowing({
+        disconnect,
+        init: () => Promise.resolve(),
+        status: () => Promise.resolve(restorable),
+        onStatusChanged: (listener) => {
+          captured = listener
+          return Promise.resolve()
+        },
+        removeOnStatusChanged: () => Promise.resolve(),
+      })
+      const actor = createActor(connectionMachine, { input: connectionInput(sdk) })
+
+      actor.subscribe({ error: () => {} })
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      captured?.({ provider: restorable.provider } as unknown as StatusEvent)
+
+      expect(actor.getSnapshot().status).toBe('active')
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
 
       actor.stop()
     })

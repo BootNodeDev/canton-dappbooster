@@ -145,8 +145,10 @@ export const connectionMachine = setup({
     retireSdk: assign(({ context }) => ({ sdk: context.createSdk() })),
   },
   guards: {
-    isAuthenticated: (_, params: { connection: WalletStatusUpdate['connection'] }) =>
-      params.connection.isConnected,
+    // A guard that throws stops the actor, so an answer missing `connection` reads as not
+    // authenticated.
+    isAuthenticated: (_, params: { connection: WalletStatusUpdate['connection'] | undefined }) =>
+      params.connection?.isConnected === true,
     isPickerClosed: (_, params: { error: unknown }) => params.error instanceof PickerClosedError,
     isInitFailed: (_, params: { error: unknown }) => params.error instanceof InitFailedError,
   },

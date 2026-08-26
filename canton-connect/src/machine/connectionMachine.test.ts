@@ -948,6 +948,23 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
+    it('survives a push without a connection, reading it as not authenticated', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, init, restore } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.subscribe({ error: () => {} })
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      actor.send({ type: 'wallet.statusChanged', status: {} } as unknown as typeof lockPush)
+
+      expect(actor.getSnapshot().status).toBe('active')
+      expect(actor.getSnapshot().value).toEqual({ session: 'unauthenticated' })
+
+      actor.stop()
+    })
+
     it('reports connected for an unauthenticated session', async () => {
       const machine = connectionMachine.provide({
         actors: {

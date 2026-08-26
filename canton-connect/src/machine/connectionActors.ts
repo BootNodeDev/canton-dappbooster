@@ -136,6 +136,10 @@ export const restore = fromPromise<WalletStatusUpdate, RestoreInput>(async ({ in
   try {
     const { connection } = await input.sdk.status()
 
+    if (connection === undefined) {
+      throw new Error('status answered without a connection')
+    }
+
     return { connection }
   } catch (error) {
     // Ordinary, not an alarm: a visitor with nothing to restore rejects the same way as a wallet
@@ -150,6 +154,11 @@ export const restore = fromPromise<WalletStatusUpdate, RestoreInput>(async ({ in
 export const walletEvents = fromCallback<EventObject, WalletEventsInput>(
   ({ sendBack, input: { sdk } }) => {
     const listener = ({ connection }: StatusEvent) => {
+      // Dropped rather than read as a lock: the frame is malformed, not a status.
+      if (connection === undefined) {
+        return
+      }
+
       sendBack({ type: 'wallet.statusChanged', status: { connection } })
     }
 
