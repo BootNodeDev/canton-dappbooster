@@ -20,13 +20,14 @@ From the repo root (one `pnpm install` links every workspace):
 ```bash
 pnpm run canton:up
 pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
-node scripts/bootstrap-vesting-lite.mjs   # writes public/vesting-lite-parties.json
+node scripts/bootstrap-vesting-lite.mjs   # creates the operator and its factory
 pnpm run app:dev                          # → http://localhost:3012
 ```
 
-The bootstrap file is the deployment: it carries the package id and the operator factory's
-explicit-disclosure payload, without which a grant cannot be created. It is git-ignored,
-so it is per-machine and re-runnable.
+The bootstrap writes nothing. It leaves the operator and the factory on the ledger, and the dApp
+finds both once a wallet connects: the operator through the rights the bootstrap granted, the
+factory through an active-contracts read that returns its explicit-disclosure payload, without
+which a grant cannot be created. Re-running it supersedes the last one, on any ledger.
 
 Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
 the session is restored on reload by the wallet itself. Changing the wallet's primary

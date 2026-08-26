@@ -37,11 +37,13 @@ which is why they are injected at all: hooks cannot be called from a class, and 
 tests need it constructible without React.
 
 Both halves of the pairing are runtime state. The deployment comes from
-[`config.ts`](src/backend/config.ts), which reads `/vesting-lite-parties.json` — `pkg`, the factory's
-contract id, and its `createdEventBlob` — written into `public/` by
-[`scripts/bootstrap-vesting-lite.mjs`](../../scripts/bootstrap-vesting-lite.mjs). Absent or
-malformed is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
-nothing to query and without the blob there is no factory to disclose.
+[`config.ts`](src/backend/config.ts), which reads it off the ledger through that same `ledgerApi`:
+the newest `vesting-operator-*` among the connected user's rights, then an active-contracts read as
+that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
+Nothing is configured, so nothing can go stale against the participant the wallet is pointed at.
+Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
+nothing to query and without the blob there is no factory to disclose. It needs a session to read
+through, so it resolves after connect rather than before.
 
 ## Data flow
 

@@ -7,8 +7,8 @@ import { errorText } from '@/utils/errorText'
 
 // `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
 // needed to reach the ledger, so pages render a connect placeholder rather than empty data. The
-// deployment resolves on its own, hence `configPending`: the shell holds the pages until it has,
-// so a page with no backend can only mean no party.
+// deployment is read through that same party, hence `configPending`: it only ever stands for a
+// connected session still resolving, so a page with no backend can only mean no party.
 export interface BackendState {
   backend: VestingBackend | undefined
   configError: string | undefined
@@ -42,10 +42,16 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     return () => clearTimeout(timer)
   }, [])
 
+  // The deployment is read off the ledger, so it cannot resolve before there is a session to read
+  // through. Until then it is not pending but absent, which is what leaves the pages free to render
+  // their own connect card.
   useEffect(() => {
+    if (!hasParty) {
+      return
+    }
     let cancelled = false
 
-    void loadBackendConfig().then(
+    void loadBackendConfig(ledgerApi).then(
       (config) => {
         if (!cancelled) {
           setDeployment(config)
@@ -61,7 +67,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [hasParty, ledgerApi])
 
   // Its own memo, because the grace timer below flips a purely visual flag: sharing one would mint a
   // new backend identity mid-session and re-run every read that keys off it.
@@ -76,7 +82,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const value = useMemo<BackendState>(
     () => ({
       backend,
-      configPending: deployment === undefined && configError === undefined,
+      configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
       sessionPending: checkingSession && !hasParty,
     }),

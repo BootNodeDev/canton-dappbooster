@@ -335,10 +335,10 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   - `pnpm run app:dev`
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
-- `node scripts/bootstrap-vesting-lite.mjs` creates the vesting operator and its factory and writes
-  `dapp/frontend/public/vesting-lite-parties.json`, which the dApp cannot start without. Run it after
-  the DAR is deployed. It takes the package id from the participant, never a default, because a stale
-  one shows as an empty dashboard with no error.
+- `node scripts/bootstrap-vesting-lite.mjs` creates the vesting operator and its factory, which the
+  dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
+  both back off the ledger once a wallet connects, so nothing can go stale between the two, and
+  pointing the wallet at another participant is the whole of switching networks.
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` pins `@canton-network/wallet-sdk` and `core-acs-reader` via `overrides`, at the versions wallet-service was verified against. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) are not part of these overrides — they live on the ranges in its own `package.json`; bump those directly and test the connect flow, not `pnpm-workspace.yaml`. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.

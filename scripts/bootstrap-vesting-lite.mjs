@@ -1,19 +1,14 @@
 #!/usr/bin/env node
-// Bootstrap the vesting demo: create the backstage operator, pre-create the observer-less
-// VestingFactory it signs, and write the config the dApp reads. Funder and beneficiary are
-// wallet accounts, so no other party is created here.
+// Bootstrap the vesting demo: create the backstage operator and pre-create the observer-less
+// VestingFactory it signs. Funder and beneficiary are wallet accounts, so no other party is
+// created here.
 //
-// The factory has no observers, so a funder cannot read it. Its disclosure payload therefore
-// travels through this config file rather than through the dApp's own ledger reads.
+// Nothing is written out. The dApp finds both by reading this operator's rights and its factory
+// back off the ledger, so a run that ends here is a run the dApp can already see.
 //
 // Run with the local stack up and the DAR deployed.
 
-import { writeFile } from 'node:fs/promises'
-
 const RPC_URL = process.env.RPC_URL ?? 'http://localhost:3010/rpc'
-// Resolved against this file, not the cwd, so the script works from anywhere in the repo.
-const OUT =
-  process.env.OUT ?? new URL('../dapp/frontend/public/vesting-lite-parties.json', import.meta.url)
 const PACKAGE_NAME = 'vesting-lite'
 const STAMP = Date.now()
 
@@ -138,17 +133,6 @@ const main = async () => {
     throw new Error('factory created but no createdEventBlob came back from the ACS read')
   }
   console.log(`factory    ${active.createdEvent.contractId}`)
-
-  const config = {
-    createdAt: new Date().toISOString(),
-    pkg,
-    operator,
-    factoryCid: active.createdEvent.contractId,
-    factoryBlob: active.createdEvent.createdEventBlob,
-    synchronizerId: active.synchronizerId,
-  }
-  await writeFile(OUT, `${JSON.stringify(config, null, 2)}\n`, 'utf8')
-  console.log(`\nWrote ${OUT}`)
 }
 
 await main()
