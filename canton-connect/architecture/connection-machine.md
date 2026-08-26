@@ -25,12 +25,15 @@ stateDiagram-v2
     session --> disconnecting: disconnect
     disconnecting --> disconnected: settled
     disconnecting --> connecting: settled, a connect was queued
+    disconnecting --> disconnected: 10 s unanswered, on a replacement sdk
 ```
 
 `session` holds `unauthenticated` (the wallet reports it will not serve requests) and
 `authenticated`, whose three substates mirror the accounts child: `reading`, `ready`, `unavailable`.
 Entry always targets `authenticated`; only a wallet push reaches `unauthenticated`.
-`disconnecting` holds `ending`, and `reconnecting` for a connect that arrived behind it.
+`disconnecting` holds `ending`, and `reconnecting` for a connect that arrived behind it. Ten seconds
+without the wallet's answer takes the exit the answer would have, on a replacement sdk: the SDK's
+request carries no deadline of its own.
 
 Three events reach further than the diagram shows. `connect` is taken everywhere except `connecting`
 and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
@@ -51,7 +54,7 @@ and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`
 | `session.authenticated.unavailable` | the read failed, session intact | `connected` |
 | `failure` | the attempt failed; the error stays in context until exit | `disconnected` |
 | `retiring` | the closed picker's instance is abandoned, its replacement booting | `disconnected` |
-| `disconnecting.ending` | the wallet is being asked to end it | `disconnected` |
+| `disconnecting.ending` | the wallet is being asked to end it; unanswered for 10 s, it counts as failed | `disconnected` |
 | `disconnecting.reconnecting` | a connect is queued behind the disconnect | `disconnected` |
 | `disconnected` | asked, and there is nothing | `disconnected` |
 
@@ -61,8 +64,8 @@ and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`
 |---|---|---|
 | `init` | `initializing`, `retiring` | `sdk.init`, once per SDK instance; the SDK caches a rejection forever, so only a replacement retries |
 | `connect` | `connecting` | `init`, then `guardedConnect` or `sdk.connect`, then `sdk.status` when the answer is not connected |
-| `restore` | `restoring` | `sdk.status` |
-| `disconnect` | `disconnecting` | `sdk.disconnect` |
+| `restore` | `restoring` | `sdk.status`; an answer without `connection` counts as nothing to restore |
+| `disconnect` | `disconnecting` | `sdk.disconnect`, under the machine's 10 s deadline since the SDK sets none |
 | `walletEvents` | `session` | `sdk.onStatusChanged` |
 | `accounts` | `session.authenticated` | `accountsMachine` |
 | `readAccounts` | `accounts.reading` | `sdk.listAccounts`, then `selectUsableAccounts`, `selectPrimaryAccount`, `toParty` |

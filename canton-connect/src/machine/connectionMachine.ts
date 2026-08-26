@@ -20,6 +20,10 @@ import {
 } from '#src/machine/connectionActors'
 import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
 
+// The SDK's disconnect awaits the wallet's answer with no deadline of its own, so this is the only
+// bound on how long `disconnecting` can last.
+export const DISCONNECT_TIMEOUT_MS = 10_000
+
 /** The wallet's connection status, narrowed from the SDK's `StatusEvent`. */
 export type WalletStatusUpdate = Pick<StatusEvent, 'connection'>
 
@@ -99,6 +103,18 @@ const afterDisconnect = [
   { target: 'disconnected' },
 ] as const
 
+/** The exit `disconnecting` takes when the wallet never answers: the same two, on a replacement sdk. */
+// The unanswered request still holds the old instance's client, and its late answer would null
+// whichever client a later connect installs on that instance.
+const afterSilentDisconnect = [
+  {
+    guard: stateIn({ disconnecting: 'reconnecting' }),
+    actions: { type: 'retireSdk' },
+    target: 'connecting',
+  },
+  { actions: { type: 'retireSdk' }, target: 'disconnected' },
+] as const
+
 /** The `init` invoke and what follows it, shared by `initializing` and `retiring`. */
 const bootSdk = {
   src: 'init',
@@ -151,6 +167,9 @@ export const connectionMachine = setup({
       params.connection?.isConnected === true,
     isPickerClosed: (_, params: { error: unknown }) => params.error instanceof PickerClosedError,
     isInitFailed: (_, params: { error: unknown }) => params.error instanceof InitFailedError,
+  },
+  delays: {
+    disconnectTimeout: DISCONNECT_TIMEOUT_MS,
   },
   types: {
     // Declared so `snapshot.children.accounts` types concretely; setup's actors map carries no id.
@@ -406,6 +425,9 @@ export const connectionMachine = setup({
         input: ({ context }) => ({ sdk: context.sdk }),
         onDone: afterDisconnect,
         onError: afterDisconnect,
+      },
+      after: {
+        disconnectTimeout: afterSilentDisconnect,
       },
       states: {
         ending: {

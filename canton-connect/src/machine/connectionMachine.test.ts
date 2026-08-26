@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
-import { createActor, type EventObject, fromCallback, fromPromise, waitFor } from 'xstate'
+import {
+  createActor,
+  type EventObject,
+  fromCallback,
+  fromPromise,
+  SimulatedClock,
+  waitFor,
+} from 'xstate'
 import { PickerClosedError } from '#src/connectError'
 import type { AccountsInput } from '#src/machine/accountsActors'
 import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
@@ -15,6 +22,7 @@ import {
 } from '#src/machine/connectionActors'
 import {
   connectionMachine,
+  DISCONNECT_TIMEOUT_MS,
   toConnectionStatus,
   type WalletStatusUpdate,
 } from '#src/machine/connectionMachine'
@@ -1103,6 +1111,69 @@ describe('connectionMachine', () => {
       await pause(0)
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+
+      actor.stop()
+    })
+
+    it('gives up on a wallet that never answers the disconnect, on a replacement sdk', async () => {
+      const clock = new SimulatedClock()
+      const machine = connectionMachine.provide({
+        actors: {
+          accounts,
+          init,
+          restore,
+          disconnect: fromPromise<null, DisconnectInput>(() => new Promise(() => {})),
+        },
+      })
+      const actor = createActor(machine, { clock, input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+      const stranded = actor.getSnapshot().context.sdk
+
+      actor.send({ type: 'disconnect' })
+      clock.increment(DISCONNECT_TIMEOUT_MS - 1)
+      expect(actor.getSnapshot().matches('disconnecting')).toBe(true)
+
+      clock.increment(1)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().context.sdk).not.toBe(stranded)
+
+      actor.stop()
+    })
+
+    it('starts the queued connect when the wallet never answers the disconnect', async () => {
+      const clock = new SimulatedClock()
+      const connectedOn = vi.fn()
+      const machine = connectionMachine.provide({
+        actors: {
+          accounts,
+          init,
+          restore,
+          disconnect: fromPromise<null, DisconnectInput>(() => new Promise(() => {})),
+          connect: fromPromise<WalletStatusUpdate, ConnectInput>(({ input }) => {
+            connectedOn(input.sdk)
+            return Promise.resolve({ connection })
+          }),
+        },
+      })
+      const actor = createActor(machine, { clock, input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+      const stranded = actor.getSnapshot().context.sdk
+
+      actor.send({ type: 'disconnect' })
+      actor.send({ type: 'connect' })
+      clock.increment(DISCONNECT_TIMEOUT_MS)
+      await pause(0)
+
+      expect(connectedOn).toHaveBeenCalledOnce()
+      expect(connectedOn.mock.calls[0]?.[0]).not.toBe(stranded)
+      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
 
       actor.stop()
     })
