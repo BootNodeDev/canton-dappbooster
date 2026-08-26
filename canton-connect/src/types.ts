@@ -1,10 +1,41 @@
 // Public types exposed to consumers of canton-connect.
 
-import type { ProviderAdapter, WalletPickerFn } from '@canton-network/dapp-sdk'
+import type { DappSDK, ProviderAdapter, WalletPickerFn } from '@canton-network/dapp-sdk'
+import type { ConnectionActorRef } from '#src/machine/connectionMachine'
 
 /**
- * Where the session is. `idle` means the mount-time restore has not answered yet, which is not the
- * same as `disconnected`: only that one means a connect was tried, or a session was dropped.
+ * The slice of `DappSDK` this package calls. Deliberately narrower than the class: it states
+ * which methods the wrapper supports, and a real `DappSDK` satisfies it structurally.
+ *
+ * @category Types
+ */
+export type WalletSdk = Pick<
+  DappSDK,
+  | 'init'
+  | 'connect'
+  | 'disconnect'
+  | 'status'
+  | 'listAccounts'
+  | 'onStatusChanged'
+  | 'removeOnStatusChanged'
+  | 'onAccountsChanged'
+  | 'removeOnAccountsChanged'
+  | 'onTxChanged'
+  | 'removeOnTxChanged'
+  | 'ledgerApi'
+  | 'signMessage'
+  | 'prepareExecuteAndWait'
+>
+
+/**
+ * `'idle'` is "not determined yet": the boot restore has not answered, so it is neither a session
+ * nor the absence of one. Gate on `'disconnected'`, never on "not connected", or a returning user
+ * is turned away before the restore runs.
+ *
+ * @example
+ * const { status } = useParty()
+ * if (status === 'idle') return null
+ * return status === 'disconnected' ? <ConnectButton /> : <App />
  *
  * @category Types
  */
@@ -43,3 +74,17 @@ export interface CantonConnectConfig {
   walletPicker?: WalletPickerFn
   additionalAdapters?: ProviderAdapter[]
 }
+
+/**
+ * The connection machine as `useSelector` sees it: subscribe and read, never send. Narrowed from
+ * the actor ref so `connect` and `disconnect` stay the only senders; a transition asked for
+ * anywhere else is a lifecycle rule living outside the machine.
+ *
+ * @example
+ * import type { ConnectionSubscription } from '#src/types'
+ *
+ * const partyOf = (connection: ConnectionSubscription) => connection.getSnapshot().context.party
+ *
+ * @category Types
+ */
+export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 'subscribe'>
