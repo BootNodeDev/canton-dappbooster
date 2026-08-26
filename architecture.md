@@ -14,7 +14,7 @@
 
 Each subproject's `architecture.md` is the index of its own seams. A subsystem that needs more than
 a seam gets a chapter in a sibling `architecture/` folder, linked from that index; `canton-connect/`
-carries one today, the connection machine.
+carries two today.
 
 ## Data Flow
 
