@@ -27,7 +27,15 @@ export type { UseSignMessageResult } from '#src/hooks/useSignMessage'
 export { useSignMessage } from '#src/hooks/useSignMessage'
 export type { UseWalletStatusResult } from '#src/hooks/useWalletStatus'
 export { useWalletStatus } from '#src/hooks/useWalletStatus'
+export type { InitOptions } from '#src/machine/connectionActors'
+export type { ConnectionInput } from '#src/machine/connectionMachine'
 export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from '#src/mock/mockAdapter'
 export { createMockAdapter } from '#src/mock/mockAdapter'
 
-export type { CantonConnectConfig, ConnectionStatus, Party } from '#src/types'
+export type {
+  CantonConnectConfig,
+  ConnectionStatus,
+  ConnectionSubscription,
+  Party,
+  WalletSdk,
+} from '#src/types'

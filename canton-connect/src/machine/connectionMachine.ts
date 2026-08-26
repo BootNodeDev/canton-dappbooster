@@ -1,16 +1,62 @@
 import type { StatusEvent } from '@canton-network/dapp-sdk'
 import {
+  type ActorRefFrom,
   assign,
   type DoneActorEvent,
-  fromCallback,
-  fromPromise,
+  type ErrorActorEvent,
   type SnapshotFrom,
   setup,
+  stateIn,
 } from 'xstate'
-import type { ConnectionStatus } from '#src/types'
+import { InitFailedError, PickerClosedError } from '#src/connectError'
+import { accountsMachine } from '#src/machine/accountsMachine'
+import {
+  connect,
+  disconnect,
+  type InitOptions,
+  init,
+  restore,
+  walletEvents,
+} from '#src/machine/connectionActors'
+import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
 
-export type WalletStatusUpdate = Pick<StatusEvent, 'connection' | 'session'>
+/** The wallet's connection status, narrowed from the SDK's `StatusEvent`. */
+export type WalletStatusUpdate = Pick<StatusEvent, 'connection'>
 
+/**
+ * What the machine needs to build and drive its own `DappSDK`. Read once, at actor creation: as in
+ * wagmi, a config swapped afterwards reaches the hooks but not the connection lifecycle.
+ *
+ * @example
+ * import { DappSDK } from '@canton-network/dapp-sdk'
+ * import { createActor } from 'xstate'
+ * import { connectionMachine } from '#src/machine/connectionMachine'
+ *
+ * const createSdk = () => new DappSDK({})
+ * const input = { createSdk, initOptions: {}, guardPicker: true, networkId: 'canton:local' }
+ * createActor(connectionMachine, { input })
+ *
+ * @category Types
+ */
+export type ConnectionInput = {
+  createSdk: () => WalletSdk
+  initOptions: InitOptions
+  guardPicker: boolean
+  networkId: string
+}
+
+/** What the machine carries beyond its input: the sdk it drives, the last failure, the party. */
+type ConnectionContext = ConnectionInput & {
+  sdk: WalletSdk
+  // The last attempt's failure, not the session's: it outlives `failure` on purpose, so a
+  // session recovered afterwards can still say why the attempt before it failed.
+  lastConnectError: unknown
+  // Held here rather than read off the accounts child: the child dies with `authenticated`, so
+  // dropping to `unauthenticated` would lose the party of a session that is still standing.
+  party: Party | undefined
+}
+
+/** Reduces the machine's internal states to the four-value `ConnectionStatus` hooks expose. */
 export const toConnectionStatus = (
   snapshot: SnapshotFrom<typeof connectionMachine>,
 ): ConnectionStatus => {
@@ -22,7 +68,11 @@ export const toConnectionStatus = (
     return 'connected'
   }
 
-  if (snapshot.matches('restoring') || snapshot.matches('initializing')) {
+  if (
+    snapshot.matches('idle') ||
+    snapshot.matches('restoring') ||
+    snapshot.matches('initializing')
+  ) {
     return 'idle'
   }
 
@@ -30,7 +80,7 @@ export const toConnectionStatus = (
   return 'disconnected'
 }
 
-// one rule for landing an authenticated answer, shared by `connect` and `restore`
+/** The transition an authenticated wallet answer takes, shared by `connect` and `restore`. */
 const landAuthenticated = {
   guard: {
     type: 'isAuthenticated',
@@ -39,96 +89,233 @@ const landAuthenticated = {
     }),
   },
   target: 'session.authenticated',
-  actions: {
-    type: 'applyWalletStatus',
-    params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
-      status: output,
-    }),
+} as const
+
+/** The exit from `disconnecting`, success and failure alike. */
+// Standing in `reconnecting` means a connect was queued mid-disconnect, and it wins over resting
+// in `disconnected`.
+const afterDisconnect = [
+  { guard: stateIn({ disconnecting: 'reconnecting' }), target: 'connecting' },
+  { target: 'disconnected' },
+] as const
+
+/** The `init` invoke and what follows it, shared by `initializing` and `retiring`. */
+const bootSdk = {
+  src: 'init',
+  input: ({ context }: { context: ConnectionContext }) => ({
+    sdk: context.sdk,
+    initOptions: context.initOptions,
+  }),
+  onDone: { target: 'restoring' },
+  onError: {
+    target: 'failure',
+    actions: [
+      {
+        type: 'assignError',
+        params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+      },
+      // The rejection is cached on the instance forever, so only a replacement can retry.
+      { type: 'retireSdk' },
+    ],
   },
 } as const
 
+/**
+ * The lifecycle itself: what a connect, a restore, a lock and a disconnect mean, and the tags the
+ * bridges and hooks read off them. `CantonConnectProvider` runs it; reach for it directly only to
+ * drive a session in a test.
+ *
+ * @category Types
+ */
 export const connectionMachine = setup({
   actors: {
-    connect: fromPromise<WalletStatusUpdate>(() =>
-      Promise.reject(new Error('connect actor not provided')),
-    ),
-    init: fromPromise<void>(() => Promise.reject(new Error('init actor not provided'))),
-    restore: fromPromise<WalletStatusUpdate>(() =>
-      Promise.reject(new Error('restore actor not provided')),
-    ),
-    walletEvents: fromCallback(() => {}),
+    connect,
+    disconnect,
+    init,
+    restore,
+    walletEvents,
+    accounts: accountsMachine,
   },
   actions: {
-    applyWalletStatus: assign(({ context }, params: { status: WalletStatusUpdate }) => ({
-      connection: params.status.connection,
-      session: params.status.session ?? context.session,
-    })),
-    assignError: assign((_, params: { error: unknown }) => ({ error: params.error })),
+    assignError: assign((_, params: { error: unknown }) => ({ lastConnectError: params.error })),
+    forgetError: assign({ lastConnectError: undefined }),
+    // The walked-out connect keeps waiting inside the old sdk and nothing can stop it, so a later
+    // attempt on that sdk could have its client swapped mid-connect. Drop the instance, take a new
+    // one.
+    retireSdk: assign(({ context }) => ({ sdk: context.createSdk() })),
   },
   guards: {
-    hasSession: (_, params: { session: WalletStatusUpdate['session'] }) => !!params.session,
     isAuthenticated: (_, params: { connection: WalletStatusUpdate['connection'] }) =>
       params.connection.isConnected,
+    isPickerClosed: (_, params: { error: unknown }) => params.error instanceof PickerClosedError,
+    isInitFailed: (_, params: { error: unknown }) => params.error instanceof InitFailedError,
   },
   types: {
-    context: {} as {
-      connection: WalletStatusUpdate['connection'] | undefined
-      session: WalletStatusUpdate['session']
-      error: unknown
-    },
+    // Declared so `snapshot.children.accounts` types concretely; setup's actors map carries no id.
+    children: {} as { accounts: 'accounts' },
+    context: {} as ConnectionContext,
+    input: {} as ConnectionInput,
+    tags: {} as
+      // The connect is answered and a session stands, `authenticated` or `unauthenticated`.
+        | 'connect.settled'
+        // The connect is answered by the failure riding in `lastConnectError`.
+        | 'connect.failed'
+        // The connect was walked out on: it ends with no session and no error recorded.
+        | 'connect.cancelled'
+        // A connect is still in progress to consumers, the account read after the wallet's answer
+        // included.
+        | 'connecting'
+        // A session stands but must authenticate before it serves requests.
+        | 'unauthenticated'
+        // A disconnect already holds true, so one asked for here is answered by the current
+        // snapshot.
+        | 'disconnect.settled'
+        // A disconnect a connect took over: the machine goes to `connecting`, never to
+        // `disconnected`.
+        | 'disconnect.superseded',
     events: {} as
       | { type: 'connect' }
-      | { type: 'cancel' }
+      | { type: 'connectError.reset' }
       | { type: 'disconnect' }
       | { type: 'restore' }
       | { type: 'wallet.statusChanged'; status: WalletStatusUpdate },
   },
 }).createMachine({
-  context: {
-    connection: undefined,
-    session: undefined,
-    error: undefined,
-  },
+  context: ({ input }) => ({
+    ...input,
+    sdk: input.createSdk(),
+    lastConnectError: undefined,
+    party: undefined,
+  }),
   id: 'connection',
-  initial: 'disconnected',
+  initial: 'idle',
+  // Consumers dismiss a message they have read; it clears itself on the next attempt anyway.
+  on: {
+    'connectError.reset': { actions: { type: 'forgetError' } },
+  },
   states: {
+    // Nothing attempted yet. `disconnected` means a restore that found nothing or a session that
+    // ended, and a consumer gating on that would turn a returning user away before the restore ran.
+    idle: {
+      tags: ['disconnect.settled'],
+      on: {
+        connect: { target: 'connecting' },
+        restore: { target: 'initializing' },
+      },
+    },
     disconnected: {
+      // Cancelled covers the second route here too: a restore that replaced a session and then
+      // found nothing, which reports as a cancel because nothing failed on the way.
+      tags: ['connect.cancelled', 'disconnect.settled'],
       on: {
         connect: { target: 'connecting' },
         restore: { target: 'initializing' },
       },
     },
     connecting: {
+      tags: ['connecting'],
+      entry: { type: 'forgetError' },
       invoke: {
         src: 'connect',
+        input: ({ context }) => ({
+          sdk: context.sdk,
+          initOptions: context.initOptions,
+          guardPicker: context.guardPicker,
+        }),
         onDone: [
           landAuthenticated,
           {
             target: 'failure',
             actions: assign(({ event: { output } }) => ({
-              error: new Error(output.connection.reason ?? 'wallet declined connection'),
+              lastConnectError: new Error(
+                output.connection.reason ??
+                  output.connection.networkReason ??
+                  'wallet declined connection',
+              ),
             })),
           },
         ],
-        onError: {
-          target: 'failure',
-          actions: {
-            type: 'assignError',
-            params: ({ event: { error } }) => ({ error }),
+        onError: [
+          {
+            guard: { type: 'isPickerClosed', params: ({ event: { error } }) => ({ error }) },
+            // Swapped before `retiring` is entered, so its init reads the replacement.
+            actions: { type: 'retireSdk' },
+            target: 'retiring',
           },
-        },
+          {
+            guard: { type: 'isInitFailed', params: ({ event: { error } }) => ({ error }) },
+            target: 'failure',
+            actions: [
+              {
+                type: 'assignError',
+                // The wrapper marked the route; the consumer reads the SDK's own error.
+                params: ({ event: { error } }) => ({
+                  error: error instanceof InitFailedError ? error.cause : error,
+                }),
+              },
+              // The rejection is cached on the instance forever, so only a replacement can retry.
+              { type: 'retireSdk' },
+            ],
+          },
+          {
+            target: 'failure',
+            actions: {
+              type: 'assignError',
+              params: ({ event: { error } }) => ({ error }),
+            },
+          },
+        ],
       },
       on: {
-        cancel: { target: 'disconnected' },
+        // Leaving the state is not enough: sdk.connect() keeps running past this, so the wallet
+        // itself has to be asked to disconnect.
+        disconnect: { target: 'disconnecting' },
       },
     },
     session: {
       initial: 'unauthenticated',
       invoke: {
         src: 'walletEvents',
+        input: ({ context }) => ({ sdk: context.sdk }),
       },
       states: {
         authenticated: {
+          initial: 'reading',
+          // A wallet that will not serve requests has no party to offer, and the two ways it
+          // stops serving (a lock, a wallet-side disconnect) are one indistinguishable push. The
+          // session itself stays, so the unlock push is still heard and re-reads the party.
+          exit: assign({ party: undefined }),
+          invoke: {
+            src: 'accounts',
+            id: 'accounts',
+            input: ({ context }) => ({ sdk: context.sdk, networkId: context.networkId }),
+            // The child owns the read and why it failed; these sub-states mirror its states, so one
+            // snapshot of this machine can say whether a connect has landed.
+            onSnapshot: [
+              {
+                guard: ({ event }) => event.snapshot.matches('ready'),
+                target: '.ready',
+                actions: assign(({ event }) => ({
+                  party: event.snapshot.context.party,
+                  // A push can recover a read that failed, and the failure it recorded must not
+                  // outlive it: a session with a party and an error reads as broken.
+                  lastConnectError: undefined,
+                })),
+              },
+              {
+                guard: ({ event }) => event.snapshot.matches('unavailable'),
+                target: '.unavailable',
+                actions: assign(({ event }) => ({
+                  lastConnectError: event.snapshot.context.error,
+                })),
+              },
+            ],
+          },
+          states: {
+            reading: { tags: ['connecting'] },
+            ready: { tags: ['connect.settled'] },
+            unavailable: { tags: ['connect.failed'] },
+          },
           on: {
             'wallet.statusChanged': [
               {
@@ -136,17 +323,14 @@ export const connectionMachine = setup({
                   type: 'isAuthenticated',
                   params: ({ event: { status } }) => ({ connection: status.connection }),
                 },
-                actions: {
-                  type: 'applyWalletStatus',
-                  params: ({ event: { status } }) => ({ status }),
-                },
               },
               { target: 'unauthenticated' },
             ],
           },
-          exit: assign({ connection: undefined }),
         },
         unauthenticated: {
+          // A wallet that connects unauthenticated answers no account read, so the connect is done.
+          tags: ['connect.settled', 'unauthenticated'],
           on: {
             'wallet.statusChanged': {
               guard: {
@@ -154,62 +338,96 @@ export const connectionMachine = setup({
                 params: ({ event: { status } }) => ({ connection: status.connection }),
               },
               target: 'authenticated',
-              actions: {
-                type: 'applyWalletStatus',
-                params: ({ event: { status } }) => ({ status }),
-              },
             },
           },
         },
       },
-      exit: assign({ session: undefined }),
       on: {
-        disconnect: { target: 'disconnected' },
+        // A connect over a standing session is how a wallet gets changed; the connect actor's own
+        // status read is what lands us back here if the attempt fails.
+        connect: { target: 'connecting' },
+        disconnect: { target: 'disconnecting' },
+        // A replaced sdk leaves this session's listeners bound to the old client, and exiting
+        // `session` is what tears them down, so restore has to be accepted here too.
+        restore: { target: 'initializing' },
       },
     },
     failure: {
-      exit: assign({ error: undefined }),
+      tags: ['connect.failed'],
       on: {
         connect: { target: 'connecting' },
+        disconnect: { target: 'disconnecting' },
         restore: { target: 'initializing' },
+      },
+    },
+    // A cancelled wallet change must not cost the standing session: the transition swapped the
+    // poisoned sdk (see `retireSdk`), and this state inits the replacement and restores that
+    // session.
+    retiring: {
+      tags: ['connect.cancelled'],
+      // A cancel records no error; clearing it here keeps that rule on the state that answers.
+      entry: { type: 'forgetError' },
+      invoke: bootSdk,
+      on: {
+        connect: { target: 'connecting' },
+        disconnect: { target: 'disconnecting' },
       },
     },
     restoring: {
       invoke: {
         src: 'restore',
-        onDone: [
-          landAuthenticated,
-          {
-            guard: {
-              type: 'hasSession',
-              params: ({ event: { output } }) => ({ session: output.session }),
-            },
-            target: 'session.unauthenticated',
-            actions: assign(({ event: { output } }) => ({ session: output.session })),
-          },
-          { target: 'disconnected' },
-        ],
+        input: ({ context }) => ({ sdk: context.sdk }),
+        onDone: [landAuthenticated, { target: 'disconnected' }],
         onError: { target: 'disconnected' },
       },
       on: {
-        cancel: { target: 'disconnected' },
+        connect: { target: 'connecting' },
+        disconnect: { target: 'disconnecting' },
       },
     },
     initializing: {
+      invoke: bootSdk,
+      on: {
+        // A connect asked for during boot wins over the restore instead of being dropped; the
+        // connect actor inits and reads status itself, so a standing session still comes back.
+        connect: { target: 'connecting' },
+        disconnect: { target: 'disconnecting' },
+      },
+    },
+    // sdk.disconnect() and sdk.connect() both rewrite the client, so they must never overlap: a
+    // connect asked for mid-disconnect is remembered as the `reconnecting` sub-state, not started.
+    disconnecting: {
+      initial: 'ending',
+      entry: { type: 'forgetError' },
       invoke: {
-        src: 'init',
-        onDone: { target: 'restoring' },
-        onError: {
-          target: 'failure',
-          actions: {
-            type: 'assignError',
-            params: ({ event: { error } }) => ({ error }),
+        src: 'disconnect',
+        input: ({ context }) => ({ sdk: context.sdk }),
+        onDone: afterDisconnect,
+        onError: afterDisconnect,
+      },
+      states: {
+        ending: {
+          on: {
+            connect: { target: 'reconnecting' },
           },
         },
-      },
-      on: {
-        cancel: { target: 'disconnected' },
+        // Not `disconnect.settled`: the wallet has not answered yet, and the connect that took
+        // over owns the session now. A disconnect asked for again un-queues that connect.
+        reconnecting: {
+          tags: ['disconnect.superseded'],
+          on: {
+            disconnect: { target: 'ending' },
+          },
+        },
       },
     },
   },
 })
+
+/**
+ * The running connection machine. Consumers reach it narrowed to {@link ConnectionSubscription},
+ * so `send` stays inside this package.
+ *
+ * @category Types
+ */
+export type ConnectionActorRef = ActorRefFrom<typeof connectionMachine>
