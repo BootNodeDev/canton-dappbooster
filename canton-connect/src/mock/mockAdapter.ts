@@ -10,10 +10,15 @@ import type {
 } from '@canton-network/dapp-sdk'
 
 // Derived from ProviderAdapter/dappAPI so this file stays on the one dapp-sdk dependency.
+/** The provider object an adapter hands out, which is what this mock has to satisfy. */
 type MockProvider = ReturnType<ProviderAdapter['provider']>
+/** One JSON-RPC request the provider is asked to answer. */
 type RequestArg = Parameters<MockProvider['request']>[0]
+/** What answering a request resolves to. */
 type RequestResult = Awaited<ReturnType<MockProvider['request']>>
+/** A subscriber to one of the provider's push events. */
 type Listener = Parameters<MockProvider['on']>[1]
+/** One CIP-0103 account entry, as `listAccounts` reports it. */
 type Wallet = dappAPI.Wallet
 
 /**
@@ -64,10 +69,12 @@ const MOCK_SIGNING_PROVIDER_ID: dappAPI.SigningProviderId = 'mock'
 // Obviously fake, not '' — a presence check downstream shouldn't mistake this for real.
 const MOCK_PUBLIC_KEY: dappAPI.PublicKey = 'mock-public-key'
 
+/** The single mock account `createMockAdapter` reports when the caller supplies none. */
 const defaultAccounts = (providerId: ProviderId): MockAccount[] => [
   { partyId: `${providerId}::1220abcd` },
 ]
 
+/** Shapes one `MockAccount` into the `Wallet` the mock adapter's `listAccounts` returns. */
 const toWallet = (
   account: MockAccount,
   primary: dappAPI.Primary,
@@ -86,6 +93,10 @@ const toWallet = (
     ...(networkId === undefined ? {} : { networkId }),
   }) as Wallet
 
+/**
+ * The adapter `createMockAdapter` returns: it announces itself like an installed wallet and
+ * answers the connect flow from canned accounts, with no wallet present.
+ */
 class MockProviderAdapter implements ProviderAdapter {
   readonly providerId: ProviderId
   readonly name = DEFAULT_NAME
