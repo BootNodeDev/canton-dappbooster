@@ -46,3 +46,6 @@ playwright-report/
 
 # brainstorming visual companion
 .superpowers/
+
+# vitest coverage output
+coverage/
