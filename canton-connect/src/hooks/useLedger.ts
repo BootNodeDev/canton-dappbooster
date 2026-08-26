@@ -1,6 +1,6 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -33,18 +33,17 @@ export interface UseLedgerResult {
  * @category Hooks
  */
 export const useLedger = (): UseLedgerResult => {
-  const ctx = useCantonConnectContext()
+  // Guards without `call`: a stateless query needs no busy/error renders around it.
+  const { sdk, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {
-      if (ctx.status !== 'connected') {
-        throw new Error('wallet is not connected — call useConnect().connect() first')
-      }
+      assertUsable(status, isLocked)
 
-      return await ctx.sdk.ledgerApi(params)
+      return await sdk.ledgerApi(params)
     },
-    [ctx.sdk, ctx.status],
+    [isLocked, sdk, status],
   )
 
-  return { ledgerApi, isReady: ctx.status === 'connected' }
+  return { ledgerApi, isReady: status === 'connected' && !isLocked }
 }

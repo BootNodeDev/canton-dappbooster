@@ -1,4 +1,6 @@
+import { useSelector } from '@xstate/react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import { toConnectionStatus } from '#src/machine/connectionMachine'
 import type { ConnectionStatus, Party } from '#src/types'
 
 /**
@@ -27,10 +29,14 @@ export interface UsePartyResult {
  * @category Hooks
  */
 export const useParty = (): UsePartyResult => {
-  const ctx = useCantonConnectContext()
+  const { connection } = useCantonConnectContext()
+
+  const party = useSelector(connection, (snapshot) => snapshot.context.party)
+  const status = useSelector(connection, toConnectionStatus)
+
   return {
-    party: ctx.party,
-    status: ctx.status,
-    isConnected: ctx.status === 'connected',
+    party,
+    status,
+    isConnected: status === 'connected',
   }
 }

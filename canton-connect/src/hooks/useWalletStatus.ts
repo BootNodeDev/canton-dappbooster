@@ -1,4 +1,6 @@
+import { useSelector } from '@xstate/react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import { toConnectionStatus } from '#src/machine/connectionMachine'
 
 /**
  * Return shape of {@link useWalletStatus}. Connected-but-locked is a real pair: a session exists,
@@ -7,6 +9,10 @@ import { useCantonConnectContext } from '#src/CantonConnectProvider'
  * @category Hooks
  */
 export interface UseWalletStatusResult {
+  /**
+   * Connected-but-locked: a session exists, but must be unlocked to serve requests. The party and
+   * the status are unchanged while locked, because the session is what owns them.
+   */
   isLocked: boolean
   isConnected: boolean
 }
@@ -24,9 +30,13 @@ export interface UseWalletStatusResult {
  * @category Hooks
  */
 export const useWalletStatus = (): UseWalletStatusResult => {
-  const ctx = useCantonConnectContext()
+  const { connection } = useCantonConnectContext()
+
+  const isLocked = useSelector(connection, (snapshot) => snapshot.hasTag('unauthenticated'))
+  const status = useSelector(connection, toConnectionStatus)
+
   return {
-    isLocked: ctx.isLocked,
-    isConnected: ctx.status === 'connected',
+    isLocked,
+    isConnected: status === 'connected',
   }
 }

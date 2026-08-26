@@ -1,6 +1,8 @@
 import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
-import { useCallback, useState } from 'react'
-import { type TxStatusSnapshot, useCantonConnectContext } from '#src/CantonConnectProvider'
+import { useCallback } from 'react'
+import { useTxFeed } from '#src/hooks/useTxFeed'
+import { useWalletCall } from '#src/hooks/useWalletCall'
+import type { TxStatusSnapshot } from '#src/types'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -39,36 +41,15 @@ export interface UseExecuteResult {
  * @category Hooks
  */
 export const useExecute = (): UseExecuteResult => {
-  const ctx = useCantonConnectContext()
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [error, setError] = useState<Error | undefined>(undefined)
+  const { call, isBusy, error, reset, connection, sdk } = useWalletCall()
+
+  const lastTx = useTxFeed(sdk, connection)
 
   const execute = useCallback(
-    async (params: PrepareExecuteParams): Promise<unknown> => {
-      if (ctx.status !== 'connected') {
-        throw new Error('wallet is not connected — call useConnect().connect() first')
-      }
-
-      setIsExecuting(true)
-      setError(undefined)
-
-      try {
-        return await ctx.sdk.prepareExecuteAndWait(params)
-      } catch (err) {
-        const e = err as Error
-        setError(e)
-        throw e
-      } finally {
-        setIsExecuting(false)
-      }
-    },
-    [ctx.sdk, ctx.status],
+    (params: PrepareExecuteParams): Promise<unknown> =>
+      call((walletSdk) => walletSdk.prepareExecuteAndWait(params)),
+    [call],
   )
 
-  const reset = useCallback((): void => {
-    setError(undefined)
-    setIsExecuting(false)
-  }, [])
-
-  return { execute, lastTx: ctx.lastTx, isExecuting, error, reset }
+  return { execute, lastTx, isExecuting: isBusy, error, reset }
 }
