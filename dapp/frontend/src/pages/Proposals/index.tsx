@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
-import { CreateGrant } from '@/components/CreateGrant'
 import { EmptyState } from '@/components/EmptyState'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
@@ -9,7 +8,6 @@ import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { ProposalCard } from '@/pages/Proposals/ProposalCard'
-import { useBackend } from '@/providers/Backend'
 import type { Proposal } from '@/store/types'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
@@ -18,10 +16,9 @@ import { toast } from '@/utils/toast'
 
 export const Proposals = (): React.JSX.Element => {
   const nowMs = useNow()
-  const { backend, partyId } = useVesting()
-  const { sessionPending } = useBackend()
+  const { backend, partyId, sessionPending } = useVesting()
   const [role, setRole] = useRoleLens()
-  const [creating, setCreating] = useCreateGrant()
+  const [, setCreating] = useCreateGrant()
   const proposals = useVestingStore((s) => s.proposals)
   const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
@@ -86,8 +83,6 @@ export const Proposals = (): React.JSX.Element => {
           ))}
         </div>
       )}
-
-      {creating && <CreateGrant open onClose={() => setCreating(false)} />}
     </div>
   )
 }

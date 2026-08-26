@@ -98,6 +98,24 @@ const sortBy = <T>(items: T[], key: (item: T) => string): T[] =>
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([, item]) => item)
 
+// A claim archives the contract and re-creates it, so the id the caller pointed at is gone by the
+// time the next read lands. Snapshot before the write; the returned function picks the successor out
+// of the read after it, as the one entry that read had not seen carrying the same lineage. Two
+// contracts a funder made identical share a lineage, which is what `seen` tells apart.
+const trackSuccessor = <T extends { id: string }>(
+  items: T[],
+  cid: string,
+  lineageOf: (item: T) => string,
+): ((after: T[]) => string | undefined) => {
+  const before = items.find((item) => item.id === cid)
+  if (before === undefined) {
+    return () => undefined
+  }
+  const lineage = lineageOf(before)
+  const seen = new Set(items.map((item) => item.id))
+  return (after) => after.find((item) => !seen.has(item.id) && lineageOf(item) === lineage)?.id
+}
+
 interface VestingState {
   claims: VestedClaim[]
   error: string | undefined
@@ -178,18 +196,12 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
-  // Returns the successor's contract id, since the claim replaced the one the caller passed. A
-  // grant the funder made identical shares the lineage, so the successor is the match whose id the
-  // read before the claim had not seen.
+  // Returns the successor's contract id, since the claim replaced the one the caller passed.
   withdraw: async (backend, partyId, contractCid, amount) => {
-    const before = get().grants.find((grant) => grant.id === contractCid)
-    const lineage = before === undefined ? undefined : grantLineage(before)
-    const seen = new Set(get().grants.map((grant) => grant.id))
+    const successor = trackSuccessor(get().grants, contractCid, grantLineage)
     await backend.withdraw({ receiver: partyId, contractCid, amount })
     await get().refresh(backend, partyId)
-    return lineage === undefined
-      ? undefined
-      : get().grants.find((grant) => !seen.has(grant.id) && grantLineage(grant) === lineage)?.id
+    return successor(get().grants)
   },
 
   cancel: async (backend, partyId, contractCid) => {
@@ -197,28 +209,26 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
-  // Like withdraw: the claim is replaced, and a drained one is archived outright, so the successor
-  // is what the caller can point at and undefined means there is nothing left to point at.
+  // Like withdraw, except a drained claim is archived outright rather than re-created, so undefined
+  // here means there is nothing left to point at.
   claimResidual: async (backend, partyId, claimCid, amount) => {
-    const before = get().claims.find((claim) => claim.id === claimCid)
-    const lineage = before === undefined ? undefined : claimLineage(before)
-    const seen = new Set(get().claims.map((claim) => claim.id))
+    const successor = trackSuccessor(get().claims, claimCid, claimLineage)
     await backend.claimResidual({ receiver: partyId, claimCid, amount })
     await get().refresh(backend, partyId)
-    return lineage === undefined
-      ? undefined
-      : get().claims.find((claim) => !seen.has(claim.id) && claimLineage(claim) === lineage)?.id
+    return successor(get().claims)
   },
 }))
 
 // Wires the store to the context backend + acting party and re-reads the ACS whenever either
 // changes. Components call this once near the top of a page; an undefined backend means no
-// deployment or no wallet session yet, so the page renders a connect placeholder instead.
+// deployment or no wallet session yet, so the page renders a connect placeholder instead —
+// `sessionPending` rides along because that placeholder is the only thing every page does with it.
 export const useVesting = (): {
   backend: VestingBackend | undefined
   partyId: string
+  sessionPending: boolean
 } => {
-  const { backend } = useBackend()
+  const { backend, sessionPending } = useBackend()
   const { party } = useParty()
   const partyId = party?.partyId ?? ''
   const clear = useVestingStore((state) => state.clear)
@@ -233,5 +243,5 @@ export const useVesting = (): {
     void refresh(backend, partyId)
   }, [backend, clear, partyId, refresh])
 
-  return { backend, partyId }
+  return { backend, partyId, sessionPending }
 }

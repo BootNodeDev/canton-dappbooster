@@ -1,12 +1,18 @@
 import { Outlet } from 'react-router-dom'
 import { Card } from '@/components/Card'
+import { CreateGrant } from '@/components/CreateGrant'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
+import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { configPending, configError } = useBackend()
+  const { backend, configPending, configError } = useBackend()
+  // Mounted here rather than per page, because `?create=1` is route state: every page that offers
+  // the action would otherwise repeat the mount, and a reader can open it from any of them. Held
+  // until there is a backend so a deep link with no session still lands on the page's connect card.
+  const [creating, setCreating] = useCreateGrant()
 
   useConnectErrorToast()
 
@@ -21,7 +27,14 @@ export const AppShell = (): React.JSX.Element => {
               <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
             </Card>
           )}
-          {configError === undefined && !configPending && <Outlet />}
+          {configError === undefined && !configPending && (
+            <>
+              <Outlet />
+              {creating && backend !== undefined && (
+                <CreateGrant onClose={() => setCreating(false)} />
+              )}
+            </>
+          )}
         </main>
         <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
           <span className="size-1.5 rounded-full bg-success" />

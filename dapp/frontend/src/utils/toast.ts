@@ -24,20 +24,37 @@ interface ToastState {
 // an open dialog, and remounting there would hand every toast on screen a fresh full life.
 const AUTO_DISMISS_MS = 3200
 
-export const useToastStore = create<ToastState>((set) => ({
-  toasts: [],
-  push: (tone, message, options) => {
-    const id = crypto.randomUUID()
-    set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
-    if (options?.sticky !== true && options?.action === undefined) {
-      setTimeout(
-        () => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-        AUTO_DISMISS_MS,
-      )
-    }
-  },
-  dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-}))
+// Held so a hand-dismissed toast can cancel its own clock. Without this the timer still fires into
+// an empty store, and `filter` returning a fresh array notifies every subscriber for a no-op.
+const timers = new Map<string, ReturnType<typeof setTimeout>>()
+
+export const useToastStore = create<ToastState>((set) => {
+  const remove = (id: string): void => {
+    timers.delete(id)
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
+  }
+
+  return {
+    toasts: [],
+    push: (tone, message, options) => {
+      const id = crypto.randomUUID()
+      set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
+      if (options?.sticky !== true && options?.action === undefined) {
+        timers.set(
+          id,
+          setTimeout(() => remove(id), AUTO_DISMISS_MS),
+        )
+      }
+    },
+    dismiss: (id) => {
+      const timer = timers.get(id)
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
+      remove(id)
+    },
+  }
+})
 
 export const toast = {
   success: (message: string, options?: ToastOptions): void =>

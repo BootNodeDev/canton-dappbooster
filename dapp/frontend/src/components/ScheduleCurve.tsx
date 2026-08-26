@@ -1,21 +1,19 @@
 import { useId, useMemo } from 'react'
 import { formatDate } from '@/utils/format'
-import { type VestingSchedule, vestedFraction } from '@/utils/schedule'
+import { toMs, type VestingSchedule, vestedFraction } from '@/utils/schedule'
 
 interface ScheduleCurveProps {
   nowMs: number
   schedule: VestingSchedule
 }
 
-const ms = (iso: string): number => new Date(iso).getTime()
-
 const domain = (schedule: VestingSchedule): [number, number] => {
-  const cliff = ms(schedule.cliff)
+  const cliff = toMs(schedule.cliff)
   if (schedule.curve.kind === 'linear') {
-    return [Math.min(cliff, ms(schedule.curve.start)), ms(schedule.curve.end)]
+    return [Math.min(cliff, toMs(schedule.curve.start)), toMs(schedule.curve.end)]
   }
   const points = schedule.curve.points
-  return [Math.min(cliff, ms(points[0].time)), ms(points[points.length - 1].time)]
+  return [Math.min(cliff, toMs(points[0].time)), toMs(points[points.length - 1].time)]
 }
 
 const W = 100
@@ -45,7 +43,7 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
     const fill = `${path}L${px(e).toFixed(2)} ${py(0)} L${px(s).toFixed(2)} ${py(0)} Z`
     const points =
       schedule.curve.kind === 'milestone'
-        ? schedule.curve.points.map((p) => ({ x: px(ms(p.time)), y: py(p.fraction) }))
+        ? schedule.curve.points.map((p) => ({ x: px(toMs(p.time)), y: py(p.fraction) }))
         : []
     return {
       x: px,
@@ -54,7 +52,7 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
       end: e,
       d: path,
       area: fill,
-      cliffX: px(ms(schedule.cliff)),
+      cliffX: px(toMs(schedule.cliff)),
       milestonePoints: points,
     }
   }, [schedule])

@@ -13,6 +13,7 @@ import {
   type AcsRow,
   type ClaimRecord,
   type CreateVestInput,
+  claimChain,
   composeNote,
   lastUpdateOffset,
   rowToClaim,
@@ -26,6 +27,16 @@ import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wall
 
 const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
   rows.map(mapper).filter((value): value is T => value !== undefined)
+
+// The JSON Ledger API's party/template filter, shared by the ACS read and the update stream. Built
+// in one place because a typo in this nesting yields a silent empty read rather than an error.
+const templateFilter = (party: string, templateId: string): Record<string, unknown> => ({
+  filtersByParty: {
+    [party]: {
+      cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
+    },
+  },
+})
 
 // A page of claims, and how long the stream may sit quiet before it returns what it has: the
 // endpoint is a stream, so without the idle timeout the read never completes.
@@ -78,13 +89,7 @@ export class LiteBackend implements VestingBackend {
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
       body: {
-        filter: {
-          filtersByParty: {
-            [party]: {
-              cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
-            },
-          },
-        },
+        filter: templateFilter(party, templateId),
         activeAtOffset: offset,
         verbose: true,
       },
@@ -156,17 +161,7 @@ export class LiteBackend implements VestingBackend {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
             eventFormat: {
               verbose: true,
-              filtersByParty: {
-                [partyId]: {
-                  cumulative: [
-                    {
-                      identifierFilter: {
-                        TemplateFilter: { value: { templateId: this.contractTid } },
-                      },
-                    },
-                  ],
-                },
-              },
+              ...templateFilter(partyId, this.contractTid),
             },
           },
         },
@@ -176,8 +171,9 @@ export class LiteBackend implements VestingBackend {
 
   // The ledger keeps no claim log of its own, so the history is the transaction stream: every
   // `Contract_Claim` this party can see, read once rather than followed, since the page asks again
-  // after each claim.
-  async claimHistory(partyId: string): Promise<ClaimRecord[]> {
+  // after each claim. The stream is party-wide, so the one grant's chain is picked out of it here
+  // and no caller has to know a claim replaces the contract it is claimed from.
+  async claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]> {
     const endInclusive = await this.ledgerEnd()
     const records: ClaimRecord[] = []
     let beginExclusive: string | number = 0
@@ -190,7 +186,7 @@ export class LiteBackend implements VestingBackend {
       }
       beginExclusive = last
     }
-    return records
+    return claimChain(records, contractCid)
   }
 
   async accept(args: { receiver: string; proposalCid: string }): Promise<void> {

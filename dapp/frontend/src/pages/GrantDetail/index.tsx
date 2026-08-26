@@ -1,5 +1,5 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { ClaimRecord } from '@/backend/VestingBackend'
 import { AmountDisplay } from '@/components/AmountDisplay'
@@ -7,19 +7,21 @@ import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
 import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
+import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
+import { CurvePill } from '@/components/CurvePill'
 import { EmptyState } from '@/components/EmptyState'
-import { GrantClaimed, GrantLock, GrantStatusPill } from '@/components/GrantStatus'
+import { GrantClaimed } from '@/components/GrantClaimed'
+import { GrantLock } from '@/components/GrantLock'
+import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
-import { StatusPill } from '@/components/StatusPill'
 import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
-import { useBackend } from '@/providers/Backend'
 import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
-import { formatCCCompact, formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { copyToast } from '@/utils/toast'
 
 export const GrantDetail = (): React.JSX.Element => {
@@ -27,8 +29,7 @@ export const GrantDetail = (): React.JSX.Element => {
   const navigate = useNavigate()
   const location = useLocation()
   const { id } = useParams<{ id: string }>()
-  const { backend, partyId } = useVesting()
-  const { sessionPending } = useBackend()
+  const { backend, partyId, sessionPending } = useVesting()
   const grant = useVestingStore((s) => s.grants.find((g) => g.id === id))
   const loading = useVestingStore((s) => s.loading)
   const withdraw = useVestingStore((s) => s.withdraw)
@@ -47,7 +48,7 @@ export const GrantDetail = (): React.JSX.Element => {
     }
     let cancelled = false
     setClaims(undefined)
-    void backend.claimHistory(partyId).then(
+    void backend.claimHistory(partyId, contractId).then(
       (records) => {
         if (!cancelled) setClaims(records)
       },
@@ -59,25 +60,6 @@ export const GrantDetail = (): React.JSX.Element => {
       cancelled = true
     }
   }, [backend, partyId, contractId])
-
-  // A claim consumes the contract and creates its successor, so a grant's history is its ancestry:
-  // walk back from the id on screen. Matching on the fields instead merges two grants a funder made
-  // identical, and the walk arrives newest-first, which is the order the card wants.
-  const grantClaims = useMemo(() => {
-    if (claims === undefined || contractId === undefined) {
-      return undefined
-    }
-    const bySuccessor = new Map(claims.map((record) => [record.grant.id, record]))
-    const history: ClaimRecord[] = []
-    for (
-      let record = bySuccessor.get(contractId);
-      record !== undefined;
-      record = bySuccessor.get(record.replaces)
-    ) {
-      history.push(record)
-    }
-    return history
-  }, [claims, contractId])
 
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
@@ -123,21 +105,19 @@ export const GrantDetail = (): React.JSX.Element => {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-2xl font-extrabold tracking-tight text-fg">{grant.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <StatusPill tone={isMilestone ? 'milestone' : 'linear'}>
-              {isMilestone ? 'Milestone' : 'Linear'}
-            </StatusPill>
+            <CurvePill curve={grant.schedule.curve} />
             <GrantStatusPill status={derived.status} />
           </div>
         </div>
         <div className="flex gap-2.5">
           {isReceiver &&
             (derived.fullyClaimed ? (
-              <GrantClaimed className="inline-flex items-center gap-1.5 self-center font-mono text-xs text-fg-muted" />
+              <GrantClaimed className="self-center" />
             ) : derived.locked ? (
-              <GrantLock className="inline-flex items-center gap-1.5 self-center font-mono text-xs text-fg-muted" />
+              <GrantLock className="self-center" />
             ) : (
               <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
-                Claim {formatCCCompact(derived.claimable)} CC
+                Claim <CompactAmount value={derived.claimable} plain /> CC
               </Button>
             ))}
           {isCreator && (
@@ -229,15 +209,15 @@ export const GrantDetail = (): React.JSX.Element => {
         <Card className="p-6">
           <h2 className="text-sm font-extrabold text-fg">Withdraw history</h2>
           <div className="mt-4 h-40 overflow-y-auto">
-            {grantClaims === undefined ? (
+            {claims === undefined ? (
               <div className="flex h-full items-center justify-center text-fg-muted">
                 <SpinnerIcon width={20} height={20} />
               </div>
-            ) : grantClaims.length === 0 ? (
+            ) : claims.length === 0 ? (
               <p className="text-sm text-fg-muted">No withdrawals yet.</p>
             ) : (
               <ul className="flex flex-col gap-2.5 pr-1">
-                {grantClaims.map((record) => (
+                {claims.map((record) => (
                   <li key={record.grant.id} className="flex items-center justify-between text-sm">
                     <span className="font-mono text-xs text-fg-muted">{formatDate(record.at)}</span>
                     <AmountDisplay value={record.amount} className="font-semibold" />
@@ -251,7 +231,6 @@ export const GrantDetail = (): React.JSX.Element => {
 
       {claimOpen && (
         <Claim
-          open
           onClose={() => setClaimOpen(false)}
           title="Claim vested CC"
           available={derived.claimable}
@@ -267,7 +246,6 @@ export const GrantDetail = (): React.JSX.Element => {
 
       {cancelOpen && (
         <CancelGrant
-          open
           onClose={() => setCancelOpen(false)}
           grant={grant}
           nowMs={nowMs}

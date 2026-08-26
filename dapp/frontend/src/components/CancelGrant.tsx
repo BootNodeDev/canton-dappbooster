@@ -3,7 +3,6 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
-import { SpinnerIcon } from '@/icons'
 import type { Grant } from '@/store/types'
 import { deriveGrant } from '@/store/useVestingStore'
 import { errorText } from '@/utils/errorText'
@@ -16,14 +15,12 @@ interface CancelGrantProps {
   nowMs: number
   onClose: () => void
   onConfirm: () => Promise<void>
-  open: boolean
   successMessage: string
 }
 
 // Cancel-grant confirmation shared by the dashboard and grant-detail pages. Like Claim, it
 // owns the submit, toast, error and submitting lifecycle so the pages do not.
 export const CancelGrant = ({
-  open,
   onClose,
   grant,
   nowMs,
@@ -51,7 +48,7 @@ export const CancelGrant = ({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Cancel grant" description={description}>
+    <Modal onClose={onClose} title="Cancel grant" description={description}>
       <div className="flex flex-col gap-4">
         <div className="rounded-xl border border-border bg-bg/40 p-4 text-sm">
           <div className="flex justify-between">
@@ -74,17 +71,11 @@ export const CancelGrant = ({
           variant="danger"
           size="sm"
           onClick={() => void submit()}
-          disabled={submitting || !floorOk}
+          disabled={!floorOk}
+          pending={submitting}
           aria-describedby={floorOk ? undefined : 'cancel-residual-floor'}
         >
-          {submitting ? (
-            <>
-              <SpinnerIcon width={16} height={16} />
-              Submitting…
-            </>
-          ) : (
-            'Cancel grant'
-          )}
+          Cancel grant
         </Button>
       </div>
     </Modal>

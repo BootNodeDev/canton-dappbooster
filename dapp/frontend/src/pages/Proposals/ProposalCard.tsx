@@ -2,6 +2,7 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CounterpartyId } from '@/components/CounterpartyId'
+import { CurvePill } from '@/components/CurvePill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
@@ -14,7 +15,7 @@ import { vestedFraction } from '@/utils/schedule'
 interface ProposalCardProps {
   direction: 'incoming' | 'outgoing'
   nowMs: number
-  onAccept?: (proposal: Proposal) => void
+  onAccept: (proposal: Proposal) => void
   proposal: Proposal
 }
 
@@ -25,7 +26,6 @@ export const ProposalCard = ({
   onAccept,
 }: ProposalCardProps): React.JSX.Element => {
   const curve = proposal.schedule.curve
-  const isMilestone = curve.kind === 'milestone'
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const startFraction = vestedFraction(proposal.schedule, nowMs)
   const counterparty = direction === 'incoming' ? proposal.proposer : proposal.receiver
@@ -35,9 +35,7 @@ export const ProposalCard = ({
       <div className="min-w-0">
         <h3 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <StatusPill tone={isMilestone ? 'milestone' : 'linear'}>
-            {isMilestone ? 'Milestone' : 'Linear'}
-          </StatusPill>
+          <CurvePill curve={curve} />
           <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
             {direction === 'incoming' ? 'Action needed' : 'Awaiting acceptance'}
           </StatusPill>
@@ -70,7 +68,7 @@ export const ProposalCard = ({
           <AmountDisplay value={proposal.totalAmount} className="text-xl font-semibold text-fg" />
         </div>
         {direction === 'incoming' ? (
-          <Button size="sm" onClick={() => onAccept?.(proposal)}>
+          <Button size="sm" onClick={() => onAccept(proposal)}>
             Accept &amp; fund
           </Button>
         ) : (

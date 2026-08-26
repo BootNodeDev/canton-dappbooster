@@ -34,11 +34,27 @@ export interface ClaimRecord {
 export interface VestingBackend {
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
-  claimHistory(partyId: string): Promise<ClaimRecord[]>
+  claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
+}
+
+// A claim consumes the contract and creates its successor, so one grant's history is its ancestry:
+// walk back from the id asked about. Matching on the fields instead merges two grants a funder made
+// identical, and the walk arrives newest-first, which is the order a caller wants to render.
+export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRecord[] => {
+  const bySuccessor = new Map(records.map((record) => [record.grant.id, record]))
+  const chain: ClaimRecord[] = []
+  for (
+    let record = bySuccessor.get(contractCid);
+    record !== undefined;
+    record = bySuccessor.get(record.replaces)
+  ) {
+    chain.push(record)
+  }
+  return chain
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────

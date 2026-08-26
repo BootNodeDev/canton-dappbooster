@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
+import { SpinnerIcon } from '@/icons'
 import { cn } from '@/utils/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
@@ -14,8 +15,11 @@ interface BaseProps {
   variant?: Variant
 }
 
+// `pending` owns the whole in-flight look, because every dialog that had it hand-rolled drifted:
+// two rendered a spinner beside the word and the third rendered the word alone.
 interface ButtonAsButton extends BaseProps, ButtonHTMLAttributes<HTMLButtonElement> {
   asLink?: false
+  pending?: boolean
 }
 
 interface ButtonAsLink extends BaseProps {
@@ -76,8 +80,27 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
     size = 'md',
     className,
     type = 'button',
+    pending = false,
+    disabled = false,
+    children,
     asLink: _a,
     ...rest
   } = props
-  return <button type={type} className={buttonClass(variant, size, className)} {...rest} />
+  return (
+    <button
+      type={type}
+      className={buttonClass(variant, size, className)}
+      disabled={disabled || pending}
+      {...rest}
+    >
+      {pending ? (
+        <>
+          <SpinnerIcon width={16} height={16} />
+          Submitting…
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  )
 }

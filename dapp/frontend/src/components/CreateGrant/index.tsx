@@ -19,9 +19,9 @@ import { InfoTip } from '@/components/InfoTip'
 import { Modal } from '@/components/Modal'
 import { Select } from '@/components/Select'
 import { useParty } from '@/hooks/useParty'
-import { useToken } from '@/hooks/useToken'
 import { TrashIcon } from '@/icons'
-import { useVesting, useVestingStore } from '@/store/useVestingStore'
+import { useBackend } from '@/providers/Backend'
+import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { now } from '@/utils/clock'
@@ -30,6 +30,7 @@ import { EXPLORER } from '@/utils/config'
 import { errorText } from '@/utils/errorText'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { copyToast, toast } from '@/utils/toast'
+import { CC } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -56,7 +57,6 @@ interface ScheduleForm {
   start: string
 }
 
-const relIso = (msFromNow: number): string => new Date(now() + msFromNow).toISOString()
 const addMonths = (d: Date, m: number): Date => {
   const copy = new Date(d)
   copy.setMonth(copy.getMonth() + m)
@@ -114,17 +114,14 @@ const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
   'invalid-fingerprint': 'The fingerprint after :: must be 68 hex characters.',
 }
 
-interface CreateGrantProps {
-  onClose: () => void
-  open: boolean
-}
-
-export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Element => {
+export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Element => {
   const { party } = useParty()
-  const { backend, partyId } = useVesting()
+  // Not `useVesting`: this mounts over a page that already holds the ACS read, and a second one
+  // would bump the refresh epoch and discard the page's own read mid-flight.
+  const { backend } = useBackend()
+  const partyId = party?.partyId ?? ''
   const createVesting = useVestingStore((s) => s.createVesting)
   const explorerLink = useExplorerLink(EXPLORER)
-  const [token, setToken] = useToken()
 
   const [receiver, setReceiver] = useState('')
   // What the field is currently flagging: the kit reports it, this page words and places it.
@@ -197,43 +194,34 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
   const setMilestone = (i: number, patch: Partial<MilestoneInput>): void =>
     editMilestones((list) => list.map((m, idx) => (idx === i ? { ...m, ...patch } : m)))
 
-  const demoLinear = (durationMs: number): void =>
-    setScheduleForm((current) => ({
-      ...current,
-      curveKind: 'linear',
-      start: relIso(0),
-      cliff: relIso(0),
-      end: relIso(durationMs),
-      demo: { kind: 'linear', durationMs },
-    }))
-  const demoMilestones = (durationMs: number): void =>
-    setScheduleForm((current) => ({
-      ...current,
-      curveKind: 'milestone',
-      cliff: relIso(0),
-      milestones: [
-        { id: 'd1', date: relIso(durationMs / 3), pct: '34' },
-        { id: 'd2', date: relIso((durationMs / 3) * 2), pct: '67' },
-        { id: 'd3', date: relIso(durationMs), pct: '100' },
-      ],
-      demo: { kind: 'milestone', durationMs },
-    }))
-  // Restore the default months-out schedule (undo a quick-demo preset).
-  const resetSchedule = (): void =>
-    setScheduleForm((current) => ({
-      curveKind: current.curveKind,
-      ...defaultSchedule(new Date(now())),
-      demo: null,
-    }))
-
+  // The fields are filled from buildDemoSchedule rather than rebuilt here, or the preview and the
+  // submitted schedule are two copies of the same step maths and drift apart. 'none' restores the
+  // default months-out schedule.
   const applyPreset = (value: string): void => {
     if (value === 'none') {
-      resetSchedule()
-    } else if (curveKind === 'linear') {
-      demoLinear(Number(value))
-    } else {
-      demoMilestones(Number(value))
+      setScheduleForm((current) => ({
+        curveKind: current.curveKind,
+        ...defaultSchedule(new Date(now())),
+        demo: null,
+      }))
+      return
     }
+    const preset: DemoPreset = { kind: curveKind, durationMs: Number(value) }
+    const built = buildDemoSchedule(preset, now())
+    setScheduleForm((current) => ({
+      ...current,
+      cliff: built.cliff,
+      ...(built.curve.kind === 'linear'
+        ? { start: built.curve.start, end: built.curve.end }
+        : {
+            milestones: built.curve.points.map((point, i) => ({
+              id: `d${i + 1}`,
+              date: point.time,
+              pct: String(Math.round(point.fraction * 100)),
+            })),
+          }),
+      demo: preset,
+    }))
   }
 
   const submit = async (): Promise<void> => {
@@ -268,7 +256,6 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
 
   return (
     <Modal
-      open={open}
       onClose={onClose}
       title={`Create Grant (${step}/3)`}
       className="max-h-[85vh] max-w-2xl overflow-y-auto"
@@ -308,14 +295,16 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
               )}
             </div>
             <div>
+              {/* No `onTokenSelect` on purpose: the kit renders the symbol as a static mark
+                  without it, and a picker over a one-entry list is a control that cannot do
+                  anything. Restore it when a second instrument exists — see architecture.md. */}
               <TokenInput
                 aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
                 className="w-full border-0 p-0"
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                onTokenSelect={setToken}
-                token={token}
+                token={CC}
                 usdValue="Not Available"
                 value={amount}
               />
@@ -511,10 +500,11 @@ export const CreateGrant = ({ open, onClose }: CreateGrantProps): React.JSX.Elem
             <Button
               className="ml-auto"
               size="sm"
-              disabled={!valid || submitting}
+              disabled={!valid}
+              pending={submitting}
               onClick={() => void submit()}
             >
-              {submitting ? 'Submitting…' : 'Create grant'}
+              Create grant
             </Button>
           )
         )}

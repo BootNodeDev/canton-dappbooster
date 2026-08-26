@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { encodeSchedule } from '@/backend/commands'
 import {
+  claimChain,
   composeNote,
   lastUpdateOffset,
   rowToClaim,
@@ -223,6 +224,26 @@ describe('updatesToClaims', () => {
   it('ignores anything that is not an array of transactions', () => {
     expect(updatesToClaims(undefined)).toEqual([])
     expect(updatesToClaims([{}])).toEqual([])
+  })
+})
+
+describe('claimChain', () => {
+  const records = updatesToClaims([
+    claimUpdate(7, 'c1', 'c2', '250', '250'),
+    claimUpdate(9, 'c2', 'c3', '500', '250'),
+    claimUpdate(11, 'other1', 'other2', '10', '10'),
+  ])
+
+  it('walks a grant back through the contracts its own claims replaced, newest first', () => {
+    expect(claimChain(records, 'c3').map((r) => r.grant.id)).toEqual(['c3', 'c2'])
+  })
+
+  it('leaves out another grant chain the same party can see', () => {
+    expect(claimChain(records, 'c3').map((r) => r.replaces)).not.toContain('other1')
+  })
+
+  it('is empty for a contract nothing has claimed from yet', () => {
+    expect(claimChain(records, 'never-claimed')).toEqual([])
   })
 })
 

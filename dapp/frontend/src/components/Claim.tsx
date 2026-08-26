@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
-import { SpinnerIcon } from '@/icons'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
@@ -16,19 +15,12 @@ interface ClaimProps {
   available: string
   onClose: () => void
   onConfirm: (amount: string) => Promise<void>
-  open: boolean
   title: string
 }
 
 // Amount-entry dialog shared by grant withdraw and residual claim. Enforces the re-lock floor: the
 // remainder must be zero or at least MIN_GRANT_AMOUNT.
-export const Claim = ({
-  open,
-  onClose,
-  title,
-  available,
-  onConfirm,
-}: ClaimProps): React.JSX.Element => {
+export const Claim = ({ onClose, title, available, onConfirm }: ClaimProps): React.JSX.Element => {
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -66,7 +58,7 @@ export const Claim = ({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal onClose={onClose} title={title}>
       <TokenInput
         aria-describedby={message === undefined ? undefined : 'claim-amount-error'}
         balance={available}
@@ -85,16 +77,10 @@ export const Claim = ({
         className="mt-6 w-full"
         size="sm"
         onClick={() => void submit()}
-        disabled={!valid || submitting}
+        disabled={!valid}
+        pending={submitting}
       >
-        {submitting ? (
-          <>
-            <SpinnerIcon width={16} height={16} />
-            Submitting…
-          </>
-        ) : (
-          'Claim'
-        )}
+        Claim
       </Button>
     </Modal>
   )

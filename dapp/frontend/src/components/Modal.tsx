@@ -7,14 +7,13 @@ interface ModalProps {
   className?: string
   description?: string
   onClose: () => void
-  open: boolean
   title: string
 }
 
 // Centered dialog over a native `<dialog>`: the top layer carries the scrim, the focus trap, the
-// focus restore, the inert background and Escape, so none of it is reimplemented here.
+// focus restore, the inert background and Escape, so none of it is reimplemented here. Mounting is
+// what opens it, so every caller renders it behind its own condition and there is no `open` prop.
 export const Modal = ({
-  open,
   onClose,
   title,
   description,
@@ -28,12 +27,6 @@ export const Modal = ({
   useEffect(() => {
     const dialog = dialogRef.current
     if (dialog === null) {
-      return
-    }
-    if (!open) {
-      if (dialog.open) {
-        dialog.close()
-      }
       return
     }
     // Only showModal() reaches the top layer; the `open` attribute renders the dialog inline with
@@ -50,15 +43,15 @@ export const Modal = ({
       document.body.style.overflow = previousOverflow
       setTopLayerHost(null)
     }
-  }, [open])
+  }, [])
 
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
       aria-describedby={description !== undefined ? descId : undefined}
-      // `open` stays the one source of truth: without this the UA closes the dialog behind React's
-      // back and the prop still says it is open.
+      // Escape is the UA closing the dialog behind React's back, which would leave the parent still
+      // rendering it; preventing it and unmounting through onClose keeps the two in step.
       onCancel={(event) => {
         event.preventDefault()
         onClose()
@@ -72,32 +65,30 @@ export const Modal = ({
       }}
       className="fixed inset-0 h-full max-h-none w-full max-w-none place-items-center bg-transparent p-4 backdrop:bg-[var(--scrim)] backdrop:backdrop-blur-sm open:grid"
     >
-      {open && (
-        <div
-          className={cn(
-            'relative w-full max-w-md overflow-x-clip rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
-            className,
-          )}
+      <div
+        className={cn(
+          'relative w-full max-w-md overflow-x-clip rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
+          className,
+        )}
+      >
+        <h2 id={titleId} className="pr-9 text-lg font-bold leading-7 tracking-tight text-fg">
+          {title}
+        </h2>
+        {description !== undefined && (
+          <p id={descId} className="mt-1 text-sm text-fg-muted">
+            {description}
+          </p>
+        )}
+        <div className="mt-8">{children}</div>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-6 top-6 flex h-7 items-center text-fg-muted transition-colors hover:text-fg"
         >
-          <h2 id={titleId} className="pr-9 text-lg font-bold leading-7 tracking-tight text-fg">
-            {title}
-          </h2>
-          {description !== undefined && (
-            <p id={descId} className="mt-1 text-sm text-fg-muted">
-              {description}
-            </p>
-          )}
-          <div className="mt-8">{children}</div>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="absolute right-6 top-6 flex h-7 items-center text-fg-muted transition-colors hover:text-fg"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+          ✕
+        </button>
+      </div>
     </dialog>
   )
 }

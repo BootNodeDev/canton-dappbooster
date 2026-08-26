@@ -33,7 +33,11 @@ One implementation each, so a second one is a bug and not a choice:
   same figure without the mark: it is what keeps the exact value in a tooltip and in the accessible
   name once an outsized amount is abbreviated, so a hand-rolled `formatCCCompact` loses it.
 - **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
-  own buttons take a `className` but cannot render ours.
+  own buttons take a `className` but cannot render ours. A button waiting on a submission takes
+  `pending`, which owns the spinner, the wording and the disable together.
+- **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
+  be offered, `components/GrantLock` or `components/GrantClaimed`. Each owns its own wording, tone
+  and base classes, so a caller passes alignment at most and never re-spells the mapping.
 - **A blank state: `components/EmptyState`,** and `components/Loading` while a first read is in
   flight. `Loading` is for an empty collection only: a refresh after a write keeps its rows.
 

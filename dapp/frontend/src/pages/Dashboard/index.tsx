@@ -1,5 +1,5 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
@@ -7,7 +7,6 @@ import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
 import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
-import { CreateGrant } from '@/components/CreateGrant'
 import { EmptyState } from '@/components/EmptyState'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
@@ -18,7 +17,6 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { PlusIcon } from '@/icons'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
-import { useBackend } from '@/providers/Backend'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
   claimAvailable,
@@ -37,30 +35,41 @@ interface GrantRow {
   grant: Grant
 }
 
-// The two status entries carry their GrantStatus name and the pill's own wording, so a row can
-// never sit under a heading its own badge contradicts.
-type Filter =
-  | 'all'
-  | 'claimable'
-  | 'fully_claimed'
-  | 'in_cliff'
-  | 'not_started'
-  | 'linear'
-  | 'milestone'
-const filters: { label: string; value: Filter }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'claimable', label: 'Claimable' },
-  { value: 'fully_claimed', label: 'Fully claimed' },
-  { value: 'in_cliff', label: 'In cliff' },
-  { value: 'not_started', label: 'Not started' },
-  { value: 'linear', label: 'Linear' },
-  { value: 'milestone', label: 'Milestone' },
-]
+// One row per filter, so adding one is a single entry rather than an edit to a union, a label list
+// and a branch that had to agree. The two status entries carry their GrantStatus name and the pill's
+// own wording, so a row can never sit under a heading its own badge contradicts.
+const FILTERS = [
+  { value: 'all', label: 'All', match: () => true },
+  { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
+  {
+    value: 'fully_claimed',
+    label: 'Fully claimed',
+    match: ({ derived }) => derived.fullyClaimed,
+  },
+  { value: 'in_cliff', label: 'In cliff', match: ({ derived }) => derived.status === 'in_cliff' },
+  {
+    value: 'not_started',
+    label: 'Not started',
+    match: ({ derived }) => derived.status === 'not_started',
+  },
+  {
+    value: 'linear',
+    label: 'Linear',
+    match: ({ grant }) => grant.schedule.curve.kind === 'linear',
+  },
+  {
+    value: 'milestone',
+    label: 'Milestone',
+    match: ({ grant }) => grant.schedule.curve.kind === 'milestone',
+  },
+] as const satisfies readonly { label: string; match: (row: GrantRow) => boolean; value: string }[]
+
+type Filter = (typeof FILTERS)[number]['value']
 
 // Marks the row a claim just landed on: it moves nothing, so a reader looking elsewhere can still
-// find what changed. The keyframes hold, then fade back to the card's own surface and shadow.
+// find what changed. The keyframes end on the card's own surface and shadow and the fill mode holds
+// them, so the class needs no timer to take back off.
 const HIGHLIGHT = 'animate-claimed'
-const HIGHLIGHT_MS = 5000
 
 interface ClaimTarget {
   available: string
@@ -70,10 +79,9 @@ interface ClaimTarget {
 
 export const Dashboard = (): React.JSX.Element => {
   const nowMs = useNow()
-  const { backend, partyId } = useVesting()
-  const { sessionPending } = useBackend()
+  const { backend, partyId, sessionPending } = useVesting()
   const [role, setRole] = useRoleLens()
-  const [creating, setCreating] = useCreateGrant()
+  const [, setCreating] = useCreateGrant()
 
   const grants = useVestingStore((s) => s.grants)
   const claims = useVestingStore((s) => s.claims)
@@ -87,14 +95,6 @@ export const Dashboard = (): React.JSX.Element => {
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
   const [justClaimed, setJustClaimed] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (justClaimed === null) {
-      return
-    }
-    const timer = setTimeout(() => setJustClaimed(null), HIGHLIGHT_MS)
-    return () => clearTimeout(timer)
-  }, [justClaimed])
-
   const rows = useMemo<GrantRow[]>(() => {
     const mine = grants.filter((g) =>
       role === 'receiver' ? g.receiver === partyId : g.creator === partyId,
@@ -102,30 +102,20 @@ export const Dashboard = (): React.JSX.Element => {
     return mine.map((grant) => ({ grant, derived: deriveGrant(grant, nowMs) }))
   }, [grants, role, partyId, nowMs])
 
-  const filtered = useMemo(
-    () =>
-      rows.filter(({ grant, derived }) => {
-        if (filter === 'claimable') {
-          return isPositive(derived.claimable)
-        }
-        if (filter === 'fully_claimed') {
-          return derived.fullyClaimed
-        }
-        if (filter === 'in_cliff' || filter === 'not_started') {
-          return derived.status === filter
-        }
-        if (filter === 'linear' || filter === 'milestone') {
-          return grant.schedule.curve.kind === filter
-        }
-        return true
-      }),
-    [rows, filter],
-  )
+  const filtered = useMemo(() => {
+    const match = FILTERS.find((entry) => entry.value === filter)?.match
+    return match === undefined ? rows : rows.filter(match)
+  }, [rows, filter])
 
-  const myClaims = useMemo(
-    () => (role === 'receiver' ? claims.filter((c) => c.receiver === partyId) : []),
-    [claims, role, partyId],
-  )
+  // The sum rides with the list it sums, or it re-reduces on every clock tick for a figure only the
+  // receiver lens ever renders.
+  const { myClaims, residualClaimable } = useMemo(() => {
+    const mine = role === 'receiver' ? claims.filter((c) => c.receiver === partyId) : []
+    return {
+      myClaims: mine,
+      residualClaimable: mine.reduce((sum, c) => addAmounts(sum, claimAvailable(c)), '0'),
+    }
+  }, [claims, role, partyId])
 
   const totals = useMemo(() => {
     const acc = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
@@ -139,7 +129,6 @@ export const Dashboard = (): React.JSX.Element => {
     return acc
   }, [rows])
 
-  const residualClaimable = myClaims.reduce((sum, c) => addAmounts(sum, claimAvailable(c)), '0')
   // A refresh after a write keeps the rows on screen; only a read with nothing to show waits.
   const firstRead = loading && grants.length === 0
 
@@ -186,7 +175,7 @@ export const Dashboard = (): React.JSX.Element => {
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <RoleSelect value={role} onChange={setRole} />
-        <Select label="Filter grants" value={filter} options={filters} onChange={setFilter} />
+        <Select label="Filter grants" value={filter} options={FILTERS} onChange={setFilter} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -222,12 +211,7 @@ export const Dashboard = (): React.JSX.Element => {
         <Loading />
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="No grants here"
-          description={
-            role === 'receiver'
-              ? 'No grants match this filter. Accepted proposals appear here.'
-              : 'You have not funded any grants matching this filter yet.'
-          }
+          title="No grants match this filter"
           action={
             role === 'funder' ? (
               <Button size="sm" onClick={() => setCreating(true)}>
@@ -296,11 +280,8 @@ export const Dashboard = (): React.JSX.Element => {
         </section>
       )}
 
-      {creating && <CreateGrant open onClose={() => setCreating(false)} />}
-
       {claimTarget !== null && (
         <Claim
-          open
           onClose={() => setClaimTarget(null)}
           title={claimTarget.kind === 'grant' ? 'Claim vested CC' : 'Claim residual'}
           available={claimTarget.available}
@@ -310,7 +291,6 @@ export const Dashboard = (): React.JSX.Element => {
 
       {cancelTarget !== null && (
         <CancelGrant
-          open
           onClose={() => setCancelTarget(null)}
           grant={cancelTarget}
           nowMs={nowMs}

@@ -4,10 +4,12 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CounterpartyId } from '@/components/CounterpartyId'
-import { GrantClaimed, GrantLock, GrantStatusPill } from '@/components/GrantStatus'
+import { CurvePill } from '@/components/CurvePill'
+import { GrantClaimed } from '@/components/GrantClaimed'
+import { GrantLock } from '@/components/GrantLock'
+import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { StatusPill } from '@/components/StatusPill'
 import { EyeIcon, TrashIcon } from '@/icons'
 import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
@@ -22,8 +24,8 @@ interface GrantCardProps {
   derived: GrantDerived
   grant: Grant
   nowMs: number
-  onCancel?: (grant: Grant) => void
-  onClaim?: (grant: Grant) => void
+  onCancel: (grant: Grant) => void
+  onClaim: (grant: Grant) => void
   role: Role
 }
 
@@ -64,7 +66,6 @@ export const GrantCard = ({
   onCancel,
 }: GrantCardProps): React.JSX.Element => {
   const curve = grant.schedule.curve
-  const isMilestone = curve.kind === 'milestone'
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
   const explorerLink = useExplorerLink(EXPLORER)
@@ -85,9 +86,7 @@ export const GrantCard = ({
           {grant.title}
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <StatusPill tone={isMilestone ? 'milestone' : 'linear'}>
-            {isMilestone ? 'Milestone' : 'Linear'}
-          </StatusPill>
+          <CurvePill curve={curve} />
           <GrantStatusPill status={derived.status} />
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
@@ -139,14 +138,14 @@ export const GrantCard = ({
               />
             </div>
             {derived.fullyClaimed ? (
-              <GrantClaimed className="inline-flex items-center justify-center gap-1.5 font-mono text-xs text-fg-muted" />
+              <GrantClaimed className="justify-center" />
             ) : derived.locked ? (
-              <GrantLock className="inline-flex items-center justify-center gap-1.5 font-mono text-xs text-fg-muted" />
+              <GrantLock className="justify-center" />
             ) : (
               <Button
                 size="sm"
                 disabled={!derived.canClaim}
-                onClick={() => onClaim?.(grant)}
+                onClick={() => onClaim(grant)}
                 className="md:w-auto"
               >
                 Claim
@@ -175,7 +174,7 @@ export const GrantCard = ({
                 aria-label="Cancel grant"
                 size="icon"
                 variant="danger-ghost"
-                onClick={() => onCancel?.(grant)}
+                onClick={() => onCancel(grant)}
               >
                 <TrashIcon width={16} height={16} />
               </Button>

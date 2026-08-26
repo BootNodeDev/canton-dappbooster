@@ -1,4 +1,5 @@
 import { AmountDisplay } from '@/components/AmountDisplay'
+import { Card } from '@/components/Card'
 import { cn } from '@/utils/cn'
 
 interface KpiCardProps {
@@ -25,12 +26,7 @@ export const KpiCard = ({
   tone,
   hero = false,
 }: KpiCardProps): React.JSX.Element => (
-  <div
-    className={cn(
-      'rounded-[12px] border bg-surface p-5 shadow-[var(--shadow-card)]',
-      hero ? 'border-accent/35' : 'border-border',
-    )}
-  >
+  <Card className={cn('p-5', hero && 'border-accent/35')}>
     <div className="mb-3 text-xs font-semibold text-fg-muted">{label}</div>
     <AmountDisplay
       value={amount}
@@ -52,5 +48,5 @@ export const KpiCard = ({
         {sub}
       </div>
     )}
-  </div>
+  </Card>
 )
