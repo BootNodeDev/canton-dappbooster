@@ -51,8 +51,8 @@ type ConnectionContext = ConnectionInput & {
   // The last attempt's failure, not the session's: it outlives `failure` on purpose, so a
   // session recovered afterwards can still say why the attempt before it failed.
   lastConnectError: unknown
-  // Held here rather than read off the accounts child: the child dies with `authenticated`, so
-  // dropping to `unauthenticated` would lose the party of a session that is still standing.
+  // Projected up from the accounts child rather than read off it, so one snapshot answers the
+  // hooks; `authenticated` clears it on exit, because the child dies with that state.
   party: Party | undefined
 }
 
