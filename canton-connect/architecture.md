@@ -76,7 +76,9 @@ with no party, an error beside a live session) cannot be built. Three decisions 
 ### The bridges
 
 `connect()` and `disconnect()` are a send plus a wait on a tag, so the promise over a transition
-lives outside the machine. Neither passes a timeout (#105).
+lives outside the machine. Neither passes a timeout. The connect wait is #105; the disconnect wait
+the machine bounds itself, giving up on a wallet 10 s silent (`DISCONNECT_TIMEOUT_MS`), since the
+SDK's request carries no deadline of its own.
 
 ### The provider publishes, the hooks select
 
