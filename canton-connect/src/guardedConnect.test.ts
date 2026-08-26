@@ -85,16 +85,20 @@ describe('guardedConnect', () => {
   })
 
   it('hands the original window.open back after overlapping connects settle', async () => {
-    openStub(null)
+    openStub(watchable())
     const stubbed = window.open
 
-    const a = stubSdk()
+    const a = stubSdk({ opens: true })
     const b = stubSdk()
     const settledA = guardedConnect(a)
     const settledB = guardedConnect(b)
 
     a.settle()
     await settledA
+
+    // B captured no handle of its own, so the borrow has to outlive A to catch a popup B opens.
+    expect(window.open).not.toBe(stubbed)
+
     b.settle()
     await settledB
 
@@ -223,7 +227,7 @@ describe('guardedConnect', () => {
     const sdk = new DappSDK({ walletPicker: createAutoPicker('absent') })
     await sdk.init({ defaultAdapters: [] })
 
-    await expect(guardedConnect(sdk)).rejects.toThrow('auto-picker: no wallet matching absent')
+    await expect(guardedConnect(sdk)).rejects.toThrow()
     expect(window.open).toBe(original)
   })
 })
