@@ -1,6 +1,11 @@
 // Public types exposed to consumers of canton-connect.
 
-import type { DappSDK, ProviderAdapter, WalletPickerFn } from '@canton-network/dapp-sdk'
+import type {
+  DappSDK,
+  ProviderAdapter,
+  TxChangedEvent,
+  WalletPickerFn,
+} from '@canton-network/dapp-sdk'
 import type { ConnectionActorRef } from '#src/machine/connectionMachine'
 
 /**
@@ -81,8 +86,20 @@ export interface CantonConnectConfig {
 }
 
 /**
+ * Mirrored from the SDK's `txChanged` event as a command moves through
+ * pending, signed, executed or failed.
+ *
+ * @category Types
+ */
+export interface TxStatusSnapshot {
+  status: TxChangedEvent['status']
+  commandId: TxChangedEvent['commandId']
+  payload?: unknown
+}
+
+/**
  * The connection machine as `useSelector` sees it: subscribe and read, never send. Narrowed from
- * the actor ref so `connect` and `disconnect` stay the only senders; a transition asked for
+ * the actor ref so `connect` and `disconnect` stay the only senders — a transition asked for
  * anywhere else is a lifecycle rule living outside the machine.
  *
  * @example
@@ -93,3 +110,28 @@ export interface CantonConnectConfig {
  * @category Types
  */
 export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 'subscribe'>
+
+/**
+ * One connection and the actions on it, published once. Every hook in this package selects the
+ * slice it needs off `connection`, so prefer the narrower hooks (`useConnect`, `useParty`, …) and
+ * reach for this only to select something none of them expose.
+ *
+ * @category Types
+ */
+export interface CantonConnectContextValue {
+  config: CantonConnectConfig
+  connection: ConnectionSubscription
+  /**
+   * Opens the picker (the SDK's popup, or `config.walletPicker`) and resolves once the party has
+   * landed, so `useParty` reports it by the time it returns. Rejects with `ConnectCancelledError`
+   * on cancel, and with the wallet's own error when the account read fails;
+   * `useConnect().connectError` mirrors the failure; a dismissal the SDK itself rejects is
+   * recorded too, classified as `ConnectCancelledError`. A wallet that connects
+   * locked resolves with no party, since a locked wallet answers no account read.
+   */
+  connect: () => Promise<void>
+  /** Ends the session, and the party, lock and error with it, even if the SDK's own call fails. */
+  disconnect: () => Promise<void>
+  /** Forgets the last connect error. Touches neither the wallet nor the session. */
+  resetConnectError: () => void
+}

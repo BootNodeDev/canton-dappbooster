@@ -79,6 +79,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@xstate/react": "^6.1.0",
     "xstate": "^5.32.5"
   }
 }
