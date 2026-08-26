@@ -1,19 +1,18 @@
 import { type ReactNode, useEffect, useId, useRef } from 'react'
-import { cn } from '@/lib/cn'
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+import { cn } from '@/utils/cn'
+import { setTopLayerHost } from '@/utils/topLayer'
 
 interface ModalProps {
-  open: boolean
-  onClose: () => void
-  title: string
-  description?: string
   children: ReactNode
   className?: string
+  description?: string
+  onClose: () => void
+  open: boolean
+  title: string
 }
 
-// Lightweight centered dialog: scrim + Escape-to-close + scroll lock.
+// Centered dialog over a native `<dialog>`: the top layer carries the scrim, the focus trap, the
+// focus restore, the inert background and Escape, so none of it is reimplemented here.
 export const Modal = ({
   open,
   onClose,
@@ -21,92 +20,84 @@ export const Modal = ({
   description,
   children,
   className,
-}: ModalProps): React.JSX.Element | null => {
-  const dialogRef = useRef<HTMLDivElement>(null)
+}: ModalProps): React.JSX.Element => {
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const descId = useId()
-  // Held in a ref so a new onClose identity does not re-run the focus-trap effect, which would
-  // steal focus back to the first focusable on every clock tick.
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
 
   useEffect(() => {
-    if (!open) {
+    const dialog = dialogRef.current
+    if (dialog === null) {
       return
     }
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    const onKey = (e: KeyboardEvent): void => {
-      // A nested dismissable layer (the kit's token select) marks the Escape it consumed.
-      if (e.key === 'Escape' && !e.defaultPrevented) {
-        onCloseRef.current()
-        return
+    if (!open) {
+      if (dialog.open) {
+        dialog.close()
       }
-      if (e.key !== 'Tab') {
-        return
-      }
-      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE)
-      if (focusable === undefined || focusable.length === 0) {
-        e.preventDefault()
-        return
-      }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      const active = document.activeElement
-      if (e.shiftKey && active === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault()
-        first.focus()
-      }
+      return
     }
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
+    // Only showModal() reaches the top layer; the `open` attribute renders the dialog inline with
+    // none of the modal behaviour. Guarded because StrictMode re-runs the effect on mount and a
+    // second call on an open dialog throws.
+    if (!dialog.open) {
+      dialog.showModal()
+    }
+    // The top layer inerts the page behind but does not stop it scrolling.
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    // Move focus into the dialog so Tab is trapped and screen readers land here.
-    const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)
-    ;(firstFocusable ?? dialogRef.current)?.focus()
+    setTopLayerHost(dialog)
     return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-      previouslyFocused?.focus()
+      document.body.style.overflow = previousOverflow
+      setTopLayerHost(null)
     }
   }, [open])
 
-  if (!open) {
-    return null
-  }
-
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center p-4">
-      <button
-        type="button"
-        aria-label="Close dialog"
-        onClick={onClose}
-        className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-sm"
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={description !== undefined ? descId : undefined}
-        tabIndex={-1}
-        className={cn(
-          'relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
-          className,
-        )}
-      >
-        <h2 id={titleId} className="text-lg font-bold tracking-tight text-fg">
-          {title}
-        </h2>
-        {description !== undefined && (
-          <p id={descId} className="mt-1 text-sm text-fg-muted">
-            {description}
-          </p>
-        )}
-        <div className="mt-5">{children}</div>
-      </div>
-    </div>
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      aria-describedby={description !== undefined ? descId : undefined}
+      // `open` stays the one source of truth: without this the UA closes the dialog behind React's
+      // back and the prop still says it is open.
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
+      // Dismissed on press, not click: a text selection released outside the panel reports the
+      // dialog as its click target and would close it.
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose()
+        }
+      }}
+      className="fixed inset-0 h-full max-h-none w-full max-w-none place-items-center bg-transparent p-4 backdrop:bg-[var(--scrim)] backdrop:backdrop-blur-sm open:grid"
+    >
+      {open && (
+        <div
+          className={cn(
+            'relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]',
+            className,
+          )}
+        >
+          <h2 id={titleId} className="pr-9 text-lg font-bold leading-7 tracking-tight text-fg">
+            {title}
+          </h2>
+          {description !== undefined && (
+            <p id={descId} className="mt-1 text-sm text-fg-muted">
+              {description}
+            </p>
+          )}
+          <div className="mt-8">{children}</div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="absolute right-6 top-6 flex h-7 items-center text-fg-muted transition-colors hover:text-fg"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </dialog>
   )
 }

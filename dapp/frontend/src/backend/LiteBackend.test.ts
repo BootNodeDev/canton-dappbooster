@@ -29,8 +29,8 @@ type PartyFilter = {
 }
 
 type AcsQuery = {
-  filter?: { filtersByParty?: Record<string, PartyFilter> }
   activeAtOffset?: unknown
+  filter?: { filtersByParty?: Record<string, PartyFilter> }
 }
 
 type Read = { requestMethod: string; resource: string; body?: AcsQuery }

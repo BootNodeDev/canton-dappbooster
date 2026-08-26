@@ -1,10 +1,10 @@
 import { useId, useMemo } from 'react'
-import { formatDate } from '@/lib/format'
-import { type VestingSchedule, vestedFraction } from '@/lib/schedule'
+import { formatDate } from '@/utils/format'
+import { type VestingSchedule, vestedFraction } from '@/utils/schedule'
 
 interface ScheduleCurveProps {
-  schedule: VestingSchedule
   nowMs: number
+  schedule: VestingSchedule
 }
 
 const ms = (iso: string): number => new Date(iso).getTime()

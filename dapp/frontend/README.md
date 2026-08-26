@@ -2,7 +2,7 @@
 
 dApp for **Canton Coin vesting**: propose a grant, the beneficiary accepts, claim as it
 vests, or cancel into a residual claim. Grants render live vested/claimable figures from
-the pure schedule math in [`src/lib/schedule.ts`](src/lib/schedule.ts).
+the pure schedule math in [`src/utils/schedule.ts`](src/utils/schedule.ts).
 
 Every read and every write goes through the connected CIP-0103 wallet, so the app acts as
 the wallet's primary account and each write raises a real approval prompt. There is no

@@ -51,6 +51,19 @@
   :is(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
   }
+
+  select {
+    appearance: none;
+    cursor: pointer;
+    background-image:
+      linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      right 0.95rem center,
+      right 0.65rem center;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+  }
 }
 
 html,
@@ -80,6 +93,13 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Text inputs */
+
+.cnc-token-input__field,
+.cnc-party-id-input {
+  border-radius: 8px;
 }
 
 .gradient-text {

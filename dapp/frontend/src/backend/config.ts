@@ -2,9 +2,9 @@
 // package id and no factory to disclose, so nothing it does can reach the ledger.
 
 export type Deployment = {
-  pkg: string
-  factoryCid: string
   factoryBlob: string
+  factoryCid: string
+  pkg: string
   synchronizerId?: string
 }
 

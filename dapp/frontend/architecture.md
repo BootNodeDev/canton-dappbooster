@@ -13,12 +13,13 @@ interfaces carry that, and every other decision hangs off them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LiteBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, and `config.ts`, which loads the deployment. |
-| `src/providers/` | `BackendProvider`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useToken` holds one field's token selection. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/lib/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.ts`, the one instrument this deployment knows. |
-| `src/components/` | The shell, the top bar and sidebar, and the cards, dialogs, table, and charts they compose. |
-| `src/features/` | Dashboard, proposals, create, grant detail. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.ts`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
+| `src/components/` | What two or more places render: the shell, the top bar, the dialogs, and the primitives the pages compose. |
+| `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
+| `src/pages/` | Dashboard, proposals and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
 
 ## The two seams
@@ -46,12 +47,12 @@ nothing to query and without the blob there is no factory to disclose.
 
 ```
 config.ts ────────────┐
-                      ├─▶ BackendProvider ──▶ useBackend ──▶ useVestingStore ──▶ components
+                      ├─▶ Backend ──────────▶ useBackend ──▶ useVestingStore ──▶ components
 CantonConnectProvider ┤                                                            ▲
                       └─▶ useParty ───────────────────────────────────────────────┘
 ```
 
-`BackendProvider` ([`src/providers/BackendProvider.tsx`](src/providers/BackendProvider.tsx)) is the
+`Backend` ([`src/providers/Backend.tsx`](src/providers/Backend.tsx)) is the
 only place the two seams above meet. Its backend is `undefined` until both a deployment and a wallet
 *party* exist, because neither half alone can reach the ledger, and a page with no backend renders
 `ConnectPrompt` where its data would be. The party rather than the connection status is the gate: a
@@ -88,17 +89,17 @@ archives for good, and the page navigates away instead.
 
 `deriveGrant` in [`src/store/useVestingStore.ts`](src/store/useVestingStore.ts) is a pure projection
 of a grant at a moment in time — vested, claimable, claimed, status. It and
-[`src/lib/schedule.ts`](src/lib/schedule.ts) are the single source of every per-grant figure, and
+[`src/utils/schedule.ts`](src/utils/schedule.ts) are the single source of every per-grant figure, and
 they mirror the on-ledger math deliberately, so a preview and the choice that follows it agree — the
 contracts recompute `vestedAmount` themselves and reject anything above it. A component that
 derives a grant's own vesting figures is a bug. `claimAvailable`, beside it, is the same rule for a
 residual claim, which carries no schedule and so has no projection of its own: what the dashboard
 shows, sums and submits for one is a single subtraction in a single place. Two components
 legitimately compute on top of that projection rather than beside it: `MilestoneTimeline` splits a
-total across milestone steps for display, and `DashboardPage` sums `deriveGrant`'s output into the
+total across milestone steps for display, and `Dashboard` sums `deriveGrant`'s output into the
 KPI row. Both take the projection as their input; neither re-derives it.
 
-Under both sits [`src/lib/amount.ts`](src/lib/amount.ts), the arithmetic floor. Every add,
+Under both sits [`src/utils/amount.ts`](src/utils/amount.ts), the arithmetic floor. Every add,
 subtract, floor-at-zero, fraction scale, and round in the app goes through it, on scaled `bigint`s,
 and `schedule.ts` builds on it too. Nothing computes an amount any other way.
 
@@ -116,7 +117,7 @@ downstream.
 Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
 holds no truncation or copy-to-clipboard logic of its own.
 
-Entry is the other half. [`CreateGrantPage`](src/features/CreateGrantPage.tsx)'s receiver field is
+Entry is the other half. [`CreateGrant`](src/pages/Dashboard/CreateGrant/index.tsx)'s receiver field is
 the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
 the two can never disagree about what a party id is. Party ids are exact strings here: nothing
 trims, so a stray space is invalid rather than silently stripped on the way to the ledger.
@@ -128,14 +129,14 @@ rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rathe
 `canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
 [`src/styles/index.css`](src/styles/index.css)).
 
-Amounts run that same split twice more. [`CreateGrantPage`](src/features/CreateGrantPage.tsx)'s
-total and [`ClaimDialog`](src/components/ClaimDialog.tsx)'s withdrawal are both the kit's
+Amounts run that same split twice more. [`CreateGrant`](src/pages/Dashboard/CreateGrant/index.tsx)'s
+total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 `<TokenInput>`: the field sets `aria-invalid` and reports an error *code*, and this app words it
-in [`src/lib/amountErrorText.ts`](src/lib/amountErrorText.ts), again an exhaustive `Record` so a
+in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
 Both fields also open the kit's token picker, and the list it shows is one entry:
-[`src/lib/tokens.ts`](src/lib/tokens.ts) holds `CC` and nothing else, because that is the only
+[`src/utils/tokens.ts`](src/utils/tokens.ts) holds `CC` and nothing else, because that is the only
 instrument this deployment knows. The pick is display-only — it relabels the field, and the re-lock
 floor's wording, the claim toast, and the grant that gets created are all still Canton Coin. The
 picker is wired ahead of a second instrument on purpose.
@@ -150,7 +151,7 @@ The division of labour underneath is the part neither side announces. The kit ow
 one precision: parse, format, sanitize a keystroke, validate against the ledger's own limits and a
 `max`. It knows nothing
 about a second amount, so everything that combines two of them is this app's, in
-[`src/lib/amount.ts`](src/lib/amount.ts), built on the kit's `parseAmount` / `formatScaled` pair and
+[`src/utils/amount.ts`](src/utils/amount.ts), built on the kit's `parseAmount` / `formatScaled` pair and
 on nothing else of the kit's. So the field's `balance` is the ceiling, while both floors are the
 app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
 about the *remainder* and so about two amounts at once.
@@ -171,7 +172,7 @@ or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters ins
 element.
 
 The explorer those ids link to is the app's to supply: Canton has no canonical one, so the kit
-composes URLs only from an `ExplorerConfig`. [`src/lib/config.ts`](src/lib/config.ts) holds that
+composes URLs only from an `ExplorerConfig`. [`src/utils/config.ts`](src/utils/config.ts) holds that
 config as a literal baked in at build time from `VITE_EXPLORER_URL`, not parsed at startup, and the
 kit's `useExplorerLink` turns it into hrefs. Counterparty ids go through one component:
 [`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
@@ -179,12 +180,15 @@ the direction-specific label, and the copy toast, and `GrantCard` and `ProposalC
 href stays a per-call-site decision, the way the kit's own `href` is optional: linking an id to an
 explorer is a choice each surface makes, not something the app does everywhere. Every `<Identifier>`
 the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
-would double-announce.
+would double-announce. That one region has to move: `Modal` opens a native `<dialog>` with
+`showModal()`, which inerts everything outside the dialog's subtree, so a toast raised over an open
+dialog — every failed submit — would be neither clickable nor announced. `utils/topLayer.ts` carries
+the open dialog element from `Modal` to the `Toaster`, which portals into it.
 
 That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
 `VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
-all. [`src/lib/env.ts`](src/lib/env.ts) holds that contract, and is the only module under `src/`
+all. [`src/utils/env.ts`](src/utils/env.ts) holds that contract, and is the only module under `src/`
 that runs outside the browser.
 
 The connect button's copy is the kit's: passed no `children` it renders its own label and swaps it

@@ -1,10 +1,10 @@
-import { cn } from '@/lib/cn'
+import { cn } from '@/utils/cn'
 
 interface ScheduleBarProps {
-  vestedFraction: number
   claimedFraction: number
-  milestones?: number[]
   className?: string
+  milestones?: number[]
+  vestedFraction: number
 }
 
 const pct = (f: number): string => `${Math.max(0, Math.min(1, f)) * 100}%`

@@ -15,10 +15,10 @@ export type LedgerCommand = {
 
 // Explicitly-disclosed contract (JSON Ledger API v2 disclosedContracts entry).
 export type DisclosedContract = {
-  templateId: string
   contractId: string
   createdEventBlob: string
   synchronizerId?: string
+  templateId: string
 }
 
 export type WalletFns = {

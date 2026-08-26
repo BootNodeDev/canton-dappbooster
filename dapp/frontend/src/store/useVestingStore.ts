@@ -2,24 +2,28 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { useParty } from '@/hooks/useParty'
-import { compareAmounts, multiplyByFraction, subtractAmounts, toNumber } from '@/lib/amount'
-import { now } from '@/lib/clock'
-import { errorText } from '@/lib/errorText'
-import { MIN_GRANT_AMOUNT, vestedFraction } from '@/lib/schedule'
-import { useBackend } from '@/providers/BackendProvider'
+import { useBackend } from '@/providers/Backend'
 import type { Grant, Proposal, VestedClaim, WithdrawEvent } from '@/store/types'
+import { compareAmounts, multiplyByFraction, subtractAmounts, toNumber } from '@/utils/amount'
+import { now } from '@/utils/clock'
+import { errorText } from '@/utils/errorText'
+import { MIN_GRANT_AMOUNT, toMs, vestedFraction } from '@/utils/schedule'
 
-export type GrantStatus = 'in_cliff' | 'vesting' | 'fully_vested'
+// `not_started` is past the cliff with nothing vested yet: a linear curve whose start is still
+// ahead, or a milestone curve before its first point. It used to report as in_cliff, which read as
+// "the cliff has not passed" on a grant whose cliff had.
+export type GrantStatus = 'in_cliff' | 'not_started' | 'vesting' | 'fully_vested'
 
 export interface GrantDerived {
-  fraction: number
-  vested: string
+  canClaim: boolean
   claimable: string
   claimed: string
   claimedFraction: number
-  unvested: string
-  canClaim: boolean
+  fraction: number
+  locked: boolean
   status: GrantStatus
+  unvested: string
+  vested: string
 }
 
 // Pure projection of a grant at a moment in time, and the single source of the vested/claimable
@@ -34,7 +38,13 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
   const total = toNumber(grant.totalAmount)
   const claimedFraction = total === 0 ? 0 : toNumber(claimed) / total
   const status: GrantStatus =
-    fraction <= 0 ? 'in_cliff' : fraction >= 1 ? 'fully_vested' : 'vesting'
+    fraction >= 1
+      ? 'fully_vested'
+      : fraction > 0
+        ? 'vesting'
+        : nowMs < toMs(grant.schedule.cliff)
+          ? 'in_cliff'
+          : 'not_started'
   return {
     fraction,
     vested,
@@ -43,6 +53,7 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
     claimedFraction,
     unvested,
     canClaim: compareAmounts(claimable, MIN_GRANT_AMOUNT) >= 0,
+    locked: fraction <= 0,
     status,
   }
 }
@@ -68,27 +79,14 @@ export const grantLineage = (grant: Grant): string =>
 
 // `history` is session-local: the lite contracts retain none, so it does not survive a reload.
 interface VestingState {
-  grants: Grant[]
-  proposals: Proposal[]
   claims: VestedClaim[]
+  error: string | undefined
+  grants: Grant[]
   history: WithdrawEvent[]
   loading: boolean
-  error: string | undefined
+  proposals: Proposal[]
 
-  clear: () => void
-  refresh: (backend: VestingBackend, partyId: string) => Promise<void>
-  createVesting: (
-    backend: VestingBackend,
-    partyId: string,
-    input: CreateVestInput,
-  ) => Promise<{ disclosedBytes: number }>
   accept: (backend: VestingBackend, partyId: string, proposalCid: string) => Promise<void>
-  withdraw: (
-    backend: VestingBackend,
-    partyId: string,
-    contractCid: string,
-    amount: string,
-  ) => Promise<string | undefined>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
@@ -96,6 +94,19 @@ interface VestingState {
     claimCid: string,
     amount: string,
   ) => Promise<void>
+  clear: () => void
+  createVesting: (
+    backend: VestingBackend,
+    partyId: string,
+    input: CreateVestInput,
+  ) => Promise<{ disclosedBytes: number }>
+  refresh: (backend: VestingBackend, partyId: string) => Promise<void>
+  withdraw: (
+    backend: VestingBackend,
+    partyId: string,
+    contractCid: string,
+    amount: string,
+  ) => Promise<string | undefined>
 }
 
 const uid = (prefix: string): string => `${prefix}-${crypto.randomUUID().slice(0, 8)}`

@@ -1,11 +1,11 @@
-import { cn } from '@/lib/cn'
-import { formatCC } from '@/lib/format'
+import { cn } from '@/utils/cn'
+import { formatCC } from '@/utils/format'
 
 interface AmountDisplayProps {
-  value: string
-  unit?: string
   className?: string
   gradient?: boolean
+  unit?: string
+  value: string
 }
 
 // Mono numeral + a muted unit suffix. The canonical way amounts appear.

@@ -1,14 +1,14 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
-import { cn } from '@/lib/cn'
+import { cn } from '@/utils/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md'
 
 interface BaseProps {
-  variant?: Variant
-  size?: Size
   className?: string
+  size?: Size
+  variant?: Variant
 }
 
 interface ButtonAsButton extends BaseProps, ButtonHTMLAttributes<HTMLButtonElement> {
@@ -17,8 +17,8 @@ interface ButtonAsButton extends BaseProps, ButtonHTMLAttributes<HTMLButtonEleme
 
 interface ButtonAsLink extends BaseProps {
   asLink: true
-  to: string
   children?: React.ReactNode
+  to: string
 }
 
 type ButtonProps = ButtonAsButton | ButtonAsLink
@@ -43,7 +43,7 @@ const variants: Record<Variant, string> = {
 
 const classesFor = (variant: Variant, size: Size, className?: string): string =>
   cn(
-    'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors',
+    'inline-flex items-center justify-center gap-2 rounded-[8px] font-semibold transition-colors',
     'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
     'disabled:cursor-not-allowed disabled:opacity-45',
     sizes[size],

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/cn'
+import { cn } from '@/utils/cn'
 
 type Tone = 'linear' | 'milestone' | 'neutral' | 'success' | 'warning' | 'danger'
 
@@ -13,9 +13,9 @@ const tones: Record<Tone, string> = {
 }
 
 interface StatusPillProps {
-  tone?: Tone
   children: ReactNode
   className?: string
+  tone?: Tone
 }
 
 export const StatusPill = ({

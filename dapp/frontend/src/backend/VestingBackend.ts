@@ -2,32 +2,32 @@
 // transport details. The mappers below turn active-contract rows into those domain types.
 
 import { decodeSchedule } from '@/backend/commands'
-import { isAmount } from '@/lib/amount'
-import type { VestingSchedule } from '@/lib/schedule'
 import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
+import { isAmount } from '@/utils/amount'
+import type { VestingSchedule } from '@/utils/schedule'
 
 export interface VestingView {
+  claims: VestedClaim[]
   grants: Grant[]
   proposals: Proposal[]
-  claims: VestedClaim[]
 }
 
 export interface CreateVestInput {
+  note?: string
   proposer: string
   receiver: string
-  totalAmount: string
   schedule: VestingSchedule
   title: string
-  note?: string
+  totalAmount: string
 }
 
 export interface VestingBackend {
-  viewAs(partyId: string): Promise<VestingView>
-  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
   accept(args: { receiver: string; proposalCid: string }): Promise<void>
-  withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
+  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  viewAs(partyId: string): Promise<VestingView>
+  withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────
@@ -78,12 +78,12 @@ export const splitNote = (
 // The fields every template carries alike; each mapper layers its own on top.
 type DecodedBase = {
   arg: Record<string, unknown>
+  funder: PartyId
   id: string
-  title: string
   note?: string
   provider: PartyId
-  funder: PartyId
   receiver: PartyId
+  title: string
 }
 
 const decodeBase = (row: AcsRow): DecodedBase | undefined => {

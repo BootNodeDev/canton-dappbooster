@@ -10,10 +10,8 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
 - [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md) — L3 `--cnc-*` token naming convention
 - [`canton-barebones/wallet-service/CLAUDE.md`](canton-barebones/wallet-service/CLAUDE.md) — wallet-service bridge rules
-- `canton-barebones/`, `dapp/daml/vesting-lite/`, `dapp/frontend/` — see each subproject's `README.md`
-
-`dapp/frontend/` has no `CLAUDE.md`; its seams are in
-[`dapp/frontend/architecture.md`](dapp/frontend/architecture.md).
+- [`dapp/frontend/CLAUDE.md`](dapp/frontend/CLAUDE.md) — app layout and naming deltas; its seams are in [`dapp/frontend/architecture.md`](dapp/frontend/architecture.md)
+- `canton-barebones/`, `dapp/daml/vesting-lite/` — see each subproject's `README.md`
 
 The Carpincho wallet (CIP-0103 browser wallet) lives in its own repository at
 [github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet); it is no longer part of this monorepo.
@@ -41,7 +39,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect/` | yes | shim | yes | yes | Public hook API, the facade's adapter/picker seams, provider event wiring. |
 | `canton-barebones/wallet-service/` | yes | shim | yes | no | Local bridge rules are useful; README API boundary is enough architecture for now. |
-| `dapp/frontend/` | yes | no | no | yes | Canton Coin vesting dApp; root rules suffice for authoring, but its internal seams outgrew the README. Carries a `PROVENANCE.md` recording the vendored source. |
+| `dapp/frontend/` | yes | shim | yes | yes | Canton Coin vesting dApp; `CLAUDE.md` carries the page-owns-its-components layout and the naming rules an agent would otherwise get wrong, architecture.md its internal seams. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package (`vesting-lite`) plus its `daml-test` scenarios. Carries a `PROVENANCE.md` recording the vendored source. |
 | `canton-barebones/` | yes | no | no | no | Docker/Bash local participant wrapper. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
@@ -149,8 +147,9 @@ Placement:
   never rejects a file, so each of its modules is named for what it holds (`partyId.ts`, `cx.ts`),
   never `helpers.ts` or an `index.ts` barrel.
 - Components live in `components/`, which is a kind folder like the rest and gets no special case.
-  Routed pages are the one thing kept apart, in `features/`, because the router enters them rather
-  than a parent composing them.
+  Routed pages are the one thing kept apart, in `pages/`, because the router enters them rather
+  than a parent composing them. A page is a consumer like any other, so what only one page renders
+  lives beside it.
 - A component whose job is to supply context rather than render markup lives in `providers/`, named
   `<Thing>Provider`, so what wraps the tree is one place to look instead of a hunt through feature
   folders.
@@ -165,8 +164,8 @@ Placement:
   where a caller could reasonably pick a different export, when to reach for it. Do not restate the
   type. How much prose, and whether an `@example` is required at all, follows the tier table under
   Doc blocks below.
-- **A module has one legal spelling, and it is never relative.** `./components/toast` and
-  `@/components/toast` both resolved, so which one landed was down to who or what wrote the file.
+- **A module has one legal spelling, and it is never relative.** `./utils/toast` and
+  `@/utils/toast` both resolved, so which one landed was down to who or what wrote the file.
   Relative specifiers (`.`, `..`, `./*`, `../*`) are now a Biome error in `dapp/frontend`,
   `canton-dappbooster`, and `canton-connect`, in all four positions: `import … from`,
   `export … from`, `export *`, and dynamic `import()`.

@@ -1,10 +1,9 @@
 import { type CantonConnectConfig, CantonConnectProvider } from '@bootnodedev/canton-connect'
 import { ThemeProvider, TokenListProvider } from '@bootnodedev/canton-dappbooster'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import { Toaster } from '@/components/toast'
-import { TOKENS } from '@/lib/tokens'
-import { BackendProvider } from '@/providers/BackendProvider'
+import { Backend } from '@/providers/Backend'
 import { routes } from '@/routes'
+import { TOKENS } from '@/utils/tokens'
 
 const router = createBrowserRouter(routes)
 
@@ -15,10 +14,9 @@ export const App = (): React.JSX.Element => (
   <ThemeProvider>
     <TokenListProvider tokens={TOKENS}>
       <CantonConnectProvider config={connectConfig}>
-        <BackendProvider>
+        <Backend>
           <RouterProvider router={router} />
-          <Toaster />
-        </BackendProvider>
+        </Backend>
       </CantonConnectProvider>
     </TokenListProvider>
   </ThemeProvider>

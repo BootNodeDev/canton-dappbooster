@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
-import { toNumber } from '@/lib/amount'
 import type { Grant } from '@/store/types'
 import { deriveGrant, grantLineage, useVestingStore } from '@/store/useVestingStore'
+import { toNumber } from '@/utils/amount'
 
 const ms = (iso: string): number => new Date(iso).getTime()
 
@@ -29,6 +29,27 @@ describe('deriveGrant', () => {
     expect(d.claimable).toBe('0')
     expect(d.unvested).toBe('1000')
     expect(d.status).toBe('in_cliff')
+    expect(d.locked).toBe(true)
+  })
+
+  it('reports not_started past the cliff while the first milestone is ahead', () => {
+    const milestoneGrant: Grant = {
+      ...grant(),
+      schedule: {
+        cliff: '2025-06-01T00:00:00Z',
+        curve: {
+          kind: 'milestone',
+          points: [
+            { time: '2025-09-01T00:00:00Z', fraction: 0.5 },
+            { time: '2025-12-01T00:00:00Z', fraction: 1 },
+          ],
+        },
+      },
+    }
+    const d = deriveGrant(milestoneGrant, ms('2025-07-01T00:00:00Z'))
+    expect(d.fraction).toBe(0)
+    expect(d.status).toBe('not_started')
+    expect(d.locked).toBe(true)
   })
 
   it('subtracts already-withdrawn from claimable while vesting', () => {

@@ -1,10 +1,10 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
-import { copyToast } from '@/components/toast'
+import { copyToast } from '@/utils/toast'
 
 interface CounterpartyIdProps {
-  party: string
-  incoming: boolean
   href?: string
+  incoming: boolean
+  party: string
 }
 
 // The other party on a grant or proposal: a from/to prefix and the id, copyable. Renders inline, so

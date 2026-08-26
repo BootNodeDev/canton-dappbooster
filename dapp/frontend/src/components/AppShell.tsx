@@ -1,37 +1,19 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Card } from '@/components/Card'
-import { Sidebar } from '@/components/Sidebar'
+import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
-import { useBackend } from '@/providers/BackendProvider'
-import { useUiStore } from '@/store/useUiStore'
-
-const titleFor = (pathname: string, role: string): { title: string; crumb: string } => {
-  if (pathname.startsWith('/proposals')) {
-    return { title: 'Proposals', crumb: role }
-  }
-  if (pathname.startsWith('/create')) {
-    return { title: 'Create grant', crumb: 'Funder' }
-  }
-  if (pathname.startsWith('/grants/')) {
-    return { title: 'Grant detail', crumb: role }
-  }
-  return { title: role === 'funder' ? 'Granted by me' : 'Dashboard', crumb: role }
-}
+import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const role = useUiStore((s) => s.role)
-  const location = useLocation()
   const { configPending, configError } = useBackend()
 
   useConnectErrorToast()
-  const { title, crumb } = titleFor(location.pathname, role)
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar title={title} crumb={crumb} />
+        <TopBar />
         <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8">
           {/* The card swaps in asynchronously with no focus move, so `role="alert"` is what
               carries it to a reader. */}
@@ -45,7 +27,13 @@ export const AppShell = (): React.JSX.Element => {
               page without one renders a connect placeholder a connected user does not need. */}
           {configError === undefined && !configPending && <Outlet />}
         </main>
+        <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
+          <span className="size-1.5 rounded-full bg-success" />
+          Canton · direct ledger
+        </footer>
       </div>
+      {/* Inside the router: a toast can carry a `<Link>`, which throws without router context. */}
+      <Toaster />
     </div>
   )
 }
