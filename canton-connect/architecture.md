@@ -1,204 +1,124 @@
-# Architecture Overview — canton-connect
+# Architecture: canton-connect
 
-`canton-connect` is a thin React wrapper over `@canton-network/dapp-sdk`'s `DappSDK` facade. It
-gives consumer dApps a stable wagmi-style hook surface; the SDK owns discovery, the wallet picker,
-the connection session, and every wallet transport (browser extension, WalletConnect, remote
-gateway). The package is a stopgap meant to be cheap to delete as the SDK's own React story matures.
+What the package is and how to use it: [`README.md`](README.md). This file maps the seams. Two
+subsystems carry their own chapter:
+[`architecture/connection-machine.md`](architecture/connection-machine.md) for the states and what
+settles each promise, and [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md)
+for the SDK bug the guard works around.
 
-It is browser-only.
-
-## Project Structure
+## Project structure
 
 ```
 src/
-  CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
   machine/
-    connectionMachine.ts      the lifecycle (xstate v5); owns the sdk, the party and the last connect error; internal, not yet wired (#85)
-    connectionActors.ts       init / connect / restore / disconnect / walletEvents
-    accountsMachine.ts        the account read, invoked inside session.authenticated
-    accountsActors.ts         readAccounts and accountsEvents
-  connectError.ts             ConnectCancelledError, PickerClosedError, InitFailedError, toConnectError
-  guardedConnect.ts           guardedConnect: sdk.connect() with a closed-popup watchdog (#49)
-  hooks/
-    useConnect.ts          connect / disconnect lifecycle
-    useParty.ts            active party
-    useWalletStatus.ts     lock / connect status
-    useSignMessage.ts      sdk.signMessage lifecycle
-    useExecute.ts          sdk.prepareExecuteAndWait + live tx state
-    useLedger.ts           sdk.ledgerApi pass-through
-  walletAccount.ts         account normalization + primary selection (selectUsableAccounts, selectPrimaryAccount, toParty)
-  testing/
-    fakeWallet.ts          test-only CIP-0103 extension over postMessage (also drives real discovery)
-    autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
-    stubPopup.ts           popup + window.open doubles for the close guard; off the barrel
-    connectionInput.ts     machine inputs whose sdk methods never answer; off the barrel
-    accountsInput.ts       the accounts machine's input; off the barrel
-    fakeSession.tsx        FakeSessionProvider: stands in for the provider with the session in a given shape; no sdk behind it
-    pause.ts               real-timer sleep; pause(0) flushes the pending macrotasks
-    index.ts               ./testing sub-path barrel
-  mock/                     createMockAdapter: a mock ProviderAdapter for dev/test
-  types.ts                 Party, ConnectionStatus, CantonConnectConfig, WalletSdk, ConnectionSubscription
-  index.ts                 public exports
+    connectionMachine.ts    the lifecycle; owns the sdk, party, status and the last error
+    connectionActors.ts     init / connect / restore / disconnect / walletEvents
+    accountsMachine.ts      the account read, invoked inside session.authenticated
+    accountsActors.ts       listAccounts reader and accountsChanged listener
+  CantonConnectProvider/
+    index.tsx               the context: publishes the actor and three actions
+    useConnectionActor.ts   creates the actor, sends the boot restore
+    useConnectBridge.ts     connect() as a promise over the machine's tags
+    useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
+    adapters.ts             buildAdditionalAdapters
+  hooks/                    the six public hooks, plus useTxFeed and useWalletCall
+  mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
+  testing/                  the ./testing doubles, plus suite-local helpers
+  connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
+  guardedConnect.ts         sdk.connect() with a closed-popup watchdog
+  walletAccount.ts          account normalization and primary selection
+  types.ts                  Party, ConnectionStatus, CantonConnectConfig, WalletSdk, context value
+  index.ts                  public exports
 ```
 
-## Data flow
+## Who talks to whom
 
 ```mermaid
-flowchart TD
-  app["Consumer dApp"]
-  hooks["Hooks — useConnect / useParty / useExecute / …"]
-  provider["CantonConnectProvider (holds a DappSDK instance)"]
-  sdk["@canton-network/dapp-sdk — DappSDK facade"]
-  picker["walletPicker (SDK popup by default; injected in tests/dev)"]
-  adapters["ExtensionAdapter · WalletConnectAdapter · (RemoteAdapter, deferred)"]
+flowchart LR
+  app["consumer dApp"]
+  cc["canton-connect"]
+  sdk["dapp-sdk"]
+  picker["wallet picker"]
   wallet["CIP-0103 wallet"]
 
-  app --> hooks
-  hooks --> provider
-  provider -->|init / connect| sdk
+  app -->|hooks| cc
+  cc -->|calls| sdk
   sdk --> picker
-  sdk --> adapters
-  adapters --> wallet
-  wallet -->|accountsChanged / statusChanged / txChanged| sdk
-  sdk -->|onAccountsChanged / onStatusChanged / onTxChanged| provider
+  sdk -->|transport| wallet
+  wallet -->|pushes| sdk
+  sdk -->|listeners| cc
+  cc -->|context| app
 ```
 
-## Key abstractions
+| edge | what crosses it |
+|---|---|
+| calls | `init`, `connect`, `disconnect`, `status`, `listAccounts` from the machine's actors; `signMessage`, `prepareExecuteAndWait`, `ledgerApi` from the hooks |
+| transport | extension postMessage, WalletConnect, remote gateway |
+| pushes | `statusChanged`, `accountsChanged`, `txChanged` |
+| listeners | `onStatusChanged`, `onAccountsChanged`, `onTxChanged` |
+| context | one `CantonConnectContextValue` |
 
-### The connection machine (`machine/`)
+## Seams
 
-Internal and unwired until #85. The states, the tags and what settles `connect()` and
-`disconnect()`: [`architecture/connection-machine.md`](architecture/connection-machine.md).
+### The lifecycle: `machine/`
 
-### `CantonConnectProvider`
+One model of connecting, session, lock and disconnect, so the impossible combinations (a status
+with no party, an error beside a live session) cannot be built. Three decisions carry the weight:
 
-Holds one `DappSDK` instance (`new DappSDK({ walletPicker? })`) and owns all shared state — party,
-connection status, lock status, last-tx snapshot, connect error. Hooks are readers over this context
-(or thin delegators to facade methods). Lifecycle:
+- `idle` is not `disconnected`. `idle` means the boot restore has not answered; `disconnected` means
+  it has, and there is nothing.
+- `party` is cleared on leaving `session.authenticated`, so a wallet that will not serve requests
+  publishes none. The session itself stays, which keeps the wallet listener alive: an unlock is
+  heard and the party is read again with no reconnect.
+- The account read is a child machine, so a failed read cannot end the session; only the promise
+  carries the failure.
 
-- **mount**: `sdk.init({ additionalAdapters, defaultAdapters: [] })` cold-starts and restores a
-  persisted session *without* opening the picker. If a session restores — even a locked one — events
-  are wired immediately so a later unlock push isn't dropped.
-- **connect()**: `sdk.connect()` opens the picker and connects the chosen wallet. A rejection passes
-  through `toConnectError`, which turns the built-in picker's dismissal into `ConnectCancelledError`
-  so consumers never match on a message owned by `core-wallet-ui-components`.
-- **events**: `sdk.onAccountsChanged/onStatusChanged/onTxChanged` → React state. Same event names and
-  types the SDK's `DappClient` exposes.
+### The bridges
 
-**Invariant — teardown before the client swaps.** `sdk`'s `onX`/`removeOnX` bind to the *current*
-`this.client`, and `sdk.connect()` replaces the client with a new one. So listeners must be removed
-*before* triggering a connect (`connect()` tears down first, then swaps, then re-wires); otherwise
-they leak on the old client. `disconnect()` and unmount also tear down.
+`connect()` and `disconnect()` are a send plus a wait on a tag, so the promise over a transition
+lives outside the machine. Neither passes a timeout (#105).
 
-### The wallet picker
+### The provider publishes, the hooks select
 
-`CantonConnectConfig.walletPicker?: WalletPickerFn`. Omitted → the SDK's built-in popup (`pickWallet`,
-from `core-wallet-ui-components`). Injected → a custom picker: `createAutoPicker` (headless, for
-tests/dev) today, and a `canton-theme`-styled picker component later (deferred follow-up). This one
-seam covers production UX, testability, and the future themed UI.
+The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
+through it, so the bridges stay the only senders) and three identity-stable actions. Each hook
+selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
+itself. `useConnect`, `useParty` and `useWalletStatus` read session state; `useLedger`, `useExecute`
+and `useSignMessage` select a guard plus the sdk and call it directly, never entering the machine.
 
-### The popup close guard
+The machine's input is read once, when the actor is created, so a changed `config` prop needs a
+remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out
+`getPersistedSnapshot`.
 
-The SDK's picker attaches `beforeunload` to the popup's `WindowProxy`, and the `about:blank → blob:`
-navigation that immediately follows destroys the listener, so a closed popup left `connect()` pending
-forever and the dApp bricked until reload (#49). `guardedConnect(sdk)` wraps the whole `sdk.connect()`
-call: it borrows `window.open` long enough to capture the handle the SDK opens, hands it straight
-back, then races the connect against a poll of `popup.closed` that rejects with `PickerClosedError`,
-carrying the SDK's own `'User closed the wallet picker'` so `toConnectError` maps it unchanged. The
-handle is remembered module-side, because a connect reusing a popup the last one left open (the
-normal path for `reuseGlobalWalletPopup` wallets) calls `window.open` not at all.
+### The picker, and the close guard around it
 
-**Why the call and not the picker.** Our own `walletPicker` would be the deeper seam, and the SDK
-already offers it. What blocks that route is not the `core-wallet-ui-components` trap in
-[`CLAUDE.md`](CLAUDE.md) — a picker of ours needs nothing from that package either — but that this
-package holds no picker UI by rule, and the themed one is deferred and unfiled. So the borrow is a
-stopgap standing in for a picker, not the end state.
+`CantonConnectConfig.walletPicker` decides the picker: omitted, the SDK's popup; injected, a custom
+one (`createAutoPicker` in tests). It is fixed at `new DappSDK()`, which is why the provider hands
+the machine a `createSdk` closure rather than an instance.
 
-**A rejected race leaves the SDK's `connect()` running.** It is still listening for a picker result,
-and would swap the SDK's client from under the provider's event wiring on the *next* connect. That is
-what `PickerClosedError` is for: `CantonConnectProvider` retires its `DappSDK` on one, and the mount
-effect re-restores the session from the discovery session key that `connect()` never clears.
+With the SDK popup in use, `guardedConnect` wraps `sdk.connect()` with a watchdog on the popup
+window, because the SDK misses a close (#49). A caught close rejects with `PickerClosedError`, which
+takes the machine to `retiring`, where the `DappSDK` is replaced.
 
-Retiring the instance does not by itself reach the abandoned `connect()`. It is parked inside
-`core-wallet-ui-components` module scope on a `message` listener keyed to nothing but our origin and
-the message type, so the *next* successful connect woke every past one: one `discovery.connect`, and
-one wallet approval prompt, per popup the user had closed.
+### Adapters
 
-`settleAbandonedConnect` drains them at the close instead. It posts the SDK's own
-`SPLICE_WALLET_PICKER_RESULT` to our window, which is the only thing that makes that listener
-unsubscribe; the `providerId` matches no registered adapter, so the abandoned connect fails with
-`WalletNotFoundError` before reaching a wallet, then rejects out of
-`waitForWalletPickerRetrySelection` because the popup is closed. `walletType` stays `'browser'` to
-keep it out of the branch that registers a remote adapter from the message, and no `name` is sent, so
-anything else on the page watching for a pick can tell the two apart — `dapp/frontend` does exactly
-that to label its connect button. It is skipped while a second guard is in flight, since the message
-would resolve that one's live waiter too — a heuristic, because only guarded connects are counted.
+`buildAdditionalAdapters` assembles what `sdk.init` registers beyond the auto-discovered extensions:
+a `WalletConnectAdapter` when `walletConnectProjectId` is set, plus `config.additionalAdapters`. The
+init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3030` dev gateway.
+`networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
+`Party.networkId` for a wallet that reports none.
 
-This is a workaround, not containment: the abandoned connect still runs. The real fix is an abort on
-`DappSDK.connect()`, upstream.
+### Testing doubles
 
-**The watchdog stands down once a wallet is chosen.** Past the pick the connect is waiting on the
-wallet, not the popup, so closing the popup is no longer a dismissal — treating it as one abandoned a
-live connect and left an unanswered approval request behind, one per close. Only for
-`walletType: 'browser'`: for remote and mobile the popup *is* the wallet surface, so a close there
-still strands the connect and must keep rejecting. The consequence is that closing the popup after
-choosing an extension leaves the button pending until the wallet is answered, with no way to cancel —
-the same shape as MetaMask's `eth_requestAccounts`. Nothing can retract a CIP-0103 `connect` already
-sent, and a wallet that stacks rather than replaces duplicate requests will show one prompt per
-attempt regardless.
-
-**How it fails.** For as long as the borrow is installed, the first window anything on the page opens
-is the one watched, so a connect racing an unrelated `window.open` watches the wrong handle. An SDK
-that stops reaching for `window.open` at all degrades the guard to a bare `sdk.connect()` — that much
-is pinned headless, since both provider tests wait on a URL only the SDK's own popup code writes.
-
-The drain and the stand-down have no such backstop. Both rest on the `SPLICE_WALLET_PICKER_RESULT`
-message — its type, its origin, and the `walletType` and `providerId` fields — none of it public API.
-A rename turns the drain into a no-op that returns the duplicate prompts, and turns the stand-down
-into the old behavior of abandoning a live connect, with nothing going red either way. Nor does any
-test reach #49's own *cause*, a real `WindowProxy` losing its `beforeunload` across the navigation.
-All of it is why a `dapp-sdk` bump needs the manual pass in [`CLAUDE.md`](CLAUDE.md).
-
-### Additional adapters
-
-`buildAdditionalAdapters(config, networkId)` assembles the non-extension adapters passed to `sdk.init`:
-`WalletConnectAdapter.create({ projectId, … })` when `walletConnectProjectId` is set, plus any
-`config.additionalAdapters` (e.g. the dev/test mock adapter). Extension wallets are auto-discovered
-by the facade's announce protocol — nothing to register for them. `defaultAdapters: []` suppresses
-the SDK's bundled `localhost:3030` dev Wallet Gateway.
-
-`networkId` (`CantonConnectConfig.networkId`, default `'canton:local'`) drives two things from one
-field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId` (set in
-`wireEvents`, via `toParty`).
-
-**`@walletconnect/sign-client` is declared an optional peer and is not actually optional.**
-`dapp-sdk` imports it statically at the top of its bundle, so it has to be installed whether or not
-`walletConnectProjectId` is set. Only the *session* is lazy: `SignClient.init()` runs when a pairing
-starts, not at import. The `peerDependenciesMeta` entry marking it optional therefore describes what
-we want rather than what resolves — worth an upstream issue, and until then treat it as required.
-Still true at 1.5.1, the version pinned here: the entry module touches `window` at import. Re-check on the next bump.
-
-### Hooks
-
-| Hook | Responsibility |
-| ------ | ---------------- |
-| `useConnect` | start/stop the connection; expose error/connecting state |
-| `useParty` | current primary party + connection status |
-| `useWalletStatus` | lock/connect status from wallet events |
-| `useSignMessage` | `sdk.signMessage` as a promise lifecycle |
-| `useExecute` | `sdk.prepareExecuteAndWait` + live tx status |
-| `useLedger` | raw `sdk.ledgerApi` pass-through |
-
-## Boundaries & conventions
-
-- Wraps `@canton-network/dapp-sdk` and nothing app-specific. No imports from `dapp/` or `canton-barebones/`. Names no wallet.
-- **Import the SDK's types; never hand-copy them.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event constants come from `core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`; today only `testing/fakeWallet.ts` uses them). No `as Parameters<…>` casts.
-- No SDK-import quarantine — the package is a thin SDK wrapper throughout (the old `core`/`connectors` split it served was cancelled by adopting the facade).
+`createFakeWallet` is a real CIP-0103 extension over `postMessage`, so a test walks the SDK's own
+announce, detect and connect path. `createAutoPicker` answers the picker headlessly, and
+`FakeSessionProvider` rehydrates the machine at an asked-for state with no SDK behind it.
 
 ## Deferred
 
-- **Remote / Wallet-Gateway (OIDC) path** — a configurable `RemoteAdapter` via `additionalAdapters` + `CantonConnectConfig` (issue #2, reframed; decoupled from #3).
-- **Themed wallet picker** — a `canton-theme`-styled component injected via `walletPicker`, replacing the SDK popup for UX control. Not yet filed.
-- **`dapp/frontend` adoption** — the app re-adopts this package; the connection bar returns (issue #40).
+- Remote / Wallet Gateway (OIDC) path: a configurable `RemoteAdapter` through `additionalAdapters`
+  and `CantonConnectConfig` (#2).
+- Themed in-page picker (#50): its PR (#63) was closed unmerged, so the SDK popup is still the only
+  picker; a new attempt starts from the `walletPicker` seam.
 
-For the full local stack around this package, see the root [`architecture.md`](../architecture.md).
+For the stack around this package: the root [`architecture.md`](../architecture.md).

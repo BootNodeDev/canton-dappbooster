@@ -1,60 +1,81 @@
-# Agent Configuration — canton-connect
+# Agent Configuration: canton-connect
 
-This file applies only to `canton-connect/`. For monorepo-wide rules, see [`../CLAUDE.md`](../CLAUDE.md). Deltas only below.
+Applies only to `canton-connect/`. Repo-wide rules: [`../CLAUDE.md`](../CLAUDE.md). Deltas only.
 
 ## Scope
 
-`canton-connect` is a thin React wrapper over `@canton-network/dapp-sdk`'s `DappSDK` facade,
-exposing a stable wagmi-style hook surface. The SDK owns discovery, the picker, the session, and
-all transports. Browser-only. A stopgap, meant to stay cheap to delete.
+A thin React layer over `@canton-network/dapp-sdk`'s `DappSDK`, which owns discovery, the picker,
+the session and the transports. Browser-only, and built to stay cheap to delete.
 
 ## Working rules
 
-- **Wrap the facade; don't rebuild it.** `CantonConnectProvider` holds one `DappSDK` instance and drives `init`/`connect`/events. Do not reintroduce hand-rolled connectors, a `ConnectorProvider` type, or a connector abstraction — the facade replaced all of that.
-- **Two lifecycle models live here for now; the machine replaces the provider's in #85.** `machine/connectionMachine.ts` is the connection lifecycle, internal, unwired, driven only by its own tests; `CantonConnectProvider.tsx` still owns the state the hooks read until #85 swaps it over. Put a new lifecycle rule in the machine, not in both, and never "sync" them: a rule living in two places is #76's original disease.
-- **Import the SDK's types; never hand-copy them, and drop casts.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event names come from `@canton-network/core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`; today only `testing/fakeWallet.ts` uses them). A `param as Parameters<…>` cast means you duplicated a type the SDK already exports: delete the duplicate, import the real type.
-- **Teardown before the client swaps.** `sdk`'s `onX`/`removeOnX` bind to the current `this.client`, and `sdk.connect()` swaps it. Remove listeners *before* a connect (then re-wire after), or they leak on the old client. Keep the mount/connect/disconnect teardown paths consistent.
-- **The picker is a config seam.** `CantonConnectConfig.walletPicker` — omit for the SDK popup; inject `createAutoPicker()` in tests, a themed component later. Don't wire a picker UI into this package; UI lives in `canton-dappbooster` + `canton-theme`.
-- **Bumping `dapp-sdk` means a manual browser pass on the close path.** Two of `guardedConnect`'s assumptions are non-public SDK internals no test can pin: that the picker window comes from `window.open`, and the shape of the `SPLICE_WALLET_PICKER_RESULT` message it both reads and posts. Serve `dapp/frontend` and walk three cases. Close the picker without choosing, three times over: the button must re-enable each time, and a following real connect must raise exactly one approval prompt. Choose an extension, then close the picker: the button must stay pending and the connect must complete when the wallet is answered. Then repeat both on a wallet that reuses the popup the SDK left open (a gateway or WalletConnect one), where a close after choosing *must* fail the connect. Why in [`architecture.md`](architecture.md).
-- **Never import `@canton-network/core-wallet-ui-components`.** It is `dapp-sdk`'s private popup layer, and declaring it to reach `pickWallet` puts a second copy of its module-level popup state in the store, which kills the SDK's retry prompt with `"Wallet picker is not open"`. This rules out reusing the SDK's picker component; it does not rule out writing our own.
-- **The mock adapter answers the connect flow only.** `createMockAdapter()` implements `connect`/`disconnect`/`status`/`listAccounts` and throws naming the method for anything else. Don't extend it to fake `execute` or `signMessage` — a canned result there is indistinguishable from a real wallet's.
-- **Keep hooks thin.** Read `CantonConnectProvider` context or delegate straight to a facade method. Shared state transitions belong in `CantonConnectProvider.tsx`.
-- **The hook and config surface is documented in JSDoc, and nowhere else.** No hook table and no
-  config table in `README.md`: root [`CLAUDE.md`](../CLAUDE.md) puts reference material out of a
-  README, and both are generated from the doc blocks now. A table copied beside the code drifts from
-  it, and a reader who trusted the copy has no way to tell. Which wallets the picker offers is
-  decided by three fields, so `CantonConnectConfig` is where that is written down:
-  `walletConnectProjectId`, `walletPicker`, `additionalAdapters`.
-- Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
-- Internal modules are reached through this package's `#src/*` subpath imports, never a relative path, and imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
+- **Wrap the facade.** One `DappSDK`, in the machine's context. No connectors, no
+  `ConnectorProvider`, no connector abstraction.
+- **Lifecycle rules live in `machine/`**, never a second copy in React. The account read is
+  `accountsMachine`, invoked inside `session.authenticated`.
+- **The sdk is machine context**, built by the input's `createSdk` and replaced in `retiring`.
+  Never React state.
+- **Input is read once, at actor creation.** A changed `config` prop reaches the hooks, not the
+  lifecycle; remount the provider (`key`) to change it.
+- **A state carries a tag for what it means to the outside.** The tags union in
+  `machine/connectionMachine.ts` is the authority, and no other module names a state. A state that
+  answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here
+  (#105).
+- **A state's `exit` clears what that state alone justified.** `party` is cleared on leaving
+  `session.authenticated`, because a wallet that stops serving requests has none to offer, and a
+  lock cannot be told from a wallet-side disconnect. `sdk` has no exit; nothing outlives it.
+- **Listeners register only inside a state's `invoke`.** `sdk.onX` binds to the current client and
+  `sdk.connect()` swaps it.
+- **The provider selects nothing.** It publishes the config, the actor and three actions; each hook
+  selects its own slice. Never add a field a hook could select.
+- **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
+  narrows `DappSDK` to the methods this package calls.
+- **React owns two things:** `lastTx` (`useExecute`) and the `toConnectError` memo (`useConnect`).
+  Anything else that looks like state belongs in the machine.
+- **Import the SDK's types.** A `param as Parameters<…>` cast is a duplicated type: import the real
+  one from `dapp-sdk` or `core-types`.
+- **The picker is `CantonConnectConfig.walletPicker`.** No picker UI in this package; that lives in
+  `canton-dappbooster` and `canton-theme`.
+- **Never import `@canton-network/core-wallet-ui-components`.** A second copy of its module-level
+  popup state breaks the SDK's retry prompt with `"Wallet picker is not open"`.
+- **The mock adapter answers the connect flow only.** A canned `execute` or `signMessage` would be
+  indistinguishable from a real wallet's.
+- **The hook and config surface is documented in JSDoc, and nowhere else.** The published reference
+  is generated from it, and a table beside the code drifts from it unnoticed.
+- **App-agnostic.** No imports from `dapp/` or `canton-barebones/`; name no wallet.
 
-## Layout deltas from the root rules
+## Bumping `dapp-sdk`
 
-- **The lifecycle lives in `src/machine/`; the other modules sit at `src/` root.** `machine/` holds `connectionMachine`, `connectionActors`, `accountsMachine`, `accountsActors` and nothing else. `walletAccount`, `connectError` and `guardedConnect` are one flat layer under `src/`; a new one joins them rather than starting a `utils/`. The root rule's kind folders here are `hooks/`, `machine/`, `testing/` and `mock/`.
-- **`CantonConnectProvider.tsx` lives at `src/` root, not in `components/`.** It renders only `<Context.Provider>{children}</Context.Provider>` — no markup, no visible state, no `ref` — so it is context infrastructure, and the component-authoring rules in [`../CLAUDE.md`](../CLAUDE.md) (a11y state exposure, `ref` as an ordinary prop, role-based tests) do not apply to it. Agreed on PR #45, which deliberately left this package out of its sweep.
-- **`src/testing/` is a published subpath export** (`./testing` in `package.json`), unlike `canton-dappbooster`'s package-local `src/testing/`. The root rule that `testing/` is never imported from non-test code still holds here and is enforced by Biome; the export exists because the fake wallet is useful to *other* packages' test suites.
+`guardedConnect` rests on two SDK internals no test can pin: that the picker window comes from
+`window.open`, and the shape of the `SPLICE_WALLET_PICKER_RESULT` message it reads and posts. Why:
+[`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve `dapp/frontend` and
+walk all four:
 
-## The machine
+1. Close the picker without choosing, three times over: the button re-enables each time, and the
+   next real connect raises exactly one approval prompt.
+2. Choose an extension, then close the picker: the button stays pending, and the connect completes
+   when the wallet answers.
+3. Both of those again on a wallet that reuses the popup the SDK left open (a gateway or
+   WalletConnect one), where a close after choosing must fail the connect.
+4. Check that `new DappSDK()` still only initializes fields (true on 1.5.1). The machine constructs
+   one inside a plain `assign`; if construction turns effectful, move the ritual into the provider's
+   `createSdk` and dispose the abandoned instance on the same transition, never from an effect.
 
-- `setup()` with parameterized actions and guards. Every actor reads its sdk off the invoke's input, so leaving the state stops it and drops its listener.
-- A state carries a tag for each question it can already answer, and none while an answer is pending. The tag union in `connectionMachine.ts` is the contract; [`architecture/connection-machine.md`](architecture/connection-machine.md) is the reference. When the two disagree, fix the chapter.
-- The one delay, `disconnectTimeout`, is driven in tests by xstate's `SimulatedClock`. No test waits on wall-clock time.
-- `testing/connectionInput.ts` and `testing/accountsInput.ts` build inputs whose sdk methods never answer; a test overrides the one it needs.
+## Layout
+
+- `machine/` holds the lifecycle: both machines and their actors. `connectError`, `guardedConnect`,
+  `walletAccount` and `types` stay flat at `src/`, and a new leaf module joins them; no `utils/`.
+- `CantonConnectProvider/` is the provider plus the bridges it composes. It renders only
+  `<Context.Provider>`, so the root's component-authoring rules do not apply to it.
+- `mock/` is source, not a double: the barrel exports `createMockAdapter`, so `testing/` cannot
+  hold it.
+- `testing/` is the published `./testing` subpath, and only four names are on its barrel:
+  `createFakeWallet`, `createAutoPicker`, `FakeSessionProvider`, `pause`. The rest is suite-local.
 
 ## Testing
 
-- `pnpm -C canton-connect test` — **vitest + jsdom** (not `node:test`).
-- Drive the real facade with the test doubles in `src/testing/`: `createFakeWallet` (a real CIP-0103 extension over postMessage) + `createAutoPicker` (headless picker), both exported on the `./testing` sub-path.
-- **Test our seam, not the SDK's internals.** Discovery, pairing, the popup, session restore are the SDK's (trusted dependency). Cover: config → adapters → picker entries → connected state → events reaching the hooks.
-- **Success paths test headless; connect-failure paths don't** — the facade's failure/retry calls a popup helper that throws without a popup window. Don't write a connect-failure test expecting a clean rejection.
-
-## Architecture
-
-See [`architecture.md`](architecture.md) for the facade wrapper, the picker/adapter seams, the event flow, and the teardown invariant.
-
-## Validation Checklist
-
-- `pnpm run lint`
-- `pnpm test`
-- `pnpm run coverage`
-- `pnpm run typecheck`
+- Drive the real facade with `createFakeWallet` plus `createAutoPicker`; reach for
+  `FakeSessionProvider` when a test needs a session state and no wallet.
+- **Test our seam, not the SDK's.** Discovery, pairing, the popup and session restore are the SDK's.
+- `pnpm coverage` reports the suite with `testing/`, `mock/` and the barrel excluded.
+- The one path no test reaches is the SDK popup's own close, which the bump pass above covers.
