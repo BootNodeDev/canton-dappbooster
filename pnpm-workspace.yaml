@@ -3,20 +3,19 @@ packages:
   - canton-dappbooster
   - canton-theme
   - canton-barebones
-  - canton-barebones/wallet-service
   - dapp/daml
   - dapp/frontend
-
-# Pins for wallet-service's wallet-sdk. Held at the versions it was verified against;
-# unpinned, wallet-sdk resolves to 1.4.0 and core-acs-reader to 1.16.0, both untested here.
-overrides:
-  '@canton-network/wallet-sdk': 1.3.1
-  '@canton-network/core-acs-reader': 1.12.0
 
 # Dependencies allowed to run install/build scripts (pnpm blocks them by default).
 # esbuild: needed by Vite/tsx. puppeteer (via @mermaid-js/mermaid-cli): blocked so
 # it does not download a Chromium; nothing here renders mermaid via the CLI.
+# @bootnodedev/canton-wallet-service: a git dependency, so its `prepare` build is
+# what produces the dist/ the canton-wallet-service binary points at. pnpm matches
+# a git dependency only by its resolved tarball id, so moving the ref in
+# package.json means replacing the commit sha below; `pnpm approve-builds` prints
+# the new key.
 allowBuilds:
+  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/debbc0d4fa74f2405fe00e20fd04fc2e7111cc0d': true
   esbuild: true
   protobufjs: true
   puppeteer: false
