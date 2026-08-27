@@ -3,10 +3,10 @@ import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { createCantonToken } from '../scripts/mint-token.mjs'
+import { createCantonToken } from './mint-token.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const scriptPath = path.resolve(__dirname, '../scripts/mint-token.mjs')
+const scriptPath = path.resolve(__dirname, 'mint-token.mjs')
 
 const b64urlDecode = (value) => {
   const padded = `${value}${'='.repeat((4 - (value.length % 4)) % 4)}`
