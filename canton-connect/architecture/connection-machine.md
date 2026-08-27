@@ -22,6 +22,7 @@ stateDiagram-v2
     connecting --> failure: declined or threw
     connecting --> retiring: the picker was closed
     retiring --> restoring: onDone, on the replacement
+    retiring --> failure: onError, the replacement's init failed
     session --> disconnecting: disconnect
     disconnecting --> disconnected: settled
     disconnecting --> disconnected: 10 s unanswered, on a replacement sdk
@@ -38,6 +39,10 @@ Three events reach further than the diagram shows. `connect` is taken everywhere
 and `disconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
 `disconnecting`. `restore` is taken by `idle`, `disconnected`, `session` and `failure`. A fourth,
 `connectError.reset`, is taken everywhere and changes no state.
+
+The wallet's push arrives as `wallet.statusChanged`, sent by the `walletEvents` actor:
+`session.authenticated` leaves for `unauthenticated` when `connection.isConnected` is false, and
+`unauthenticated` returns to `authenticated` when it is true.
 
 ## States
 
@@ -74,6 +79,9 @@ the state stops the actor and drops the listener with it.
 
 ## What settles a promise
 
+The `connect()` and `disconnect()` columns describe the bridges the provider PR adds; on this branch
+the tags exist and nothing awaits them.
+
 | machine state | tags | `connect()` | `disconnect()` |
 |---|---|---|---|
 | `idle` | `disconnect.settled` | waits | resolves |
@@ -88,11 +96,11 @@ the state stops the actor and drops the listener with it.
 | `disconnecting` | none | waits | waits |
 | `disconnected` | `connect.cancelled`, `disconnect.settled` | rejects, `ConnectCancelledError` | resolves |
 
-The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('connecting')` and
-`isLocked` is `hasTag('unauthenticated')`. A five-way enum stays a selector's job, so `status` is
-`toConnectionStatus`.
+The last two tags are for hooks rather than bridges: `connecting` answers `isConnecting`,
+`unauthenticated` answers `isLocked`. On this branch nothing reads them; the provider PR wires both.
+A five-way enum stays a selector's job, so `status` is `toConnectionStatus`.
 
-Three placements carry weight:
+Four placements carry weight:
 
 - **`session.unauthenticated` settles a connect.** A wallet that connects locked answers no account
   read, so waiting for a party would wait forever.
@@ -111,14 +119,15 @@ Three placements carry weight:
 
 `lastConnectError` rides in context and outlives the state that produced it, so a recovered session
 can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`
-and `disconnecting`, by `connectError.reset` (behind `useConnect().reset()`), and by a push that
-recovers a failed read.
+and `disconnecting`, by `connectError.reset` (the event the provider PR puts behind
+`useConnect().reset()`), and by a push that recovers a failed read.
 
 The two ways a picker close reaches the caller differ. A close the watchdog catches records nothing:
 `connecting` goes to `retiring`, which clears the error, and `connect()` rejects with a fresh
 `ConnectCancelledError`. A dismissal the SDK itself rejects (`'User closed the wallet picker'`) goes
-to `failure` and is recorded, with `toConnectError` classifying it as `ConnectCancelledError` on the
-way to `connectError`. Either way a consumer filters by `instanceof`, never by message.
+to `failure` and is recorded; the provider classifies it with `toConnectError` as
+`ConnectCancelledError` on the way to `connectError`. Either way a consumer filters by `instanceof`,
+never by message.
 
 ## The accounts machine
 
