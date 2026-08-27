@@ -7,10 +7,7 @@ export const useDisconnectBridge = (actorRef: ConnectionActorRef): (() => Promis
   useCallback(async (): Promise<void> => {
     actorRef.send({ type: 'disconnect' })
 
-    // `superseded` is a connect having taken over: the machine will never reach `disconnected`.
-    await waitFor(
-      actorRef,
-      (snapshot) =>
-        snapshot.hasTag('disconnect.settled') || snapshot.hasTag('disconnect.superseded'),
-    )
+    // A disconnect now always lands in `disconnected`; a connect asked for mid-disconnect is
+    // ignored, not queued, so there is no `superseded` exit to wait on.
+    await waitFor(actorRef, (snapshot) => snapshot.hasTag('disconnect.settled'))
   }, [actorRef])

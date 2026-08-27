@@ -81,7 +81,7 @@ describe('useDisconnectBridge', () => {
     actor.stop()
   })
 
-  it('settles the disconnect a connect interrupts', async () => {
+  it('ignores a connect asked for during a disconnect, and settles the disconnect', async () => {
     const connectStarted = vi.fn()
     let endDisconnect: (() => void) | undefined
     const machine = connectionMachine.provide({
@@ -114,22 +114,23 @@ describe('useDisconnectBridge', () => {
     }))
 
     const disconnected = vi.fn()
-    const connected = vi.fn()
+    const rejected = vi.fn()
 
     await act(async () => {
       void result.current.disconnect().then(disconnected)
       await pause(0)
 
-      // the switch-wallet gesture: the machine leaves for `connecting` rather than `disconnected`
-      void result.current.connect().then(connected)
+      // a connect during the disconnect is ignored, not queued: the connect actor never runs, and
+      // the call rejects as cancelled once the machine rests in `disconnected`
+      void result.current.connect().catch(rejected)
       endDisconnect?.()
       await pause(0)
     })
 
     expect(disconnected).toHaveBeenCalledOnce()
-    expect(connected).toHaveBeenCalledOnce()
-    expect(connectStarted).toHaveBeenCalledOnce()
-    expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+    expect(rejected).toHaveBeenCalledOnce()
+    expect(connectStarted).not.toHaveBeenCalled()
+    expect(actor.getSnapshot().matches('disconnected')).toBe(true)
 
     actor.stop()
   })
