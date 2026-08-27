@@ -21,6 +21,32 @@ the SDK ships hooks of its own. The signatures are deliberately wagmi-shaped
 either way, so swapping the implementation underneath wouldn't change a dApp's
 components.
 
+## Why a state machine
+
+The connection lifecycle looks like four states (idle, connecting, connected,
+disconnected) and isn't. The hard part isn't holding state, it's cancelling work
+when the state that started it is gone: a picker the user walked out of, a lock
+that races the account read, a disconnect a reconnect supersedes, a wallet that
+answers late or never. Handled one at a time these were five separate races
+(#76). A state machine folds them into one model: a state's invoked work is
+cancelled when the state is left, and the illegal combinations (connected with no
+party, an error beside a live session) can't be constructed.
+
+Most of that weight works around `@canton-network/dapp-sdk` gaps, not domain
+complexity (below). When those close upstream, this layer collapses to its floor
+(idle-vs-disconnected, the account-read states, the CIP-0103 lock/disconnect
+ambiguity), small enough that a lighter store wins on bundle size. A spike
+reimplementing it on zustand confirmed this: full behavioral parity, but the win
+is bundle size and one fewer dependency, not less logic, and it points to
+switching only once those gaps close. Until then, the machine earns its cost.
+
+| dapp-sdk gap | what it costs us | gone when |
+|---|---|---|
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `PickerClosedError`, most of the staleness guard | `connect(signal)` truly aborts |
+| `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
+| `disconnect()` has no deadline (#105) | the 10s timeout and its replacement-SDK fallback | `disconnect()` bounds itself |
+| lock and wallet-side disconnect are one push | `session.unauthenticated`, party-dropped-on-lock | CIP-0103 separates them (spec, not SDK) |
+
 ## Status
 
 Early. No consumer in this repo yet — `dapp/frontend` adopting it is a
