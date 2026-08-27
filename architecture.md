@@ -12,6 +12,10 @@
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
 
+Each subproject's `architecture.md` is the index of its own seams. A subsystem that needs more than
+a seam gets a chapter in a sibling `architecture/` folder, linked from that index; `canton-connect/`
+carries one today, the connection machine.
+
 ## Data Flow
 
 ```mermaid
