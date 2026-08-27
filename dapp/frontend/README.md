@@ -15,12 +15,14 @@ placeholder. See the root [README](../../README.md) for the wider stack.
 
 ## Run
 
-From the repo root (one `pnpm install` links every workspace):
+The app needs a Canton LocalNet, wallet-service on port 3010 and the vesting DAR deployed
+before it renders anything; the root [README](../../README.md) is the whole bring-up. Once
+that is up, from the repo root (one `pnpm install` links every workspace):
 
 ```bash
-pnpm run canton:up
-pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
-node scripts/bootstrap-vesting-lite.mjs   # creates the operator and its factory
+pnpm run build-dar
+pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
+pnpm run bootstrap   # creates the operator and its factory
 pnpm run app:dev                          # → http://localhost:3012
 ```
 

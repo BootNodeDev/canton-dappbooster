@@ -10,12 +10,10 @@ Vendoring details are in [`PROVENANCE.md`](PROVENANCE.md).
 From the repo root:
 
 ```bash
-pnpm run build-dar -- dapp/daml/vesting-lite
+pnpm run build-dar
 pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
 ```
 
-The same DAR is checked in prebuilt at
-[`canton-barebones/dars/vesting-lite-0.0.1.dar`](../../canton-barebones/dars/vesting-lite-0.0.1.dar),
-for deploying without a local build. `scripts/dev-stack.sh up` builds from source instead, so it
-requires `dpm`. See the Canton barebones
-[Deploy a DAR](../../canton-barebones/README.md#deploy-a-dar) step.
+`deploy-dar` uploads to the app-user JSON API and takes the bearer token from the root `.env`.
+Both commands need the Daml SDK (`dpm`), which `scripts/dev-stack.sh up` checks for before it
+starts anything.

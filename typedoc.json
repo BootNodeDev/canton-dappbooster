@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "Canton dApp Booster",
+  "name": "Canton dAppBooster",
   "entryPointStrategy": "packages",
   "entryPoints": [
     "canton-dappbooster",
