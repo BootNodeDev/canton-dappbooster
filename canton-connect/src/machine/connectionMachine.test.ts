@@ -1024,7 +1024,7 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('connects once the disconnect it landed on finishes', async () => {
+    it('ignores a connect asked for mid-disconnect, then rests in disconnected', async () => {
       const connectStarted = vi.fn()
       let endDisconnect: (() => void) | undefined
       const machine = connectionMachine.provide({
@@ -1053,15 +1053,18 @@ describe('connectionMachine', () => {
       actor.send({ type: 'disconnect' })
       expect(actor.getSnapshot().matches('disconnecting')).toBe(true)
 
-      // the switch-wallet gesture: a connect landing before the wallet answered the disconnect
+      // a connect during disconnect is ignored, not queued: the state does not move and the
+      // connect actor never starts
       actor.send({ type: 'connect' })
+      expect(actor.getSnapshot().matches('disconnecting')).toBe(true)
       expect(connectStarted).not.toHaveBeenCalled()
 
       endDisconnect?.()
       await pause(0)
 
-      expect(connectStarted).toHaveBeenCalledOnce()
-      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
+      // the disconnect settles to disconnected; the ignored connect never ran
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(connectStarted).not.toHaveBeenCalled()
 
       actor.stop()
     })
@@ -1144,40 +1147,6 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('starts the queued connect when the wallet never answers the disconnect', async () => {
-      const clock = new SimulatedClock()
-      const connectedOn = vi.fn()
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          init,
-          restore,
-          disconnect: fromPromise<null, DisconnectInput>(() => new Promise(() => {})),
-          connect: fromPromise<WalletStatusUpdate, ConnectInput>(({ input }) => {
-            connectedOn(input.sdk)
-            return Promise.resolve({ connection })
-          }),
-        },
-      })
-      const actor = createActor(machine, { clock, input: connectionInput() })
-
-      actor.start()
-      actor.send({ type: 'restore' })
-      await pause(0)
-      const stranded = actor.getSnapshot().context.sdk
-
-      actor.send({ type: 'disconnect' })
-      actor.send({ type: 'connect' })
-      clock.increment(DISCONNECT_TIMEOUT_MS)
-      await pause(0)
-
-      expect(connectedOn).toHaveBeenCalledOnce()
-      expect(connectedOn.mock.calls[0]?.[0]).not.toBe(stranded)
-      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
-
-      actor.stop()
-    })
-
     it('disconnects a locked session', async () => {
       const machine = connectionMachine.provide({
         actors: {
@@ -1234,7 +1203,7 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('reports disconnected while disconnecting', async () => {
+    it('reports disconnecting while disconnecting', async () => {
       const machine = connectionMachine.provide({
         actors: {
           accounts,
@@ -1251,7 +1220,7 @@ describe('connectionMachine', () => {
       actor.send({ type: 'disconnect' })
 
       expect(actor.getSnapshot().matches('disconnecting')).toBe(true)
-      expect(toConnectionStatus(actor.getSnapshot())).toBe('disconnected')
+      expect(toConnectionStatus(actor.getSnapshot())).toBe('disconnecting')
 
       actor.stop()
     })
@@ -1750,88 +1719,6 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
       expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(true)
       expect(actor.getSnapshot().context.lastConnectError).toBeUndefined()
-
-      actor.stop()
-    })
-
-    it('answers a disconnect that a connect supersedes', async () => {
-      let endDisconnect: (() => void) | undefined
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          connect,
-          disconnect: fromPromise<null, DisconnectInput>(
-            () =>
-              new Promise((resolve) => {
-                endDisconnect = () => resolve(null)
-              }),
-          ),
-        },
-      })
-      const actor = createActor(machine, { input: connectionInput() })
-
-      actor.start()
-
-      // nothing to disconnect: the event is dropped, so a caller must not be left waiting
-      expect(actor.getSnapshot().hasTag('disconnect.settled')).toBe(true)
-
-      actor.send({ type: 'connect' })
-      actor.send({ type: 'disconnect' })
-
-      expect(actor.getSnapshot().matches({ disconnecting: 'ending' })).toBe(true)
-      expect(actor.getSnapshot().hasTag('disconnect.settled')).toBe(false)
-
-      // a connect takes over: the machine will reach `connecting`, never `disconnected`, so the
-      // disconnect is answered here without claiming the wallet replied
-      actor.send({ type: 'connect' })
-
-      expect(actor.getSnapshot().matches({ disconnecting: 'reconnecting' })).toBe(true)
-      expect(actor.getSnapshot().hasTag('disconnect.settled')).toBe(false)
-      expect(actor.getSnapshot().hasTag('disconnect.superseded')).toBe(true)
-
-      endDisconnect?.()
-      await pause(0)
-
-      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
-
-      actor.stop()
-    })
-
-    it('un-queues the superseding connect when a disconnect is asked for again', async () => {
-      let endDisconnect: (() => void) | undefined
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          connect,
-          disconnect: fromPromise<null, DisconnectInput>(
-            () =>
-              new Promise((resolve) => {
-                endDisconnect = () => resolve(null)
-              }),
-          ),
-        },
-      })
-      const actor = createActor(machine, { input: connectionInput() })
-
-      actor.start()
-      actor.send({ type: 'connect' })
-      actor.send({ type: 'disconnect' })
-      actor.send({ type: 'connect' })
-
-      expect(actor.getSnapshot().matches({ disconnecting: 'reconnecting' })).toBe(true)
-
-      actor.send({ type: 'disconnect' })
-
-      expect(actor.getSnapshot().matches({ disconnecting: 'ending' })).toBe(true)
-      expect(actor.getSnapshot().hasTag('disconnect.superseded')).toBe(false)
-
-      endDisconnect?.()
-      await pause(0)
-
-      // the un-queued connect is answered as a cancel, and the disconnect as settled
-      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
-      expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(true)
-      expect(actor.getSnapshot().hasTag('disconnect.settled')).toBe(true)
 
       actor.stop()
     })

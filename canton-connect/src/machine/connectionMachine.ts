@@ -6,7 +6,6 @@ import {
   type ErrorActorEvent,
   type SnapshotFrom,
   setup,
-  stateIn,
 } from 'xstate'
 import { InitFailedError, PickerClosedError } from '#src/connectError'
 import { accountsMachine } from '#src/machine/accountsMachine'
@@ -60,7 +59,7 @@ type ConnectionContext = ConnectionInput & {
   party: Party | undefined
 }
 
-/** Reduces the machine's internal states to the four-value `ConnectionStatus` hooks expose. */
+/** Reduces the machine's internal states to the five-value `ConnectionStatus` hooks expose. */
 export const toConnectionStatus = (
   snapshot: SnapshotFrom<typeof connectionMachine>,
 ): ConnectionStatus => {
@@ -80,6 +79,10 @@ export const toConnectionStatus = (
     return 'idle'
   }
 
+  if (snapshot.matches('disconnecting')) {
+    return 'disconnecting'
+  }
+
   // `failure` reads as disconnected to consumers; the error rides in context
   return 'disconnected'
 }
@@ -95,25 +98,13 @@ const landAuthenticated = {
   target: 'session.authenticated',
 } as const
 
-/** The exit from `disconnecting`, success and failure alike. */
-// Standing in `reconnecting` means a connect was queued mid-disconnect, and it wins over resting
-// in `disconnected`.
-const afterDisconnect = [
-  { guard: stateIn({ disconnecting: 'reconnecting' }), target: 'connecting' },
-  { target: 'disconnected' },
-] as const
+/** The exit from `disconnecting`, success and failure alike: nothing overlaps a disconnect. */
+const afterDisconnect = { target: 'disconnected' } as const
 
-/** The exit `disconnecting` takes when the wallet never answers: the same two, on a replacement sdk. */
+/** The exit `disconnecting` takes when the wallet never answers, on a replacement sdk. */
 // The unanswered request still holds the old instance's client, and its late answer would null
 // whichever client a later connect installs on that instance.
-const afterSilentDisconnect = [
-  {
-    guard: stateIn({ disconnecting: 'reconnecting' }),
-    actions: { type: 'retireSdk' },
-    target: 'connecting',
-  },
-  { actions: { type: 'retireSdk' }, target: 'disconnected' },
-] as const
+const afterSilentDisconnect = { actions: { type: 'retireSdk' }, target: 'disconnected' } as const
 
 /** The `init` invoke and what follows it, shared by `initializing` and `retiring`. */
 const bootSdk = {
@@ -190,10 +181,7 @@ export const connectionMachine = setup({
         | 'unauthenticated'
         // A disconnect already holds true, so one asked for here is answered by the current
         // snapshot.
-        | 'disconnect.settled'
-        // A disconnect a connect took over: the machine goes to `connecting`, never to
-        // `disconnected`.
-        | 'disconnect.superseded',
+        | 'disconnect.settled',
     events: {} as
       | { type: 'connect' }
       | { type: 'connectError.reset' }
@@ -415,10 +403,10 @@ export const connectionMachine = setup({
         disconnect: { target: 'disconnecting' },
       },
     },
-    // sdk.disconnect() and sdk.connect() both rewrite the client, so they must never overlap: a
-    // connect asked for mid-disconnect is remembered as the `reconnecting` sub-state, not started.
+    // sdk.disconnect() and sdk.connect() both rewrite the client, so they must never overlap. A
+    // connect asked for here is ignored, not queued: `status` is `disconnecting`, so a consumer
+    // keeps its connect action disabled until this settles.
     disconnecting: {
-      initial: 'ending',
       entry: { type: 'forgetError' },
       invoke: {
         src: 'disconnect',
@@ -428,21 +416,6 @@ export const connectionMachine = setup({
       },
       after: {
         disconnectTimeout: afterSilentDisconnect,
-      },
-      states: {
-        ending: {
-          on: {
-            connect: { target: 'reconnecting' },
-          },
-        },
-        // Not `disconnect.settled`: the wallet has not answered yet, and the connect that took
-        // over owns the session now. A disconnect asked for again un-queues that connect.
-        reconnecting: {
-          tags: ['disconnect.superseded'],
-          on: {
-            disconnect: { target: 'ending' },
-          },
-        },
       },
     },
   },

@@ -28,9 +28,9 @@ export type WalletSdk = Pick<
 >
 
 /**
- * `'idle'` is "not determined yet": the boot restore has not answered, so it is neither a session
- * nor the absence of one. Gate on `'disconnected'`, never on "not connected", or a returning user
- * is turned away before the restore runs.
+ * `'idle'` is "not determined yet", not "disconnected": gate a connect button on `'disconnected'`,
+ * or a returning user is turned away before the boot restore runs. `'disconnecting'` is the session
+ * tearing down; keep connect disabled until it settles, so a new connect never overlaps it.
  *
  * @example
  * const { status } = useParty()
@@ -39,7 +39,12 @@ export type WalletSdk = Pick<
  *
  * @category Types
  */
-export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
+export type ConnectionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'disconnecting'
+  | 'disconnected'
 
 /**
  * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` is the

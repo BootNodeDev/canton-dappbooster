@@ -24,19 +24,18 @@ stateDiagram-v2
     retiring --> restoring: onDone, on the replacement
     session --> disconnecting: disconnect
     disconnecting --> disconnected: settled
-    disconnecting --> connecting: settled, a connect was queued
     disconnecting --> disconnected: 10 s unanswered, on a replacement sdk
 ```
 
 `session` holds `unauthenticated` (the wallet reports it will not serve requests) and
 `authenticated`, whose three substates mirror the accounts child: `reading`, `ready`, `unavailable`.
 Entry always targets `authenticated`; only a wallet push reaches `unauthenticated`.
-`disconnecting` holds `ending`, and `reconnecting` for a connect that arrived behind it. Ten seconds
-without the wallet's answer takes the exit the answer would have, on a replacement sdk: the SDK's
-request carries no deadline of its own.
+`disconnecting` is a single state: a connect asked for while it runs is ignored, not queued, so it
+never leads anywhere but `disconnected`. Ten seconds without the wallet's answer takes that same
+exit, on a replacement sdk: the SDK's request carries no deadline of its own.
 
 Three events reach further than the diagram shows. `connect` is taken everywhere except `connecting`
-and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
+and `disconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
 `disconnecting`. `restore` is taken by `idle`, `disconnected`, `session` and `failure`. A fourth,
 `connectError.reset`, is taken everywhere and changes no state.
 
@@ -54,8 +53,7 @@ and `disconnecting.reconnecting`. `disconnect` is taken everywhere except `idle`
 | `session.authenticated.unavailable` | the read failed, session intact | `connected` |
 | `failure` | the attempt failed; the error stays in context until exit | `disconnected` |
 | `retiring` | the closed picker's instance is abandoned, its replacement booting | `disconnected` |
-| `disconnecting.ending` | the wallet is being asked to end it; unanswered for 10 s, it counts as failed | `disconnected` |
-| `disconnecting.reconnecting` | a connect is queued behind the disconnect | `disconnected` |
+| `disconnecting` | the wallet is being asked to end the session; unanswered for 10 s, it settles anyway on a replacement sdk | `disconnecting` |
 | `disconnected` | asked, and there is nothing | `disconnected` |
 
 ## What each actor reaches for
@@ -87,12 +85,11 @@ the state stops the actor and drops the listener with it.
 | `session.unauthenticated` | `connect.settled`, `unauthenticated` | resolves, no party | waits |
 | `failure` | `connect.failed` | rejects, recorded error | waits |
 | `retiring` | `connect.cancelled` | rejects, `ConnectCancelledError` | waits |
-| `disconnecting.ending` | none | waits | waits |
-| `disconnecting.reconnecting` | `disconnect.superseded` | waits | resolves |
+| `disconnecting` | none | waits | waits |
 | `disconnected` | `connect.cancelled`, `disconnect.settled` | rejects, `ConnectCancelledError` | resolves |
 
 The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('connecting')` and
-`isLocked` is `hasTag('unauthenticated')`. A four-way enum stays a selector's job, so `status` is
+`isLocked` is `hasTag('unauthenticated')`. A five-way enum stays a selector's job, so `status` is
 `toConnectionStatus`.
 
 Three placements carry weight:
@@ -103,9 +100,10 @@ Three placements carry weight:
   a lock and a wallet-side disconnect arrive as the same push, so the two cannot be told apart. The
   session itself stays, which is what keeps the listener alive: an unlock pushes `isConnected: true`
   and the party is read again with no reconnect.
-- **`disconnecting.reconnecting` is superseded, not settled.** The wallet has not answered there,
-  but the machine goes on to `connecting` and never to `disconnected`, so a caller waiting for the
-  disconnect would wait forever. The connect that took over owns the session now.
+- **A connect during `disconnecting` is ignored, not queued.** `sdk.connect()` and `sdk.disconnect()`
+  both rewrite the client and must not overlap, so `disconnecting` handles no `connect` and always
+  ends at `disconnected`. Its public `status` is `disconnecting`, so a consumer keeps its connect
+  action disabled until the disconnect settles.
 - **`retiring` cancels rather than fails.** The user closed the picker, so nothing failed, even
   though the machine goes on to boot a replacement and restore on it.
 
