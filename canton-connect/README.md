@@ -24,13 +24,14 @@ components.
 ## Why a state machine
 
 The connection lifecycle looks like four states (idle, connecting, connected,
-disconnected) and isn't. The hard part isn't holding state, it's cancelling work
+disconnected) and isn't. The hard part isn't holding state, it's canceling work
 when the state that started it is gone: a picker the user walked out of, a lock
-that races the account read, a disconnect a reconnect supersedes, a wallet that
+that races the account read, a connect asked for mid-disconnect, a wallet that
 answers late or never. Handled one at a time these were five separate races
 (#76). A state machine folds them into one model: a state's invoked work is
-cancelled when the state is left, and the illegal combinations (connected with no
-party, an error beside a live session) can't be constructed.
+canceled when the state is left, and the combinations that used to be bugs
+(connected with no party, an error beside a live session) are states that name
+their case: `session.unauthenticated`, `session.authenticated.unavailable`.
 
 Most of that weight works around `@canton-network/dapp-sdk` gaps, not domain
 complexity (below). When those close upstream, this layer collapses to its floor
@@ -42,9 +43,9 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 | dapp-sdk gap | what it costs us | gone when |
 |---|---|---|
-| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `PickerClosedError`, most of the staleness guard | `connect(signal)` truly aborts |
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state | `connect(signal)` truly aborts |
 | `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
-| `disconnect()` has no deadline (#105) | the 10s timeout and its replacement-SDK fallback | `disconnect()` bounds itself |
+| `disconnect()` has no timeout (#105) | `DISCONNECT_TIMEOUT_MS`, and `retireSdk` when it fires | `disconnect()` times out itself |
 | lock and wallet-side disconnect are one push | `session.unauthenticated`, party-dropped-on-lock | CIP-0103 separates them (spec, not SDK) |
 
 ## Status
@@ -151,7 +152,9 @@ adapter/picker seams, and the event flow.
 ## Testing
 
 ```bash
-pnpm test
+pnpm test          # vitest + jsdom
+pnpm coverage      # the same suite under v8 coverage; testing/, mock/ and the barrel excluded
+pnpm lint && pnpm typecheck && pnpm build
 ```
 
 vitest + jsdom, with React Testing Library for hook/component tests.
