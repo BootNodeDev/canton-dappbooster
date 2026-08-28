@@ -15,31 +15,6 @@ Local Canton development stack.
 pnpm install
 ```
 
-### Env vars
-
-```bash
-cp .env.example .env
-```
-
-Default values should be enough, except for `CANTON_BACKEND_TOKEN` which must be generated.
-
-### CANTON_BACKEND_TOKEN generation
-
-```bash
-pnpm run mint-token
-```
-
-### LocalNet
-
-First create a folder to run [canton-barebones](https://github.com/BootNodeDev/canton-barebones) and scaffold it.
-
-```bash
-mkdir -p ~/canton-localnet && cd ~/canton-localnet
-npx @bootnodedev/canton-barebones init
-```
-
-Edit `canton-barebones.config.json`: change `validators.appUser.ui` and `sv.scanUI` to `true`.
-
 ## Starting the stack
 
 The easiest way is using the `dev-stack` script.
@@ -48,7 +23,7 @@ The easiest way is using the `dev-stack` script.
 ./scripts/dev-stack.sh
 ```
 
-**Note:** If you scaffolded canton-barebones in a folder other than `~/canton-localnet` you can run.
+**Note:** The LocalNet runs from the repo root. To run it from another folder you can run.
 
 ```bash
 ./scripts/dev-stack.sh ~/path-to-your-folder
@@ -62,13 +37,26 @@ The easiest way is using the `dev-stack` script.
 open -a Docker
 ```
 
-### LocalNet
-
-Start canton-barebones.
+### Env vars
 
 ```bash
-cd ~/canton-localnet
-npx @bootnodedev/canton-barebones start
+cp .env.example .env
+```
+
+Default values should be enough, except for `CANTON_BACKEND_TOKEN` which must be generated.
+
+To generate it run this command and then add the token to `.env`
+
+```bash
+pnpm run mint-token
+```
+
+### LocalNet
+
+Start canton-barebones from the repo root.
+
+```bash
+pnpm exec canton-barebones start
 ```
 
 **Notes:**
@@ -85,7 +73,7 @@ pnpm run build-dar
 pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
 ```
 
-**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset with `npx @bootnodedev/canton-barebones reset`.
+**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset with `pnpm exec canton-barebones reset`.
 
 ### Wallet service
 
