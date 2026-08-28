@@ -6,10 +6,10 @@
 # lives outside this repository and is run from there; this script brings up
 # everything the wallet talks to: the LocalNet, wallet-service and the dApp.
 #
-# The LocalNet belongs to @bootnodedev/canton-barebones and lives in its own
-# directory, scaffolded once with `npx @bootnodedev/canton-barebones init`. Point
-# at it with a second argument or with CANTON_LOCALNET_DIR, in that order of
-# precedence; it defaults to ~/canton-localnet.
+# The LocalNet belongs to @bootnodedev/canton-barebones, pinned in the root
+# package.json and driven from the directory holding its config. That config is
+# committed here, so the directory defaults to the repo root; point elsewhere with
+# a second argument or with CANTON_LOCALNET_DIR, in that order of precedence.
 #
 # Docker lifecycle is managed separately from the stack: start/quit Docker with
 # `docker-up` / `docker-down` (macOS only), the Docker app, or your CLI. `up`
@@ -84,7 +84,7 @@ case "$ACTION" in
     ;;
 esac
 
-LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$HOME/canton-localnet}}"
+LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR}}"
 # A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
 LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
 
@@ -120,13 +120,11 @@ wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
 }
 
 # Returns non-zero rather than exiting, so `down` still stops the host processes and
-# `status` still prints the ports when the LocalNet directory is missing.
+# `status` still prints the ports when the LocalNet itself is unreachable.
 localnet() { # localnet <start|stop|reset|status|logs> [args…]
-  if [ ! -f "$LOCALNET_DIR/canton-barebones.config.json" ]; then
-    warn "No canton-barebones config in $LOCALNET_DIR. Scaffold one with 'npx @bootnodedev/canton-barebones init' there, or point at an existing one: '$0 up <dir>' or CANTON_LOCALNET_DIR."
-    return 1
-  fi
-  ( cd "$LOCALNET_DIR" && npx --yes @bootnodedev/canton-barebones "$@" )
+  # The CLI reads canton-barebones.config.json from its own cwd, and `pnpm exec` runs the
+  # version pinned in package.json rather than whatever npx resolves on the day.
+  ( cd "$LOCALNET_DIR" && pnpm exec canton-barebones "$@" )
 }
 
 install_deps() { # one root pnpm install links every workspace
@@ -206,17 +204,36 @@ up() {
   # upload token. Minting is offline, so this needs nothing running.
   [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
 
+  # After the copy, because mint-token.mjs reads the recipe from .env; before the source
+  # below, or the shell would carry the empty entry .env.example ships with.
+  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' .env; then
+    log "CANTON_BACKEND_TOKEN already set in .env."
+  else
+    log "Minting CANTON_BACKEND_TOKEN for wallet-service..."
+    local token_line tmp_env
+    # mint-token.mjs prints a full 'CANTON_BACKEND_TOKEN=<jwt>' line; capture it
+    # without echoing the secret to the terminal.
+    token_line="$(pnpm run mint-token 2>/dev/null \
+      | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
+      | sed -E 's/^[[:space:]]*//')" || true
+    [ -n "$token_line" ] \
+      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in .env."
+    # Replace the existing (empty) entry, else append — never print the token.
+    tmp_env="$(mktemp)"
+    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' .env >"$tmp_env" || true
+    printf '%s\n' "$token_line" >>"$tmp_env"
+    mv "$tmp_env" .env
+    log "Wrote CANTON_BACKEND_TOKEN to .env."
+  fi
+
   # Read it here rather than defaulting the URLs again, so the file every other step
-  # resolves config from also moves this readiness probe. Caller-exported values win,
+  # resolves config from also moves this readiness probe. A caller-exported value wins,
   # matching deploy-dar.sh and mint-token.mjs; nothing is exported, because each step
   # reads .env for itself and only the mint recipe would travel.
-  local preset_json_api_url="${CANTON_JSON_API_URL:-}" preset_token="${CANTON_BACKEND_TOKEN:-}"
+  local preset_json_api_url="${CANTON_JSON_API_URL:-}"
   # shellcheck disable=SC1091
   source .env
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
-
-  [ -n "${preset_token:-${CANTON_BACKEND_TOKEN:-}}" ] \
-    || die "CANTON_BACKEND_TOKEN is not set in .env. Mint one with 'pnpm run mint-token' and paste it in."
 
   # 1. LocalNet. `canton-barebones start` is `docker compose up -d`, so it returns as
   # soon as the containers exist; Splice takes minutes more to answer, and the DAR
@@ -225,7 +242,7 @@ up() {
   localnet start || die "LocalNet did not start."
   log "Waiting for the app-user JSON API on $JSON_API_URL..."
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
-    || die "The LocalNet is up but its JSON API never answered. Check 'npx @bootnodedev/canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
+    || die "The LocalNet is up but its JSON API never answered. Check 'pnpm exec canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
   # 2. Build + deploy the DAR, which needs the participant but not wallet-service
   log "Building the $DAR_NAME DAR..."
