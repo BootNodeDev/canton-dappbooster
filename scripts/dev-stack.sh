@@ -7,9 +7,9 @@
 # everything the wallet talks to: the LocalNet, wallet-service and the dApp.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in the root
-# package.json and driven from the directory holding its config. That config is
-# committed here, so the directory defaults to the repo root; point elsewhere with
-# a second argument or with CANTON_LOCALNET_DIR, in that order of precedence.
+# package.json and driven from the directory holding its config. `up` scaffolds that
+# directory itself, at the gitignored ./.canton-localnet; point elsewhere with a
+# second argument or with CANTON_LOCALNET_DIR, in that order of precedence.
 #
 # Docker lifecycle is managed separately from the stack: start/quit Docker with
 # `docker-up` / `docker-down` (macOS only), the Docker app, or your CLI. `up`
@@ -84,7 +84,7 @@ case "$ACTION" in
     ;;
 esac
 
-LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR}}"
+LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
 # A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
 LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
 
@@ -234,6 +234,12 @@ up() {
   # shellcheck disable=SC1091
   source .env
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
+
+  # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
+  # tool's own template, and re-scaffolded when that template moves past it.
+  log "Preparing the LocalNet config in $LOCALNET_DIR..."
+  node scripts/localnet-config.mjs "$LOCALNET_DIR" \
+    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
   # 1. LocalNet. `canton-barebones start` is `docker compose up -d`, so it returns as
   # soon as the containers exist; Splice takes minutes more to answer, and the DAR
