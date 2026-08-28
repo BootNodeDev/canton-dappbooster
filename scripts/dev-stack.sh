@@ -54,7 +54,7 @@ WS_PID="$RUN_DIR/wallet-service.pid"
 JSON_API_URL=""
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="dapp/daml/vesting-lite"
+DAML_DIR="dapp/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
@@ -122,9 +122,10 @@ wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
 # Returns non-zero rather than exiting, so `down` still stops the host processes and
 # `status` still prints the ports when the LocalNet itself is unreachable.
 localnet() { # localnet <start|stop|reset|status|logs> [args…]
-  # The CLI reads canton-barebones.config.json from its own cwd, and `pnpm exec` runs the
-  # version pinned in package.json rather than whatever npx resolves on the day.
-  ( cd "$LOCALNET_DIR" && pnpm exec canton-barebones "$@" )
+  # The CLI reads canton-barebones.config.json from its own cwd, so it runs in the LocalNet
+  # directory; the binary is spelled by path because `pnpm exec` resolves from cwd and finds
+  # nothing once that directory sits outside the workspace.
+  ( cd "$LOCALNET_DIR" && "$ROOT_DIR/node_modules/.bin/canton-barebones" "$@" )
 }
 
 install_deps() { # one root pnpm install links every workspace
@@ -198,7 +199,7 @@ up() {
   # The DAR build needs dpm; check here so a missing SDK fails before the
   # containers come up rather than after.
   command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH. Install the DAML SDK (3.4.11) — see README 'Installation' — then run 'up'."
+    || die "dpm not found on PATH. Install the DAML SDK (3.4.11), then run 'up'."
 
   # ./.env is wallet-service's whole configuration, the mint recipe and the DAR
   # upload token. Minting is offline, so this needs nothing running.
@@ -248,9 +249,10 @@ up() {
   localnet start || die "LocalNet did not start."
   log "Waiting for the app-user JSON API on $JSON_API_URL..."
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
-    || die "The LocalNet is up but its JSON API never answered. Check 'pnpm exec canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
+    || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
-  # 2. Build + deploy the DAR, which needs the participant but not wallet-service
+  # 2. Build + deploy the DAR, which needs the participant but not wallet-service. The build
+  # fetches the Splice DARs amulet-vesting data-depends on the first time, and after a Splice bump.
   log "Building the $DAR_NAME DAR..."
   pnpm run build-dar
   log "Deploying $DAR_PATH to Canton..."

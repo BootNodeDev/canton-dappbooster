@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Bootstrap the vesting demo: create the backstage operator and pre-create the observer-less
-// VestingFactory it signs. Funder and beneficiary are wallet accounts, so no other party is
+// AmuletVestingFactory it signs. Funder and receiver are wallet accounts, so no other party is
 // created here.
 //
 // Nothing is written out. The dApp finds both by reading this operator's rights and its factory
@@ -9,7 +9,7 @@
 // Run with the local stack up and the DAR deployed.
 
 const RPC_URL = process.env.RPC_URL ?? 'http://localhost:3010/rpc'
-const PACKAGE_NAME = 'vesting-lite'
+const PACKAGE_NAME = 'amulet-vesting'
 const STAMP = Date.now()
 
 const rpc = async (method, params) => {
@@ -86,7 +86,7 @@ const main = async () => {
   console.log(`operator   ${operator}`)
 
   const pkg = process.env.PKG ?? (await resolvePackage(operator))
-  const factoryTid = `${pkg}:Vesting:VestingFactory`
+  const factoryTid = `${pkg}:AmuletVesting:AmuletVestingFactory`
   console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
 
   await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
@@ -94,7 +94,7 @@ const main = async () => {
     actAs: [operator],
     readAs: [operator],
     commands: [
-      { CreateCommand: { templateId: factoryTid, createArguments: { provider: operator } } },
+      { CreateCommand: { templateId: factoryTid, createArguments: { factoryOwner: operator } } },
     ],
   })
 
@@ -113,7 +113,7 @@ const main = async () => {
                 // the CreateCommand above carries.
                 TemplateFilter: {
                   value: {
-                    templateId: `#${PACKAGE_NAME}:Vesting:VestingFactory`,
+                    templateId: `#${PACKAGE_NAME}:AmuletVesting:AmuletVestingFactory`,
                     includeCreatedEventBlob: true,
                   },
                 },
