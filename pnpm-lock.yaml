@@ -42,8 +42,6 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  canton-barebones: {}
-
   canton-connect:
     dependencies:
       xstate:

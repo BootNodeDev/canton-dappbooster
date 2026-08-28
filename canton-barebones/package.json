@@ -1,9 +1,0 @@
-{
-  "name": "@canton-dappbooster/canton-barebones",
-  "private": true,
-  "version": "0.1.0",
-  "scripts": {
-    "lint": "biome check",
-    "lint:fix": "biome check --write"
-  }
-}

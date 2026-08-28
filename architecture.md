@@ -4,7 +4,7 @@
 
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
-| LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user` from its own directory. `canton-barebones/` here is inert leftovers |
+| LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user` from its own directory, outside this repository |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR build and upload, the token mint, the vesting bootstrap |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
@@ -109,7 +109,6 @@ with the same script, configured manually in its LocalNet settings.
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
 (`./scripts/dev-stack.sh up <dir>`), else `CANTON_LOCALNET_DIR`, else `~/canton-localnet`. It
-does not scaffold it: `canton-barebones init` is a one-time step there. `canton-barebones/` in
-this repository no longer starts anything.
+does not scaffold it: `canton-barebones init` is a one-time step there.
 
 For the bring-up sequence, follow [`README.md`](README.md).
