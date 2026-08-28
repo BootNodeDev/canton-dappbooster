@@ -63,7 +63,8 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/vesting-lite/`; Bash for the root `scripts/` |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
-| Container runtime | Docker | Required by the external `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
+| Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
+| LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Its `canton-barebones.config.json` and `splice-localnet-overrides.yaml` are committed at the repo root, with `validators.appUser.ui` and `sv.scanUI` on because nginx otherwise serves no `/api/validator` for wallet-service. `.generated/` holds the downloaded Splice checkout and the runtime env, and is gitignored |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
@@ -92,8 +93,9 @@ Two things the loop needs are not subprojects but dependencies. wallet-service s
 [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service),
 arrives as a git dependency pinned to a tag, and `scripts/dev-stack.sh` runs it on
 port 3010 through `pnpm exec canton-wallet-service`. The LocalNet ships from
-[BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is scaffolded
-into a directory of its own, and `scripts/dev-stack.sh` drives it there over `npx`.
+[BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is a pinned
+devDependency whose config is committed at the repo root, and `scripts/dev-stack.sh` drives it
+there over `pnpm exec`.
 
 ## Code Style
 
@@ -331,11 +333,15 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
 - Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`. Docs and `dev-stack.sh` use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
-- **The LocalNet is not in this repository.** It is `@bootnodedev/canton-barebones`, scaffolded once
-  with `init` into a directory of its own and driven there with `start` / `stop` / `reset`.
-  `scripts/dev-stack.sh` shells out to it in the directory given as a path-shaped first argument
-  (which also opens the menu, the normal way to drive the stack), else a second argument after the
-  subcommand, else `CANTON_LOCALNET_DIR`, else `~/canton-localnet`.
+- **The LocalNet's code is not in this repository, but its config is.** It is
+  `@bootnodedev/canton-barebones`, a pinned devDependency driven with `start` / `stop` / `reset` in
+  the directory holding `canton-barebones.config.json`. That file and
+  `splice-localnet-overrides.yaml` are committed at the repo root, so `init` is no longer a setup
+  step and the directory defaults to the root; `scripts/dev-stack.sh` still shells out to it in the
+  directory given as a path-shaped first argument (which also opens the menu, the normal way to
+  drive the stack), else a second argument after the subcommand, else `CANTON_LOCALNET_DIR`. The CLI
+  reads its config from its own cwd and writes the downloaded Splice checkout and the runtime env to
+  the gitignored `.generated/`.
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
 - `pnpm run bootstrap` creates the vesting operator and its factory, which the
