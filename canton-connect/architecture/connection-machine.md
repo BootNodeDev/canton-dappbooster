@@ -79,9 +79,6 @@ the state stops the actor and drops the listener with it.
 
 ## What settles a promise
 
-The `connect()` and `disconnect()` columns describe the bridges the provider PR adds; on this branch
-the tags exist and nothing awaits them.
-
 | machine state | tags | `connect()` | `disconnect()` |
 |---|---|---|---|
 | `idle` | `disconnect.settled` | waits | resolves |
@@ -96,9 +93,9 @@ the tags exist and nothing awaits them.
 | `disconnecting` | none | waits | waits |
 | `disconnected` | `connect.cancelled`, `disconnect.settled` | rejects, `ConnectCancelledError` | resolves |
 
-The last two tags are for hooks rather than bridges: `connecting` answers `isConnecting`,
-`unauthenticated` answers `isLocked`. On this branch nothing reads them; the provider PR wires both.
-A five-way enum stays a selector's job, so `status` is `toConnectionStatus`.
+The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('connecting')` and
+`isLocked` is `hasTag('unauthenticated')`. A five-way enum stays a selector's job, so `status` is
+`toConnectionStatus`.
 
 Four placements carry weight:
 
@@ -119,8 +116,8 @@ Four placements carry weight:
 
 `lastConnectError` rides in context and outlives the state that produced it, so a recovered session
 can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`
-and `disconnecting`, by `connectError.reset` (the event the provider PR puts behind
-`useConnect().reset()`), and by a push that recovers a failed read.
+and `disconnecting`, by `connectError.reset` (behind `useConnect().reset()`), and by a push that
+recovers a failed read.
 
 The two ways a picker close reaches the caller differ. A close the watchdog catches records nothing:
 `connecting` goes to `retiring`, which clears the error, and `connect()` rejects with a fresh
