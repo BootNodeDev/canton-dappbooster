@@ -12,12 +12,21 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Captured before sourcing so a value the caller exported beats .env, the same precedence
+# mint-token.mjs uses. No `set -a`: curl takes the token as a header, so exporting the
+# whole file would only hand CANTON_AUTH_SECRET to a child that has no use for it.
+preset_token="${CANTON_BACKEND_TOKEN:-}"
+preset_json_api_url="${CANTON_JSON_API_URL:-}"
+
 if [ -f "$ROOT/.env" ]; then
-  set -a
   # shellcheck disable=SC1091
   source "$ROOT/.env"
-  set +a
 fi
+
+token="${preset_token:-${CANTON_BACKEND_TOKEN:-}}"
+# The same name .env and wallet-service use, so retargeting the participant moves the
+# upload with it rather than only moving wallet-service.
+json_api_url="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
 DAR_PATH="$1"
 
@@ -26,12 +35,11 @@ if [ ! -f "$DAR_PATH" ]; then
   exit 1
 fi
 
-if [ -z "${CANTON_BACKEND_TOKEN:-}" ]; then
-  echo "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run canton:token -- ledger-api-user" >&2
+if [ -z "$token" ]; then
+  echo "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run mint-token" >&2
   exit 1
 fi
 
-json_api_url="${APP_USER_JSON_API_URL:-http://localhost:2975}"
 dar_name="$(basename "$DAR_PATH")"
 
 echo "Uploading $dar_name to app-user JSON API at $json_api_url"
@@ -40,7 +48,7 @@ http_code="$(
   curl -sS -o /dev/null -w '%{http_code}' \
     -X POST \
     "$json_api_url/v2/packages" \
-    -H "Authorization: Bearer $CANTON_BACKEND_TOKEN" \
+    -H "Authorization: Bearer $token" \
     -H "Content-Type: application/octet-stream" \
     --data-binary "@$DAR_PATH"
 )"

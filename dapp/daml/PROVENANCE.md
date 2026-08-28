@@ -18,6 +18,6 @@ verbatim from the vesting-lite branch of the `cn-dappbooster` monorepo.
 
 ## Verified on import
 
-`bash scripts/build-dar.sh dapp/daml/vesting-lite` under `dpm` 1.0.10 reproduces the
+`dpm build` in `dapp/daml/vesting-lite` under `dpm` 1.0.10 reproduces the
 checked-in DAR's main package id, `cb2c14a74262545f4dbc8fb7c98a1808bc2ad2cf12c5d348d875a842e1ab4cf1`.
 `dpm test` in `dapp/daml-test` passes its nine scenarios.

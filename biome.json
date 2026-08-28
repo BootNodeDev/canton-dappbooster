@@ -230,16 +230,6 @@
           }
         }
       }
-    },
-    {
-      "includes": ["canton-barebones/wallet-service/**"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noNonNullAssertion": "off"
-          }
-        }
-      }
     }
   ]
 }

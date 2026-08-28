@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "format": "biome format --write",
     "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1"
   },
   "type": "module",
