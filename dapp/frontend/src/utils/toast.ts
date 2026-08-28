@@ -6,7 +6,6 @@ export type ToastTone = 'success' | 'error' | 'info'
 // A toast carrying an action never times out: the link has to still be there when it is reached for.
 interface ToastOptions {
   action?: { label: string; to: string }
-  sticky?: boolean
 }
 
 export interface ToastItem extends ToastOptions {
@@ -40,7 +39,9 @@ export const useToastStore = create<ToastState>((set) => {
     push: (tone, message, options) => {
       const id = randomId()
       set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
-      if (options?.sticky !== true && options?.action === undefined) {
+      // An error stays until dismissed: it is the only tone whose text the user has to read in full,
+      // and often copy, before it is any use.
+      if (tone !== 'error' && options?.action === undefined) {
         timers.set(
           id,
           setTimeout(() => remove(id), AUTO_DISMISS_MS),

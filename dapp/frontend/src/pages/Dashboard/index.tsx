@@ -12,7 +12,6 @@ import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { RoleSelect } from '@/components/RoleSelect'
-import { Select } from '@/components/Select'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
@@ -23,6 +22,7 @@ import {
   claimAvailable,
   deriveGrant,
   type GrantDerived,
+  grantBacking,
   useVesting,
   useVestingStore,
 } from '@/store/useVestingStore'
@@ -42,11 +42,6 @@ interface GrantRow {
 const FILTERS = [
   { value: 'all', label: 'All', match: () => true },
   { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
-  {
-    value: 'fully_claimed',
-    label: 'Fully claimed',
-    match: ({ derived }) => derived.fullyClaimed,
-  },
   { value: 'in_cliff', label: 'In cliff', match: ({ derived }) => derived.status === 'in_cliff' },
   {
     value: 'not_started',
@@ -74,6 +69,7 @@ const HIGHLIGHT = 'animate-claimed'
 
 interface ClaimTarget {
   available: string
+  backing: string
   id: string
   kind: 'grant' | 'claim'
 }
@@ -157,27 +153,43 @@ export const Dashboard = (): React.JSX.Element => {
       kind: 'grant',
       id: grant.id,
       available: derived.claimable,
+      backing: grantBacking(grant),
     })
   }
   const openResidual = (claim: VestedClaim): void => {
-    setClaimTarget({ kind: 'claim', id: claim.id, available: claimAvailable(claim) })
+    // A residual claim carries no schedule, so the floor spans the one amount the grant's two do.
+    const available = claimAvailable(claim)
+    setClaimTarget({ kind: 'claim', id: claim.id, available, backing: available })
   }
 
   return (
     <div className="flex flex-col gap-7">
-      <PageTitle
-        title="Grants"
-        action={
-          <Button size="sm" className="pl-3" onClick={() => setCreating(true)}>
-            <PlusIcon />
-            Create
-          </Button>
-        }
-      />
+      <PageTitle title="Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <RoleSelect value={role} onChange={setRole} />
-        <Select label="Filter grants" value={filter} options={FILTERS} onChange={setFilter} />
+      <div className="flex flex-wrap items-center gap-3">
+        <fieldset className="flex flex-wrap items-center gap-2">
+          <legend className="sr-only">Filter grants</legend>
+          {FILTERS.map((entry) => (
+            <button
+              key={entry.value}
+              type="button"
+              aria-pressed={filter === entry.value}
+              onClick={() => setFilter(entry.value)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                filter === entry.value
+                  ? 'border-primary bg-primary-soft text-fg'
+                  : 'border-border text-fg-muted hover:text-fg',
+              )}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </fieldset>
+        <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
+          <PlusIcon />
+          Create
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -212,16 +224,7 @@ export const Dashboard = (): React.JSX.Element => {
       {firstRead ? (
         <Loading />
       ) : filtered.length === 0 ? (
-        <EmptyState
-          title="No grants match this filter"
-          action={
-            role === 'funder' ? (
-              <Button size="sm" onClick={() => setCreating(true)}>
-                Create a grant
-              </Button>
-            ) : undefined
-          }
-        />
+        <EmptyState title={rows.length === 0 ? 'No grants' : 'No grants match this filter'} />
       ) : (
         <div className="flex flex-col gap-4">
           {filtered.map(({ grant, derived }) => (
@@ -287,6 +290,7 @@ export const Dashboard = (): React.JSX.Element => {
           onClose={() => setClaimTarget(null)}
           title={claimTarget.kind === 'grant' ? 'Claim vested CC' : 'Claim residual'}
           available={claimTarget.available}
+          backing={claimTarget.backing}
           onConfirm={onConfirmClaim}
         />
       )}

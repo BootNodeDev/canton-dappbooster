@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "build": "dpm build --all",
-    "daml:test": "LANG=C.UTF-8 dpm build --all && cd ../daml-test && LANG=C.UTF-8 dpm test"
+    "build": "node ../../scripts/fetch-daml-deps.mjs && LANG=C.UTF-8 dpm build"
   }
 }

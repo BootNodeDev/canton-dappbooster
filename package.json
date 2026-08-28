@@ -11,7 +11,7 @@
     "mint-token": "node scripts/mint-token.mjs ledger-api-user",
     "build-dar": "pnpm -C dapp/daml run build",
     "deploy-dar": "bash scripts/deploy-dar.sh",
-    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting-lite.mjs",
+    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting.mjs",
     "app:dev": "pnpm -C dapp/frontend run dev -- --host localhost --port 3012 --strictPort",
     "lint": "biome check --error-on-warnings",
     "lint:fix": "biome check --write",

@@ -11,7 +11,6 @@ import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { CurvePill } from '@/components/CurvePill'
 import { EmptyState } from '@/components/EmptyState'
-import { GrantClaimed } from '@/components/GrantClaimed'
 import { GrantLock } from '@/components/GrantLock'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { KpiCard } from '@/components/KpiCard'
@@ -20,7 +19,7 @@ import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
-import { deriveGrant, useVesting, useVestingStore } from '@/store/useVestingStore'
+import { deriveGrant, grantBacking, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
 import { formatDate } from '@/utils/format'
 import { copyToast } from '@/utils/toast'
@@ -115,9 +114,7 @@ export const GrantDetail = (): React.JSX.Element => {
         </div>
         <div className="flex gap-2.5">
           {isReceiver &&
-            (derived.fullyClaimed ? (
-              <GrantClaimed className="self-center" />
-            ) : derived.locked ? (
+            (derived.locked ? (
               <GrantLock className="self-center" />
             ) : (
               <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
@@ -239,10 +236,14 @@ export const GrantDetail = (): React.JSX.Element => {
           onClose={() => setClaimOpen(false)}
           title="Claim vested CC"
           available={derived.claimable}
+          backing={grantBacking(grant)}
           onConfirm={async (amount) => {
-            // The claim archives this contract and re-creates it, so the URL follows the successor.
+            // A partial claim archives this contract and re-creates it, so the URL follows the
+            // successor. A drain leaves none, and staying here would read "Grant not found".
             const next = await withdraw(backend, partyId, grant.id, amount)
-            if (next !== undefined && next !== grant.id) {
+            if (next === undefined) {
+              navigate('/', { replace: true })
+            } else if (next !== grant.id) {
               navigate(`/grants/${next}`, { replace: true })
             }
           }}

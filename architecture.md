@@ -5,10 +5,10 @@
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
 | LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
-| `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR build and upload, the token mint, the vesting bootstrap |
+| `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dep fetch, the DAR build and upload, the token mint, the vesting bootstrap |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
-| `dapp/daml/vesting-lite/` | DAML | `vesting-lite` DAR: the vesting factory, proposal, contract and residual-claim templates |
+| `dapp/daml/` | DAML | `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`. Vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
@@ -23,8 +23,9 @@ flowchart TD
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
   scan["Scan<br/>http://scan.localhost:4000"]
-  dar["vesting-lite DAR"]
+  dar["amulet-vesting DAR"]
 
+  fe -->|"AmuletRules + open mining round, unauthenticated"| scan
   fe <-->|"CIP-0103 provider: reads, writes, session"| wallet
   wallet -->|"onboarding, prepare/execute, JSON API"| ws
   ws -->|"CANTON_BACKEND_TOKEN"| au
@@ -35,6 +36,9 @@ flowchart TD
 > `dapp/frontend` hosts the Canton Coin vesting dApp. It never talks to wallet-service itself:
 > every ledger read and every submission goes through the wallet over CIP-0103, so the dApp
 > only ever acts as the connected account and each write is signed by the account's own key.
+> Scan is the one exception and is not a ledger path: an Amulet-moving choice takes the current
+> `AmuletRules` and open mining round as an argument, and no connected party is a stakeholder of
+> either, so the dApp reads both straight off Scan's unauthenticated API and discloses them.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
@@ -104,7 +108,7 @@ with the same script, configured manually in its LocalNet settings.
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
 | `node scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
-| `pnpm run build-dar` | compile the DAR with `dpm` |
+| `pnpm run build-dar` | fetch the Splice deps, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
 | `pnpm run bootstrap` | create the vesting operator and its factory |
 | `pnpm run app:dev` | start the dApp frontend |

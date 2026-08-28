@@ -3,14 +3,8 @@ import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
-import type { Grant, Proposal, VestedClaim } from '@/store/types'
-import {
-  compareAmounts,
-  isPositive,
-  multiplyByFraction,
-  subtractAmounts,
-  toNumber,
-} from '@/utils/amount'
+import type { Grant, PendingGrant, VestedClaim } from '@/store/types'
+import { isPositive, multiplyByFraction, subtractAmounts, toNumber } from '@/utils/amount'
 import { errorText } from '@/utils/errorText'
 import { toMs, vestedFraction } from '@/utils/schedule'
 
@@ -25,7 +19,6 @@ export interface GrantDerived {
   claimed: string
   claimedFraction: number
   fraction: number
-  fullyClaimed: boolean
   locked: boolean
   status: GrantStatus
   unvested: string
@@ -59,7 +52,6 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
     claimedFraction,
     unvested,
     canClaim: isPositive(claimable),
-    fullyClaimed: compareAmounts(claimed, grant.totalAmount) >= 0,
     locked: fraction <= 0,
     status,
   }
@@ -69,6 +61,12 @@ export const deriveGrant = (grant: Grant, nowMs: number): GrantDerived => {
 // and submits is one rule rather than three copies of a subtraction.
 export const claimAvailable = (claim: VestedClaim): string =>
   subtractAmounts(claim.amount, claim.withdrawn)
+
+// What the escrow lock still holds, vested and unvested alike, which is what the withdraw choice
+// measures its re-lock floor against. Beside deriveGrant rather than in it, like claimAvailable: it
+// does not move with the clock, and only the claim dialog asks for it.
+export const grantBacking = (grant: Grant): string =>
+  subtractAmounts(grant.totalAmount, grant.alreadyWithdrawn)
 
 // A claim archives the grant and re-creates it with `claimed` raised, so its contract id changes
 // under the UI. Everything else is preserved, which is what identifies the successor for a URL and
@@ -121,9 +119,9 @@ interface VestingState {
   error: string | undefined
   grants: Grant[]
   loading: boolean
-  proposals: Proposal[]
+  pendingGrants: PendingGrant[]
 
-  accept: (backend: VestingBackend, partyId: string, proposalCid: string) => Promise<void>
+  accept: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
@@ -152,7 +150,7 @@ let refreshEpoch = 0
 
 export const useVestingStore = create<VestingState>((set, get) => ({
   grants: [],
-  proposals: [],
+  pendingGrants: [],
   claims: [],
   loading: false,
   error: undefined,
@@ -160,7 +158,7 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
   clear: () => {
     refreshEpoch++
-    set({ grants: [], proposals: [], claims: [], loading: false, error: undefined })
+    set({ grants: [], pendingGrants: [], claims: [], loading: false, error: undefined })
   },
 
   refresh: async (backend, partyId) => {
@@ -173,7 +171,7 @@ export const useVestingStore = create<VestingState>((set, get) => ({
       }
       set({
         grants: sortBy(view.grants, grantLineage),
-        proposals: sortBy(view.proposals, (proposal) => proposal.id),
+        pendingGrants: sortBy(view.pendingGrants, (pendingGrant) => pendingGrant.id),
         claims: sortBy(view.claims, claimLineage),
         loading: false,
       })
@@ -191,8 +189,8 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     return result
   },
 
-  accept: async (backend, partyId, proposalCid) => {
-    await backend.accept({ receiver: partyId, proposalCid })
+  accept: async (backend, partyId, pendingCid) => {
+    await backend.accept({ receiver: partyId, pendingCid })
     await get().refresh(backend, partyId)
   },
 
