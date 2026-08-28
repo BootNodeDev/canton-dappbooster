@@ -13,7 +13,6 @@
       "canton-dappbooster/**",
       "canton-theme/**",
       "dapp/frontend/**",
-      "canton-barebones/**",
       "scripts/**",
       "!**/api-specs",
       "!**/*.svg"
@@ -47,7 +46,7 @@
   },
   "overrides": [
     {
-      "includes": ["canton-barebones/**", "scripts/**", "**/*.d.ts"],
+      "includes": ["scripts/**", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {

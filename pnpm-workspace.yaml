@@ -2,7 +2,6 @@ packages:
   - canton-connect
   - canton-dappbooster
   - canton-theme
-  - canton-barebones
   - dapp/daml
   - dapp/frontend
 
