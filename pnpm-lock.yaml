@@ -11,6 +11,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.10
         version: 2.5.10
+      '@bootnodedev/canton-barebones':
+        specifier: 0.3.0
+        version: 0.3.0
       '@bootnodedev/canton-wallet-service':
         specifier: git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.2
         version: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6
@@ -307,6 +310,11 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@bootnodedev/canton-barebones@0.3.0':
+    resolution: {integrity: sha512-l0eB2eHMHlgjTd9YrsncNqSEXVEX6IfwPwonalG7B614CwF/jetOXNLFS+A0eh+tg5qSFlPLfoEju6kxWOrNHA==}
+    engines: {node: '>=22'}
+    hasBin: true
 
   '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6':
     resolution: {gitHosted: true, integrity: sha512-RXsMoq/tXVAJuljSQ1VnEIwxZcMzT74M2698Z7dwfCGWnuMuLMzhCWLjSHG6I0A/AOFYSb0SF4kv/UcRAr/nRg==, tarball: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6}
@@ -4378,6 +4386,10 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.5.10':
     optional: true
+
+  '@bootnodedev/canton-barebones@0.3.0':
+    dependencies:
+      zod: 4.4.3
 
   '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6':
     dependencies:

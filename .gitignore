@@ -9,6 +9,9 @@ dist/
 dist-extension/
 typedoc/
 
+# canton-barebones: its scaffolded config, the Splice checkout and the runtime env
+.canton-localnet/
+
 # env
 .env
 .env.local

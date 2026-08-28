@@ -4,7 +4,7 @@
 
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
-| LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user` from its own directory, outside this repository |
+| LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR build and upload, the token mint, the vesting bootstrap |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
@@ -86,8 +86,9 @@ State boundaries:
 The root `.env` is the only one that matters: wallet-service's whole configuration, since it
 loads dotenv from the directory it starts in, plus the signing recipe `scripts/mint-token.mjs`
 reads and the token `scripts/deploy-dar.sh` sends. Minting is offline, so it needs nothing
-running. The LocalNet is configured by its own `canton-barebones.config.json`, outside this
-repository.
+running, which is what lets `dev-stack.sh up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env`
+before anything is up. The LocalNet is configured by its own `canton-barebones.config.json`,
+scaffolded into `.canton-localnet/` and tracked by nothing.
 
 `CANTON_AUTH_AUDIENCE` plus `CANTON_AUTH_SECRET` is the local signing recipe.
 `CANTON_BACKEND_TOKEN` is the generated token. The token script defaults the
@@ -100,7 +101,8 @@ with the same script, configured manually in its LocalNet settings.
 | --- | --- |
 | `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DAR, wallet-service on 3010, bootstrap, dApp dev server |
 | `./scripts/dev-stack.sh down` | stop wallet-service and the dApp dev server, stop the LocalNet |
-| `npx @bootnodedev/canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from its own directory |
+| `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
+| `node scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
@@ -108,7 +110,9 @@ with the same script, configured manually in its LocalNet settings.
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
-(`./scripts/dev-stack.sh up <dir>`), else `CANTON_LOCALNET_DIR`, else `~/canton-localnet`. It
-does not scaffold it: `canton-barebones init` is a one-time step there.
+(`./scripts/dev-stack.sh up <dir>`), else `CANTON_LOCALNET_DIR`, else `.canton-localnet/`. It
+scaffolds that directory on `up` from the pinned tool's own template, re-scaffolding when the
+template moves past the local copy, so the config drifts from the installed version rather than
+from a committed file. The Splice checkout and the runtime env land in its `.generated/`.
 
 For the bring-up sequence, follow [`README.md`](README.md).
