@@ -11,15 +11,15 @@ import { cn } from '@/utils/cn'
 
 const items = [
   { to: '/', label: 'Grants' },
-  { to: '/proposals', label: 'Proposals' },
+  { to: '/pending', label: 'Pending' },
 ]
 
 export const TopBar = (): React.JSX.Element => {
   const { party } = useParty()
   const { sessionPending } = useBackend()
-  const proposals = useVestingStore((s) => s.proposals)
+  const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
-    party === undefined ? 0 : proposals.filter((p) => p.receiver === party.partyId).length
+    party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/80 backdrop-blur-md">
@@ -43,7 +43,7 @@ export const TopBar = (): React.JSX.Element => {
       </div>
 
       {/* Centred over the row above from md, where there is room beside the logo and the wallet
-          chip; below that it takes a row of its own, since hiding it left Proposals reachable
+          chip; below that it takes a row of its own, since hiding it left Pending reachable
           only by typing the URL. */}
       <nav
         aria-label="Primary"
@@ -62,7 +62,7 @@ export const TopBar = (): React.JSX.Element => {
             }
           >
             {label}
-            {to === '/proposals' && incoming > 0 && (
+            {to === '/pending' && incoming > 0 && (
               <>
                 <span
                   aria-hidden="true"

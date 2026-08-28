@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
 import type { Grant } from '@/store/types'
-import { deriveGrant, grantLineage, useVestingStore } from '@/store/useVestingStore'
+import { deriveGrant, grantBacking, grantLineage, useVestingStore } from '@/store/useVestingStore'
 import { toNumber } from '@/utils/amount'
 
 const ms = (iso: string): number => new Date(iso).getTime()
@@ -90,6 +90,18 @@ describe('deriveGrant', () => {
   })
 })
 
+// The escrow still holds the unvested part, so the re-lock floor has a bigger remainder to measure
+// against than the claimable slice the ceiling uses.
+describe('grantBacking', () => {
+  it('reports the whole escrow, not the vested slice', () => {
+    const partial = grant('100')
+    expect(grantBacking(partial)).toBe('900')
+    expect(toNumber(grantBacking(partial))).toBeGreaterThan(
+      toNumber(deriveGrant(partial, ms('2025-07-01T00:00:00Z')).claimable),
+    )
+  })
+})
+
 const deferred = <T>(): { promise: Promise<T>; resolve: (value: T) => void } => {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((r) => {
@@ -122,11 +134,11 @@ describe('useVestingStore.refresh', () => {
     const pA = refresh(backend, 'A') // older epoch, resolves last
     const pB = refresh(backend, 'B') // newer epoch, resolves first
 
-    fast.resolve({ grants: [someGrant('B')], proposals: [], claims: [] })
+    fast.resolve({ grants: [someGrant('B')], pendingGrants: [], claims: [] })
     await pB
     expect(useVestingStore.getState().grants.map((g) => g.id)).toEqual(['B'])
 
-    slow.resolve({ grants: [someGrant('A')], proposals: [], claims: [] })
+    slow.resolve({ grants: [someGrant('A')], pendingGrants: [], claims: [] })
     await pA
     expect(useVestingStore.getState().grants.map((g) => g.id)).toEqual(['B'])
   })
@@ -138,7 +150,7 @@ describe('useVestingStore.refresh', () => {
     const pending = useVestingStore.getState().refresh(backend, 'A')
     useVestingStore.getState().clear()
 
-    slow.resolve({ grants: [someGrant('A')], proposals: [], claims: [] })
+    slow.resolve({ grants: [someGrant('A')], pendingGrants: [], claims: [] })
     await pending
     expect(useVestingStore.getState().grants).toEqual([])
     expect(useVestingStore.getState().loading).toBe(false)
@@ -149,7 +161,7 @@ describe('useVestingStore.clear', () => {
   it('drops the previous party rows and its error', () => {
     useVestingStore.setState({
       grants: [grant()],
-      proposals: [],
+      pendingGrants: [],
       claims: [],
       error: 'stale failure',
     })
@@ -179,7 +191,7 @@ describe('useVestingStore.withdraw', () => {
     ({
       viewAs: async () => ({
         grants: [{ ...grant('250'), id: successorId }],
-        proposals: [],
+        pendingGrants: [],
         claims: [],
       }),
       withdraw: async () => {},
@@ -210,7 +222,7 @@ describe('useVestingStore.withdraw', () => {
     const backend = {
       viewAs: async () => ({
         grants: [twin, { ...grant('250'), id: 'g2' }],
-        proposals: [],
+        pendingGrants: [],
         claims: [],
       }),
       withdraw: async () => {},

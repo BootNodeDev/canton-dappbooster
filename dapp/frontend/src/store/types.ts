@@ -24,7 +24,7 @@ export interface Grant {
 }
 
 // ≙ VestingProposal (pending offer awaiting receiver Accept); the proposer is the funder.
-export interface Proposal {
+export interface PendingGrant {
   id: string
   note?: string
   proposer: PartyId

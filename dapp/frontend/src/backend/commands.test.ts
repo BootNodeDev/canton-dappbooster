@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAcceptCommand,
   buildCancelCommand,
-  buildClaimCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildWithdrawCommand,
   decodeSchedule,
   encodeSchedule,
 } from '@/backend/commands'
+import type { AppTransferContext } from '@/backend/transferContext'
 import type { VestingSchedule } from '@/utils/schedule'
+
+const ctx: AppTransferContext = {
+  amuletRules: 'rules-cid',
+  openMiningRound: 'round-cid',
+  featuredAppRight: null,
+}
 
 const linear: VestingSchedule = {
   cliff: '2026-01-01T00:00:00Z',
@@ -71,24 +78,26 @@ describe('decodeSchedule', () => {
 })
 
 describe('command builders', () => {
-  it('buildCreateVestingCommand shapes Factory_CreateVesting args with the encoded schedule', () => {
+  it('buildCreateVestingCommand shapes the factory choice with the encoded schedule', () => {
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
-      beneficiary: 'B',
-      total: '1000',
+      receiver: 'B',
+      totalAmount: '1000',
       schedule: linear,
+      amuletCids: ['a1', 'a2'],
       note: 'Title\nbody',
     })
     expect(cmd).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'fcid',
-        choice: 'Factory_CreateVesting',
+        choice: 'AmuletVestingFactory_CreateVesting',
         choiceArgument: {
           proposer: 'P',
-          beneficiary: 'B',
-          total: '1000',
+          receiver: 'B',
+          totalAmount: '1000',
           schedule: encodeSchedule(linear),
+          amuletCids: ['a1', 'a2'],
           note: 'Title\nbody',
         },
       },
@@ -98,53 +107,54 @@ describe('command builders', () => {
   it('buildCreateVestingCommand sends null note when omitted', () => {
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
-      beneficiary: 'B',
-      total: '1',
+      receiver: 'B',
+      totalAmount: '1',
       schedule: linear,
+      amuletCids: [],
     })
     expect((cmd.ExerciseCommand.choiceArgument as { note: unknown }).note).toBeNull()
   })
 
-  it('buildClaimCommand carries amount and no nowMicros (getTime)', () => {
-    expect(buildClaimCommand('TID', 'cid', '100')).toEqual({
+  it('buildWithdrawCommand carries the amount and the context, no nowMicros (getTime)', () => {
+    expect(buildWithdrawCommand('TID', 'cid', '100', ctx)).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'cid',
-        choice: 'Contract_Claim',
-        choiceArgument: { amount: '100' },
+        choice: 'AmuletVestingContract_Withdraw',
+        choiceArgument: { withdrawAmount: '100', ctx },
       },
     })
   })
 
-  it('buildAcceptCommand targets Proposal_Accept', () => {
-    expect(buildAcceptCommand('TID', 'pcid')).toEqual({
+  it('buildAcceptCommand carries the flat transfer context and nothing else', () => {
+    expect(buildAcceptCommand('TID', 'pcid', ctx)).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'pcid',
-        choice: 'Proposal_Accept',
-        choiceArgument: {},
+        choice: 'AmuletVestingProposal_Accept',
+        choiceArgument: { ctx },
       },
     })
   })
 
-  it('buildCancelCommand targets Contract_Cancel with no args', () => {
-    expect(buildCancelCommand('TID', 'ccid')).toEqual({
+  it('buildCancelCommand takes the context as its only argument', () => {
+    expect(buildCancelCommand('TID', 'ccid', ctx)).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'ccid',
-        choice: 'Contract_Cancel',
-        choiceArgument: {},
+        choice: 'AmuletVestingContract_Cancel',
+        choiceArgument: { ctx },
       },
     })
   })
 
-  it('buildClaimResidualCommand targets Claim_Withdraw and carries withdrawAmount', () => {
-    expect(buildClaimResidualCommand('TID', 'rcid', '50')).toEqual({
+  it('buildClaimResidualCommand targets the residual claim and carries withdrawAmount', () => {
+    expect(buildClaimResidualCommand('TID', 'rcid', '50', ctx)).toEqual({
       ExerciseCommand: {
         templateId: 'TID',
         contractId: 'rcid',
-        choice: 'Claim_Withdraw',
-        choiceArgument: { withdrawAmount: '50' },
+        choice: 'AmuletVestedClaim_Withdraw',
+        choiceArgument: { withdrawAmount: '50', ctx },
       },
     })
   })
@@ -153,20 +163,22 @@ describe('command builders', () => {
     // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
-      beneficiary: 'B',
-      total: '1000.',
+      receiver: 'B',
+      totalAmount: '1000.',
       schedule: linear,
+      amuletCids: [],
     })
-    expect((cmd.ExerciseCommand.choiceArgument as { total: string }).total).toBe('1000')
-    expect(buildClaimCommand('TID', 'cid', '100.').ExerciseCommand.choiceArgument.amount).toBe(
-      '100',
-    )
+    expect((cmd.ExerciseCommand.choiceArgument as { totalAmount: string }).totalAmount).toBe('1000')
     expect(
-      buildClaimResidualCommand('TID', 'rcid', '50.').ExerciseCommand.choiceArgument.withdrawAmount,
+      buildWithdrawCommand('TID', 'cid', '100.', ctx).ExerciseCommand.choiceArgument.withdrawAmount,
+    ).toBe('100')
+    expect(
+      buildClaimResidualCommand('TID', 'rcid', '50.', ctx).ExerciseCommand.choiceArgument
+        .withdrawAmount,
     ).toBe('50')
   })
 
   it('rejects a malformed amount rather than sending it to the ledger', () => {
-    expect(() => buildClaimCommand('TID', 'cid', 'not-a-number')).toThrow()
+    expect(() => buildWithdrawCommand('TID', 'cid', 'not-a-number', ctx)).toThrow()
   })
 })

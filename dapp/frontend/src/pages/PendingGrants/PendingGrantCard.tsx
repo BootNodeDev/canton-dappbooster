@@ -6,34 +6,34 @@ import { CurvePill } from '@/components/CurvePill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
-import type { Proposal } from '@/store/types'
+import type { PendingGrant } from '@/store/types'
 import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
 // funder.
-interface ProposalCardProps {
+interface PendingGrantCardProps {
   direction: 'incoming' | 'outgoing'
   nowMs: number
-  onAccept: (proposal: Proposal) => void
-  proposal: Proposal
+  onAccept: (pendingGrant: PendingGrant) => void
+  pendingGrant: PendingGrant
 }
 
-export const ProposalCard = ({
-  proposal,
+export const PendingGrantCard = ({
+  pendingGrant,
   direction,
   nowMs,
   onAccept,
-}: ProposalCardProps): React.JSX.Element => {
-  const curve = proposal.schedule.curve
+}: PendingGrantCardProps): React.JSX.Element => {
+  const curve = pendingGrant.schedule.curve
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
-  const startFraction = vestedFraction(proposal.schedule, nowMs)
-  const counterparty = direction === 'incoming' ? proposal.proposer : proposal.receiver
+  const startFraction = vestedFraction(pendingGrant.schedule, nowMs)
+  const counterparty = direction === 'incoming' ? pendingGrant.proposer : pendingGrant.receiver
 
   return (
     <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
       <div className="min-w-0">
-        <h2 className="text-base font-bold tracking-tight text-fg">{proposal.title}</h2>
+        <h2 className="text-base font-bold tracking-tight text-fg">{pendingGrant.title}</h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <CurvePill curve={curve} />
           <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
@@ -49,14 +49,14 @@ export const ProposalCard = ({
         <div className="mb-2 flex items-center justify-between text-xs text-fg-muted">
           <span className="flex items-center gap-1">
             Cliff
-            <InfoTip label={formatDate(proposal.schedule.cliff)}>
-              {startFraction > 0 ? 'passed' : relativeTime(proposal.schedule.cliff, nowMs)}
+            <InfoTip label={formatDate(pendingGrant.schedule.cliff)}>
+              {startFraction > 0 ? 'passed' : relativeTime(pendingGrant.schedule.cliff, nowMs)}
             </InfoTip>
           </span>
         </div>
         <ScheduleBar vestedFraction={startFraction} claimedFraction={0} milestones={milestones} />
-        {proposal.note !== undefined && (
-          <p className="mt-3 text-sm text-fg-muted">{proposal.note}</p>
+        {pendingGrant.note !== undefined && (
+          <p className="mt-3 text-sm text-fg-muted">{pendingGrant.note}</p>
         )}
       </div>
 
@@ -65,10 +65,13 @@ export const ProposalCard = ({
           <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
             Total
           </div>
-          <AmountDisplay value={proposal.totalAmount} className="text-xl font-semibold text-fg" />
+          <AmountDisplay
+            value={pendingGrant.totalAmount}
+            className="text-xl font-semibold text-fg"
+          />
         </div>
         {direction === 'incoming' ? (
-          <Button size="sm" onClick={() => onAccept(proposal)}>
+          <Button size="sm" onClick={() => onAccept(pendingGrant)}>
             Accept &amp; fund
           </Button>
         ) : (

@@ -1,6 +1,7 @@
 // JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
 // unit-tested directly in commands.test.ts.
 
+import type { AppTransferContext } from '@/backend/transferContext'
 import { canonicalAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
@@ -68,69 +69,112 @@ export const decodeSchedule = (raw: unknown): VestingSchedule => {
 // ── Command builders ────────────────────────────────────────────────────────
 
 type CreateVestingArgs = {
-  beneficiary: string
+  amuletCids: string[]
   note?: string
   proposer: string
+  receiver: string
   schedule: VestingSchedule
-  total: string
+  totalAmount: string
 }
 
+const exercise = (
+  templateId: string,
+  contractId: string,
+  choice: string,
+  choiceArgument: Record<string, unknown>,
+) => ({ ExerciseCommand: { templateId, contractId, choice, choiceArgument } })
+
+// The only choice taking no transfer context: it moves no Amulet, it only records which of the
+// funder's holdings the eventual Accept will lock.
 export const buildCreateVestingCommand = (
   templateId: string,
   factoryCid: string,
   args: CreateVestingArgs,
-) => ({
-  ExerciseCommand: {
-    templateId,
-    contractId: factoryCid,
-    choice: 'Factory_CreateVesting',
-    choiceArgument: {
-      proposer: args.proposer,
-      beneficiary: args.beneficiary,
-      total: canonicalAmount(args.total),
-      schedule: encodeSchedule(args.schedule),
-      note: args.note ?? null,
+) =>
+  exercise(templateId, factoryCid, 'AmuletVestingFactory_CreateVesting', {
+    proposer: args.proposer,
+    receiver: args.receiver,
+    totalAmount: canonicalAmount(args.totalAmount),
+    schedule: encodeSchedule(args.schedule),
+    amuletCids: args.amuletCids,
+    note: args.note ?? null,
+  })
+
+// The funder self-transfers `amount` out of its own holdings, so the grant can name an Amulet
+// nothing else has pledged. sender, provider and receiver are all the funder, which is what makes
+// the funder the only controller and keeps this a one-signature submission. Splice values an input
+// at its full `initialAmount` — the holding fee is charged only by `Amulet_Expire` — so an exact
+// split leaves the eventual Accept exactly covered, with no headroom to guess at.
+export const buildSplitCommand = (
+  templateId: string,
+  amuletRulesCid: string,
+  args: {
+    amount: string
+    amuletCids: string[]
+    dso: string
+    openMiningRound: string
+    owner: string
+  },
+) =>
+  exercise(templateId, amuletRulesCid, 'AmuletRules_Transfer', {
+    transfer: {
+      sender: args.owner,
+      provider: args.owner,
+      inputs: args.amuletCids.map((contractId) => ({ tag: 'InputAmulet', value: contractId })),
+      outputs: [
+        {
+          receiver: args.owner,
+          receiverFeeRatio: '0.0',
+          amount: canonicalAmount(args.amount),
+          lock: null,
+          meta: null,
+        },
+      ],
+      beneficiaries: null,
     },
-  },
-})
+    // Both maps are empty because the only input kind here is an Amulet; rewards and validator
+    // rights are what the other kinds need. `expectedDso` is not optional in practice:
+    // `checkExpectedDso` aborts when it is absent.
+    context: {
+      openMiningRound: args.openMiningRound,
+      issuingMiningRounds: [],
+      validatorRights: [],
+      featuredAppRight: null,
+    },
+    expectedDso: args.dso,
+  })
 
-export const buildAcceptCommand = (templateId: string, proposalCid: string) => ({
-  ExerciseCommand: {
-    templateId,
-    contractId: proposalCid,
-    choice: 'Proposal_Accept',
-    choiceArgument: {},
-  },
-})
+export const buildAcceptCommand = (
+  templateId: string,
+  pendingCid: string,
+  ctx: AppTransferContext,
+) => exercise(templateId, pendingCid, 'AmuletVestingProposal_Accept', { ctx })
 
-// No nowMicros: VestingContract.Contract_Claim reads on-ledger getTime.
-export const buildClaimCommand = (templateId: string, contractCid: string, amount: string) => ({
-  ExerciseCommand: {
-    templateId,
-    contractId: contractCid,
-    choice: 'Contract_Claim',
-    choiceArgument: { amount: canonicalAmount(amount) },
-  },
-})
+// No nowMicros: the choice reads on-ledger getTime.
+export const buildWithdrawCommand = (
+  templateId: string,
+  contractCid: string,
+  withdrawAmount: string,
+  ctx: AppTransferContext,
+) =>
+  exercise(templateId, contractCid, 'AmuletVestingContract_Withdraw', {
+    withdrawAmount: canonicalAmount(withdrawAmount),
+    ctx,
+  })
 
-export const buildCancelCommand = (templateId: string, contractCid: string) => ({
-  ExerciseCommand: {
-    templateId,
-    contractId: contractCid,
-    choice: 'Contract_Cancel',
-    choiceArgument: {},
-  },
-})
+export const buildCancelCommand = (
+  templateId: string,
+  contractCid: string,
+  ctx: AppTransferContext,
+) => exercise(templateId, contractCid, 'AmuletVestingContract_Cancel', { ctx })
 
 export const buildClaimResidualCommand = (
   templateId: string,
   claimCid: string,
   withdrawAmount: string,
-) => ({
-  ExerciseCommand: {
-    templateId,
-    contractId: claimCid,
-    choice: 'Claim_Withdraw',
-    choiceArgument: { withdrawAmount: canonicalAmount(withdrawAmount) },
-  },
-})
+  ctx: AppTransferContext,
+) =>
+  exercise(templateId, claimCid, 'AmuletVestedClaim_Withdraw', {
+    withdrawAmount: canonicalAmount(withdrawAmount),
+    ctx,
+  })

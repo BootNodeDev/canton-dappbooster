@@ -4,10 +4,9 @@ import {
   type PartyIdError,
   PartyIdInput,
   TokenInput,
-  useExplorerLink,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
@@ -23,10 +22,8 @@ import { TrashIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
-import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { now } from '@/utils/clock'
 import { cn } from '@/utils/cn'
-import { EXPLORER } from '@/utils/config'
 import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
@@ -122,7 +119,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const { backend } = useBackend()
   const partyId = party?.partyId ?? ''
   const createVesting = useVestingStore((s) => s.createVesting)
-  const explorerLink = useExplorerLink(EXPLORER)
 
   const [receiver, setReceiver] = useState('')
   // What the field is currently flagging: the kit reports it, this page words and places it.
@@ -137,6 +133,33 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(1)
+  const [balance, setBalance] = useState<string>()
+  const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
+
+  // Read once on mount rather than kept live: nothing this form does moves the funder's coin, and a
+  // ceiling that shifted under a half-typed amount would reject what the user was told to enter.
+  useEffect(() => {
+    if (backend === undefined || partyId === '') {
+      return
+    }
+    let live = true
+    backend.balanceOf(partyId).then(
+      (value) => {
+        if (live) {
+          setBalance(value)
+          setBalanceState(undefined)
+        }
+      },
+      () => {
+        if (live) {
+          setBalanceState('error')
+        }
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [backend, partyId])
 
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)
@@ -157,18 +180,12 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   }, [curveKind, cliff, start, end, milestones])
 
   const scheduleValid = validVestingSchedule(schedule)
-  // Recomputed rather than stored from the last keystroke, so the message can never outlive the
-  // value that produced it. No ceiling: vesting-lite moves no holding, so there is no balance to
-  // grant against.
+  // Recomputed rather than stored from the last keystroke, so it can never outlive the value that
+  // produced it. Deliberately no `max`: the balance is what the field offers through Max, not a
+  // ceiling, since the holding fee keeps moving it and the ledger has the last word at Accept.
   const amountError = validateAmount(amount)
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
-  const amountMessage =
-    amountError !== undefined
-      ? AMOUNT_ERROR_TEXT[amountError]
-      : amount !== '' && !aboveFloor
-        ? `Minimum ${MIN_GRANT_AMOUNT} CC.`
-        : undefined
   const receiverWellFormed = isValidPartyId(receiver)
   const isSelf = party !== undefined && receiver === party.partyId
   const receiverValid = receiverWellFormed && !isSelf
@@ -243,11 +260,11 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
       })
       onClose()
       toast.success(
-        `Proposal created · delivered via explicit disclosure · ${result.disclosedBytes} bytes`,
-        { action: { label: 'View proposals', to: '/proposals?role=funder' } },
+        `Grant created · delivered via explicit disclosure · ${result.disclosedBytes} bytes`,
+        { action: { label: 'View pending grants', to: '/pending?role=funder' } },
       )
     } catch (err) {
-      toast.error(errorText(err), { sticky: true })
+      toast.error(errorText(err))
     } finally {
       setSubmitting(false)
     }
@@ -299,19 +316,20 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               {/* No `onTokenSelect` on purpose: the kit renders the symbol as a static mark
                   without it, and a picker over a one-entry list is a control that cannot do
                   anything. Restore it when a second instrument exists — see architecture.md. */}
+              {/* The field carries no message for now, so its flag is the app's own error and not
+                  the kit's, which would also flag an amount above the balance. */}
               <TokenInput
-                aria-describedby={amountMessage === undefined ? undefined : 'amount-error'}
+                aria-invalid={amountError !== undefined}
+                balance={balance}
+                balanceState={balanceState}
                 className="w-full border-0 p-0"
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
                 token={CC}
-                usdValue="Not Available"
+                usdValue="N/A"
                 value={amount}
               />
-              {amountMessage !== undefined && (
-                <FieldError id="amount-error" message={amountMessage} className="mt-1" />
-              )}
             </div>
           </div>
         </>
@@ -454,7 +472,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               <Identifier
                 announce={false}
                 className="font-mono text-xs text-fg"
-                href={explorerLink(receiver)}
                 label="receiver party id"
                 onCopy={copyToast('Party id')}
                 value={receiver}
