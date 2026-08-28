@@ -9,6 +9,9 @@ dist/
 dist-extension/
 typedoc/
 
+# canton-barebones: the downloaded Splice checkout and its runtime env
+.generated/
+
 # env
 .env
 .env.local

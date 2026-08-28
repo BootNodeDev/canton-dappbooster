@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
+    "@bootnodedev/canton-barebones": "0.3.0",
     "@bootnodedev/canton-wallet-service": "git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.2",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
