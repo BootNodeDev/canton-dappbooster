@@ -72,7 +72,7 @@ export const PendingGrantCard = ({
         </div>
         {direction === 'incoming' ? (
           <Button size="sm" onClick={() => onAccept(pendingGrant)}>
-            Accept &amp; fund
+            Accept
           </Button>
         ) : (
           <span className="font-mono text-xs text-fg-muted">awaiting acceptance</span>
