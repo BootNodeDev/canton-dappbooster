@@ -12,7 +12,7 @@ Local Canton development stack.
 ## Initial setup
 
 ```bash
-pnpm install
+pnpm i
 ```
 
 ## Starting the stack
@@ -87,7 +87,7 @@ pnpm exec canton-barebones start
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
+pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
 ```
 
 **Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
