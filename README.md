@@ -23,7 +23,9 @@ The easiest way is using the `dev-stack` script.
 ./scripts/dev-stack.sh
 ```
 
-**Note:** The LocalNet runs from the repo root. To run it from another folder you can run.
+**Note:** The LocalNet runs from `.canton-localnet`.
+
+To run it from another folder you can use this:
 
 ```bash
 ./scripts/dev-stack.sh ~/path-to-your-folder
@@ -53,7 +55,22 @@ pnpm run mint-token
 
 ### LocalNet
 
-Start canton-barebones from the repo root.
+Create a folder for [canton-barebones](https://github.com/BootNodeDev/canton-barebones).
+
+```bash
+mkdir -p .canton-localnet
+cd .canton-localnet
+```
+
+Then run this command to scaffold it.
+
+```bash
+pnpm exec canton-barebones init
+```
+
+Edit `canton-barebones.config.json`: change `validators.appUser.ui` and `sv.scanUI` to `true`.
+
+Start canton-barebones from `.canton-localnet`
 
 ```bash
 pnpm exec canton-barebones start
@@ -73,7 +90,7 @@ pnpm run build-dar
 pnpm run deploy-dar -- dapp/daml/vesting-lite/.daml/dist/vesting-lite-0.0.1.dar
 ```
 
-**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset with `pnpm exec canton-barebones reset`.
+**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
 
 ### Wallet service
 
