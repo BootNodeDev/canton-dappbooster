@@ -10,7 +10,7 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
 - [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md) — L3 `--cnc-*` token naming convention
 - [`dapp/frontend/CLAUDE.md`](dapp/frontend/CLAUDE.md) — app layout and naming deltas; its seams are in [`dapp/frontend/architecture.md`](dapp/frontend/architecture.md)
-- `canton-barebones/`, `dapp/daml/vesting-lite/` — see each subproject's `README.md`
+- `dapp/daml/vesting-lite/` — see its `README.md`
 
 The dApp connects through any CIP-0103 browser wallet; no wallet lives in this monorepo. This stack
 was developed against Carpincho, which has its own repository at
@@ -40,7 +40,6 @@ Current distribution:
 | `canton-connect/` | yes | shim | yes | yes | Public hook API, the facade's adapter/picker seams, provider event wiring. |
 | `dapp/frontend/` | yes | shim | yes | yes | Canton Coin vesting dApp; `CLAUDE.md` carries the page-owns-its-components layout and the naming rules an agent would otherwise get wrong, architecture.md its internal seams. Carries a `PROVENANCE.md` recording the vendored source. |
 | `dapp/daml/` | yes | no | no | no | Single DAML package (`vesting-lite`) plus its `daml-test` scenarios. Carries a `PROVENANCE.md` recording the vendored source. |
-| `canton-barebones/` | yes | no | no | no | Inert leftovers; its README says so and points at the replacements. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
 | `canton-theme/` | yes | shim | yes | no | Plain-CSS theme (L3); README covers the two CSS exports, `CLAUDE.md` the `--cnc-*` naming convention an agent adding a token would otherwise invent. |
 
@@ -67,7 +66,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Container runtime | Docker | Required by the external `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
-| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, `canton-barebones/`, and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
+| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
 | Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
@@ -83,17 +82,18 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 | Path | Purpose | Stack | Port |
 |------|---------|-------|------|
-| [`canton-barebones/`](canton-barebones/) | Inert. Compose overrides and a prebuilt DAR left over from the in-repo LocalNet, pending removal | — | n/a |
 | [`dapp/daml/vesting-lite/`](dapp/daml/vesting-lite/) | `vesting-lite` DAML model: factory, proposal, contract, residual claim. Scenarios in `dapp/daml-test/` | DAML | n/a (DAR artifact) |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp over the local participant. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory arrives by explicit disclosure from `scripts/bootstrap-vesting-lite.mjs`'s config file. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
-wallet-service is not one of them any more. It ships from
+Two things the loop needs are not subprojects but dependencies. wallet-service ships from
 [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service),
 arrives as a git dependency pinned to a tag, and `scripts/dev-stack.sh` runs it on
-port 3010 through `pnpm exec canton-wallet-service`.
+port 3010 through `pnpm exec canton-wallet-service`. The LocalNet ships from
+[BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is scaffolded
+into a directory of its own, and `scripts/dev-stack.sh` drives it there over `npx`.
 
 ## Code Style
 
@@ -336,8 +336,6 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   `scripts/dev-stack.sh` shells out to it in the directory given as a path-shaped first argument
   (which also opens the menu, the normal way to drive the stack), else a second argument after the
   subcommand, else `CANTON_LOCALNET_DIR`, else `~/canton-localnet`.
-  `canton-barebones/` here starts nothing any more; what is left of it is config and a prebuilt DAR
-  waiting to be deleted.
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
 - `pnpm run bootstrap` creates the vesting operator and its factory, which the
