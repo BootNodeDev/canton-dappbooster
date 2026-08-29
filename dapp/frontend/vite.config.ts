@@ -11,12 +11,16 @@ import { parseEnv } from './src/utils/env'
 // `.env` read is the repo root's, the one file the monorepo keeps; the empty prefix loads every key
 // in it, so only what `parseEnv` returns may be defined back — never the loaded object.
 export default defineConfig(({ mode }) => {
-  const env = parseEnv(loadEnv(mode, fileURLToPath(new URL('../..', import.meta.url)), ''))
+  const envDir = fileURLToPath(new URL('../..', import.meta.url))
+  const env = parseEnv(loadEnv(mode, envDir, ''))
 
   return {
     define: Object.fromEntries(
       Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
     ),
+    // Vite's own env read follows the same directory, or a leftover `dapp/frontend/.env.local` keeps
+    // being loaded while silently losing to the root for exactly the keys defined above.
+    envDir,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
