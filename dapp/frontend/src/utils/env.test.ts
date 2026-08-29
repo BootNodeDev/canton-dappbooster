@@ -49,13 +49,19 @@ describe('parseEnv', () => {
     })
   })
 
-  // `//host/rpc` reads as a path and is a protocol-relative url to somebody else's origin.
-  it.each(['//evil.example/rpc', 'api/rpc', 'javascript:alert(1)'])(
-    'rejects %s as the rpc url',
-    (VITE_WALLET_RPC_URL) => {
-      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
-    },
-  )
+  // Every leading-slash spelling the URL parser resolves to somebody else's origin: a second slash,
+  // a backslash folded into one, and a tab or newline stripped before either is read.
+  it.each([
+    '//evil.example/rpc',
+    '/\\evil.example/rpc',
+    '/\\/evil.example/rpc',
+    '/\t/evil.example/rpc',
+    '/\n/evil.example/rpc',
+    'api/rpc',
+    'javascript:alert(1)',
+  ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
+    expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
+  })
 
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
