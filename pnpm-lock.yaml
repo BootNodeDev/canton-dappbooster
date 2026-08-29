@@ -15,8 +15,8 @@ importers:
         specifier: 0.3.0
         version: 0.3.0
       '@bootnodedev/canton-wallet-service':
-        specifier: git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.2
-        version: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6
+        specifier: git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.3
+        version: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/306691df4e558309e8f94f0d81c4d41cdff52689
       '@commitlint/cli':
         specifier: ^21.0.1
         version: 21.2.2(@types/node@25.9.5)(conventional-commits-parser@7.1.2)(typescript@5.9.3)
@@ -316,9 +316,9 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6':
-    resolution: {gitHosted: true, integrity: sha512-RXsMoq/tXVAJuljSQ1VnEIwxZcMzT74M2698Z7dwfCGWnuMuLMzhCWLjSHG6I0A/AOFYSb0SF4kv/UcRAr/nRg==, tarball: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6}
-    version: 0.1.2
+  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/306691df4e558309e8f94f0d81c4d41cdff52689':
+    resolution: {gitHosted: true, integrity: sha512-6XdyS7i/lqBnsgFe7pcVKZ67dFrK/2bHyz+YkX/EW1oTPDC+LgEYkmy4uglydJEw4QfPWcyaeXCh/0dCTI7bIw==, tarball: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/306691df4e558309e8f94f0d81c4d41cdff52689}
+    version: 0.1.3
     engines: {node: '>=24.15.0'}
     hasBin: true
 
@@ -4391,7 +4391,7 @@ snapshots:
     dependencies:
       zod: 4.4.3
 
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6':
+  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/306691df4e558309e8f94f0d81c4d41cdff52689':
     dependencies:
       '@canton-network/wallet-sdk': 1.3.1
       cors: 2.8.6

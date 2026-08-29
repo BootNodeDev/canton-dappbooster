@@ -7,9 +7,11 @@ import { defineConfig } from 'vitest/config'
 import { parseEnv } from './src/utils/env'
 
 // Vite inlines `import.meta.env.VITE_*` as literals, so the environment is a build-time input. It
-// is validated and defaulted here, and defined back, so the client ships no validation code.
+// is validated and defaulted here, and defined back, so the client ships no validation code. The
+// `.env` read is the repo root's, the one file the monorepo keeps; the empty prefix loads every key
+// in it, so only what `parseEnv` returns may be defined back — never the loaded object.
 export default defineConfig(({ mode }) => {
-  const env = parseEnv(loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), ''))
+  const env = parseEnv(loadEnv(mode, fileURLToPath(new URL('../..', import.meta.url)), ''))
 
   return {
     define: Object.fromEntries(

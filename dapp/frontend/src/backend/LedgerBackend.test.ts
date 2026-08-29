@@ -58,7 +58,7 @@ const amuletRow = (contractId: string, initialAmount = '1000'): unknown => ({
     JsActiveContract: {
       createdEvent: {
         contractId,
-        createArgument: { amount: { initialAmount } },
+        createArgument: { amount: { initialAmount }, dso: 'dso::1' },
         createdEventBlob: `blob-${contractId}`,
         templateId: 'amuletpkg:Splice.Amulet:Amulet',
       },
@@ -72,11 +72,11 @@ const disclosedAmulet = (contractId: string): DisclosedContract => ({
   createdEventBlob: `blob-${contractId}`,
 })
 
-// Which round Scan's answer resolves to is transferContext.test.ts's rule; what LedgerBackend owes is
-// putting whatever comes back into every write, so the fetch itself is replaced rather than stubbed.
+// Which disclosures wallet-service resolves to is transferContext.test.ts's rule; what LedgerBackend
+// owes is putting whatever comes back into every write, so the fetch itself is replaced rather than
+// stubbed. The DSO is not among them: it is read off the Amulets a split consumes.
 const transferContext = {
   ctx: { amuletRules: 'rules-cid', openMiningRound: 'round-2', featuredAppRight: null },
-  dso: 'dso::1',
   rulesTemplateId: 'amuletpkg:Splice.AmuletRules:AmuletRules',
   disclosed: [
     {

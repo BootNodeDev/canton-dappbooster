@@ -14,7 +14,7 @@ packages:
 # package.json means replacing the commit sha below; `pnpm approve-builds` prints
 # the new key.
 allowBuilds:
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/7803269e2f288b339357c01dcb9c3fd2c998dab6': true
+  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/306691df4e558309e8f94f0d81c4d41cdff52689': true
   esbuild: true
   protobufjs: true
   puppeteer: false

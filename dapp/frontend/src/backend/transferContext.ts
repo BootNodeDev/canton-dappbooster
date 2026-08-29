@@ -1,12 +1,13 @@
-// The AppTransferContext every Amulet-touching choice takes, read off Scan. Both endpoints are
-// unauthenticated, so this runs without a wallet; the explorer origin is Scan's, API at /api/scan.
+// The AppTransferContext every Amulet-touching choice takes, built off wallet-service's
+// `amulet.tap`. That method is a pure builder: it returns the command and its disclosures and
+// submits nothing, so this mints no coin. Scan supplied both contracts until devnet, where no Scan
+// is reachable from a browser — the SV endpoints refuse the origin and the validator's scan-proxy
+// wants a bearer — and tap's disclosures already carry them.
 
 import type { DisclosedContract } from '@/backend/wallet'
-import { EXPLORER } from '@/utils/config'
+import { WALLET_RPC_URL } from '@/utils/config'
 
-type ScanContract = { contract_id: string; created_event_blob: string; template_id: string }
-type ScanRound = ScanContract & { payload: { opensAt: string; round: { number: string } } }
-type ScanRules = ScanContract & { payload: { dso: string } }
+type TapDisclosure = { contractId: string; createdEventBlob: string; templateId: string }
 
 // Flat, not nested under a `context` key: nesting fails preprocessing on the missing field.
 export type AppTransferContext = {
@@ -15,62 +16,60 @@ export type AppTransferContext = {
   openMiningRound: string
 }
 
-// Status before parse: a Scan still starting answers with an nginx error page, which would
-// otherwise surface as a JSON syntax error naming nothing.
-const post = async (url: string, body: string): Promise<unknown> => {
-  const response = await fetch(url, {
+// The templates are matched by suffix because the disclosures name them by resolved package id,
+// which differs per network and between the two entries.
+const suffix = (disclosures: TapDisclosure[], entity: string): TapDisclosure | undefined =>
+  disclosures.find((disclosure) => disclosure.templateId.endsWith(entity))
+
+// Status before parse: a stopped service or a proxy in front of it answers with an html error page,
+// which would otherwise surface as a JSON syntax error naming nothing. A refusal, by contrast,
+// arrives as a 200 carrying `error`.
+const rpc = async (method: string, params: Record<string, unknown>): Promise<unknown> => {
+  const response = await fetch(WALLET_RPC_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body,
+    body: JSON.stringify({ jsonrpc: '2.0', id: '1', method, params }),
   })
   if (!response.ok) {
-    throw new Error(`Scan answered ${response.status} for ${url}`)
+    throw new Error(`wallet-service answered ${response.status} for ${method}`)
   }
-  return response.json()
+  const body = (await response.json()) as { error?: { message?: string }; result?: unknown }
+  if (body.error !== undefined) {
+    throw new Error(`wallet-service refused ${method}: ${body.error.message ?? 'no reason given'}`)
+  }
+  return body.result
 }
 
-export const fetchTransferContext = async (): Promise<{
+export const fetchTransferContext = async (
+  party: string,
+): Promise<{
   ctx: AppTransferContext
   disclosed: DisclosedContract[]
-  dso: string
   rulesTemplateId: string
 }> => {
-  const scan = `${EXPLORER.baseUrl}/api/scan/v0`
-  const [rules, rounds] = (await Promise.all([
-    post(`${scan}/amulet-rules`, '{}'),
-    post(
-      `${scan}/open-and-issuing-mining-rounds`,
-      '{"cached_open_mining_round_contract_ids":[],"cached_issuing_round_contract_ids":[]}',
-    ),
-  ])) as [
-    { amulet_rules_update: { contract: ScanRules } },
-    { open_mining_rounds: Record<string, { contract: ScanRound }> },
-  ]
-  const amuletRules = rules.amulet_rules_update.contract
-  const round = Object.values(rounds.open_mining_rounds)
-    .map((entry) => entry.contract)
-    .filter((contract) => Date.parse(contract.payload.opensAt) <= Date.now())
-    .sort((a, b) => Number(a.payload.round.number) - Number(b.payload.round.number))
-    .at(-1)
-  // The SV opens the first round minutes after a LocalNet start; until then nothing Amulet works.
-  if (round === undefined) {
-    throw new Error('Scan reports no open mining round yet — the network is still starting')
+  const result = (await rpc('amulet.tap', { receiver: party })) as {
+    disclosedContracts?: TapDisclosure[]
+  }
+  const disclosures = result.disclosedContracts ?? []
+  const amuletRules = suffix(disclosures, ':Splice.AmuletRules:AmuletRules')
+  // The SV opens the first round minutes after a LocalNet start; until then tap cannot build.
+  const round = suffix(disclosures, ':Splice.Round:OpenMiningRound')
+  if (amuletRules === undefined || round === undefined) {
+    throw new Error('wallet-service disclosed no AmuletRules and open mining round pair')
   }
   return {
     ctx: {
-      amuletRules: amuletRules.contract_id,
-      openMiningRound: round.contract_id,
+      amuletRules: amuletRules.contractId,
+      openMiningRound: round.contractId,
       featuredAppRight: null,
     },
-    disclosed: [amuletRules, round].map((contract) => ({
-      templateId: contract.template_id,
-      contractId: contract.contract_id,
-      createdEventBlob: contract.created_event_blob,
+    disclosed: [amuletRules, round].map(({ templateId, contractId, createdEventBlob }) => ({
+      templateId,
+      contractId,
+      createdEventBlob,
     })),
-    // Both carried for the split, which exercises AmuletRules directly rather than through a
-    // vesting choice: `AmuletRules_Transfer` refuses a submission that does not name the DSO it
-    // expects, and a command needs the resolved template id the filters deliberately do not use.
-    dso: amuletRules.payload.dso,
-    rulesTemplateId: amuletRules.template_id,
+    // Carried for the split, which exercises AmuletRules directly rather than through a vesting
+    // choice and so needs the resolved template id the filters deliberately do not use.
+    rulesTemplateId: amuletRules.templateId,
   }
 }
