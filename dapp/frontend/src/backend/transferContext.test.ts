@@ -12,17 +12,22 @@ const RULES = disclosure('rulespkg:Splice.AmuletRules:AmuletRules', 'rules-cid')
 const ROUND = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-2')
 
 // The whole of the tap answer, of which only the disclosures are kept: the command it builds is
-// what makes this a build-and-discard rather than a mint.
-const stubTap = (disclosedContracts: unknown[]): { calls: unknown[] } => {
+// what makes this a build-and-discard rather than a mint. Its `openRound` is read, though, as the
+// tiebreak for which disclosed round is the one tap resolved.
+const stubTap = (disclosedContracts: unknown[], openRound = 'round-2'): { calls: unknown[] } => {
   const calls: unknown[] = []
   vi.stubGlobal('fetch', async (_url: string, init: { body: string }) => {
     calls.push(JSON.parse(init.body))
     return {
       ok: true,
+      status: 200,
       json: async () => ({
         jsonrpc: '2.0',
         id: '1',
-        result: { commands: { ExerciseCommand: {} }, disclosedContracts },
+        result: {
+          commands: { ExerciseCommand: { choiceArgument: { openRound } } },
+          disclosedContracts,
+        },
       }),
     }
   })
@@ -76,16 +81,33 @@ describe('fetchTransferContext', () => {
     ])
   })
 
+  // The array is the registry's, so its order decides nothing: the command names the live round.
+  it('takes the round the command names rather than the first one disclosed', async () => {
+    const stale = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-1')
+
+    stubTap([RULES, stale, ROUND], 'round-2')
+
+    const { ctx, disclosed } = await fetchTransferContext('funder::1')
+
+    expect(ctx.openMiningRound).toBe('round-2')
+    expect(disclosed[1]?.contractId).toBe('round-2')
+  })
+
   it('rejects when either disclosure is missing', async () => {
     stubTap([RULES])
 
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // A refusal is a 200 carrying `error`, which would otherwise read as an empty disclosure list.
-  it('surfaces a JSON-RPC error rather than treating the answer as a result', async () => {
+  // wallet-service refuses with a 200 carrying `error`; the /api/rpc function refuses with a status
+  // and the same member. Read either way, the reason survives instead of becoming a bare status.
+  it.each([
+    ['a 200 from wallet-service', true, 200],
+    ['a 403 from the forwarding function', false, 403],
+  ])('surfaces the reason behind %s', async (_case, ok, status) => {
     vi.stubGlobal('fetch', async () => ({
-      ok: true,
+      ok,
+      status,
       json: async () => ({
         jsonrpc: '2.0',
         id: '1',
@@ -107,6 +129,20 @@ describe('fetchTransferContext', () => {
 
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(
       /wallet-service answered 502 for amulet.tap/,
+    )
+  })
+
+  // A 200 carrying neither member left `result` undefined, and the read below it threw a bare
+  // TypeError — the failure naming nothing that the status check exists to prevent.
+  it('names the status when a 200 carries neither result nor error', async () => {
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: '1' }),
+    }))
+
+    await expect(fetchTransferContext('funder::1')).rejects.toThrow(
+      /wallet-service answered 200 for amulet.tap/,
     )
   })
 })
