@@ -53,12 +53,18 @@ const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
 })
 
-const amuletRow = (contractId: string, initialAmount = '1000'): unknown => ({
+// `extra` is the Amulet's own payload beyond the amount, which is the DSO and nothing else; a test
+// passes `{}` to make a row the split can find no DSO on.
+const amuletRow = (
+  contractId: string,
+  initialAmount = '1000',
+  extra: object = { dso: 'dso::1' },
+): unknown => ({
   contractEntry: {
     JsActiveContract: {
       createdEvent: {
         contractId,
-        createArgument: { amount: { initialAmount }, dso: 'dso::1' },
+        createArgument: { amount: { initialAmount }, ...extra },
         createdEventBlob: `blob-${contractId}`,
         templateId: 'amuletpkg:Splice.Amulet:Amulet',
       },
@@ -311,6 +317,26 @@ describe('LedgerBackend.createVesting', () => {
     const { backend } = harness({ acs: {} })
 
     await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 CC is free/)
+  })
+
+  // The transfer context cannot carry the DSO — a disclosure is an opaque blob with no payload — so
+  // the split reads it off an Amulet it is about to consume.
+  it('names the DSO the funder’s own Amulets are signed by', async () => {
+    const { backend, submissions } = harness({
+      acs: { [AMULET]: [amuletRow('am1', '1200')] },
+    })
+
+    await backend.createVesting(grant)
+
+    expect(submissions[0]?.commands?.[0]?.ExerciseCommand?.choiceArgument).toMatchObject({
+      expectedDso: 'dso::1',
+    })
+  })
+
+  it('refuses rather than sending an undefined expectedDso when no Amulet carries one', async () => {
+    const { backend } = harness({ acs: { [AMULET]: [amuletRow('am1', '1200', {})] } })
+
+    await expect(backend.createVesting(grant)).rejects.toThrow(/name no DSO party/)
   })
 })
 
