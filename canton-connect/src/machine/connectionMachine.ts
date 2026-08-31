@@ -216,6 +216,8 @@ export const connectionMachine = setup({
       // Cancelled covers the second route here too: a restore that replaced a session and then
       // found nothing, which reports as a cancel because nothing failed on the way.
       tags: ['connect.cancelled', 'disconnect.settled'],
+      // A cancel records no error; clearing it here keeps that rule on the state that answers.
+      entry: { type: 'forgetError' },
       on: {
         connect: { target: 'connecting' },
         restore: { target: 'initializing' },
