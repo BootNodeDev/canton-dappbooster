@@ -12,7 +12,7 @@ From the repo root:
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
+pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.2.dar
 ```
 
 `deploy-dar` uploads to the app-user JSON API and takes the bearer token from the root `.env`.

@@ -13,6 +13,7 @@ import type { Deployment } from '@/backend/config'
 import { type AppTransferContext, fetchTransferContext } from '@/backend/transferContext'
 import {
   type AcsRow,
+  amuletDso,
   amuletValue,
   type ClaimRecord,
   type CreateVestInput,
@@ -228,7 +229,7 @@ export class LedgerBackend implements VestingBackend {
     build: (ctx: AppTransferContext) => LedgerCommand,
     extra: DisclosedContract[] = [],
   ): Promise<void> {
-    const { ctx, disclosed } = await fetchTransferContext()
+    const { ctx, disclosed } = await fetchTransferContext(actAs)
     await this.submit(actAs, build(ctx), [...disclosed, ...extra])
   }
 
@@ -236,15 +237,19 @@ export class LedgerBackend implements VestingBackend {
   // included. The result is found by re-reading rather than off the submission, which reports an
   // update id and nothing about what it created.
   private async splitOff(owner: string, amount: string): Promise<DisclosedContract> {
-    const [{ free, held }, { ctx, disclosed, dso, rulesTemplateId }] = await Promise.all([
+    const [{ free, held }, { ctx, disclosed, rulesTemplateId }] = await Promise.all([
       this.freeAmulets(owner),
-      fetchTransferContext(),
+      fetchTransferContext(owner),
     ])
     const freeTotal = addAmounts(...free.map(amuletValue))
     if (compareAmounts(freeTotal, amount) < 0) {
       throw new Error(
         `only ${freeTotal} CC is free to fund this grant — the rest is pledged to a pending one`,
       )
+    }
+    const dso = free.map(amuletDso).find((party) => party !== undefined)
+    if (dso === undefined) {
+      throw new Error('the Amulets funding this grant name no DSO party')
     }
 
     await this.submit(
