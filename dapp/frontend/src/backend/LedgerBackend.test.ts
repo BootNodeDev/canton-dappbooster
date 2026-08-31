@@ -53,8 +53,7 @@ const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
 })
 
-// `extra` is the Amulet's own payload beyond the amount, which is the DSO and nothing else; a test
-// passes `{}` to make a row the split can find no DSO on.
+// A test passes `{}` for `extra` to make a row the split can find no DSO on.
 const amuletRow = (
   contractId: string,
   initialAmount = '1000',
@@ -78,9 +77,8 @@ const disclosedAmulet = (contractId: string): DisclosedContract => ({
   createdEventBlob: `blob-${contractId}`,
 })
 
-// Which disclosures wallet-service resolves to is transferContext.test.ts's rule; what LedgerBackend
-// owes is putting whatever comes back into every write, so the fetch itself is replaced rather than
-// stubbed. The DSO is not among them: it is read off the Amulets a split consumes.
+// LedgerBackend owes putting whatever comes back into every write, so the fetch is replaced
+// rather than stubbed. Which disclosures resolve is transferContext.test.ts's rule.
 const transferContext = {
   ctx: { amuletRules: 'rules-cid', openMiningRound: 'round-2', featuredAppRight: null },
   rulesTemplateId: 'amuletpkg:Splice.AmuletRules:AmuletRules',
@@ -319,8 +317,7 @@ describe('LedgerBackend.createVesting', () => {
     await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 CC is free/)
   })
 
-  // The transfer context cannot carry the DSO — a disclosure is an opaque blob with no payload — so
-  // the split reads it off an Amulet it is about to consume.
+  // A disclosure is an opaque blob, so the split reads the DSO off an Amulet it consumes.
   it('names the DSO the funder’s own Amulets are signed by', async () => {
     const { backend, submissions } = harness({
       acs: { [AMULET]: [amuletRow('am1', '1200')] },

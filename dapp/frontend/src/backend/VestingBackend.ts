@@ -243,7 +243,6 @@ export const amuletValue = (row: AcsRow): string => {
   return amount?.initialAmount ?? '0'
 }
 
-// Every Amulet is signed by the DSO, which `AmuletRules_Transfer` demands back as `expectedDso`.
 // Read off a holding because a disclosure carries an opaque blob and no payload.
 export const amuletDso = (row: AcsRow): string | undefined =>
   (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso

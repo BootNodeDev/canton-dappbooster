@@ -11,9 +11,7 @@ const disclosure = (templateId: string, contractId: string): Record<string, unkn
 const RULES = disclosure('rulespkg:Splice.AmuletRules:AmuletRules', 'rules-cid')
 const ROUND = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-2')
 
-// The whole of the tap answer, of which only the disclosures are kept: the command it builds is
-// what makes this a build-and-discard rather than a mint. Its `openRound` is read, though, as the
-// tiebreak for which disclosed round is the one tap resolved.
+// Only the disclosures and `openRound` are kept; the command tap builds is discarded.
 const stubTap = (disclosedContracts: unknown[], openRound = 'round-2'): { calls: unknown[] } => {
   const calls: unknown[] = []
   vi.stubGlobal('fetch', async (_url: string, init: { body: string }) => {
@@ -61,11 +59,11 @@ describe('fetchTransferContext', () => {
         createdEventBlob: 'blob-round-2',
       },
     ])
-    // The split exercises AmuletRules directly, so it needs the resolved id the filters do not use.
+    // The split exercises AmuletRules directly, so it needs the resolved id the filters skip.
     expect(rulesTemplateId).toBe('rulespkg:Splice.AmuletRules:AmuletRules')
   })
 
-  // The url itself is the build's, so only the request is asserted on here.
+  // The url is the build's, so only the request is asserted on here.
   it('asks for a tap to the connected party', async () => {
     const { calls } = stubTap([RULES, ROUND])
 
@@ -99,8 +97,8 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // wallet-service refuses with a 200 carrying `error`; the /api/rpc function refuses with a status
-  // and the same member. Read either way, the reason survives instead of becoming a bare status.
+  // wallet-service refuses with a 200 carrying `error`, /api/rpc with a status and the same
+  // member, so the reason survives either way.
   it.each([
     ['a 200 from wallet-service', true, 200],
     ['a 403 from the forwarding function', false, 403],
@@ -132,8 +130,7 @@ describe('fetchTransferContext', () => {
     )
   })
 
-  // A 200 carrying neither member left `result` undefined, and the read below it threw a bare
-  // TypeError — the failure naming nothing that the status check exists to prevent.
+  // A 200 carrying neither member used to throw a bare TypeError naming nothing.
   it('names the status when a 200 carries neither result nor error', async () => {
     vi.stubGlobal('fetch', async () => ({
       ok: true,

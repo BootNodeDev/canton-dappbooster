@@ -1,12 +1,10 @@
-// The AppTransferContext every Amulet-touching choice takes, built off wallet-service's
-// `amulet.tap`. Scan supplied both contracts until devnet, where a browser can reach no Scan at all:
-// the SV endpoints refuse the origin and the validator's scan-proxy wants a bearer.
+// Built off wallet-service rather than Scan: on devnet the SV endpoints refuse the browser's
+// origin and the validator's scan-proxy wants a bearer.
 
 import type { DisclosedContract } from '@/backend/wallet'
 import { WALLET_RPC_URL } from '@/utils/config'
 
-// tap is a pure builder: it returns the command it composed and submits nothing, so this mints no
-// coin. `openRound` is read all the same, as which round the disclosures below belong to.
+// tap is a pure builder: it composes a command and submits nothing, so this mints no coin.
 type TapResult = {
   commands?: { ExerciseCommand?: { choiceArgument?: { openRound?: string } } }
   disclosedContracts?: DisclosedContract[]
@@ -21,13 +19,11 @@ export type AppTransferContext = {
   openMiningRound: string
 }
 
-// Matched by suffix because the disclosures name a template by resolved package id, which differs
-// per network and, on devnet, between the two entries.
+// Suffix match: the resolved package id differs per network and, on devnet, between entries.
 const byTemplate = (disclosures: DisclosedContract[], entity: string): DisclosedContract[] =>
   disclosures.filter((disclosure) => disclosure.templateId.endsWith(entity))
 
-// A refusal arrives either as wallet-service's own 200 carrying `error` or as the `/api/rpc`
-// function's status, so `error.message` is read before the status and the reason survives both.
+// wallet-service refuses with a 200 carrying `error`, /api/rpc with a status, so read both.
 const rpc = async (method: string, params: Record<string, unknown>): Promise<unknown> => {
   const response = await fetch(WALLET_RPC_URL, {
     method: 'POST',
@@ -39,8 +35,7 @@ const rpc = async (method: string, params: Record<string, unknown>): Promise<unk
   if (reason !== undefined) {
     throw new Error(`wallet-service refused ${method}: ${reason}`)
   }
-  // Naming the status covers the html error page a stopped service is fronted by, and the 200
-  // carrying neither member, which is just as unusable and would fail later as a bare TypeError.
+  // Covers the html error page a stopped service is fronted by, and a 200 carrying neither.
   if (!response.ok || typeof body?.result !== 'object' || body.result === null) {
     throw new Error(`wallet-service answered ${response.status} for ${method}`)
   }
@@ -59,7 +54,6 @@ export const fetchTransferContext = async (
   const amuletRules = byTemplate(disclosures, ':Splice.AmuletRules:AmuletRules').at(0)
   const rounds = byTemplate(disclosures, ':Splice.Round:OpenMiningRound')
   const chosen = result.commands?.ExerciseCommand?.choiceArgument?.openRound
-  // The array is the registry's, so its order decides nothing here.
   const round = rounds.find((one) => one.contractId === chosen) ?? rounds.at(0)
   // The SV opens the first round minutes after a LocalNet start; until then tap cannot build.
   if (amuletRules === undefined || round === undefined) {
@@ -77,8 +71,7 @@ export const fetchTransferContext = async (
       contractId,
       createdEventBlob,
     })),
-    // Carried for the split, which exercises AmuletRules directly rather than through a vesting
-    // choice and so needs the resolved template id the filters deliberately do not use.
+    // The split exercises AmuletRules directly, so it needs the resolved id the filters skip.
     rulesTemplateId: amuletRules.templateId,
   }
 }

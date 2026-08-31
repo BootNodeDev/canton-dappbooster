@@ -3,13 +3,11 @@ export interface Env {
   VITE_WALLET_RPC_URL: string
 }
 
-// Both name the local stack, so the app runs from a fresh clone with no `.env`.
 const DEFAULTS: Env = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
-// The explorer value lands in an `href`, where `javascript:` would be a script sink.
 const isHttpUrl = (value: string): boolean => {
   try {
     return /^https?:$/.test(new URL(value).protocol)
@@ -18,17 +16,13 @@ const isHttpUrl = (value: string): boolean => {
   }
 }
 
-// A deployed build reaches wallet-service through the same-origin `/api/rpc` function, which `fetch`
-// resolves against the page and `new URL` cannot parse alone. The resolver is asked rather than the
-// prefix tested, because `//host`, `/\host` and `/<tab>/host` all read as paths and all leave.
 const ORIGIN = 'https://same.origin.invalid'
 const isSameOriginPath = (value: string): boolean =>
   value.startsWith('/') && new URL(value, ORIGIN).origin === ORIGIN
 
 const isRpcUrl = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
 
-// Absent is the zero-config case. A declared but blank value is a mistake, not a request for the
-// default, so it falls through to the check rather than round-tripping.
+// Reads one env key and validates it
 const read = (
   values: Record<string, unknown>,
   key: keyof Env,
@@ -42,8 +36,7 @@ const read = (
   return value
 }
 
-// Validates the build's environment. Takes the source rather than reading `import.meta.env` so it
-// stays testable; `vite.config.ts` runs it once per build and defines the result back.
+// Validates the build's environment
 export const parseEnv = (source: unknown): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')

@@ -33,7 +33,7 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ VITE_EXPLORER_URL: 'scan.localhost' })).toThrow(/VITE_EXPLORER_URL/)
   })
 
-  // The explorer value ends up in an href, so a script-bearing scheme must not survive validation.
+  // The explorer value ends up in an href, so a script-bearing scheme must not survive.
   it.each(['javascript:alert(1)', 'data:text/html,<script></script>', 'file:///etc/passwd'])(
     'rejects the %s scheme',
     (VITE_EXPLORER_URL) => {
@@ -41,7 +41,7 @@ describe('parseEnv', () => {
     },
   )
 
-  // The deployed spelling: `fetch` resolves it against the page, so the function is same-origin.
+  // The deployed spelling: `fetch` resolves it against the page, so it is same-origin.
   it('accepts a same-origin path as the rpc url', () => {
     expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/api/rpc' })).toEqual({
       ...DEFAULTS,
@@ -49,8 +49,7 @@ describe('parseEnv', () => {
     })
   })
 
-  // Every leading-slash spelling the URL parser resolves to somebody else's origin: a second slash,
-  // a backslash folded into one, and a tab or newline stripped before either is read.
+  // Leading-slash spellings the URL parser still resolves to somebody else's origin.
   it.each([
     '//evil.example/rpc',
     '/\\evil.example/rpc',
