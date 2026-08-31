@@ -653,35 +653,42 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    // The decline itself, and the session recovered from it, are pinned at actor level by
-    // connectionActors' 'recovers the live session when the wallet declines the connection'.
-    it('keeps the live session over a reconnect, and never asks the wallet to disconnect', async () => {
-      const sdkDisconnect = vi.fn(() => Promise.resolve(null))
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          init,
-          restore,
-          disconnect: fromPromise<null, DisconnectInput>(sdkDisconnect),
-          // what the connect actor hands back over a live session: the status it read from the
-          // wallet
-          connect,
-        },
-      })
+    it('ignores a connect over a live session', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, init, restore } })
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
       actor.send({ type: 'restore' })
       await pause(0)
 
-      actor.send({ type: 'connect' })
-      expect(actor.getSnapshot().matches('connecting')).toBe(true)
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
 
+      const settled = actor.getSnapshot()
+
+      actor.send({ type: 'connect' })
       await pause(0)
 
-      expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
-      // never asked to end the session, which is what makes an abandoned change recoverable
-      expect(sdkDisconnect).not.toHaveBeenCalled()
+      expect(actor.getSnapshot()).toBe(settled)
+
+      actor.stop()
+    })
+
+    it('ignores a connect while locked', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, init, restore } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+      actor.send(lockPush)
+      expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
+
+      const settled = actor.getSnapshot()
+
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(actor.getSnapshot()).toBe(settled)
 
       actor.stop()
     })

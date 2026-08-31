@@ -352,9 +352,7 @@ export const connectionMachine = setup({
         },
       },
       on: {
-        // A connect over a standing session is how a wallet gets changed; the connect actor's own
-        // status read is what lands us back here if the attempt fails.
-        connect: { target: 'connecting' },
+        // `connect` is deliberately not accepted over a standing session.
         disconnect: { target: 'disconnecting' },
         // A replaced sdk leaves this session's listeners bound to the old client, and exiting
         // `session` is what tears them down, so restore has to be accepted here too.
@@ -369,9 +367,8 @@ export const connectionMachine = setup({
         restore: { target: 'initializing' },
       },
     },
-    // A cancelled wallet change must not cost the standing session: the transition swapped the
-    // poisoned sdk (see `retireSdk`), and this state inits the replacement and restores that
-    // session.
+    // The SDK never settles a connect whose picker was closed; that instance can still swap
+    // the client, so `retireSdk` replaced it before entry.
     retiring: {
       tags: ['connect.cancelled'],
       // A cancel records no error; clearing it here keeps that rule on the state that answers.
