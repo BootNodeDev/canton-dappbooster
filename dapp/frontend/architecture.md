@@ -12,7 +12,7 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which reads the Amulet context off Scan, and `config.ts`, which loads the deployment. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
@@ -21,6 +21,7 @@ interfaces carry that, and every other decision hangs off them.
 | `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
+| `api/` | Vercel functions, published at `/api/<name>` off the deployed origin. `rpc.ts` is the only one, and it forwards a single wallet-service method. Not part of the bundle and not reachable in `pnpm dev`. |
 
 ## The two seams
 
@@ -50,13 +51,30 @@ through, so it resolves after connect rather than before.
 
 Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the
 newest open mining round — and both are DSO-signed, so no connected party is a stakeholder of
-either. [`transferContext.ts`](src/backend/transferContext.ts) reads them off Scan's unauthenticated
-API, which is what `VITE_EXPLORER_URL` already points at, and returns the record and the two
-disclosures together, because a write needs both and sending one without the other fails at the
-participant rather than in the model. The record is flat: nesting the round under a `context` key
-fails preprocessing on a missing `openMiningRound`. Which round is *the* round is the highest
-`round.number` whose `opensAt` has passed — a LocalNet answers with none for the first minutes after
-a start, which is a wait rather than a bug.
+either. [`transferContext.ts`](src/backend/transferContext.ts) asks wallet-service for one
+`amulet.tap`, whose `disclosedContracts` carry both, and returns the record and the two disclosures
+together, because a write needs both and sending one without the other fails at the participant
+rather than in the model. The record is flat: nesting the round under a `context` key fails
+preprocessing on a missing `openMiningRound`.
+
+That call is a build-and-discard: `amulet.tap` returns the command it composed and submits nothing,
+so no coin is minted and the answer is only read for its disclosures. It replaced a pair of reads
+against Scan's unauthenticated API, which a browser cannot reach on devnet at all — the SV endpoints
+refuse the origin on the preflight and the validator's scan-proxy wants a bearer. Picking the round
+went with it: tap resolves the active one itself, and a LocalNet whose SV has not opened the first
+round yet fails the call, which is a wait rather than a bug.
+
+Where that call goes is `VITE_WALLET_RPC_URL`. Locally it is wallet-service itself; a deployed build
+sets it to `/api/rpc`, [the app's own function](api/rpc.ts), because an https page cannot call a
+plain-http wallet-service and Node's fetch has no such policy. The function forwards `amulet.tap`
+and nothing else, rebuilding the request rather than relaying it: the dispatcher behind it also
+serves `ledgerApi` and `executePrepared` unauthenticated, and republishing those on the product's
+own domain is the whole reason this is a function and not a blanket rewrite. `vercel.json`'s
+SPA catch-all is scoped away from `/api/` so it cannot answer the route with `index.html`.
+
+The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
+opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
+consume. Every Amulet is DSO-signed, so it is the same party by construction.
 
 ## Creating a grant takes two approvals
 
@@ -88,7 +106,7 @@ given, and consuming one of those is exactly the failure this exists to prevent.
 split created is then found by re-reading the ACS, because the wallet's own answer to a submission
 is an update id and nothing about what it created.
 
-Accept is the one write disclosing something Scan cannot supply: the funder's Amulet, which the
+Accept is the one write disclosing something the transfer context cannot supply: the funder's Amulet, which the
 receiver is no stakeholder of. Its blob is read with `includeCreatedEventBlob` while the funder is
 connected and kept in `localStorage`, written only once the grant is on the ledger — a declined
 prompt must not leave a blob behind for an Amulet no grant is waiting on. Appended rather than
@@ -274,10 +292,10 @@ or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters ins
 `<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
 element.
 
-No id links out at the moment. `VITE_EXPLORER_URL` is still load-bearing — it is the origin
-[`transferContext.ts`](src/backend/transferContext.ts) reads Scan's API from, and every write needs
-that — but no `<Identifier>` is given an `href`, so nothing renders the kit's external-link
-affordance. Restoring it is passing `href={useExplorerLink(EXPLORER)(party)}` again at the call
+No id links out at the moment. `VITE_EXPLORER_URL` names the explorer and nothing else now that the
+transfer context has its own endpoint, and no `<Identifier>` is given an `href`, so nothing renders
+the kit's external-link affordance and `EXPLORER` is exported for a consumer that does not exist
+yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(party)}` again at the call
 sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no
 canonical explorer, and the href stays a per-call-site decision the way the kit's own is optional.
 Counterparty ids go through one component:
@@ -294,7 +312,10 @@ That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
 `VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
 all. [`src/utils/env.ts`](src/utils/env.ts) holds that contract, and is the only module under `src/`
-that runs outside the browser.
+that runs outside the browser. The `.env` it reads is the repo root's, the one file the monorepo
+keeps, and it is loaded with an empty prefix — every key in it, `CANTON_AUTH_SECRET` included — so
+only what `parseEnv` returns may be defined back. Spreading the loaded object would put the signing
+secret in the bundle.
 
 The connect button's copy is the kit's: passed no `children` it renders its own label and swaps it
 for "Connecting…" while a connect is in flight, so neither `ConnectPrompt` nor `TopBar` supplies one.

@@ -231,7 +231,7 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
         ]
   })
 
-type AmuletArg = { amount?: { initialAmount?: string } }
+type AmuletArg = { amount?: { initialAmount?: string }; dso?: string }
 
 // What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
 // `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
@@ -242,6 +242,10 @@ export const amuletValue = (row: AcsRow): string => {
     {}) as AmuletArg
   return amount?.initialAmount ?? '0'
 }
+
+// Read off a holding because a disclosure carries an opaque blob and no payload.
+export const amuletDso = (row: AcsRow): string | undefined =>
+  (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso
 
 // The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
 // else may spend them while it is outstanding.
