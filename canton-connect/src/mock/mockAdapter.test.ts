@@ -56,7 +56,13 @@ describe('createMockAdapter', () => {
     const accounts = await provider.request({ method: 'listAccounts' })
 
     expect(accounts).toHaveLength(1)
-    expect(accounts[0]?.primary).toBe(true)
+    // namespace is what a malformed partyId gives away: it is the fingerprint segment or nothing.
+    expect(accounts[0]).toMatchObject({
+      partyId: 'mock-b::1220abcd',
+      primary: true,
+      hint: 'mock-b::1220abcd',
+      namespace: '1220abcd',
+    })
   })
 
   it('reaches provider subscribers through emit', () => {
