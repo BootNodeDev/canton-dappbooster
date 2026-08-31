@@ -248,7 +248,7 @@ describe('residualMeetsFloor', () => {
     expect(residualMeetsFloor('250.5')).toBe(true)
   })
 
-  // The window Contract_Cancel asserts on: owed is neither zero nor a fundable claim.
+  // The window AmuletVestingContract_Cancel asserts on: owed is neither zero nor a fundable claim.
   it('rejects a residual between zero and the floor', () => {
     expect(residualMeetsFloor('0.0000000001')).toBe(false)
     expect(residualMeetsFloor('0.99')).toBe(false)

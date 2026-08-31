@@ -191,8 +191,8 @@ Still true at 1.5.1, the version pinned here: the entry module touches `window` 
 
 ## Boundaries & conventions
 
-- Wraps `@canton-network/dapp-sdk` and nothing app-specific. No imports from `dapp/` or `canton-barebones/`. Names no wallet.
-- **Import the SDK's types; never hand-copy them.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event constants come from `core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`; today only `testing/fakeWallet.ts` uses them). No `as Parameters<…>` casts.
+- Wraps `@canton-network/dapp-sdk` and nothing app-specific. No imports from `dapp/`. Names no wallet.
+- **Import the SDK's types; never hand-copy them.** Hook params are the SDK's own (`PrepareExecuteParams`, `LedgerApiParams`); event constants come from `core-types` (`WalletEvent`, `CANTON_*_PROVIDER_EVENT`). No `as Parameters<…>` casts.
 - No SDK-import quarantine — the package is a thin SDK wrapper throughout (the old `core`/`connectors` split it served was cancelled by adopting the facade).
 
 ## Deferred

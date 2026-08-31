@@ -1,11 +1,9 @@
-import { useExplorerLink } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CounterpartyId } from '@/components/CounterpartyId'
 import { CurvePill } from '@/components/CurvePill'
-import { GrantClaimed } from '@/components/GrantClaimed'
 import { GrantLock } from '@/components/GrantLock'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
@@ -15,7 +13,6 @@ import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
-import { EXPLORER } from '@/utils/config'
 import { formatDate, formatPct, relativeTime } from '@/utils/format'
 import { nextMilestone } from '@/utils/schedule'
 
@@ -68,7 +65,6 @@ export const GrantCard = ({
   const curve = grant.schedule.curve
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
-  const explorerLink = useExplorerLink(EXPLORER)
   const meta = scheduleMeta(grant, derived, nowMs)
 
   return (
@@ -92,11 +88,7 @@ export const GrantCard = ({
           <GrantStatusPill status={derived.status} />
         </div>
         <div className="mt-2.5 font-mono text-xs text-fg-soft">
-          <CounterpartyId
-            party={counterparty}
-            incoming={role === 'receiver'}
-            href={explorerLink(counterparty)}
-          />
+          <CounterpartyId party={counterparty} incoming={role === 'receiver'} />
         </div>
       </div>
 
@@ -139,9 +131,7 @@ export const GrantCard = ({
                 className="text-xl font-semibold text-success"
               />
             </div>
-            {derived.fullyClaimed ? (
-              <GrantClaimed className="justify-center" />
-            ) : derived.locked ? (
+            {derived.locked ? (
               <GrantLock className="justify-center" />
             ) : (
               <Button

@@ -1,8 +1,10 @@
 # @canton-dappbooster/frontend — Canton Coin vesting dApp
 
-dApp for **Canton Coin vesting**: propose a grant, the beneficiary accepts, claim as it
-vests, or cancel into a residual claim. Grants render live vested/claimable figures from
-the pure schedule math in [`src/utils/schedule.ts`](src/utils/schedule.ts).
+dApp for **Canton Coin vesting**: propose a grant, the receiver accepts, claim as it
+vests, or cancel into a residual claim. Accepting locks the funder's Canton Coin in an
+Amulet escrow and each claim releases part of it, so the figures on screen are real
+holdings; grants render live vested/claimable figures from the pure schedule math in
+[`src/utils/schedule.ts`](src/utils/schedule.ts).
 
 Every read and every write goes through the connected CIP-0103 wallet, so the app acts as
 the wallet's primary account and each write raises a real approval prompt. There is no
@@ -10,18 +12,20 @@ mock mode: without a deployment config and a wallet session the pages show a con
 placeholder. See the root [README](../../README.md) for the wider stack.
 
 > The frontend was imported from `cn-dappbooster@feat/vesting-lite` — see
-> [`PROVENANCE.md`](PROVENANCE.md). The DAML package it speaks to now lives in
-> [`../daml/vesting-lite`](../daml/vesting-lite).
+> [`PROVENANCE.md`](PROVENANCE.md). The DAML package it speaks to lives in
+> [`../daml`](../daml).
 
 ## Run
 
-From the repo root (one `pnpm install` links every workspace):
+The app needs a Canton LocalNet, wallet-service on port 3010 and the vesting DAR deployed
+before it renders anything; the root [README](../../README.md) is the whole bring-up. Once
+that is up, from the repo root (one `pnpm install` links every workspace):
 
 ```bash
-pnpm run canton:up
-pnpm run deploy-dar -- canton-barebones/dars/vesting-lite-0.0.1.dar
-node scripts/bootstrap-vesting-lite.mjs   # creates the operator and its factory
-pnpm run app:dev                          # → http://localhost:3012
+pnpm run build-dar
+pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
+pnpm run bootstrap   # creates the operator and its factory
+pnpm run app:dev     # → http://localhost:3012
 ```
 
 The bootstrap writes nothing. It leaves the operator and the factory on the ledger, and the dApp

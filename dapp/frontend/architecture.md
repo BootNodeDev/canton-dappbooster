@@ -12,29 +12,30 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LiteBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, and `config.ts`, which loads the deployment. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which reads the Amulet context off Scan, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
 | `src/components/` | What two or more places render: the shell, the top bar, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
-| `src/pages/` | Dashboard, proposals and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
+| `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
 
 ## The two seams
 
 **`VestingBackend`** ([`src/backend/VestingBackend.ts`](src/backend/VestingBackend.ts)) is what the
-UI depends on. It speaks grants, proposals, and claims — never DAML templates, contract payloads, or
-transport. `LiteBackend` satisfies it against the `vesting-lite` DAML package. Because the mappers
-that turn active-contract rows into domain types live behind this interface, no component knows the
-ledger exists.
+UI depends on. It speaks grants, pending grants, and claims — never DAML templates, contract payloads,
+or transport. `LedgerBackend` satisfies it against the `amulet-vesting` DAML package; it is named
+for the thing it reaches rather than for that package, so re-pointing it at another model is not a
+rename. Because the mappers that turn active-contract rows into domain types live behind this
+interface, no component knows the ledger exists.
 
 **`WalletFns`** ([`src/backend/wallet.ts`](src/backend/wallet.ts)) is the narrower one: the two
-session calls `LiteBackend` makes, `execute` and `ledgerApi`, injected as plain functions rather
-than implemented by a class. They come straight from `canton-connect`'s `useExecute` and `useLedger`,
-which is why they are injected at all: hooks cannot be called from a class, and `LiteBackend`'s unit
-tests need it constructible without React.
+session calls `LedgerBackend` makes, `execute` and `ledgerApi`, injected as plain functions rather
+than implemented by a class. They come straight from `canton-connect`'s `useExecute` and
+`useLedger`, which is why they are injected at all: hooks cannot be called from a class, and
+`LedgerBackend`'s unit tests need it constructible without React.
 
 Both halves of the pairing are runtime state. The deployment comes from
 [`config.ts`](src/backend/config.ts), which reads it off the ledger through that same `ledgerApi`:
@@ -44,6 +45,67 @@ Nothing is configured, so nothing can go stale against the participant the walle
 Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
 nothing to query and without the blob there is no factory to disclose. It needs a session to read
 through, so it resolves after connect rather than before.
+
+## What a write has to carry
+
+Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the
+newest open mining round — and both are DSO-signed, so no connected party is a stakeholder of
+either. [`transferContext.ts`](src/backend/transferContext.ts) reads them off Scan's unauthenticated
+API, which is what `VITE_EXPLORER_URL` already points at, and returns the record and the two
+disclosures together, because a write needs both and sending one without the other fails at the
+participant rather than in the model. The record is flat: nesting the round under a `context` key
+fails preprocessing on a missing `openMiningRound`. Which round is *the* round is the highest
+`round.number` whose `opensAt` has passed — a LocalNet answers with none for the first minutes after
+a start, which is a wait rather than a bug.
+
+## Creating a grant takes two approvals
+
+A pending grant records the contract ids of the Amulets its Accept will lock, and that Accept
+consumes exactly those. So two grants may never name the same Amulet: accepting one archives it and
+leaves the other permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch` before the transfer
+even runs. Which means each grant needs an Amulet of its own, and `createVesting` makes one — the
+funder self-transfers `totalAmount` through `AmuletRules_Transfer`, and the grant names only what
+that produced.
+
+That is two submissions and so two wallet prompts, and it cannot be one. Commands in a single Daml
+transaction carry fixed arguments, so the second cannot name a contract the first will create;
+composing an output into the next input is what a *choice* is for, and adding one is a change to the
+DAML rather than to this app.
+
+The split is exact because Splice values an Amulet input at its full `initialAmount` —
+`summarizeAndConsumeInput` sums that field, and the holding fee is charged only by `Amulet_Expire`.
+An Amulet therefore does not decay out from under a grant while it waits, so no headroom has to be
+guessed at, and `amuletValue` is a field read rather than a calculation. `sender`, `provider` and the
+one output's `receiver` are all the funder, which is what makes the funder the whole of
+`transferControllers` and keeps this a one-signature submission needing nothing from the operator.
+`AmuletRules_Transfer` also refuses a submission that does not name the DSO it expects, so
+`fetchTransferContext` returns the DSO party and the resolved rules template id alongside the
+context.
+
+Whatever an outstanding grant already pledged is kept out of the split's inputs, read off the
+funder's own pending-grant rows rather than remembered locally: a transfer consumes everything it is
+given, and consuming one of those is exactly the failure this exists to prevent. The Amulet the
+split created is then found by re-reading the ACS, because the wallet's own answer to a submission
+is an update id and nothing about what it created.
+
+Accept is the one write disclosing something Scan cannot supply: the funder's Amulet, which the
+receiver is no stakeholder of. Its blob is read with `includeCreatedEventBlob` while the funder is
+connected and kept in `localStorage`, written only once the grant is on the ledger — a declined
+prompt must not leave a blob behind for an Amulet no grant is waiting on. Appended rather than
+replacing, since every outstanding grant's own Amulet has to stay disclosable.
+
+Which of those blobs a given Accept sends is read off the ledger, not guessed: the receiver is an
+observer of the grant, so `accept` fetches it and discloses exactly the `amuletCids` it names, then
+drops them, since that submission archived them. Sending the whole store instead would re-disclose
+Amulets earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
+missing blob from an unrelated one — the difference between a sentence naming the problem and an
+opaque participant rejection. It is a browser-local hand-off between two wallet accounts, which is
+what the demo is; a receiver on another machine has no way to disclose it and `accept` says so
+rather than submitting a rejection.
+
+A filter always names a template by package name (`#amulet-vesting:AmuletVesting:…`) and a command
+always by the resolved id the deployment carries. The participant rejects each in the other's
+position, the filter loudly with `INVALID_FIELD`.
 
 ## Data flow
 
@@ -81,11 +143,19 @@ write is only real once the ledger has it and the read is the only thing that kn
 every row when the party goes, because the rows were that party's.
 
 A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
-`Contract_Claim` archives the contract and re-creates it with `claimed` raised, so a claim changes
-the id of the grant it acted on. `grantLineage` is that identity — everything the choice preserves —
-and it is what the withdraw history keys on and what `withdraw` uses to hand the grant-detail page
-its successor's id, so a URL survives a claim rather than becoming "Grant not found". `Contract_Cancel`
-archives for good, and the page navigates away instead.
+`AmuletVestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
+raised, so a claim changes the id of the grant it acted on. `grantLineage` is that identity —
+everything the choice preserves — and it is what the withdraw history keys on and what `withdraw`
+uses to hand the grant-detail page its successor's id, so a URL survives a claim rather than
+becoming "Grant not found".
+
+A withdraw that drains the escrow is the exception: it creates no successor, because the contract's
+`ensure alreadyWithdrawn < totalAmount` is strict and a zero-backing successor would hold a
+zero-amount `LockedAmulet`. So the grant is archived, exactly as `AmuletVestingContract_Cancel`
+archives it, and the page navigates away for both rather than sitting on an id the next read will
+not return. That is why there is no drained-grant state anywhere in the UI: a fully claimed grant
+cannot be in the ACS, so nothing can render it. Showing one would mean reconstructing it from the
+update stream, and the drain emits no `CreatedEvent` to reconstruct it from.
 
 ## Where the numbers come from
 
@@ -171,14 +241,32 @@ on nothing else of the kit's. So the field's `balance` is the ceiling, while bot
 app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
 about the *remainder* and so about two amounts at once.
 
-Only one form has a ceiling, and it is the claim dialog's: the grant's own `claimable`, which is
-real ledger state. The create form passes no `balance`, so `validateAmount` applies no `max` there
-and the field renders the kit's own no-balance display, `Balance: 0` with `Max` disabled. That is
-accurate rather than a placeholder: `vesting-lite` locks an *amount*, moves no holding, and so
-takes nothing from the funder that a balance could bound. A real ceiling arrives with Amulet-backed
-vesting, and a Canton balance is a set of holding contracts rather than a scalar — CIP-0056 and
-CIP-0112 can mix within one party — so what lands then is a party-scoped async read summed exactly,
-not a number.
+The two amounts the floor spans are not the ceiling's. A withdraw re-locks whatever it leaves in the
+escrow, and the escrow backs the unvested part of the grant too, so the floor is measured against
+`grantBacking` while the ceiling stays `deriveGrant`'s `claimable`. Measuring both against
+`claimable` refuses amounts the ledger takes, and offers the last claim before full vesting, which
+the ledger aborts on. `grantBacking` sits beside `deriveGrant` rather than inside it, like
+`claimAvailable`: it does not move with the clock. A residual claim carries no schedule, so its two
+are the same amount and `Claim`'s `backing` prop defaults to `available`.
+
+Only the claim dialog has a ceiling, and it is the grant's own `claimable`. The create form has a
+balance without one: `VestingBackend.balanceOf` reads what the funder holds and the field offers it
+through `Max`, but `validateAmount` is called with no `max`, so a larger amount is neither flagged
+nor blocked and the split refuses it instead, naming what is actually free. That is also why the
+field's `aria-invalid` is passed in rather than left to the kit, which would flag an amount above
+the `balance` it was given.
+
+A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
+summed. It reports what a grant could actually spend rather than what the party owns, over the same
+set `splitOff` will draw from: coin already escrowed is a `LockedAmulet` and so out by template, and
+coin an outstanding grant pledged is out because spending it would leave that grant unacceptable.
+The two agreeing is the point — a `Max` that offered more would put an amount in the field that the
+next step always refuses. The read runs once, on mount: nothing the form does moves the funder's
+coin.
+
+The amount field shows no validation message at all for now, which is why nothing words
+`MIN_GRANT_AMOUNT` or a bad decimal to the user; both still gate `Continue`. `AMOUNT_ERROR_TEXT`
+stays because the claim dialog renders it.
 
 Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
 element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
@@ -186,14 +274,16 @@ or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters ins
 `<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
 element.
 
-The explorer those ids link to is the app's to supply: Canton has no canonical one, so the kit
-composes URLs only from an `ExplorerConfig`. [`src/utils/config.ts`](src/utils/config.ts) holds that
-config as a literal baked in at build time from `VITE_EXPLORER_URL`, not parsed at startup, and the
-kit's `useExplorerLink` turns it into hrefs. Counterparty ids go through one component:
+No id links out at the moment. `VITE_EXPLORER_URL` is still load-bearing — it is the origin
+[`transferContext.ts`](src/backend/transferContext.ts) reads Scan's API from, and every write needs
+that — but no `<Identifier>` is given an `href`, so nothing renders the kit's external-link
+affordance. Restoring it is passing `href={useExplorerLink(EXPLORER)(party)}` again at the call
+sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no
+canonical explorer, and the href stays a per-call-site decision the way the kit's own is optional.
+Counterparty ids go through one component:
 [`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
-the direction-specific label, and the copy toast, and `GrantCard` and `ProposalCard` render it. The
-href stays a per-call-site decision, the way the kit's own `href` is optional: linking an id to an
-explorer is a choice each surface makes, not something the app does everywhere. Every `<Identifier>`
+the direction-specific label, and the copy toast, and `GrantCard` and `PendingGrantCard` render it.
+Every `<Identifier>`
 the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
 would double-announce. That one region has to move: `Modal` opens a native `<dialog>` with
 `showModal()`, which inerts everything outside the dialog's subtree, so a toast raised over an open

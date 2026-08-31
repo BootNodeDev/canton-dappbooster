@@ -2,32 +2,40 @@
 #
 # dev-stack.sh — start or stop the local Canton dApp stack.
 #
-# The CIP-0103 browser wallet lives outside this repository and is run from
-# there. This script brings up everything the wallet talks to: the Splice
-# LocalNet containers, wallet-service, and the dApp frontend.
+# The same sequence as README.md, in one command. The CIP-0103 browser wallet
+# lives outside this repository and is run from there; this script brings up
+# everything the wallet talks to: the LocalNet, wallet-service and the dApp.
+#
+# The LocalNet belongs to @bootnodedev/canton-barebones, pinned in the root
+# package.json and driven from the directory holding its config. `up` scaffolds that
+# directory itself, at the gitignored ./.canton-localnet; point elsewhere with a
+# second argument or with CANTON_LOCALNET_DIR, in that order of precedence.
 #
 # Docker lifecycle is managed separately from the stack: start/quit Docker with
 # `docker-up` / `docker-down` (macOS only), the Docker app, or your CLI. `up`
 # and `down` assume Docker is already running and never start or quit it.
 #
 # Usage:
-#   ./scripts/dev-stack.sh             # interactive arrow-key menu (default)
-#   ./scripts/dev-stack.sh menu        # same as above
+#   ./scripts/dev-stack.sh [dir]       # interactive arrow-key menu (default)
+#   ./scripts/dev-stack.sh menu [dir]  # same as above
 #   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (pnpm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
-#   ./scripts/dev-stack.sh up          # start the stack (containers, DAR, dApp dev server)
-#   ./scripts/dev-stack.sh down        # stop the dApp dev server and tear down containers
+#   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, wallet-service, bootstrap, dApp)
+#   ./scripts/dev-stack.sh down [dir]  # stop wallet-service + the dApp dev server, stop the LocalNet
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
-#   ./scripts/dev-stack.sh status      # show what is currently running
+#   ./scripts/dev-stack.sh status [dir] # show what is currently running
+#
+# [dir] is the LocalNet directory, and every menu action uses it.
 #
 # What `up` starts (in order; Docker must already be running):
-#   1. Splice LocalNet bundle + wallet-service containers (pnpm run canton:up)
-#   2. Health checks (canton + wallet-service)
-#   3. Builds and deploys the vesting DAR (name derived from daml.yaml), then
-#      bootstraps the operator + factory config
-#   4. dApp frontend dev server     -> http://localhost:3012  (background)
+#   1. LocalNet containers           (canton-barebones start)
+#   2. Builds and deploys the vesting DAR (name derived from daml.yaml)
+#   3. wallet-service                -> http://localhost:3010  (background)
+#   4. Bootstraps the vesting operator and its factory
+#   5. dApp frontend dev server      -> http://localhost:3012  (background)
 #
-# `down` reverses 4 (kills the dApp dev server) and tears down the containers.
+# `down` reverses 5 and 3 (kills both background processes) and stops the
+# LocalNet, keeping its volumes.
 
 set -euo pipefail
 
@@ -39,9 +47,14 @@ cd "$ROOT_DIR"
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
+WS_LOG="$RUN_DIR/wallet-service.log"
+WS_PID="$RUN_DIR/wallet-service.pid"
+
+# Resolved in up(), once ./.env has been read.
+JSON_API_URL=""
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="dapp/daml/vesting-lite"
+DAML_DIR="dapp/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
@@ -54,6 +67,27 @@ case "$DAR_NAME" in
   -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
 esac
 
+ACTION="${1:-menu}"
+LOCALNET_ARG="${2:-}"
+
+# A bare `dev-stack.sh <dir>` opens the menu against that directory, which is how the stack
+# is normally driven. Only a path-shaped first argument is read that way, so a mistyped
+# subcommand still fails instead of silently opening the menu.
+case "$ACTION" in
+  menu | install | docker-up | docker-down | up | down | status) ;;
+  /* | ./* | ../* | ~*) LOCALNET_ARG="$ACTION"; ACTION=menu ;;
+  *)
+    [ -d "$ACTION" ] \
+      || die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status} [localnet-dir]"
+    LOCALNET_ARG="$ACTION"
+    ACTION=menu
+    ;;
+esac
+
+LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
+# A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
+LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
+
 wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   local timeout="$1" file="$2" pattern="$3" label="$4" i
   for ((i = 0; i < timeout; i++)); do
@@ -64,6 +98,34 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   done
   warn "$label did not report ready within ${timeout}s (check $file)"
   return 1
+}
+
+# `any` waits only out curl's 000 ("could not connect"), so an auth rejection from a
+# participant still counts as up; `ok` demands 2xx, which is what tells our own service
+# apart from something unrelated holding the same port. Budgets are wall-clock, not
+# iterations: a socket that accepts TCP without answering costs the full -m per probe.
+wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
+  local timeout="$1" url="$2" label="$3" mode="$4" deadline code
+  deadline=$((SECONDS + timeout))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    code="$(curl -s -o /dev/null -m 2 -w '%{http_code}' "$url" 2>/dev/null || true)"
+    case "$mode" in
+      any) [ "$code" != "000" ] && return 0 ;;
+      ok) [ "${code:0:1}" = 2 ] && return 0 ;;
+    esac
+    sleep 1
+  done
+  warn "$label did not answer at $url within ${timeout}s"
+  return 1
+}
+
+# Returns non-zero rather than exiting, so `down` still stops the host processes and
+# `status` still prints the ports when the LocalNet itself is unreachable.
+localnet() { # localnet <start|stop|reset|status|logs> [args…]
+  # The CLI reads canton-barebones.config.json from its own cwd, so it runs in the LocalNet
+  # directory; the binary is spelled by path because `pnpm exec` resolves from cwd and finds
+  # nothing once that directory sits outside the workspace.
+  ( cd "$LOCALNET_DIR" && "$ROOT_DIR/node_modules/.bin/canton-barebones" "$@" )
 }
 
 install_deps() { # one root pnpm install links every workspace
@@ -103,6 +165,25 @@ docker_down() { # macOS only — quit Docker Desktop
     || warn "Could not quit Docker Desktop (already closed?)"
 }
 
+# wallet-service ships from BootNodeDev/canton-wallet-service and runs on the host.
+# It loads dotenv from its working directory, which is the repo root here, so the
+# LocalNet URLs its container used to receive come from ./.env.
+start_wallet_service() {
+  if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
+    warn "Port 3010 already in use; skipping wallet-service."
+  else
+    log "Starting wallet-service -> http://localhost:3010"
+    nohup pnpm exec canton-wallet-service >"$WS_LOG" 2>&1 &
+    echo $! >"$WS_PID"
+  fi
+
+  # A 2xx /health is the only gate: it proves readiness on its own, it also catches
+  # something unrelated holding 3010 (bootstrap goes through /rpc and would fail
+  # obscurely), and it does not pin us to a log string another repo owns.
+  wait_for_http 60 "http://localhost:3010/health" "wallet-service" ok \
+    || die "wallet-service is not answering on 3010 (log: $WS_LOG)."
+}
+
 up() {
   mkdir -p "$RUN_DIR"
 
@@ -115,58 +196,76 @@ up() {
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
 
-  # build-dar.sh needs dpm; check here so a missing SDK fails before the
+  # The DAR build needs dpm; check here so a missing SDK fails before the
   # containers come up rather than after.
   command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH. Install the DAML SDK (3.4.11) — see README 'Installation' — then run 'up'."
+    || die "dpm not found on PATH. Install the DAML SDK (3.4.11), then run 'up'."
 
-  # canton .env (README step) — create from example if missing.
-  if [ ! -f canton-barebones/.env ]; then
-    log "Creating canton-barebones/.env from .env.example"
-    cp canton-barebones/.env.example canton-barebones/.env
-  fi
+  # ./.env is wallet-service's whole configuration, the mint recipe and the DAR
+  # upload token. Minting is offline, so this needs nothing running.
+  [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
 
-  # Splice LocalNet requires CANTON_BACKEND_TOKEN; splice-common.sh's
-  # require_backend_token hard-fails without it.
-  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' canton-barebones/.env; then
-    log "CANTON_BACKEND_TOKEN already set in canton-barebones/.env."
+  # After the copy, because mint-token.mjs reads the recipe from .env; before the source
+  # below, or the shell would carry the empty entry .env.example ships with.
+  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' .env; then
+    log "CANTON_BACKEND_TOKEN already set in .env."
   else
-    log "Minting CANTON_BACKEND_TOKEN for the LocalNet wallet-service..."
+    log "Minting CANTON_BACKEND_TOKEN for wallet-service..."
     local token_line tmp_env
     # mint-token.mjs prints a full 'CANTON_BACKEND_TOKEN=<jwt>' line; capture it
     # without echoing the secret to the terminal.
-    token_line="$(pnpm run canton:token -- ledger-api-user 2>/dev/null \
+    token_line="$(pnpm run mint-token 2>/dev/null \
       | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
       | sed -E 's/^[[:space:]]*//')" || true
     [ -n "$token_line" ] \
-      || die "Failed to mint CANTON_BACKEND_TOKEN (pnpm run canton:token -- ledger-api-user). Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in canton-barebones/.env."
-    # Replace any existing (empty) entry, else append — never print the token.
+      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in .env."
+    # Replace the existing (empty) entry, else append — never print the token.
     tmp_env="$(mktemp)"
-    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' canton-barebones/.env >"$tmp_env" || true
+    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' .env >"$tmp_env" || true
     printf '%s\n' "$token_line" >>"$tmp_env"
-    mv "$tmp_env" canton-barebones/.env
-    log "Wrote CANTON_BACKEND_TOKEN to canton-barebones/.env."
+    mv "$tmp_env" .env
+    log "Wrote CANTON_BACKEND_TOKEN to .env."
   fi
 
-  # 1. Containers
-  log "Bringing up the Splice LocalNet bundle + wallet-service containers..."
-  pnpm run canton:up
+  # Read it here rather than defaulting the URLs again, so the file every other step
+  # resolves config from also moves this readiness probe. A caller-exported value wins,
+  # matching deploy-dar.sh and mint-token.mjs; nothing is exported, because each step
+  # reads .env for itself and only the mint recipe would travel.
+  local preset_json_api_url="${CANTON_JSON_API_URL:-}"
+  # shellcheck disable=SC1091
+  source .env
+  JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
-  # 2. Health
-  log "Checking Canton health..."
-  pnpm run canton:health
-  log "Checking wallet-service health..."
-  pnpm run wallet-service:health && echo
+  # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
+  # tool's own template, and re-scaffolded when that template moves past it.
+  log "Preparing the LocalNet config in $LOCALNET_DIR..."
+  node scripts/localnet-config.mjs "$LOCALNET_DIR" \
+    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
-  # 3. Build + deploy the DAR, then bootstrap the operator and its factory
+  # 1. LocalNet. `canton-barebones start` is `docker compose up -d`, so it returns as
+  # soon as the containers exist; Splice takes minutes more to answer, and the DAR
+  # upload below would die on a refused connection without this wait.
+  log "Starting the LocalNet from $LOCALNET_DIR..."
+  localnet start || die "LocalNet did not start."
+  log "Waiting for the app-user JSON API on $JSON_API_URL..."
+  wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
+    || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
+
+  # 2. Build + deploy the DAR, which needs the participant but not wallet-service. The build
+  # fetches the Splice DARs amulet-vesting data-depends on the first time, and after a Splice bump.
   log "Building the $DAR_NAME DAR..."
-  pnpm run build-dar -- "$DAML_DIR"
+  pnpm run build-dar
   log "Deploying $DAR_PATH to Canton..."
   pnpm run deploy-dar -- "$DAR_PATH"
-  log "Bootstrapping the vesting operator and factory..."
-  node scripts/bootstrap-vesting-lite.mjs
 
-  # 4. dApp frontend dev server (3012)
+  # 3. wallet-service (3010)
+  start_wallet_service
+
+  # 4. Bootstrap, which goes through wallet-service's /rpc
+  log "Bootstrapping the vesting operator and factory..."
+  pnpm run bootstrap
+
+  # 5. dApp frontend dev server (3012)
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3012 already in use; skipping dApp dev server."
   else
@@ -179,10 +278,10 @@ up() {
   echo
   log "Stack is up:"
   cat <<EOF
-   wallet-service          http://localhost:3010
+   wallet-service          http://localhost:3010   (log: $WS_LOG)
    dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
    app-user wallet UI      http://wallet.localhost:2000
-   app-user JSON API       http://localhost:2975
+   app-user JSON API       $JSON_API_URL
    app-user Ledger API     grpc://localhost:2901
    app-user Validator API  http://localhost:2903
    Scan UI                 http://scan.localhost:4000
@@ -207,18 +306,21 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
 }
 
 down() {
-  # 1. Dev servers
+  # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
   # Belt-and-suspenders: kill any stray vite on our port.
   pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
+  stop_pidfile "$WS_PID" "wallet-service"
+  pkill -f "canton-wallet-service" 2>/dev/null || true
 
-  # 2. Containers (only if the daemon is reachable). Docker itself is left
+  # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
+  # survives; drop them with 'canton-barebones reset'. Docker itself is left
   # running — quit it separately with 'docker-down', the app, or your CLI.
   if docker info >/dev/null 2>&1; then
-    log "Tearing down Canton containers..."
-    pnpm run canton:down || warn "canton:down reported an error"
+    log "Stopping the LocalNet..."
+    localnet stop || warn "canton-barebones stop reported an error"
   else
-    warn "Docker daemon not reachable; skipping canton:down"
+    warn "Docker daemon not reachable; skipping the LocalNet stop"
   fi
 
   echo
@@ -228,9 +330,6 @@ down() {
   else
     echo "   (all free)"
   fi
-  log "LocalNet containers:"
-  docker ps --filter "name=canton-barebones" --format '   {{.Names}}  {{.Status}}' 2>/dev/null \
-    || echo "   (docker daemon not running)"
 }
 
 menu() {
@@ -245,8 +344,8 @@ menu() {
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start containers, build + deploy DAR, dev server"
-    "stop dApp dev server + tear down containers"
+    "start LocalNet, deploy DAR, wallet-service, bootstrap, dApp"
+    "stop wallet-service + dApp dev server, stop the LocalNet"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -311,19 +410,21 @@ menu() {
 }
 
 status() {
-  log "LocalNet containers (canton-barebones compose project):"
-  docker ps --filter "name=canton-barebones" --format '   {{.Names}}  {{.Status}}' 2>/dev/null \
-    || echo "   (docker daemon not running)"
+  log "LocalNet:"
+  if docker info >/dev/null 2>&1; then
+    localnet status || warn "canton-barebones status reported an error"
+  else
+    echo "   (docker daemon not running)"
+  fi
   log "Dev-server ports 3010-3012:"
   if lsof -nP -iTCP:3010-3012 -sTCP:LISTEN >/dev/null 2>&1; then
     lsof -nP -iTCP:3010-3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (none)"
   fi
-  echo "   Backend health: run 'pnpm run canton:health'"
 }
 
-case "${1:-menu}" in
+case "$ACTION" in
   menu)        menu ;;
   install)     install_deps ;;
   docker-up)   docker_up ;;
@@ -331,5 +432,4 @@ case "${1:-menu}" in
   down)        down ;;
   docker-down) docker_down ;;
   status)      status ;;
-  *)           die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status}" ;;
 esac

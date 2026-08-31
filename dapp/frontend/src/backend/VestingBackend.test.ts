@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { encodeSchedule } from '@/backend/commands'
 import {
+  amuletValue,
   claimChain,
   composeNote,
   lastUpdateOffset,
   rowToClaim,
   rowToGrant,
-  rowToProposal,
+  rowToPendingGrant,
   splitNote,
   updatesToClaims,
 } from '@/backend/VestingBackend'
@@ -43,19 +44,19 @@ describe('splitNote / composeNote', () => {
   })
 })
 
-describe('rowToProposal', () => {
-  it('maps proposer→proposer, beneficiary→receiver, decodes the schedule, splits the note', () => {
-    const proposal = rowToProposal(
+describe('rowToPendingGrant', () => {
+  it('maps proposer→proposer, receiver→receiver, decodes the schedule, splits the note', () => {
+    const pendingGrant = rowToPendingGrant(
       row('p1', {
         provider: 'OP',
         proposer: 'funder',
-        beneficiary: 'receiver',
-        total: '1000.0000000000',
+        receiver: 'receiver',
+        totalAmount: '1000.0000000000',
         schedule: linearEncoded,
         note: 'Advisor grant\n24-month linear',
       }),
     )
-    expect(proposal).toEqual({
+    expect(pendingGrant).toEqual({
       id: 'p1',
       title: 'Advisor grant',
       provider: 'OP',
@@ -72,19 +73,19 @@ describe('rowToProposal', () => {
   })
 
   it('returns undefined when the createArgument is absent', () => {
-    expect(rowToProposal({})).toBeUndefined()
+    expect(rowToPendingGrant({})).toBeUndefined()
   })
 })
 
 describe('rowToGrant', () => {
-  it('maps a contract row, parsing claimed and using proposer as creator', () => {
+  it('maps a contract row, parsing alreadyWithdrawn and using creator as the funder', () => {
     const grant = rowToGrant(
       row('c1', {
         provider: 'OP',
-        proposer: 'funder',
-        beneficiary: 'receiver',
-        total: '1000',
-        claimed: '250',
+        creator: 'funder',
+        receiver: 'receiver',
+        totalAmount: '1000',
+        alreadyWithdrawn: '250',
         schedule: linearEncoded,
         note: 'Core grant',
       }),
@@ -103,14 +104,14 @@ describe('rowToGrant', () => {
       rowToGrant(
         row('c2', {
           provider: 'OP',
-          proposer: 'funder',
-          beneficiary: 'receiver',
-          total: '1000',
-          claimed: 250, // wrong shape: a Daml Numeric always arrives as a string
+          creator: 'funder',
+          receiver: 'receiver',
+          totalAmount: '1000',
+          alreadyWithdrawn: 250, // wrong shape: a Daml Numeric always arrives as a string
           schedule: linearEncoded,
         }),
       ),
-    ).toThrow(/c2.*claimed/)
+    ).toThrow(/c2.*alreadyWithdrawn/)
   })
 
   it('throws on a string that is not a decimal, which would parse to zero downstream', () => {
@@ -118,14 +119,14 @@ describe('rowToGrant', () => {
       rowToGrant(
         row('c3', {
           provider: 'OP',
-          proposer: 'funder',
-          beneficiary: 'receiver',
-          total: '1e3', // right shape, unparseable value
-          claimed: '250',
+          creator: 'funder',
+          receiver: 'receiver',
+          totalAmount: '1e3', // right shape, unparseable value
+          alreadyWithdrawn: '250',
           schedule: linearEncoded,
         }),
       ),
-    ).toThrow(/c3.*total/)
+    ).toThrow(/c3.*totalAmount/)
   })
 })
 
@@ -134,8 +135,8 @@ describe('rowToClaim', () => {
     const claim = rowToClaim(
       row('r1', {
         provider: 'OP',
-        proposer: 'funder',
-        beneficiary: 'receiver',
+        creator: 'funder',
+        receiver: 'receiver',
         amount: '500',
         withdrawn: '100',
         note: 'Residual\nfrom cancelled grant',
@@ -169,8 +170,8 @@ const claimUpdate = (
         events: [
           {
             ExercisedEvent: {
-              choice: 'Contract_Claim',
-              choiceArgument: { amount },
+              choice: 'AmuletVestingContract_Withdraw',
+              choiceArgument: { withdrawAmount: amount },
               contractId: replaces,
             },
           },
@@ -179,10 +180,10 @@ const claimUpdate = (
               contractId: successor,
               createArgument: {
                 provider: 'OP',
-                proposer: 'funder',
-                beneficiary: 'receiver',
-                total: '1000',
-                claimed,
+                creator: 'funder',
+                receiver: 'receiver',
+                totalAmount: '1000',
+                alreadyWithdrawn: claimed,
                 schedule: linearEncoded,
                 note: 'Advisor grant',
               },
@@ -260,5 +261,17 @@ describe('lastUpdateOffset', () => {
   it('is undefined for an empty or non-array page, so paging stops', () => {
     expect(lastUpdateOffset([])).toBeUndefined()
     expect(lastUpdateOffset(undefined)).toBeUndefined()
+  })
+})
+
+describe('amuletValue', () => {
+  const amulet = (initialAmount: string) => row('a1', { amount: { initialAmount } })
+
+  it('is the face amount, which is what a transfer credits an input at', () => {
+    expect(amuletValue(amulet('100.0000000000'))).toBe('100.0000000000')
+  })
+
+  it('reads a row it cannot decode as nothing, so a balance never blanks', () => {
+    expect(amuletValue(row('a1', {}))).toBe('0')
   })
 })

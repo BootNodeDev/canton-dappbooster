@@ -13,14 +13,22 @@ import { CC } from '@/utils/tokens'
 
 interface ClaimProps {
   available: string
+  backing: string
   onClose: () => void
   onConfirm: (amount: string) => Promise<void>
   title: string
 }
 
-// Amount-entry dialog shared by grant withdraw and residual claim. Enforces the re-lock floor: the
-// remainder must be zero or at least MIN_GRANT_AMOUNT.
-export const Claim = ({ onClose, title, available, onConfirm }: ClaimProps): React.JSX.Element => {
+// Amount-entry dialog shared by grant withdraw and residual claim. `available` is the ceiling and
+// `backing` the escrow the re-lock floor is measured against; a residual claim has no schedule, so
+// for it they are one amount.
+export const Claim = ({
+  onClose,
+  title,
+  available,
+  backing,
+  onConfirm,
+}: ClaimProps): React.JSX.Element => {
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -28,7 +36,7 @@ export const Claim = ({ onClose, title, available, onConfirm }: ClaimProps): Rea
   // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
   // already accepted (and vice versa) until the user typed again. Same bounds the field uses.
   const amountError = validateAmount(raw, { max: available })
-  const floorOk = meetsRelockFloor(available, raw)
+  const floorOk = meetsRelockFloor(backing, raw)
   // The kit's error wins when both apply, so the two sentences are never shown at once.
   const message =
     amountError !== undefined
