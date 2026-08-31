@@ -1,5 +1,5 @@
-// Restored sessions: what a mount-restore wires, what connect() must tear down first,
-// and what survives a failed or abandoned connect on top of a live session.
+// Restored sessions: what a mount-restore wires, that connect() leaves a standing session
+// alone, and what survives a failed or abandoned connect around one.
 
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -82,7 +82,7 @@ describe('CantonConnectProvider restored sessions', () => {
     wallet.dispose()
   })
 
-  it('clears isLocked when connect() succeeds after the wallet locked', async () => {
+  it('leaves a locked session alone when connect() is called', async () => {
     persistRestorableSession('browser:ext:wallet-a')
 
     const wallet = walletA()
@@ -97,17 +97,27 @@ describe('CantonConnectProvider restored sessions', () => {
 
     await waitFor(() => expect(result.current.isLocked).toBe(true))
 
+    const connectSpy = vi.spyOn(result.current.sdk, 'connect')
+
     await act(async () => {
       await result.current.connect()
     })
 
-    expect(result.current.isLocked).toBe(false)
+    // The session stands, so the connect is ignored: still locked, and the wallet never asked.
+    expect(result.current.isLocked).toBe(true)
+    expect(connectSpy).not.toHaveBeenCalled()
+
+    act(() => {
+      pushUnlock(wallet)
+    })
+
+    // The ignored connect left the session's listeners intact: the unlock still recovers it.
     await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
 
     wallet.dispose()
   })
 
-  it('tears down the previous client listeners before connect() swaps the client', async () => {
+  it('leaves a restored session untouched when connect() is called', async () => {
     persistRestorableSession('browser:ext:wallet-a')
 
     const wallet = walletA()
@@ -116,8 +126,6 @@ describe('CantonConnectProvider restored sessions', () => {
 
     await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
 
-    // connect() replaces sdk's internal client with a new one; teardown must run against the
-    // old client first, or removeOnAccountsChanged ends up targeting the wrong client.
     const removeSpy = vi.spyOn(result.current.sdk, 'removeOnAccountsChanged')
     const connectSpy = vi.spyOn(result.current.sdk, 'connect')
 
@@ -125,10 +133,10 @@ describe('CantonConnectProvider restored sessions', () => {
       await result.current.connect()
     })
 
-    expect(removeSpy).toHaveBeenCalledTimes(1)
-    expect(removeSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      connectSpy.mock.invocationCallOrder[0],
-    )
+    // Nothing moved: no listener teardown, no wallet round trip, the party still in hand.
+    expect(removeSpy).not.toHaveBeenCalled()
+    expect(connectSpy).not.toHaveBeenCalled()
+    expect(result.current.party?.partyId).toBe('alice::1220ab')
 
     wallet.dispose()
   })
@@ -190,27 +198,6 @@ describe('CantonConnectProvider restored sessions', () => {
 
     // The replacement sdk re-restores, so the settled answer arrives a tick later.
     await waitFor(() => expect(result.current.status).toBe('disconnected'))
-
-    wallet.dispose()
-  })
-
-  it('keeps a restored session across the retirement a closed picker forces', async () => {
-    persistRestorableSession('browser:ext:wallet-a')
-
-    const wallet = walletA()
-    const popup = stubPopup()
-    restoreOpen = stubOpen(popup)
-
-    const { result } = renderSession(() => useSession(), { walletPicker: undefined })
-
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
-
-    await strandOnClosedPicker(result, popup)
-
-    // The stranded connect fails and retires the sdk; the replacement's restore is what brings
-    // the session back, so both reads settle a tick later.
-    await waitFor(() => expect(result.current.status).toBe('connected'))
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
 
     wallet.dispose()
   })
