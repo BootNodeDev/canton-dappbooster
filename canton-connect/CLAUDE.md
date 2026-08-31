@@ -13,8 +13,8 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   `ConnectorProvider`, no connector abstraction.
 - **Lifecycle rules live in `machine/`**, never a second copy in React. The account read is
   `accountsMachine`, invoked inside `session.authenticated`.
-- **The sdk is machine context**, built by the input's `createSdk` and replaced in `retiring`.
-  Never React state.
+- **The sdk is machine context**, built by the input's `createSdk` and rebuilt by `retireSdk`
+  wherever an instance is poisoned. Never React state.
 - **Input is read once, at actor creation.** A changed `config` prop reaches the hooks, not the
   lifecycle; remount the provider (`key`) to change it.
 - **A state carries a tag for what it means to the outside.** The tags union in

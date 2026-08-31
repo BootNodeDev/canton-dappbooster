@@ -1,8 +1,9 @@
 # The connection machine
 
-Reference for `machine/connectionMachine.ts`: the states, what each one means to a caller, and what
-settles `connect()` and `disconnect()`. The code is the authority; when the two disagree, fix this
-file.
+`machine/connectionMachine.ts` is the source of truth: the states, events, tags and actors are its
+`setup()` and config, and every per-state why rides beside its line as a comment. This chapter
+holds what the file cannot say from inside one state: the shape at a glance, and the contracts the
+bridges and hooks build on top of it. It keeps no per-state inventory on purpose; read the machine.
 
 ## The spine
 
@@ -10,121 +11,64 @@ file.
 stateDiagram-v2
     [*] --> idle
     idle --> initializing: restore
-    initializing --> restoring: onDone
-    initializing --> failure: onError
-    restoring --> session: onDone [isAuthenticated]
-    restoring --> disconnected: nothing to restore
+    initializing --> restoring: sdk booted
+    initializing --> failure: boot failed
+    restoring --> session: session found
+    restoring --> disconnected: nothing there
     idle --> connecting: connect
     disconnected --> connecting: connect
     failure --> connecting: connect
-    connecting --> session: onDone [isAuthenticated]
+    connecting --> session: wallet approved
     connecting --> failure: declined or threw
-    connecting --> retiring: the picker was closed
-    retiring --> restoring: onDone, on the replacement
-    retiring --> failure: onError, the replacement's init failed
+    connecting --> retiring: picker closed
+    retiring --> restoring: replacement booted
+    retiring --> failure: replacement failed too
     session --> disconnecting: disconnect
-    disconnecting --> disconnected: settled
-    disconnecting --> disconnected: 10 s unanswered, on a replacement sdk
+    disconnecting --> disconnected: settled, or 10 s silence
 ```
 
-`session` holds `unauthenticated` (the wallet reports it will not serve requests) and
-`authenticated`, whose three substates mirror the accounts child: `reading`, `ready`, `unavailable`.
-Entry always targets `authenticated`; only a wallet push reaches `unauthenticated`.
-`disconnecting` is a single state: a connect asked for while it runs is ignored, not queued, so it
-never leads anywhere but `disconnected`. Ten seconds without the wallet's answer takes that same
-exit, on a replacement sdk: the SDK's request carries no deadline of its own.
+`session` holds `unauthenticated` (the wallet will not serve requests) and `authenticated`, whose
+substates mirror the accounts child: `reading`, `ready`, `unavailable`. Entry always targets
+`authenticated`; only a wallet push moves between the two.
 
-Three events reach further than the diagram shows. `connect` is taken everywhere except `connecting`
-and `disconnecting`. `disconnect` is taken everywhere except `idle`, `disconnected` and
-`disconnecting`. `restore` is taken by `idle`, `disconnected`, `session` and `failure`. A fourth,
-`connectError.reset`, is taken everywhere and changes no state.
+`restore` is not only the boot event: `disconnected`, `failure` and a standing `session` (one whose
+sdk was replaced under it) all take it back to `initializing`.
 
-The wallet's push arrives as `wallet.statusChanged`, sent by the `walletEvents` actor:
-`session.authenticated` leaves for `unauthenticated` when `connection.isConnected` is false, and
-`unauthenticated` returns to `authenticated` when it is true.
+## What consumers stand on
 
-## States
+The tags are the machine's public face; the bridges and hooks read nothing else.
 
-| state | means | public `status` |
-| --- | --- | --- |
-| `idle` | nothing attempted yet | `idle` |
-| `initializing` | SDK cold start | `idle` |
-| `restoring` | asking the wallet for a session | `idle` |
-| `connecting` | the wallet is deciding | `connecting` |
-| `session.unauthenticated` | session alive, wallet not authenticated, party dropped | `connected` |
-| `session.authenticated.reading` | account read in flight | `connected` |
-| `session.authenticated.ready` | party known | `connected` |
-| `session.authenticated.unavailable` | the read failed, session intact | `connected` |
-| `failure` | the attempt failed; the error stays in context until exit | `disconnected` |
-| `retiring` | the closed picker's instance is abandoned, its replacement booting | `disconnected` |
-| `disconnecting` | the wallet is being asked to end the session; unanswered for 10 s, it settles anyway on a replacement sdk | `disconnecting` |
-| `disconnected` | asked, and there is nothing | `disconnected` |
+- `connect()` sends the event and waits: `connect.settled` resolves it, `connect.failed` rejects
+  with the recorded error through `toConnectError`, `connect.cancelled` rejects with a fresh
+  `ConnectCancelledError`. The wait has no timeout, so a state that answers a connect must carry
+  one of the three.
+- `disconnect()` waits for `disconnect.settled` the same way.
+- Hooks select: `isConnecting` is `hasTag('connecting')`, `isLocked` is `hasTag('unauthenticated')`,
+  `status` is `toConnectionStatus`, `connectError` is `context.lastConnectError` through
+  `toConnectError`.
 
-## What each actor reaches for
+Consequences a caller notices:
 
-| actor | invoked by | reaches |
-| --- | --- | --- |
-| `init` | `initializing`, `retiring` | `sdk.init`, once per SDK instance; the SDK caches a rejection forever, so only a replacement retries |
-| `connect` | `connecting` | `init`, then `guardedConnect` or `sdk.connect`, then `sdk.status` when the answer is not connected |
-| `restore` | `restoring` | `sdk.status`; an answer without `connection` counts as nothing to restore |
-| `disconnect` | `disconnecting` | `sdk.disconnect`, under the machine's 10 s deadline since the SDK sets none |
-| `walletEvents` | `session` | `sdk.onStatusChanged` |
-| `accounts` | `session.authenticated` | `accountsMachine` |
-| `readAccounts` | `accounts.reading` | `sdk.listAccounts`, then `selectUsableAccounts`, `selectPrimaryAccount`, `toParty` |
-| `accountsEvents` | the accounts root | `sdk.onAccountsChanged` |
-
-Each reads its sdk off the invoke's input, resolved from context when the invoke starts, so leaving
-the state stops the actor and drops the listener with it.
-
-## What settles a promise
-
-| machine state | tags | `connect()` | `disconnect()` |
-| --- | --- | --- | --- |
-| `idle` | `disconnect.settled` | waits | resolves |
-| `initializing`, `restoring` | none | waits | waits |
-| `connecting` | `connecting` | waits | already answered, one state earlier |
-| `session.authenticated.reading` | `connecting` | waits | waits |
-| `session.authenticated.ready` | `connect.settled` | resolves | waits |
-| `session.authenticated.unavailable` | `connect.failed` | rejects, wallet's error | waits |
-| `session.unauthenticated` | `connect.settled`, `unauthenticated` | resolves, no party | waits |
-| `failure` | `connect.failed` | rejects, recorded error | waits |
-| `retiring` | `connect.cancelled` | rejects, `ConnectCancelledError` | waits |
-| `disconnecting` | none | waits | waits |
-| `disconnected` | `connect.cancelled`, `disconnect.settled` | rejects, `ConnectCancelledError` | resolves |
-
-The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('connecting')` and
-`isLocked` is `hasTag('unauthenticated')`. A five-way enum stays a selector's job, so `status` is
-`toConnectionStatus`.
-
-Five placements carry weight:
-
-- **`session.unauthenticated` settles a connect.** A wallet that connects locked answers no account
-  read, so waiting for a party would wait forever.
-- **Entering it drops the party.** A wallet that will not serve requests has no party to offer, and
-  a lock and a wallet-side disconnect arrive as the same push, so the two cannot be told apart. The
-  session itself stays, which is what keeps the listener alive: an unlock pushes `isConnected: true`
-  and the party is read again with no reconnect.
-- **A connect over a standing session is ignored.** Every `session` state carries `connect.settled`, so the call is already answered by the state it lands on; nothing reaches the wallet.
-- **A connect during `disconnecting` is ignored, not queued.** `sdk.connect()` and `sdk.disconnect()`
-  both rewrite the client and must not overlap, so `disconnecting` handles no `connect` and always
-  ends at `disconnected`. Its public `status` is `disconnecting`, so a consumer keeps its connect
-  action disabled until the disconnect settles.
-- **`retiring` cancels rather than fails.** The user closed the picker, so nothing failed, even
-  though the machine goes on to boot a replacement and restore on it.
+- A connect sent over a standing session reaches no wallet: every `session` state carries
+  `connect.settled`, so the call is answered by the state it lands on.
+- A connect during a disconnect is ignored, not queued, and is answered as a cancel once the
+  machine rests in `disconnected`; `status` stays `disconnecting` until then, so a consumer keeps
+  its connect action disabled.
+- A wallet that connects locked settles the connect with no party (`session.unauthenticated`); the
+  party arrives by push, not by reconnect.
+- `retiring` and `disconnected` answer as cancels and record no error: a cancel is the user walking
+  away, not a failure.
 
 ## The last connect error
 
-`lastConnectError` rides in context and outlives the state that produced it, so a recovered session
-can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`,
-`disconnecting` and `disconnected`, by `connectError.reset` (behind `useConnect().reset()`), and by
-a push that recovers a failed read.
+Which states record, keep and clear `lastConnectError` is the machine's own rule; the context
+comment carries the why (a recovered session can still say why the attempt before it failed).
 
-The two ways a picker close reaches the caller differ. A close the watchdog catches records nothing:
-`connecting` goes to `retiring`, which clears the error, and `connect()` rejects with a fresh
-`ConnectCancelledError`. A dismissal the SDK itself rejects (`'User closed the wallet picker'`) goes
-to `failure` and is recorded; the provider classifies it with `toConnectError` as
-`ConnectCancelledError` on the way to `connectError`. Either way a consumer filters by `instanceof`,
-never by message.
+A picker close reaches the caller two ways. A close the watchdog catches records nothing:
+`connecting` goes to `retiring` and `connect()` rejects with a fresh `ConnectCancelledError`. A
+dismissal the SDK itself rejects goes to `failure` and is recorded; `toConnectError` classifies it
+as `ConnectCancelledError` on the way out. Either way a consumer filters by `instanceof`, never by
+message. The watchdog itself: [`popup-close-guard.md`](popup-close-guard.md).
 
 ## The accounts machine
 
