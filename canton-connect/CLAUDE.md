@@ -42,7 +42,7 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   indistinguishable from a real wallet's.
 - **The hook and config surface is documented in JSDoc, and nowhere else.** The published reference
   is generated from it, and a table beside the code drifts from it unnoticed.
-- **App-agnostic.** No imports from `dapp/` or `canton-barebones/`; name no wallet.
+- **App-agnostic.** No imports from `dapp/`; name no wallet.
 
 ## Bumping `dapp-sdk`
 
