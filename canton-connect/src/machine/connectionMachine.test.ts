@@ -680,8 +680,8 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('ignores a connect over a live session', async () => {
-      const machine = connectionMachine.provide({ actors: { accounts, init, restore } })
+    it('takes a connect over a live session, as a wallet change', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, init, restore, connect } })
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
@@ -690,18 +690,19 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
 
-      const settled = actor.getSnapshot()
-
       actor.send({ type: 'connect' })
+
+      expect(actor.getSnapshot().matches({ connecting: 'changing' })).toBe(true)
+
       await pause(0)
 
-      expect(actor.getSnapshot()).toBe(settled)
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
 
       actor.stop()
     })
 
-    it('ignores a connect while locked', async () => {
-      const machine = connectionMachine.provide({ actors: { accounts, init, restore } })
+    it('takes a connect while locked', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, init, restore, connect } })
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
@@ -710,12 +711,13 @@ describe('connectionMachine', () => {
       actor.send(lockPush)
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
 
-      const settled = actor.getSnapshot()
-
       actor.send({ type: 'connect' })
+
+      expect(actor.getSnapshot().matches({ connecting: 'changing' })).toBe(true)
+
       await pause(0)
 
-      expect(actor.getSnapshot()).toBe(settled)
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
 
       actor.stop()
     })
@@ -1470,6 +1472,37 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
 
+      actor.stop()
+    })
+
+    // A status of disconnected or idle in between would unmount a status-gated app while its
+    // session survives, so every step of the resume must read as the attempt still running.
+    it('resumes the standing session when a wallet change is walked out on', async () => {
+      const machine = connectionMachine.provide({
+        actors: { accounts, init, restore, connect: closedPicker },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
+
+      const reported: string[] = []
+      const subscription = actor.subscribe((snapshot) => {
+        reported.push(toConnectionStatus(snapshot))
+      })
+
+      actor.send({ type: 'connect' })
+      await waitFor(actor, (snapshot) => snapshot.matches({ session: { authenticated: 'ready' } }))
+
+      expect(reported).not.toContain('disconnected')
+      expect(reported).not.toContain('idle')
+      expect(reported[0]).toBe('connecting')
+      expect(reported.at(-1)).toBe('connected')
+
+      subscription.unsubscribe()
       actor.stop()
     })
 

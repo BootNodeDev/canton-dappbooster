@@ -67,6 +67,12 @@ export const toConnectionStatus = (
     return 'connecting'
   }
 
+  // A cancelled wallet change passes through `retiring.changing` and `restoring.changing` while the
+  // session it kept is restored; disconnected or idle here would unmount a status-gated app.
+  if (snapshot.matches({ retiring: 'changing' }) || snapshot.matches({ restoring: 'changing' })) {
+    return 'connecting'
+  }
+
   if (snapshot.matches('session')) {
     return 'connected'
   }
@@ -95,7 +101,9 @@ const landAuthenticated = {
       connection: output.connection,
     }),
   },
-  target: 'session.authenticated',
+  // `askWallet` runs this inside `connecting`, where a relative `session.authenticated` would not
+  // resolve, so the target is an id.
+  target: '#connection.session.authenticated',
 } as const
 
 /** The exit from `disconnecting`, success and failure alike: nothing overlaps a disconnect. */
@@ -106,26 +114,88 @@ const afterDisconnect = { target: 'disconnected' } as const
 // whichever client a later connect installs on that instance.
 const afterSilentDisconnect = { actions: { type: 'retireSdk' }, target: 'disconnected' } as const
 
-/** The `init` invoke and what follows it, shared by `initializing` and `retiring`. */
-const bootSdk = {
-  src: 'init',
-  input: ({ context }: { context: ConnectionContext }) => ({
-    sdk: context.sdk,
-    initOptions: context.initOptions,
-  }),
-  onDone: { target: 'restoring' },
-  onError: {
-    target: 'failure',
-    actions: [
+/** The `init` invoke shared by `initializing` and `retiring`. Each caller resumes in a different
+ * `restoring` state, so it names the `onDone` target. */
+const bootSdk = (onDone: string) =>
+  ({
+    src: 'init',
+    input: ({ context }: { context: ConnectionContext }) => ({
+      sdk: context.sdk,
+      initOptions: context.initOptions,
+    }),
+    onDone: { target: onDone },
+    onError: {
+      target: '#connection.failure',
+      actions: [
+        {
+          type: 'assignError',
+          params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+        },
+        // The rejection is cached on the instance forever, so only a replacement can retry.
+        { type: 'retireSdk' },
+      ],
+    },
+  }) as const
+
+/** The `connect` invoke. The caller names which `retiring` variant a closed picker lands in, so
+ * a wallet change stays one through the retirement. */
+const askWallet = (retiringTarget: string) =>
+  ({
+    src: 'connect',
+    input: ({ context }: { context: ConnectionContext }) => ({
+      sdk: context.sdk,
+      initOptions: context.initOptions,
+      guardPicker: context.guardPicker,
+    }),
+    onDone: [
+      landAuthenticated,
       {
-        type: 'assignError',
-        params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+        target: '#connection.failure',
+        actions: {
+          type: 'assignDeclined',
+          params: ({ event: { output } }: { event: DoneActorEvent<WalletStatusUpdate> }) => ({
+            connection: output.connection,
+          }),
+        },
       },
-      // The rejection is cached on the instance forever, so only a replacement can retry.
-      { type: 'retireSdk' },
     ],
-  },
-} as const
+    onError: [
+      {
+        guard: {
+          type: 'isPickerClosed',
+          params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+        },
+        // Swapped before `retiring` is entered, so its init reads the replacement.
+        actions: { type: 'retireSdk' },
+        target: retiringTarget,
+      },
+      {
+        guard: {
+          type: 'isInitFailed',
+          params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+        },
+        target: '#connection.failure',
+        actions: [
+          {
+            type: 'assignError',
+            // The wrapper marked the route; the consumer reads the SDK's own error.
+            params: ({ event: { error } }: { event: ErrorActorEvent }) => ({
+              error: error instanceof InitFailedError ? error.cause : error,
+            }),
+          },
+          // The rejection is cached on the instance forever, so only a replacement can retry.
+          { type: 'retireSdk' },
+        ],
+      },
+      {
+        target: '#connection.failure',
+        actions: {
+          type: 'assignError',
+          params: ({ event: { error } }: { event: ErrorActorEvent }) => ({ error }),
+        },
+      },
+    ],
+  }) as const
 
 /**
  * The lifecycle itself: what a connect, a restore, a lock and a disconnect mean, and the tags the
@@ -145,6 +215,11 @@ export const connectionMachine = setup({
   },
   actions: {
     assignError: assign((_, params: { error: unknown }) => ({ lastConnectError: params.error })),
+    assignDeclined: assign((_, params: { connection: WalletStatusUpdate['connection'] }) => ({
+      lastConnectError: new Error(
+        params.connection.reason ?? params.connection.networkReason ?? 'wallet declined connection',
+      ),
+    })),
     forgetError: assign({ lastConnectError: undefined }),
     // The walked-out connect keeps waiting inside the old sdk and nothing can stop it, so a later
     // attempt on that sdk could have its client swapped mid-connect. Drop the instance, take a new
@@ -226,56 +301,12 @@ export const connectionMachine = setup({
     connecting: {
       tags: ['connecting'],
       entry: { type: 'forgetError' },
-      invoke: {
-        src: 'connect',
-        input: ({ context }) => ({
-          sdk: context.sdk,
-          initOptions: context.initOptions,
-          guardPicker: context.guardPicker,
-        }),
-        onDone: [
-          landAuthenticated,
-          {
-            target: 'failure',
-            actions: assign(({ event: { output } }) => ({
-              lastConnectError: new Error(
-                output.connection.reason ??
-                  output.connection.networkReason ??
-                  'wallet declined connection',
-              ),
-            })),
-          },
-        ],
-        onError: [
-          {
-            guard: { type: 'isPickerClosed', params: ({ event: { error } }) => ({ error }) },
-            // Swapped before `retiring` is entered, so its init reads the replacement.
-            actions: { type: 'retireSdk' },
-            target: 'retiring',
-          },
-          {
-            guard: { type: 'isInitFailed', params: ({ event: { error } }) => ({ error }) },
-            target: 'failure',
-            actions: [
-              {
-                type: 'assignError',
-                // The wrapper marked the route; the consumer reads the SDK's own error.
-                params: ({ event: { error } }) => ({
-                  error: error instanceof InitFailedError ? error.cause : error,
-                }),
-              },
-              // The rejection is cached on the instance forever, so only a replacement can retry.
-              { type: 'retireSdk' },
-            ],
-          },
-          {
-            target: 'failure',
-            actions: {
-              type: 'assignError',
-              params: ({ event: { error } }) => ({ error }),
-            },
-          },
-        ],
+      initial: 'new',
+      // The variants carry what is at stake: `new` risks no session, `changing` is a
+      // wallet change over a standing one, and a closed picker resumes that session.
+      states: {
+        new: { invoke: askWallet('#connection.retiring.new') },
+        changing: { invoke: askWallet('#connection.retiring.changing') },
       },
       on: {
         // Leaving the state is not enough: sdk.connect() keeps running past this, so the wallet
@@ -354,7 +385,9 @@ export const connectionMachine = setup({
         },
       },
       on: {
-        // `connect` is deliberately not accepted over a standing session.
+        // A wallet change; without it a consumer whose wallet disconnected on its own has no way
+        // back, because that push cannot be told apart from a lock.
+        connect: { target: 'connecting.changing' },
         disconnect: { target: 'disconnecting' },
         // A replaced sdk leaves this session's listeners bound to the old client, and exiting
         // `session` is what tears them down, so restore has to be accepted here too.
@@ -375,13 +408,26 @@ export const connectionMachine = setup({
       tags: ['connect.cancelled'],
       // A cancel records no error; clearing it here keeps that rule on the state that answers.
       entry: { type: 'forgetError' },
-      invoke: bootSdk,
+      initial: 'new',
+      // A cancelled wallet change must not cost the standing session: `changing` resumes it
+      // through `restoring.changing`; `new` had nothing to lose.
+      states: {
+        new: { invoke: bootSdk('#connection.restoring.new') },
+        changing: { invoke: bootSdk('#connection.restoring.changing') },
+      },
       on: {
         connect: { target: 'connecting' },
         disconnect: { target: 'disconnecting' },
       },
     },
     restoring: {
+      initial: 'new',
+      // Both variants run the same `restore` invoke below; they exist so `toConnectionStatus`
+      // can report `changing` as connecting and `new` as idle.
+      states: {
+        new: {},
+        changing: {},
+      },
       invoke: {
         src: 'restore',
         input: ({ context }) => ({ sdk: context.sdk }),
@@ -394,7 +440,7 @@ export const connectionMachine = setup({
       },
     },
     initializing: {
-      invoke: bootSdk,
+      invoke: bootSdk('#connection.restoring.new'),
       on: {
         // A connect asked for during boot wins over the restore instead of being dropped; the
         // connect actor inits and reads status itself, so a standing session still comes back.

@@ -18,6 +18,7 @@ stateDiagram-v2
     idle --> connecting: connect
     disconnected --> connecting: connect
     failure --> connecting: connect
+    session --> connecting: connect (wallet change)
     connecting --> session: wallet approved
     connecting --> failure: declined or threw
     connecting --> retiring: picker closed
@@ -26,6 +27,13 @@ stateDiagram-v2
     session --> disconnecting: disconnect
     disconnecting --> disconnected: settled, or 10 s silence
 ```
+
+`connecting`, `retiring` and `restoring` each split into `new` and `changing`: the variants carry
+whether a standing session is at stake. A connect from `session` runs as
+`changing`, and a closed picker resumes that session through `retiring.changing` and
+`restoring.changing`, which `toConnectionStatus` reports as `'connecting'` rather than
+`'disconnected'` and `'idle'`: a consumer gating on status must not unmount the app while its
+session is on the way back.
 
 `session` holds `unauthenticated` (the wallet will not serve requests) and `authenticated`, whose
 substates mirror the accounts child: `reading`, `ready`, `unavailable`. Entry always targets
@@ -49,8 +57,9 @@ The tags are the machine's public face; the bridges and hooks read nothing else.
 
 Consequences a caller notices:
 
-- A connect sent over a standing session reaches no wallet: every `session` state carries
-  `connect.settled`, so the call is answered by the state it lands on.
+- A connect sent over a standing session goes to the wallet as a wallet change, and after a
+  wallet-side disconnect (one indistinguishable push with a lock) it is the only recovery a
+  consumer can drive. A change the user walks out on resumes the session it would have replaced.
 - A connect during a disconnect is ignored, not queued, and is answered as a cancel once the
   machine rests in `disconnected`; `status` stays `disconnecting` until then, so a consumer keeps
   its connect action disabled.
