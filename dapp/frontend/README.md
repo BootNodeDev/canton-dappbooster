@@ -35,9 +35,10 @@ which a grant cannot be created. Re-running it supersedes the last one, on any l
 
 Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
 the session is restored on reload by the wallet itself. Changing the wallet's primary
-account changes the party the dApp acts as. The one env knob, the explorer party ids link
-to, defaults to the local Splice Scan; override it by copying [`.env.example`](.env.example)
-to `.env.local`.
+account changes the party the dApp acts as. Its two env knobs — the explorer party ids
+link to and the wallet-service endpoint it builds the Amulet disclosures from — default to
+the local stack and are set in the repo root's `.env`; see the root
+[`.env.example`](../../.env.example).
 
 ## How it fits together
 

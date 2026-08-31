@@ -75,7 +75,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
 | Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` is its build settings and nobody else's |
-| Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. No git integration yet, so nothing deploys on push |
+| Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. Git-connected, production branch `main`, so a merge deploys and a branch gets a preview. `dapp/frontend/api/` ships alongside the bundle as Vercel functions; the SPA catch-all in `vercel.json` is scoped away from `/api/` so it cannot answer one with `index.html` |
 | CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
@@ -357,7 +357,10 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   loads dotenv from the directory it starts in and `pnpm exec` starts it here; it also holds the
   signing recipe `scripts/mint-token.mjs` reads and the token `scripts/deploy-dar.sh` sends. Both
   scripts resolve `.env` from their own parent directory, which is what moving them into `scripts/`
-  repointed, so neither takes a path argument. Minting is offline: no container has to be up.
+  repointed, so neither takes a path argument. Minting is offline: no container has to be up. The
+  dApp's `VITE_*` variables live there too: `dapp/frontend/vite.config.ts` calls `loadEnv` against
+  the repo root with an empty prefix, so it reads every key in that file, `CANTON_AUTH_SECRET`
+  included. Only what `parseEnv` returns may reach `define` — never the loaded object.
 - **A `pnpm run` alias takes no arguments.** pnpm forwards the `--` separator to the script, so an
   alias over something reading `argv` mints the wrong thing in silence: `pnpm run mint-token --
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
