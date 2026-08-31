@@ -1,11 +1,13 @@
-// The local Splice Scan, so the app runs from a fresh clone with no `.env`.
-const DEFAULT_EXPLORER_URL = 'http://scan.localhost:4000'
-
 export interface Env {
   VITE_EXPLORER_URL: string
+  VITE_WALLET_RPC_URL: string
 }
 
-// The value lands in an `href`, where `javascript:` would be a script sink.
+const DEFAULTS: Env = {
+  VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
+}
+
 const isHttpUrl = (value: string): boolean => {
   try {
     return /^https?:$/.test(new URL(value).protocol)
@@ -14,22 +16,40 @@ const isHttpUrl = (value: string): boolean => {
   }
 }
 
-// Validates the build's environment. Takes the source rather than reading `import.meta.env` so it
-// stays testable; `vite.config.ts` runs it once per build and defines the result back.
+const ORIGIN = 'https://same.origin.invalid'
+const isSameOriginPath = (value: string): boolean =>
+  value.startsWith('/') && new URL(value, ORIGIN).origin === ORIGIN
+
+const isRpcUrl = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
+
+// Reads one env key and validates it
+const read = (
+  values: Record<string, unknown>,
+  key: keyof Env,
+  accepts: (value: string) => boolean,
+  expected: string,
+): string => {
+  const value = values[key] ?? DEFAULTS[key]
+  if (typeof value !== 'string' || !accepts(value)) {
+    throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
+  }
+  return value
+}
+
+// Validates the build's environment
 export const parseEnv = (source: unknown): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')
   }
+  const values = source as Record<string, unknown>
 
-  // Absent is the zero-config case. A declared but blank value is a mistake, not a request for the
-  // default, so it falls through to the check below.
-  const explorerUrl = (source as Record<string, unknown>).VITE_EXPLORER_URL ?? DEFAULT_EXPLORER_URL
-
-  if (typeof explorerUrl !== 'string' || !isHttpUrl(explorerUrl)) {
-    throw new Error(
-      `Invalid environment: VITE_EXPLORER_URL must be an http(s) url, e.g. ${DEFAULT_EXPLORER_URL}`,
-    )
+  return {
+    VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
+    VITE_WALLET_RPC_URL: read(
+      values,
+      'VITE_WALLET_RPC_URL',
+      isRpcUrl,
+      'an http(s) url or a same-origin path',
+    ),
   }
-
-  return { VITE_EXPLORER_URL: explorerUrl }
 }
