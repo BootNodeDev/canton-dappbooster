@@ -14,11 +14,10 @@ export type Deployment = {
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 
 // A filter takes the package-name reference, never the id it resolves to.
-const FACTORY = '#vesting-lite:Vesting:VestingFactory'
+const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
 const OPERATOR_HINT = 'vesting-operator-'
 
-const advice = (reason: string): Error =>
-  new Error(`${reason} — run node scripts/bootstrap-vesting-lite.mjs`)
+const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)
 
 const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Promise<T> =>
   (await ledgerApi(params)) as T

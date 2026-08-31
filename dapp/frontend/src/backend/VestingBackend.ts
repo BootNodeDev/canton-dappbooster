@@ -2,14 +2,14 @@
 // transport details. The mappers below turn active-contract rows into those domain types.
 
 import { decodeSchedule } from '@/backend/commands'
-import type { Grant, PartyId, Proposal, VestedClaim } from '@/store/types'
+import type { Grant, PartyId, PendingGrant, VestedClaim } from '@/store/types'
 import { isAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
 export interface VestingView {
   claims: VestedClaim[]
   grants: Grant[]
-  proposals: Proposal[]
+  pendingGrants: PendingGrant[]
 }
 
 export interface CreateVestInput {
@@ -21,7 +21,7 @@ export interface CreateVestInput {
   totalAmount: string
 }
 
-// One `Contract_Claim` off the ledger: the amount and ledger time from the transaction, plus the
+// One `AmuletVestingContract_Withdraw` off the ledger: the amount and ledger time from the transaction, plus the
 // two contract ids it sits between. `replaces` is what the claim consumed and `grant` what it
 // created, so a caller can walk a grant's ancestry rather than match on fields two grants can share.
 export interface ClaimRecord {
@@ -32,7 +32,8 @@ export interface ClaimRecord {
 }
 
 export interface VestingBackend {
-  accept(args: { receiver: string; proposalCid: string }): Promise<void>
+  accept(args: { receiver: string; pendingCid: string }): Promise<void>
+  balanceOf(partyId: string): Promise<string>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
@@ -41,7 +42,7 @@ export interface VestingBackend {
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }
 
-// A claim consumes the contract and creates its successor, so one grant's history is its ancestry:
+// A withdrawal consumes the contract and creates its successor, so one grant's history is its ancestry:
 // walk back from the id asked about. Matching on the fields instead merges two grants a funder made
 // identical, and the walk arrives newest-first, which is the order a caller wants to render.
 export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRecord[] => {
@@ -64,7 +65,12 @@ export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRe
 export type AcsRow = {
   contractEntry?: {
     JsActiveContract?: {
-      createdEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+      createdEvent?: {
+        contractId?: string
+        createArgument?: Record<string, unknown>
+        createdEventBlob?: string
+        templateId?: string
+      }
     }
   }
 }
@@ -126,12 +132,13 @@ const decodeBase = (row: AcsRow): DecodedBase | undefined => {
     title,
     note,
     provider: String(arg.provider ?? '') as PartyId,
-    funder: String(arg.proposer ?? '') as PartyId,
-    receiver: String(arg.beneficiary ?? '') as PartyId,
+    // The pending grant names the funder `proposer`; once accepted it is the contract's `creator`.
+    funder: String(arg.creator ?? arg.proposer ?? '') as PartyId,
+    receiver: String(arg.receiver ?? '') as PartyId,
   }
 }
 
-export const rowToProposal = (row: AcsRow): Proposal | undefined => {
+export const rowToPendingGrant = (row: AcsRow): PendingGrant | undefined => {
   const base = decodeBase(row)
   if (base === undefined) {
     return undefined
@@ -142,7 +149,7 @@ export const rowToProposal = (row: AcsRow): Proposal | undefined => {
     provider: base.provider,
     proposer: base.funder,
     receiver: base.receiver,
-    totalAmount: amountOf(base.arg.total, 'total', base.id),
+    totalAmount: amountOf(base.arg.totalAmount, 'totalAmount', base.id),
     schedule: decodeSchedule(base.arg.schedule),
     note: base.note,
   }
@@ -159,9 +166,9 @@ export const rowToGrant = (row: AcsRow): Grant | undefined => {
     provider: base.provider,
     creator: base.funder,
     receiver: base.receiver,
-    totalAmount: amountOf(base.arg.total, 'total', base.id),
+    totalAmount: amountOf(base.arg.totalAmount, 'totalAmount', base.id),
     schedule: decodeSchedule(base.arg.schedule),
-    alreadyWithdrawn: amountOf(base.arg.claimed, 'claimed', base.id),
+    alreadyWithdrawn: amountOf(base.arg.alreadyWithdrawn, 'alreadyWithdrawn', base.id),
     note: base.note,
   }
 }
@@ -198,10 +205,10 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     const transaction = entry.update?.Transaction?.value
     const events = transaction?.events ?? []
     const claim = events.find(
-      (event) => event.ExercisedEvent?.choice === 'Contract_Claim',
+      (event) => event.ExercisedEvent?.choice === 'AmuletVestingContract_Withdraw',
     )?.ExercisedEvent
     const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
-    const amount = claim?.choiceArgument?.amount
+    const amount = claim?.choiceArgument?.withdrawAmount
     const replaces = claim?.contractId
     if (
       created === undefined ||
@@ -223,6 +230,25 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
           },
         ]
   })
+
+type AmuletArg = { amount?: { initialAmount?: string } }
+
+// What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
+// `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
+// `Amulet_Expire`. Lenient where the mappers above throw: this feeds a balance, and one odd row
+// must not blank the field.
+export const amuletValue = (row: AcsRow): string => {
+  const { amount } = (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ??
+    {}) as AmuletArg
+  return amount?.initialAmount ?? '0'
+}
+
+// The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
+// else may spend them while it is outstanding.
+export const pledgedAmulets = (row: AcsRow): string[] => {
+  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.amuletCids
+  return Array.isArray(cids) ? cids.map(String) : []
+}
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
   const base = decodeBase(row)

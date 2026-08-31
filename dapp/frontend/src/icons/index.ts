@@ -1,5 +1,7 @@
 export { ArrowLeftIcon } from '@/icons/ArrowLeftIcon'
+export { CaretDownIcon } from '@/icons/CaretDownIcon'
 export { CheckIcon } from '@/icons/CheckIcon'
+export { CopyIcon } from '@/icons/CopyIcon'
 export { EyeIcon } from '@/icons/EyeIcon'
 export { LockIcon } from '@/icons/LockIcon'
 export { LogoMark } from '@/icons/LogoMark'

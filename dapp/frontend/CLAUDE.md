@@ -36,8 +36,9 @@ One implementation each, so a second one is a bug and not a choice:
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
   `pending`, which owns the spinner, the wording and the disable together.
 - **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
-  be offered, `components/GrantLock` or `components/GrantClaimed`. Each owns its own wording, tone
-  and base classes, so a caller passes alignment at most and never re-spells the mapping.
+  be offered, `components/GrantLock`. Each owns its own wording, tone and base classes, so a caller
+  passes alignment at most and never re-spells the mapping. There is no drained-grant badge: a
+  withdraw that empties the escrow archives the contract, so the grant leaves the list entirely.
 - **A blank state: `components/EmptyState`,** and `components/Loading` while a first read is in
   flight. `Loading` is for an empty collection only: a refresh after a write keeps its rows.
   `EmptyState` takes the heading rank the page leaves free: the default 2 sits under a `PageTitle`,

@@ -31,6 +31,7 @@ export const KpiCard = ({
     <AmountDisplay
       value={amount}
       count={count}
+      fixedMark
       gradient={hero}
       className={cn(
         'text-[1.7rem] font-semibold tracking-tight',

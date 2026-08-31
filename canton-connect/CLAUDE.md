@@ -25,7 +25,7 @@ all transports. Browser-only. A stopgap, meant to stay cheap to delete.
   it, and a reader who trusted the copy has no way to tell. Which wallets the picker offers is
   decided by three fields, so `CantonConnectConfig` is where that is written down:
   `walletConnectProjectId`, `walletPicker`, `additionalAdapters`.
-- Keep it app-agnostic: no imports from `dapp/` or `canton-barebones/`; name no wallet.
+- Keep it app-agnostic: no imports from `dapp/`; name no wallet.
 - Internal modules are reached through this package's `#src/*` subpath imports, never a relative path, and imports carry **no** file extension. No semicolons, single quotes (root Biome). Terse why-only comments; vertical breathing room between logical groups.
 
 ## Layout deltas from the root rules

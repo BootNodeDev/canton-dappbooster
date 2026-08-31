@@ -41,7 +41,8 @@ Applied on import to fit this repo's conventions:
 ## Not imported (deferred)
 
 - The Playwright `e2e` suite (#38).
-- Amulet-backed vesting (`cc-vesting-contracts`, #39), and with it token balances and USD
-  prices. `vesting-lite` moves no holding, so the create form has no balance to show and
-  no ceiling to validate against; the placeholder holdings and the hardcoded CC/USD rate
-  the import shipped are gone rather than kept as fiction.
+- Token balances and USD prices. Amulet-backed vesting itself landed with #114, so a grant
+  now locks real Canton Coin, but the create form still shows no balance and validates
+  against no ceiling: a Canton balance is a set of holding contracts rather than a scalar.
+  The placeholder holdings and the hardcoded CC/USD rate the import shipped are gone rather
+  than kept as fiction.

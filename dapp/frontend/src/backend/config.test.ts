@@ -16,7 +16,7 @@ const factoryRow = (
 const created = {
   contractId: '00cid',
   createdEventBlob: 'YmxvYg==',
-  templateId: 'abc123:Vesting:VestingFactory',
+  templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
 }
 
 // The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
@@ -76,7 +76,7 @@ describe('loadBackendConfig', () => {
   it('names the bootstrap script when no operator was ever created', async () => {
     const { ledgerApi } = ledger({ rights: [{ kind: { ParticipantAdmin: { value: {} } } }] })
     await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
-      /no vesting operator.*bootstrap-vesting-lite/,
+      /no vesting operator.*pnpm run bootstrap/,
     )
   })
 

@@ -1,7 +1,7 @@
 import { useExecute, useLedger, useParty } from '@bootnodedev/canton-connect'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { type Deployment, loadBackendConfig } from '@/backend/config'
-import { LiteBackend } from '@/backend/LiteBackend'
+import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { VestingBackend } from '@/backend/VestingBackend'
 import { errorText } from '@/utils/errorText'
 
@@ -75,7 +75,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     () =>
       deployment === undefined || !hasParty
         ? undefined
-        : new LiteBackend(deployment, { execute, ledgerApi }),
+        : new LedgerBackend(deployment, { execute, ledgerApi }),
     [deployment, execute, hasParty, ledgerApi],
   )
 

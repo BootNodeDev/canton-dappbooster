@@ -31,16 +31,16 @@ export interface VestingSchedule {
 // Enforced floor for new grants and for re-lock remainders.
 export const MIN_GRANT_AMOUNT = '1'
 
-// Whether claiming `amount` leaves a remainder of zero or at least `MIN_GRANT_AMOUNT`, never dust
-// between the two. An `amount` above `available` reads here as a full claim; the field's own `max`
-// is what rejects that.
-export const meetsRelockFloor = (available: string, amount: string): boolean => {
-  const remainder = subtractAmounts(available, amount)
+// Whether claiming `amount` leaves the escrow re-locking a remainder of zero or at least
+// `MIN_GRANT_AMOUNT`, never dust between the two. An `amount` above `backing` reads here as a full
+// drain; the field's own `max` is what rejects that.
+export const meetsRelockFloor = (backing: string, amount: string): boolean => {
+  const remainder = subtractAmounts(backing, amount)
   return isZero(remainder) || compareAmounts(remainder, MIN_GRANT_AMOUNT) >= 0
 }
 
-// The same floor on the other side of a cancel: `Contract_Cancel` hands the receiver the earned
-// residual as a new claim, and rejects one that is neither zero nor above the floor.
+// The same floor on the other side of a cancel: `AmuletVestingContract_Cancel` hands the receiver
+// the earned residual as a new claim, and rejects one that is neither zero nor above the floor.
 export const residualMeetsFloor = (residual: string): boolean =>
   isZero(residual) || compareAmounts(residual, MIN_GRANT_AMOUNT) >= 0
 
