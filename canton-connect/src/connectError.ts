@@ -19,6 +19,21 @@ export class PickerClosedError extends Error {
 }
 
 /**
+ * Raised by the connect actor when its early init rejects, so the machine can tell an init
+ * failure from a connect one: the SDK caches the rejection on the instance forever, and only a
+ * replacement instance can genuinely retry. The SDK's own error rides in `cause`.
+ *
+ * @example
+ * if (err instanceof InitFailedError) retireSdk()
+ */
+export class InitFailedError extends Error {
+  constructor(cause: unknown) {
+    super('DappSDK.init() failed', { cause })
+    this.name = 'InitFailedError'
+  }
+}
+
+/**
  * A connect the user walked away from: the picker was closed rather than a wallet failing.
  *
  * @example

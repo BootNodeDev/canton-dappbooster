@@ -1,5 +1,57 @@
+import { WALLET_DISABLED_REASON } from '@canton-network/core-types'
 import { describe, expect, it } from 'vitest'
-import { selectPrimaryAccount, toParty } from '#src/walletAccount'
+import { selectPrimaryAccount, selectUsableAccounts, toParty } from '#src/walletAccount'
+
+const partyIdsOf = (accounts: { partyId: string }[]): string[] =>
+  accounts.map((account) => account.partyId)
+
+describe('selectUsableAccounts', () => {
+  it('keeps an allocated account, and one a wallet reports no status for', () => {
+    const usable = selectUsableAccounts([
+      { partyId: 'allocated::fp', status: 'allocated' },
+      { partyId: 'unstated::fp' },
+    ])
+
+    expect(partyIdsOf(usable)).toEqual(['allocated::fp', 'unstated::fp'])
+  })
+
+  it('drops the statuses that hold no ledger rights', () => {
+    const usable = selectUsableAccounts([
+      { partyId: 'pending::fp', status: 'initialized' },
+      { partyId: 'gone::fp', status: 'removed' },
+      { partyId: 'live::fp', status: 'allocated' },
+    ])
+
+    expect(partyIdsOf(usable)).toEqual(['live::fp'])
+  })
+
+  it('keeps a disabled account whose signing provider went unmatched', () => {
+    const usable = selectUsableAccounts([
+      {
+        partyId: 'unmatched::fp',
+        status: 'allocated',
+        disabled: true,
+        reason: WALLET_DISABLED_REASON.NO_SIGNING_PROVIDER_MATCHED,
+      },
+    ])
+
+    expect(partyIdsOf(usable)).toEqual(['unmatched::fp'])
+  })
+
+  it('drops a disabled account for any other reason, a missing one included', () => {
+    const usable = selectUsableAccounts([
+      {
+        partyId: 'renamespaced::fp',
+        status: 'allocated',
+        disabled: true,
+        reason: WALLET_DISABLED_REASON.PARTICIPANT_NAMESPACE_CHANGED,
+      },
+      { partyId: 'unexplained::fp', status: 'allocated', disabled: true },
+    ])
+
+    expect(usable).toEqual([])
+  })
+})
 
 describe('selectPrimaryAccount', () => {
   it('returns undefined for an empty list', () => {

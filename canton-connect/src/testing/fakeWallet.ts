@@ -3,9 +3,16 @@ import {
   CANTON_REQUEST_PROVIDER_EVENT,
   WalletEvent,
 } from '@canton-network/core-types'
-import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
+import type { ConnectResult, StatusEvent, Wallet } from '@canton-network/dapp-sdk'
 
 const JSON_RPC_METHOD_NOT_FOUND = -32601
+
+// Obviously fake, not '': a presence check downstream shouldn't mistake these for real.
+const FAKE_PUBLIC_KEY = 'fake-public-key'
+const FAKE_SIGNING_PROVIDER_ID = 'fake'
+const FAKE_NETWORK_ID = 'canton:local'
+// 'allocated' is the only status holding ledger rights, so it is what a usable account reports.
+const FAKE_WALLET_STATUS: Wallet['status'] = 'allocated'
 
 /**
  * One account the fake wallet reports from `listAccounts`. Mark exactly one `primary`: that is the
@@ -18,7 +25,22 @@ export interface FakeWalletAccount {
   primary?: boolean
   name?: string
   publicKey?: string
+  networkId?: string
 }
+
+// Reports a network the way a real wallet does; toParty's config fallback is covered by
+// createMockAdapter, which legitimately has none.
+/** Shapes one `FakeWalletAccount` into the `Wallet` object `listAccounts` reports. */
+const toWallet = (account: FakeWalletAccount): Wallet => ({
+  primary: account.primary === true,
+  partyId: account.partyId,
+  status: FAKE_WALLET_STATUS,
+  hint: account.name ?? account.partyId,
+  publicKey: account.publicKey ?? FAKE_PUBLIC_KEY,
+  namespace: account.partyId.split('::')[1] ?? account.partyId,
+  networkId: account.networkId ?? FAKE_NETWORK_ID,
+  signingProviderId: FAKE_SIGNING_PROVIDER_ID,
+})
 
 /**
  * Wiring for {@link createFakeWallet}. `id` is announced to `window` and doubles as the postMessage
@@ -52,6 +74,7 @@ export interface FakeWallet {
   dispose: () => void
 }
 
+/** A postMessage payload off `window`, before it is checked for being one of ours. */
 interface IncomingMessage {
   type?: string
   request?: { id?: string | number | null; method?: string }
@@ -105,7 +128,7 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
   const responses: Record<string, () => unknown> = {
     status: buildStatus,
     connect: buildConnect,
-    listAccounts: () => accounts,
+    listAccounts: () => accounts.map(toWallet),
     // The SDK's disconnect() asks the wallet too, and ignores what comes back.
     disconnect: () => ({}),
   }

@@ -14,6 +14,7 @@ let inFlight = 0
 // so a connect reusing one the last left open opens nothing.
 let opened: Window | undefined
 
+/** Swaps in a `window.open` wrapper that captures the next popup, then restores itself. */
 const borrowOpen = (): void => {
   if (nativeOpen !== undefined) {
     return
@@ -40,6 +41,7 @@ const borrowOpen = (): void => {
 
 // Only for a connect that captured nothing; the wrapper hands `open` back itself once it has a
 // popup.
+/** Restores the native `window.open`, but only once no guarded connect is still in flight. */
 const returnOpen = (): void => {
   if (nativeOpen === undefined || inFlight > 0) {
     return
@@ -50,6 +52,7 @@ const returnOpen = (): void => {
 }
 
 // Only its own result message unsubscribes it; an unmatched id fails before reaching a wallet.
+/** Posts the SDK picker's own result message, so its pending listener resolves as abandoned. */
 const settleAbandonedConnect = (): void => {
   // No `name`: a real pick always carries one, so anything else listening can tell the two apart.
   window.postMessage(
@@ -58,6 +61,7 @@ const settleAbandonedConnect = (): void => {
   )
 }
 
+/** Reports the wallet type from the picker's result message; call the return value to stop. */
 const watchForPick = (picked: (walletType: unknown) => void): (() => void) => {
   const listener = (event: MessageEvent): void => {
     if (

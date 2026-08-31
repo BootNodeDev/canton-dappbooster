@@ -85,16 +85,20 @@ describe('guardedConnect', () => {
   })
 
   it('hands the original window.open back after overlapping connects settle', async () => {
-    openStub(null)
+    openStub(watchable())
     const stubbed = window.open
 
-    const a = stubSdk()
+    const a = stubSdk({ opens: true })
     const b = stubSdk()
     const settledA = guardedConnect(a)
     const settledB = guardedConnect(b)
 
     a.settle()
     await settledA
+
+    // B captured no handle of its own, so the borrow has to outlive A to catch a popup B opens.
+    expect(window.open).not.toBe(stubbed)
+
     b.settle()
     await settledB
 
@@ -220,10 +224,12 @@ describe('guardedConnect', () => {
   it('hands window.open back when the connect rejects', async () => {
     vi.useRealTimers()
     const original = window.open
-    const sdk = new DappSDK({ walletPicker: createAutoPicker('absent') })
+    // pinned by reference: a picker's own failure must propagate verbatim, never read as a close
+    const pickerError = new Error('picker exploded')
+    const sdk = new DappSDK({ walletPicker: () => Promise.reject(pickerError) })
     await sdk.init({ defaultAdapters: [] })
 
-    await expect(guardedConnect(sdk)).rejects.toThrow('auto-picker: no wallet matching absent')
+    await expect(guardedConnect(sdk)).rejects.toBe(pickerError)
     expect(window.open).toBe(original)
   })
 })

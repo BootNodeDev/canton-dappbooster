@@ -6,5 +6,16 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // The suite's wall clock is SDK timer waits, not CPU; without an explicit count,
+    // core-starved CI runners get too few workers to overlap the files.
+    maxWorkers: 8,
+    coverage: {
+      provider: 'v8',
+      // lcov is what a CI uploader reads; text keeps the local run readable.
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      // testing/ and mock/ are doubles: covering them says nothing about the package.
+      exclude: ['src/testing/**', 'src/mock/**', 'src/index.ts'],
+    },
   },
 })

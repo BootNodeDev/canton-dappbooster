@@ -12,9 +12,12 @@ It is browser-only.
 ```
 src/
   CantonConnectProvider.tsx   React context; holds one DappSDK instance; init / connect / event wiring
-  connectionMachine.ts        connection lifecycle statechart (xstate v5); internal, not yet wired (#84/#85)
-  connectionActors.ts         the machine's init / connect / restore / event actors
-  connectError.ts             ConnectCancelledError, PickerClosedError, toConnectError
+  machine/
+    connectionMachine.ts      the lifecycle (xstate v5); owns the sdk, the party and the last connect error; internal, not yet wired (#85)
+    connectionActors.ts       init / connect / restore / disconnect / walletEvents
+    accountsMachine.ts        the account read, invoked inside session.authenticated
+    accountsActors.ts         readAccounts and accountsEvents
+  connectError.ts             ConnectCancelledError, PickerClosedError, InitFailedError, toConnectError
   guardedConnect.ts           guardedConnect: sdk.connect() with a closed-popup watchdog (#49)
   hooks/
     useConnect.ts          connect / disconnect lifecycle
@@ -23,14 +26,18 @@ src/
     useSignMessage.ts      sdk.signMessage lifecycle
     useExecute.ts          sdk.prepareExecuteAndWait + live tx state
     useLedger.ts           sdk.ledgerApi pass-through
-  walletAccount.ts         account normalization + primary selection (selectPrimaryAccount, toParty)
+  walletAccount.ts         account normalization + primary selection (selectUsableAccounts, selectPrimaryAccount, toParty)
   testing/
     fakeWallet.ts          test-only CIP-0103 extension over postMessage (also drives real discovery)
     autoPicker.ts          createAutoPicker: headless WalletPickerFn for tests/dev
     stubPopup.ts           popup + window.open doubles for the close guard; off the barrel
+    connectionInput.ts     machine inputs whose sdk methods never answer; off the barrel
+    accountsInput.ts       the accounts machine's input; off the barrel
+    fakeSession.tsx        FakeSessionProvider: stands in for the provider with the session in a given shape; no sdk behind it
+    pause.ts               real-timer sleep; pause(0) flushes the pending macrotasks
     index.ts               ./testing sub-path barrel
   mock/                     createMockAdapter: a mock ProviderAdapter for dev/test
-  types.ts                 Party, ConnectionStatus, CantonConnectConfig
+  types.ts                 Party, ConnectionStatus, CantonConnectConfig, WalletSdk, ConnectionSubscription
   index.ts                 public exports
 ```
 
@@ -57,6 +64,11 @@ flowchart TD
 ```
 
 ## Key abstractions
+
+### The connection machine (`machine/`)
+
+Internal and unwired until #85. The states, the tags and what settles `connect()` and
+`disconnect()`: [`architecture/connection-machine.md`](architecture/connection-machine.md).
 
 ### `CantonConnectProvider`
 
@@ -107,14 +119,14 @@ and would swap the SDK's client from under the provider's event wiring on the *n
 what `PickerClosedError` is for: `CantonConnectProvider` retires its `DappSDK` on one, and the mount
 effect re-restores the session from the discovery session key that `connect()` never clears.
 
-Retiring the instance does not by itself reach the orphan. The abandoned `connect()` is parked inside
+Retiring the instance does not by itself reach the abandoned `connect()`. It is parked inside
 `core-wallet-ui-components` module scope on a `message` listener keyed to nothing but our origin and
 the message type, so the *next* successful connect woke every past one: one `discovery.connect`, and
 one wallet approval prompt, per popup the user had closed.
 
 `settleAbandonedConnect` drains them at the close instead. It posts the SDK's own
 `SPLICE_WALLET_PICKER_RESULT` to our window, which is the only thing that makes that listener
-unsubscribe; the `providerId` matches no registered adapter, so the orphan fails with
+unsubscribe; the `providerId` matches no registered adapter, so the abandoned connect fails with
 `WalletNotFoundError` before reaching a wallet, then rejects out of
 `waitForWalletPickerRetrySelection` because the popup is closed. `walletType` stays `'browser'` to
 keep it out of the branch that registers a remote adapter from the message, and no `name` is sent, so
@@ -122,7 +134,7 @@ anything else on the page watching for a pick can tell the two apart — `dapp/f
 that to label its connect button. It is skipped while a second guard is in flight, since the message
 would resolve that one's live waiter too — a heuristic, because only guarded connects are counted.
 
-This is a workaround, not containment: the orphan still runs. The real fix is an abort on
+This is a workaround, not containment: the abandoned connect still runs. The real fix is an abort on
 `DappSDK.connect()`, upstream.
 
 **The watchdog stands down once a wallet is chosen.** Past the pick the connect is waiting on the
@@ -143,7 +155,7 @@ is pinned headless, since both provider tests wait on a URL only the SDK's own p
 The drain and the stand-down have no such backstop. Both rest on the `SPLICE_WALLET_PICKER_RESULT`
 message — its type, its origin, and the `walletType` and `providerId` fields — none of it public API.
 A rename turns the drain into a no-op that returns the duplicate prompts, and turns the stand-down
-into the old behaviour of abandoning a live connect, with nothing going red either way. Nor does any
+into the old behavior of abandoning a live connect, with nothing going red either way. Nor does any
 test reach #49's own *cause*, a real `WindowProxy` losing its `beforeunload` across the navigation.
 All of it is why a `dapp-sdk` bump needs the manual pass in [`CLAUDE.md`](CLAUDE.md).
 
@@ -164,7 +176,7 @@ field: the WalletConnect adapter's CAIP-2 `chainId` above, and `Party.networkId`
 `walletConnectProjectId` is set. Only the *session* is lazy: `SignClient.init()` runs when a pairing
 starts, not at import. The `peerDependenciesMeta` entry marking it optional therefore describes what
 we want rather than what resolves — worth an upstream issue, and until then treat it as required.
-Still true at 1.5.1, the version pinned here (`dist/index.js:6`); re-check on the next bump.
+Still true at 1.5.1, the version pinned here: the entry module touches `window` at import. Re-check on the next bump.
 
 ### Hooks
 
