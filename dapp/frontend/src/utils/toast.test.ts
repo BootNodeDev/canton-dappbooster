@@ -19,8 +19,8 @@ describe('toast auto-dismiss', () => {
     expect(useToastStore.getState().toasts).toEqual([])
   })
 
-  it('keeps a sticky toast and one carrying an action', () => {
-    toast.error('Wallet refused the submission', { sticky: true })
+  it('keeps an error and a toast carrying an action', () => {
+    toast.error('Wallet refused the submission')
     toast.info('Grant created', { action: { label: 'View', to: '/grants/g1' } })
     vi.advanceTimersByTime(60_000)
     expect(useToastStore.getState().toasts).toHaveLength(2)

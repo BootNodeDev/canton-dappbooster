@@ -4,7 +4,7 @@ import { ErrorScreen } from '@/components/ErrorScreen'
 import { Dashboard } from '@/pages/Dashboard'
 import { GrantDetail } from '@/pages/GrantDetail'
 import { NotFound } from '@/pages/NotFound'
-import { Proposals } from '@/pages/Proposals'
+import { PendingGrants } from '@/pages/PendingGrants'
 
 export const routes: RouteObject[] = [
   {
@@ -13,7 +13,7 @@ export const routes: RouteObject[] = [
     errorElement: <ErrorScreen />,
     children: [
       { index: true, element: <Dashboard /> },
-      { path: 'proposals', element: <Proposals /> },
+      { path: 'pending', element: <PendingGrants /> },
       { path: 'create', element: <Navigate to="/?create=1" replace /> },
       { path: 'grants/:id', element: <GrantDetail /> },
       { path: '*', element: <NotFound /> },

@@ -1,4 +1,4 @@
-// The two wallet-session calls the backend needs, injected as plain functions so LiteBackend stays
+// The two wallet-session calls the backend needs, injected as plain functions so LedgerBackend stays
 // constructible outside React while the functions themselves come from canton-connect's hooks.
 
 import type { LedgerApiParams, PrepareExecuteParams } from '@bootnodedev/canton-connect'
