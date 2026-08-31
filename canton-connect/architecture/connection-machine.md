@@ -17,7 +17,6 @@ stateDiagram-v2
     idle --> connecting: connect
     disconnected --> connecting: connect
     failure --> connecting: connect
-    session --> connecting: connect, to change wallet
     connecting --> session: onDone [isAuthenticated]
     connecting --> failure: declined or threw
     connecting --> retiring: the picker was closed
@@ -47,7 +46,7 @@ The wallet's push arrives as `wallet.statusChanged`, sent by the `walletEvents` 
 ## States
 
 | state | means | public `status` |
-|---|---|---|
+| --- | --- | --- |
 | `idle` | nothing attempted yet | `idle` |
 | `initializing` | SDK cold start | `idle` |
 | `restoring` | asking the wallet for a session | `idle` |
@@ -64,7 +63,7 @@ The wallet's push arrives as `wallet.statusChanged`, sent by the `walletEvents` 
 ## What each actor reaches for
 
 | actor | invoked by | reaches |
-|---|---|---|
+| --- | --- | --- |
 | `init` | `initializing`, `retiring` | `sdk.init`, once per SDK instance; the SDK caches a rejection forever, so only a replacement retries |
 | `connect` | `connecting` | `init`, then `guardedConnect` or `sdk.connect`, then `sdk.status` when the answer is not connected |
 | `restore` | `restoring` | `sdk.status`; an answer without `connection` counts as nothing to restore |
@@ -80,7 +79,7 @@ the state stops the actor and drops the listener with it.
 ## What settles a promise
 
 | machine state | tags | `connect()` | `disconnect()` |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `idle` | `disconnect.settled` | waits | resolves |
 | `initializing`, `restoring` | none | waits | waits |
 | `connecting` | `connecting` | waits | already answered, one state earlier |
@@ -97,7 +96,7 @@ The last two tags answer hooks rather than bridges: `isConnecting` is `hasTag('c
 `isLocked` is `hasTag('unauthenticated')`. A five-way enum stays a selector's job, so `status` is
 `toConnectionStatus`.
 
-Four placements carry weight:
+Five placements carry weight:
 
 - **`session.unauthenticated` settles a connect.** A wallet that connects locked answers no account
   read, so waiting for a party would wait forever.
@@ -105,6 +104,7 @@ Four placements carry weight:
   a lock and a wallet-side disconnect arrive as the same push, so the two cannot be told apart. The
   session itself stays, which is what keeps the listener alive: an unlock pushes `isConnected: true`
   and the party is read again with no reconnect.
+- **A connect over a standing session is ignored.** Every `session` state carries `connect.settled`, so the call is already answered by the state it lands on; nothing reaches the wallet.
 - **A connect during `disconnecting` is ignored, not queued.** `sdk.connect()` and `sdk.disconnect()`
   both rewrite the client and must not overlap, so `disconnecting` handles no `connect` and always
   ends at `disconnected`. Its public `status` is `disconnecting`, so a consumer keeps its connect
