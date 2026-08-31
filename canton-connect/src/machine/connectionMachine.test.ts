@@ -252,6 +252,33 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
+    // accounts stays unprovided: an answered read lands `ready`, clearing the asserted error
+    it('keeps the recorded failure while the restored session reads the party', async () => {
+      const bootError = new Error('init failed')
+      const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise<void, InitInput>(init),
+          restore,
+        },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('failure')).toBe(true)
+
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'reading' } })).toBe(true)
+      expect(actor.getSnapshot().context.lastConnectError).toBe(bootError)
+
+      actor.stop()
+    })
+
     it('signals abort to the invoked init actor', async () => {
       const onAbort = vi.fn()
       const machine = connectionMachine.provide({
@@ -1721,6 +1748,36 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(false)
 
       actor.send({ type: 'disconnect' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(true)
+      expect(actor.getSnapshot().context.lastConnectError).toBeUndefined()
+
+      actor.stop()
+    })
+
+    it('drops the recorded failure when a later restore finds nothing', async () => {
+      const bootError = new Error('init failed')
+      const init = vi.fn(() => Promise.resolve()).mockRejectedValueOnce(bootError)
+      const machine = connectionMachine.provide({
+        actors: {
+          init: fromPromise<void, InitInput>(init),
+          restore: fromPromise<WalletStatusUpdate, RestoreInput>(() =>
+            Promise.resolve({ connection: unauthenticatedConnection }),
+          ),
+        },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('failure')).toBe(true)
+      expect(actor.getSnapshot().context.lastConnectError).toBe(bootError)
+
+      actor.send({ type: 'restore' })
       await pause(0)
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
