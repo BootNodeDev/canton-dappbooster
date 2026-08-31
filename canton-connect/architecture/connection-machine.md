@@ -115,9 +115,9 @@ Five placements carry weight:
 ## The last connect error
 
 `lastConnectError` rides in context and outlives the state that produced it, so a recovered session
-can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`
-and `disconnecting`, by `connectError.reset` (behind `useConnect().reset()`), and by a push that
-recovers a failed read.
+can still say why the attempt before it failed. It is cleared on entering `connecting`, `retiring`,
+`disconnecting` and `disconnected`, by `connectError.reset` (behind `useConnect().reset()`), and by
+a push that recovers a failed read.
 
 The two ways a picker close reaches the caller differ. A close the watchdog catches records nothing:
 `connecting` goes to `retiring`, which clears the error, and `connect()` rejects with a fresh
