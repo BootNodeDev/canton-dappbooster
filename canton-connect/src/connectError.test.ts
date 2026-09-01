@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { ConnectCancelledError, toConnectError } from '#src/connectError'
+import { ConnectCancelledError, toConnectError, toError } from '#src/connectError'
+
+const rpcError = { code: -32000, message: 'wallet locked', data: { reason: 'locked' } }
 
 describe('toConnectError', () => {
   it('translates the picker dismissal, keeping the original as cause', () => {
@@ -26,5 +28,33 @@ describe('toConnectError', () => {
     expect(toConnectError(new Error('user closed the wallet picker'))).not.toBeInstanceOf(
       ConnectCancelledError,
     )
+  })
+
+  it('wraps a JSON-RPC error object rather than casting it', () => {
+    const error = toConnectError(rpcError)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe('wallet locked')
+    expect(error.cause).toBe(rpcError)
+  })
+})
+
+describe('toError', () => {
+  it('leaves an Error untouched', () => {
+    const failure = new Error('failure')
+
+    expect(toError(failure)).toBe(failure)
+  })
+
+  it('wraps a JSON-RPC error object into an Error, keeping it as cause', () => {
+    const error = toError(rpcError)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe('wallet locked')
+    expect(error.cause).toBe(rpcError)
+  })
+
+  it('stringifies a rejection that carries no message', () => {
+    expect(toError('nope').message).toBe('nope')
   })
 })

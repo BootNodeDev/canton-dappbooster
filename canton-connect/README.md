@@ -1,25 +1,18 @@
 # canton-connect
 
-wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets,
-wrapping `@canton-network/dapp-sdk`'s `DappSDK` facade.
+wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets, over
+`@canton-network/dapp-sdk`'s `DappSDK` facade.
 
 ## Why
 
-`@canton-network/dapp-sdk` handles wallet discovery, the connect picker, the
-session, and every transport (browser extension, WalletConnect, and — later —
-a remote gateway). It doesn't ship React hooks.
+`dapp-sdk` handles wallet discovery, the connect picker, the session and every transport (browser
+extension, WalletConnect, remote gateway), but ships no React hooks. This package adds that layer.
+A consumer never calls the SDK: it installs it as a peer, and the hooks take the SDK's own parameter
+types.
 
-canton-connect adds that layer: `useConnect`, `useParty`, `useSignMessage`,
-and the rest, wagmi-style. A consumer never touches the SDK directly.
-
-## Why not @partylayer/sdk
-
-[`@partylayer/sdk`](https://partylayer.xyz) is another wagmi-style package for
-Canton. This one wraps Digital Asset's official SDK directly — the dependency
-these dApps already carry — and keeps the hook layer thin enough to delete once
-the SDK ships hooks of its own. The signatures are deliberately wagmi-shaped
-either way, so swapping the implementation underneath wouldn't change a dApp's
-components.
+[`@partylayer/react`](https://partylayer.xyz) is the alternative, built over its own wallet
+adapters. This one wraps Digital Asset's official SDK, the dependency these dApps already carry, and
+stays thin enough to delete. How close the result shapes should sit to wagmi's is open in #52.
 
 ## Why a state machine
 
@@ -50,8 +43,15 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 ## Status
 
-Early. No consumer in this repo yet — `dapp/frontend` adopting it is a
-planned follow-up. Not published (`private: true` in `package.json`).
+Consumed by `dapp/frontend` in this repo as a workspace package. Not published (`private: true`).
+
+## Install
+
+Peers a consumer installs beside it: `@canton-network/dapp-sdk`, `@canton-network/core-types`,
+`react` 19 and `@walletconnect/sign-client`. The last is declared optional, but `dapp-sdk` imports
+it statically at the top of its bundle (checked on 1.5.1), so it has to be present whether or not
+you set `walletConnectProjectId`. Only the session is lazy: `SignClient.init()` runs when a pairing
+starts, not at import.
 
 ## Usage
 
@@ -94,44 +94,40 @@ function Dapp() {
   }
 
   if (isLocked) {
-    return <p>Wallet locked — unlock it to continue.</p>
+    return <p>Wallet locked. Unlock it to continue.</p>
   }
 
   // ... your dApp: party.partyId, signMessage(text), execute(params), ledgerApi(params)
 }
 ```
 
-`connect()` opens the SDK's wallet picker — a popup by default. There's no
-mode argument; the picker is what chooses the wallet.
+`connect()` opens the SDK's wallet picker, a popup by default. There is no mode argument: the picker
+is what chooses the wallet. Dismissing it rejects with `ConnectCancelledError`, which you filter by
+`instanceof`, never by message. Whether `connectError` records it as well depends on which side saw
+the close, so do not gate on that.
 
-Closing the picker rejects with `ConnectCancelledError`, which `connectError`
-mirrors, so a cancel is told from a failure with `instanceof` rather than by
-matching an SDK message. A custom `walletPicker` should throw it too.
+`signMessage`, `execute` and `ledgerApi` refuse with no session, and refuse again while the wallet
+reports it is not authenticated; that is `isLocked`, and it happens after a successful connect. The
+SDK's status carries one `isConnected` flag, so a lock and a wallet-side disconnect look the same
+here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
+gate session content on the party, and use `isLocked` only to explain why it went away.
 
 ## Reference
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call
 site and which is published at
-[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). There is no table
-here: a copy beside the code drifts from it, and a reader who trusted the copy has no way to tell.
-
-Start at `CantonConnectProvider` and `CantonConnectConfig`; the hooks are `useConnect`, `useParty`,
-`useWalletStatus`, `useSignMessage`, `useExecute` and `useLedger`. Which wallets the picker offers is
-decided by three config fields: `walletConnectProjectId`, `walletPicker` and `additionalAdapters`.
+[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). Start at
+`CantonConnectProvider` and `CantonConnectConfig`.
 
 ## Testing helpers
 
-- `createMockAdapter()` — exported from the package root. A `ProviderAdapter`
-  that answers `connect`/`disconnect`/`status`/`listAccounts` with no real
-  wallet installed, so a dApp (or a test) can connect and show a party.
-  Everything else throws, naming the method — a canned `execute` or
-  `signMessage` result would be indistinguishable from a real one.
-- `createFakeWallet()` and `createAutoPicker()` — exported from
-  `@bootnodedev/canton-connect/testing`. `createFakeWallet` is a real
-  CIP-0103 extension wallet driven over `postMessage`, for exercising the
-  SDK's actual announce → detect → provider-emit path. `createAutoPicker` is
-  a headless `WalletPickerFn` that auto-selects an entry (by `providerId`, or
-  the first one), for driving `connect()` without a popup.
+- `createMockAdapter()`, from the package root: a `ProviderAdapter` answering `connect`,
+  `disconnect`, `status` and `listAccounts` with no wallet installed, so a dApp or a test can
+  connect and show a party. Anything else throws, naming the method.
+- From `@bootnodedev/canton-connect/testing`: `createFakeWallet()`, a CIP-0103 extension driven over
+  `postMessage` that exercises the SDK's real announce and detect path; `createAutoPicker()`, a
+  headless picker so `connect()` runs without a popup; `FakeSessionProvider`, the context rehydrated
+  at an asked-for session with no SDK behind it; and `pause(ms)`, a real-timer sleep.
 
 ```tsx
 import { CantonConnectProvider, createMockAdapter } from '@bootnodedev/canton-connect'
@@ -146,15 +142,10 @@ const config = {
 
 ## Architecture
 
-See [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md) for the facade wrapper, the
-adapter/picker seams, and the event flow.
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md)
+maps the seams; its `architecture/` chapters carry the connection machine and the popup close guard.
 
 ## Testing
 
-```bash
-pnpm test          # vitest + jsdom
-pnpm coverage      # the same suite under v8 coverage; testing/, mock/ and the barrel excluded
-pnpm lint && pnpm typecheck && pnpm build
-```
-
-vitest + jsdom, with React Testing Library for hook/component tests.
+`pnpm test`: vitest + jsdom + Testing Library. `pnpm coverage` runs the same suite under v8, with
+`testing/`, `mock/` and the barrel excluded.

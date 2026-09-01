@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
-import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import type { CantonConnectProvider } from '#src/CantonConnectProvider'
+import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
  * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected, and
@@ -29,39 +30,26 @@ export interface UseSignMessageResult {
  * @category Hooks
  */
 export const useSignMessage = (): UseSignMessageResult => {
-  const ctx = useCantonConnectContext()
+  const { call, isBusy, error, reset: resetCall } = useWalletCall()
+
   const [signature, setSignature] = useState<string | undefined>(undefined)
-  const [isSigning, setIsSigning] = useState(false)
-  const [error, setError] = useState<Error | undefined>(undefined)
 
   const signMessage = useCallback(
     async (message: string): Promise<string> => {
-      if (ctx.status !== 'connected') {
-        throw new Error('wallet is not connected — call useConnect().connect() first')
-      }
-      setIsSigning(true)
-      setError(undefined)
       setSignature(undefined)
-      try {
-        const result = await ctx.sdk.signMessage({ message })
-        setSignature(result.signature)
-        return result.signature
-      } catch (err) {
-        const e = err as Error
-        setError(e)
-        throw e
-      } finally {
-        setIsSigning(false)
-      }
+
+      const result = await call((walletSdk) => walletSdk.signMessage({ message }))
+
+      setSignature(result.signature)
+      return result.signature
     },
-    [ctx.sdk, ctx.status],
+    [call],
   )
 
   const reset = useCallback((): void => {
     setSignature(undefined)
-    setError(undefined)
-    setIsSigning(false)
-  }, [])
+    resetCall()
+  }, [resetCall])
 
-  return { signMessage, signature, isSigning, error, reset }
+  return { signMessage, signature, isSigning: isBusy, error, reset }
 }

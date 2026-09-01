@@ -1,6 +1,11 @@
 // Public types exposed to consumers of canton-connect.
 
-import type { DappSDK, ProviderAdapter, WalletPickerFn } from '@canton-network/dapp-sdk'
+import type {
+  DappSDK,
+  ProviderAdapter,
+  TxChangedEvent,
+  WalletPickerFn,
+} from '@canton-network/dapp-sdk'
 import type { ConnectionActorRef } from '#src/machine/connectionMachine'
 
 /**
@@ -81,8 +86,20 @@ export interface CantonConnectConfig {
 }
 
 /**
+ * Mirrored from the SDK's `txChanged` event as a command moves through
+ * pending, signed, executed or failed.
+ *
+ * @category Types
+ */
+export interface TxStatusSnapshot {
+  status: TxChangedEvent['status']
+  commandId: TxChangedEvent['commandId']
+  payload?: unknown
+}
+
+/**
  * The connection machine as `useSelector` sees it: subscribe and read, never send. Narrowed from
- * the actor ref so `connect` and `disconnect` stay the only senders; a transition asked for
+ * the actor ref so `connect` and `disconnect` stay the only senders — a transition asked for
  * anywhere else is a lifecycle rule living outside the machine.
  *
  * @example
@@ -93,3 +110,18 @@ export interface CantonConnectConfig {
  * @category Types
  */
 export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 'subscribe'>
+
+/**
+ * One connection and the actions on it, published once. Every hook selects its slice off
+ * `connection`: prefer the narrower hooks and reach for this only when none exposes the slice.
+ * The three actions are `useConnect`'s own, documented there.
+ *
+ * @category Types
+ */
+export interface CantonConnectContextValue {
+  config: CantonConnectConfig
+  connection: ConnectionSubscription
+  connect: () => Promise<void>
+  disconnect: () => Promise<void>
+  resetConnectError: () => void
+}
