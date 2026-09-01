@@ -17,7 +17,7 @@ import {
   restore,
   walletEvents,
 } from '#src/machine/connectionActors'
-import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
+import type { ConnectionStatus, ConnectionSubscription, Party, WalletSdk } from '#src/types'
 
 // The SDK's disconnect awaits the wallet's answer with no deadline of its own, so this is the only
 // bound on how long `disconnecting` can last.

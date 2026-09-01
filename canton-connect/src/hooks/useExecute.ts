@@ -1,5 +1,6 @@
 import type { PrepareExecuteParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
+import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useTxFeed } from '#src/hooks/useTxFeed'
 import { useWalletCall } from '#src/hooks/useWalletCall'
 import type { TxStatusSnapshot } from '#src/types'

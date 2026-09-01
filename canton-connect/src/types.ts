@@ -112,29 +112,16 @@ export interface TxStatusSnapshot {
 export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 'subscribe'>
 
 /**
- * One connection and the actions on it, published once. Every hook in this package selects the
- * slice it needs off `connection`, so prefer the narrower hooks (`useConnect`, `useParty`, …) and
- * reach for this only to select something none of them expose.
+ * One connection and the actions on it, published once. Every hook selects its slice off
+ * `connection`: prefer the narrower hooks and reach for this only when none exposes the slice.
+ * The three actions are `useConnect`'s own, documented there.
  *
  * @category Types
  */
 export interface CantonConnectContextValue {
   config: CantonConnectConfig
   connection: ConnectionSubscription
-  /**
-   * Opens the picker (the SDK's popup, or `config.walletPicker`) and resolves once the party has
-   * landed, so `useParty` reports it by the time it returns. Rejects with `ConnectCancelledError`
-   * on cancel, and with the wallet's own error when the account read fails;
-   * `useConnect().connectError` mirrors the failure; a dismissal the SDK itself rejects is
-   * recorded too, classified as `ConnectCancelledError`. A wallet that connects
-   * locked resolves with no party, since a locked wallet answers no account read.
-   */
   connect: () => Promise<void>
-  /**
-   * Ends the session, and the party, lock and error with it, even if the SDK's own call fails or
-   * goes unanswered for 10 s.
-   */
   disconnect: () => Promise<void>
-  /** Forgets the last connect error. Touches neither the wallet nor the session. */
   resetConnectError: () => void
 }

@@ -1,31 +1,24 @@
 import { useSelector } from '@xstate/react'
 import { useMemo } from 'react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
-import { toConnectError } from '#src/connectError'
+import { type ConnectCancelledError, toConnectError } from '#src/connectError'
 import { toConnectionStatus } from '#src/machine/connectionMachine'
 
 /**
- * Return shape of {@link useConnect}. `connect` opens the picker and rejects with
- * {@link ConnectCancelledError} where the user closed it; `connectError` records failures, not a
- * cancel the guard saw. `disconnect` clears party and status even if the wallet never answers.
+ * Return shape of {@link useConnect}.
+ *
+ * `connect` resolves once the party lands and rejects a cancel with {@link ConnectCancelledError}.
+ *
+ * `disconnect` settles within 10 s even unanswered; `reset` forgets only `connectError`.
  *
  * @category Hooks
  */
 export interface UseConnectResult {
-  /** Resolves once the party has landed; rejects on cancel and on a failed account read. */
   connect: () => Promise<void>
   disconnect: () => Promise<void>
-  /**
-   * True while connect work is in flight, the account read a restore or an unlock starts
-   * included, so it is true with no `connect()` call outstanding.
-   */
   isConnecting: boolean
   isConnected: boolean
   connectError: Error | undefined
-  /**
-   * Forgets `connectError`, for dismissing a message the user has read. It does not disconnect,
-   * cancel an attempt in flight, or touch the wallet — same scope as `useExecute().reset()`.
-   */
   reset: () => void
 }
 

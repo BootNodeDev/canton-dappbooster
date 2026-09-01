@@ -79,28 +79,18 @@ const startSession = (
 }
 
 /**
- * Props for {@link FakeSessionProvider}. `party` is what a connect resolves to, and omitting it
- * stands for a wallet reporting none; `status` starts the session mid-flight, and its default of
- * `'disconnected'` makes a component's connect face render first.
+ * Props for {@link FakeSessionProvider}. `status` starts the session mid-flight and `party` is
+ * what a connect resolves to; `readingAccounts` reaches the pending face over a live session, and
+ * `sdk` drives a hook's own pending, error and `reset()`, never what a wallet returns.
  *
  * @category Components
  */
 export interface FakeSessionProviderProps {
   children: ReactNode
   connectError?: Error
-  /** Only alongside `status="connected"`: a lock is a session that has to be unlocked. */
   isLocked?: boolean
   party?: Party
-  /**
-   * The accounts read a session starts, which counts as connecting: this is how a consumer test
-   * reaches the pending face over a live session. Only alongside `status="connected"`.
-   */
   readingAccounts?: boolean
-  /**
-   * The `sdk` methods this session answers; every other one refuses, as all of them do by default.
-   * For driving a hook's own pending flag, captured error and `reset()`, never for asserting what
-   * a wallet returns: a canned answer is indistinguishable from a real one.
-   */
   sdk?: Partial<WalletSdk>
   status?: ConnectionStatus
 }

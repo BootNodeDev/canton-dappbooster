@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**

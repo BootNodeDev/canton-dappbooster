@@ -63,8 +63,9 @@ Consequences a caller notices:
 - A connect during a disconnect is ignored, not queued, and is answered as a cancel once the
   machine rests in `disconnected`; `status` stays `disconnecting` until then, so a consumer keeps
   its connect action disabled.
-- A wallet that connects locked settles the connect with no party (`session.unauthenticated`); the
-  party arrives by push, not by reconnect.
+- A connect never lands in `session.unauthenticated`: `landAuthenticated` is the only entry into
+  `session`, and an unauthenticated wallet answer goes to `failure`. Locked is only ever reached
+  by a wallet push on a standing session, and the party comes back the same way.
 - `retiring` and `disconnected` answer as cancels and record no error: a cancel is the user walking
   away, not a failure.
 
