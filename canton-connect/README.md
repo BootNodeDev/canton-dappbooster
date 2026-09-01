@@ -116,7 +116,7 @@ gate session content on the party, and use `isLocked` only to explain why it wen
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call
 site and which is published at
-[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). Start at
+[docs.canton-dappbooster.cc](https://docs.canton-dappbooster.cc). Start at
 `CantonConnectProvider` and `CantonConnectConfig`.
 
 ## Testing helpers

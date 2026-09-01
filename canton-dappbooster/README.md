@@ -7,8 +7,9 @@ cannot carry a Canton amount without losing digits.
 
 `src/index.ts` is the public API, and every export carries JSDoc that your editor will surface at
 the call site and that is published at
-[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). `<ConnectButton>` sits behind the `/connect` sub-path instead, because it is the one
-component that reaches for the wallet session and so pulls in the Canton SDK. Authoring rules for
+[docs.canton-dappbooster.cc](https://docs.canton-dappbooster.cc). The wallet
+buttons sit behind the `/connect` sub-path instead, because they reach for the wallet session and so
+pull in the Canton SDK. Authoring rules for
 new components live in [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/CLAUDE.md).
 
 ## Scripts

@@ -26,7 +26,7 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
   they would need tree-shaking to reach through a re-export chain into `@canton-network/dapp-sdk`,
   which declares no `sideEffects` field at all, so a bundler must keep the whole package once its
   import survives into the graph. This package's own `sideEffects: false` does not help there.
-  The generated reference already lists `<ConnectButton>` beside the other components, so there is
+  The generated reference already lists the wallet buttons beside the other components, so there is
   no documentation argument for collapsing the split either; see the root `CLAUDE.md`.
 - Nothing in `src/providers/` renders DOM of its own, so those folders carry no theme rules and no
   part classes: there is no markup to style. The authoring steps below are for components that
@@ -81,9 +81,10 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
 
 - **A component owns no user-facing copy it cannot justify.** Hardcoded English is as much an L3
   decision as a colour, and there is no i18n seam here. Where a caller passes `children`, they win in
-  every state the component has — `ConnectButton` renders them while pending too, and supplies its own
-  two strings only when a caller passes none. State stays the component's: the spinner and
-  `data-pending` are rendered independently of the words.
+  every state the component has — `ConnectButton` renders them while pending too, and supplies its
+  own two strings only when a caller passes none; `WalletButton` hands them to the face it picks.
+  State stays the component's: the spinner and `data-pending` are rendered independently of the
+  words.
 - Components import no CSS. `sideEffects: false` depends on it.
 - `tsconfig.json`'s `customConditions: ["development"]` is load-bearing: without it
   `@bootnodedev/canton-connect` resolves through its `types` entry into `dist/`, which is

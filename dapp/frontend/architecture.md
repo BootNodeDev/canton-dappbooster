@@ -14,10 +14,10 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useDismissable` carries the blur-and-Escape dismissal both hand-rolled dropdowns share, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
-| `src/components/` | What two or more places render: the shell, the top bar, the dialogs, and the primitives the pages compose. |
+| `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
@@ -142,13 +142,23 @@ restored-but-locked session reports itself connected while reporting no party, a
 every read filters on and every submit acts as. The shell holds the pages until the deployment has
 resolved either way, so inside a page a missing backend can only mean a missing party — which is
 what makes `ConnectPrompt`'s copy, and the kit `ConnectButton` inside it, correct wherever it
-renders.
+renders — that face never flips to the disconnect one, which is why the prompt takes it rather than
+the kit's `WalletButton`.
 
-The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it,
-`ConnectButton` from the kit drives it, and `useParty`
+The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
+kit's `ConnectButton` and `DisconnectButton` drive it, and `useParty`
 ([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none. The shell no longer
-gates on it: it always mounts, so the top bar's connect button and the theme toggle stay reachable
+standing the party hint in as a display name for the wallets that report none and reporting the lock
+beside it, so nothing else in the app reaches for a `canton-connect` hook. The top bar picks between
+the two faces itself rather than reaching for the kit's `WalletButton`, because the connected side is
+a dropdown of its own: `TopBar/AccountMenu` holds the copyable party id, the network the session is
+on, and the disconnect. It picks on the party *or* the lock, not on `isConnected` alone: a standing
+session reports no party while the account read is in flight and again after it fails, and the
+connect face is the right answer to both — it renders its own pending copy for the first and retries
+for the second. A lock is the one state that clears the party for good, and there the dropdown is
+replaced whole by a disabled button rather than offering a connect that is already done. The shell
+no longer gates on the session: it always mounts, so the top bar's wallet control and the theme
+toggle stay reachable
 and the wallet's own account switch is the only way the acting party changes. A connect that fails
 reaches the user through
 [`useConnectErrorToast`](src/hooks/useConnectErrorToast.ts), because the kit ships no user-facing

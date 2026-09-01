@@ -38,7 +38,15 @@ One implementation each, so a second one is a bug and not a choice:
   name once an outsized amount is abbreviated, so a hand-rolled `formatCCCompact` loses it.
 - **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
-  `pending`, which owns the spinner, the wording and the disable together.
+  `pending`, which owns the spinner, the wording and the disable together. The one exception is
+  `TopBar/AccountMenu`'s trigger, which transcribes the kit's `.cnc-connect-button` instead so the
+  header keeps one look across the two faces the session swaps between; `cn` is a plain join and
+  cannot override a `buttonClass` variant, so there is no way to have both.
+- **A dropdown dismissed by blur and Escape: `hooks/useDismissable`.** It owns the focusout test
+  against the root, the Escape close, the focus returned to the trigger, and `keepFocus`, the
+  mousedown guard without which Safari unmounts the panel before the click it was aimed at lands.
+  Spread `closers` where a handler is legal — the wrapper, or every button where it is not — and
+  `keepFocus` on whatever the panel can be clicked on.
 - **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
   be offered, `components/GrantLock`. Each owns its own wording, tone and base classes, so a caller
   passes alignment at most and never re-spells the mapping. There is no drained-grant badge: a
