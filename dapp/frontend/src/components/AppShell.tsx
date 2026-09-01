@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
+import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
@@ -48,10 +49,7 @@ export const AppShell = (): React.JSX.Element => {
             </>
           )}
         </main>
-        <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
-          <span className="size-1.5 rounded-full bg-success" />
-          Canton · direct ledger
-        </footer>
+        <Footer />
       </div>
       <Toaster />
     </div>
