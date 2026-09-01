@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@11.24.0",
   "engines": {
     "node": ">=24.15.0"
   },
@@ -25,14 +25,14 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.10",
+    "@biomejs/biome": "2.5.11",
     "@bootnodedev/canton-barebones": "0.3.0",
     "@bootnodedev/canton-wallet-service": "git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.4",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@mermaid-js/mermaid-cli": "^11.15.0",
     "husky": "^9.1.7",
-    "knip": "6.32.2",
+    "knip": "6.33.0",
     "lint-staged": "^17.0.4",
     "postcss": "^8.5.26",
     "typedoc": "^0.28.20",
