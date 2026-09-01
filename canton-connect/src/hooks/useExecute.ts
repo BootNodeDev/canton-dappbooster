@@ -3,12 +3,17 @@ import { useCallback } from 'react'
 import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useTxFeed } from '#src/hooks/useTxFeed'
 import { useWalletCall } from '#src/hooks/useWalletCall'
-import type { TxStatusSnapshot } from '#src/types'
+import type { Party, TxStatusSnapshot } from '#src/types'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
  */
 export type { PrepareExecuteParams }
+
+// An unset `actAs` lets the wallet pick its own primary, which may not be the party the kit shows.
+/** Defaults `actAs` to the connected party, leaving a caller's own `actAs` untouched. */
+const withActAs = (params: PrepareExecuteParams, party: Party): PrepareExecuteParams =>
+  params.actAs === undefined ? { ...params, actAs: [party.partyId] } : params
 
 /**
  * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
@@ -27,12 +32,12 @@ export interface UseExecuteResult {
 
 /**
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
- * event.
- * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, since `execute` resolves after
- * execution rather than at submission.
+ * event. `actAs` defaults to the party `useParty` reports, so a submit acts as the party the UI
+ * shows rather than the wallet's own primary.
+ * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, `execute` resolving after execution.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
- * connected or the command fails, the failure also landing in `error`.
+ * connected or no party is reported. A command that fails throws too, and lands in `error`.
  *
  * @example
  * const { execute, lastTx } = useExecute()
@@ -48,7 +53,9 @@ export const useExecute = (): UseExecuteResult => {
 
   const execute = useCallback(
     (params: PrepareExecuteParams): Promise<unknown> =>
-      call((walletSdk) => walletSdk.prepareExecuteAndWait(params)),
+      call((walletSdk, actingParty) =>
+        walletSdk.prepareExecuteAndWait(withActAs(params, actingParty)),
+      ),
     [call],
   )
 

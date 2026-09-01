@@ -21,7 +21,7 @@ export interface UseSignMessageResult {
  * Wagmi: `useSignMessage`, same name and job.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
- * connected or the wallet rejects, the rejection also landing in `error`.
+ * connected or no party is reported. A wallet refusal throws too, and lands in `error`.
  *
  * @example
  * const { signMessage } = useSignMessage()
