@@ -17,7 +17,7 @@ const resources = [
     href: 'https://github.com/BootNodeDev/canton-dappbooster',
     Icon: GithubIcon,
   },
-  { label: 'Docs', href: 'https://docs.canton-dappbooster.cc', Icon: DocsIcon },
+  { label: 'Docs', href: 'https://docs.dappbooster.cc/', Icon: DocsIcon },
 ]
 
 const Outbound = ({
