@@ -148,18 +148,19 @@ the kit's `WalletButton`.
 The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
 kit's `ConnectButton` and `DisconnectButton` drive it, and `useParty`
 ([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none and reporting the lock
-beside it, so nothing else in the app reaches for a `canton-connect` hook. The top bar picks between
-the two faces itself rather than reaching for the kit's `WalletButton`, because the connected side is
-a dropdown of its own: `TopBar/AccountMenu` holds the copyable party id, the network the session is
-on, and the disconnect. It picks on the party *or* the lock, not on `isConnected` alone: a standing
-session reports no party while the account read is in flight and again after it fails, and the
-connect face is the right answer to both — it renders its own pending copy for the first and retries
-for the second. A lock is the one state that clears the party for good, and there the dropdown is
-replaced whole by a disabled button rather than offering a connect that is already done. The shell
-no longer gates on the session: it always mounts, so the top bar's wallet control and the theme
-toggle stay reachable
-and the wallet's own account switch is the only way the acting party changes. A connect that fails
+standing the party hint in as a display name for the wallets that report none, so nothing else in
+the app reaches for a `canton-connect` hook. The top bar picks between the two faces itself rather
+than reaching for the kit's `WalletButton`, because the connected side is a dropdown of its own:
+`TopBar/AccountMenu` holds the copyable party id, the network the session is on, and the disconnect.
+It picks on the party alone, never on `isConnected`: a standing session reports no party while the
+account read is in flight, again after it fails, and again once a lock clears it, and the connect
+face is the right answer to all three. It renders its own pending copy for the first and retries the
+second. For the third it is the only way back, because a lock and a wallet-side disconnect are one
+push the app cannot tell apart, and the machine accepts a connect from a standing session for
+exactly that reason; a refresh there restores nothing and lands on the same face, so the two agree.
+The shell no longer gates on the session: it always mounts, so the top bar's wallet control and the
+theme toggle stay reachable, and the wallet's own account switch is the only way the acting party
+changes. A connect that fails
 reaches the user through
 [`useConnectErrorToast`](src/hooks/useConnectErrorToast.ts), because the kit ships no user-facing
 copy and would otherwise fail silently; a cancel is a choice, not a failure, and stays quiet, which

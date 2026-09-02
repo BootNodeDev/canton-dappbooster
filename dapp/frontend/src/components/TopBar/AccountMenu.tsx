@@ -4,30 +4,21 @@ import { useId } from 'react'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { useDismissable } from '@/hooks/useDismissable'
 import { useParty } from '@/hooks/useParty'
-import { CaretDownIcon, LockIcon } from '@/icons'
+import { CaretDownIcon } from '@/icons'
 import { cn } from '@/utils/cn'
 import { copyToast } from '@/utils/toast'
 
 const TRUNCATE = { head: 6, hint: 12, tail: 6 }
 
-// Transcribes the kit's `.cnc-connect-button` rather than taking `buttonClass`, so the header keeps
-// one look across the two faces the session swaps between.
 const triggerClass =
-  'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-45'
+  'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
 
-export const AccountMenu = (): React.JSX.Element => {
+export const AccountMenu = (): React.JSX.Element | null => {
   const { party } = useParty()
   const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLDivElement>()
   const panelId = useId()
 
-  // The top bar mounts this with a party or with a locked wallet, and a lock is what clears
-  // the party, so no party here means locked.
-  return party === undefined ? (
-    <button className={triggerClass} disabled type="button">
-      <LockIcon width={16} height={16} />
-      Unlock your wallet
-    </button>
-  ) : (
+  return party === undefined ? null : (
     <div className="relative" ref={root} {...closers}>
       <button
         aria-controls={open ? panelId : undefined}

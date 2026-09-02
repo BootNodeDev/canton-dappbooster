@@ -15,11 +15,9 @@ const items = [
 ]
 
 export const TopBar = (): React.JSX.Element => {
-  const { isLocked, party } = useParty()
+  const { party } = useParty()
   const { sessionPending } = useBackend()
-  // The connect face answers a session still reading its account and one whose read failed alike:
-  // it renders its own pending copy for the first and retries for the second.
-  const wallet = party !== undefined || isLocked ? <AccountMenu /> : <ConnectButton />
+  const wallet = party !== undefined ? <AccountMenu /> : <ConnectButton />
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
     party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
