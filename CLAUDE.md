@@ -326,6 +326,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   `onClick ?? doTheThing` silently drops the behaviour the component exists for. Where a state
   machine owns the handler, merge through its own utility (`mergeProps` in Zag) rather than by
   hand, so a handler the library adds later is not missed.
+- **A ternary is for a two-way toggle between two things to render; a guard clause is for bailing
+  out of the whole render** (loading, error, no data). Two real faces get
+  `cond ? <A /> : <B />`; a bail-out gets an `if` above the return.
 - Tests assert on roles, accessible names, and whatever contract the component declares. Never on
   styling.
 
