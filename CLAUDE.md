@@ -1,4 +1,4 @@
-<!-- starter-kit: v2026.08 -->
+<!-- starter-kit: v2026.09 -->
 
 # Agent Configuration — Canton dAppBooster
 
