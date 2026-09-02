@@ -38,6 +38,29 @@ The word limits above are hard caps, not guidelines. A body that exceeds one is 
 - No preamble. `This PR adds...` → `Adds...`, then delete that too if the bullet below says it.
 - Over a hard cap means delete content, never compress it into one long sentence.
 
+## Writing Style
+
+Avoid dense technical writing. Use clear, concise, and non-redundant prose. Examples: Simple English Wikipedia, Mr. Rogers, Ernest Hemingway.
+
+Banned vocabulary: do not invent abbreviations, compound labels, framework names, or domain terms.
+
+List of usual words to avoid:
+
+- load-bearing
+- blast radius
+- footgun
+- yak shaving
+- belt-and-suspenders
+- smoking gun
+- spine
+- seams
+- gate
+- substrate
+
+If writing documentation pay special attention to use words a maintainer would search for in the codebase.
+
+If something can be made a list, make it a list. It's easier to read. Prefer avoiding walls of text.
+
 ## Step 0: Scope Check
 
 Run this first. A developer must never discover at the end of the wizard that the branch should have been split.
