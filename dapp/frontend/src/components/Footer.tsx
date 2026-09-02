@@ -43,7 +43,7 @@ const Outbound = ({
 )
 
 export const Footer = (): React.JSX.Element => (
-  <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-5 py-8 text-xs sm:justify-between sm:px-8">
+  <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-5 pt-8 pb-3.5 text-xs sm:justify-between sm:px-8">
     <div className="flex items-center gap-4">
       <Outbound className="flex items-center gap-2 font-semibold" href={BOOTNODE}>
         Built by
