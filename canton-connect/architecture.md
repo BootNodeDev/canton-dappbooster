@@ -76,9 +76,10 @@ no live session, an error beside a live session) cannot be built. Three decision
 ### The bridges
 
 `connect()` and `disconnect()` are a send plus a wait on a tag, so the promise over a transition
-lives outside the machine. Neither passes a timeout. The connect wait is #105; the disconnect wait
-the machine bounds itself, giving up on a wallet 10 s silent (`DISCONNECT_TIMEOUT_MS`), since the
-SDK's request carries no deadline of its own.
+lives outside the machine. Neither passes a timeout. The connect wait has no clock on purpose, since
+a wallet login can take as long as it takes; it ends when the wallet answers or the user cancels
+(`connect.cancel`). The disconnect wait the machine bounds itself, giving up on a wallet 10 s silent
+(`DISCONNECT_TIMEOUT_MS`), since nobody is deciding anything in that window.
 
 ### The provider publishes, the hooks select
 

@@ -197,6 +197,13 @@ const askWallet = (retiringTarget: string) =>
     ],
   }) as const
 
+/** A connect attempt and the two exits that keep no session: the picker closing, and a cancel. */
+const connectAttempt = (retiringTarget: string) =>
+  ({
+    invoke: askWallet(retiringTarget),
+    on: { 'connect.cancel': { actions: { type: 'retireSdk' }, target: retiringTarget } },
+  }) as const
+
 /**
  * The lifecycle itself: what a connect, a restore, a lock and a disconnect mean, and the tags the
  * bridges and hooks read off them. `CantonConnectProvider` runs it; reach for it directly only to
@@ -259,6 +266,7 @@ export const connectionMachine = setup({
         | 'disconnect.settled',
     events: {} as
       | { type: 'connect' }
+      | { type: 'connect.cancel' }
       | { type: 'connectError.reset' }
       | { type: 'disconnect' }
       | { type: 'restore' }
@@ -305,8 +313,8 @@ export const connectionMachine = setup({
       // The variants carry what is at stake: `new` risks no session, `changing` is a
       // wallet change over a standing one, and a closed picker resumes that session.
       states: {
-        new: { invoke: askWallet('#connection.retiring.new') },
-        changing: { invoke: askWallet('#connection.retiring.changing') },
+        new: connectAttempt('#connection.retiring.new'),
+        changing: connectAttempt('#connection.retiring.changing'),
       },
       on: {
         // Leaving the state is not enough: sdk.connect() keeps running past this, so the wallet

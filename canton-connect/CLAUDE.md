@@ -19,8 +19,8 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   lifecycle; remount the provider (`key`) to change it.
 - **A state carries a tag for what it means to the outside.** The tags union in
   `machine/connectionMachine.ts` is the authority, and no other module names a state. A state that
-  answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here
-  (#105).
+  answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here,
+  and no clock will rescue it.
 - **A state's `exit` clears what that state alone justified.** `party` is cleared on leaving
   `session.authenticated`, because a wallet that stops serving requests has none to offer, and a
   lock cannot be told from a wallet-side disconnect. `sdk` has no exit; nothing outlives it.

@@ -1593,6 +1593,89 @@ describe('connectionMachine', () => {
     })
   })
 
+  describe('cancelling a connect', () => {
+    // The wallet that took the request and answered nothing: no session, no error, no close to
+    // watch for, so only the user can end the wait.
+    const neverAnswers = fromPromise<WalletStatusUpdate, ConnectInput>(
+      () => new Promise<WalletStatusUpdate>(() => {}),
+    )
+    const nothingToRestore = fromPromise<WalletStatusUpdate, RestoreInput>(() =>
+      Promise.reject(new Error('no session')),
+    )
+
+    it('answers a wallet that never replies as a cancel, on a replaced sdk', () => {
+      const machine = connectionMachine.provide({ actors: { accounts, connect: neverAnswers } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      const stranded = actor.getSnapshot().context.sdk
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+
+      const settled = actor.getSnapshot()
+
+      expect(settled.matches('retiring')).toBe(true)
+      expect(settled.hasTag('connect.cancelled')).toBe(true)
+      expect(settled.hasTag('connect.failed')).toBe(false)
+      // nothing failed, so nothing is left for a consumer to read
+      expect(settled.context.lastConnectError).toBeUndefined()
+      // the abandoned connect() still holds this instance's client
+      expect(settled.context.sdk).not.toBe(stranded)
+
+      actor.stop()
+    })
+
+    it('lands disconnected once the replacement has booted', async () => {
+      const machine = connectionMachine.provide({
+        actors: { accounts, init, connect: neverAnswers, restore: nothingToRestore },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().context.lastConnectError).toBeUndefined()
+
+      actor.stop()
+    })
+
+    // A status of disconnected or idle in between would unmount a status-gated app while its
+    // session survives, so every step of the resume must read as the attempt still running.
+    it('resumes the standing session when a wallet change is cancelled', async () => {
+      const machine = connectionMachine.provide({
+        actors: { accounts, init, restore, connect: neverAnswers },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
+
+      const reported: string[] = []
+      const subscription = actor.subscribe((snapshot) => {
+        reported.push(toConnectionStatus(snapshot))
+      })
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
+      expect(reported).not.toContain('disconnected')
+      expect(reported).not.toContain('idle')
+      expect(reported.at(-1)).toBe('connected')
+
+      subscription.unsubscribe()
+      actor.stop()
+    })
+  })
+
   describe('reset', () => {
     it('forgets the last failure on request', async () => {
       const machine = connectionMachine.provide({

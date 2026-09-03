@@ -21,7 +21,7 @@ stateDiagram-v2
     session --> connecting: connect (wallet change)
     connecting --> session: wallet approved
     connecting --> failure: declined or threw
-    connecting --> retiring: picker closed
+    connecting --> retiring: picker closed, or cancelled
     retiring --> restoring: replacement booted
     retiring --> failure: replacement failed too
     session --> disconnecting: disconnect
@@ -30,7 +30,7 @@ stateDiagram-v2
 
 `connecting`, `retiring` and `restoring` each split into `new` and `changing`: the variants carry
 whether a standing session is at stake. A connect from `session` runs as
-`changing`, and a closed picker resumes that session through `retiring.changing` and
+`changing`, and a closed picker or a cancel resumes that session through `retiring.changing` and
 `restoring.changing`, which `toConnectionStatus` reports as `'connecting'` rather than
 `'disconnected'` and `'idle'`: a consumer gating on status must not unmount the app while its
 session is on the way back.
@@ -73,6 +73,9 @@ Consequences a caller notices:
 
 Which states record, keep and clear `lastConnectError` is the machine's own rule; the context
 comment carries the why (a recovered session can still say why the attempt before it failed).
+
+A user's own cancel records nothing either: `connect.cancel` takes the same route to `retiring`,
+and the abort xstate fires on the stopped actor is what closes the picker window.
 
 A picker close reaches the caller two ways. A close the watchdog catches records nothing:
 `connecting` goes to `retiring` and `connect()` rejects with a fresh `ConnectCancelledError`. A
