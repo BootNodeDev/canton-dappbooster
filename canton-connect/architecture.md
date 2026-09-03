@@ -62,8 +62,8 @@ flowchart LR
 
 ### The lifecycle: `machine/`
 
-One model of connecting, session, lock and disconnect, so the impossible combinations (a status
-with no party, an error beside a live session) cannot be built. Three decisions carry the weight:
+One model of connecting, session, lock and disconnect, so the impossible combinations (a party with
+no live session, an error beside a live session) cannot be built. Three decisions carry the weight:
 
 - `idle` is not `disconnected`. `idle` means the boot restore has not answered; `disconnected` means
   it has, and there is nothing.
