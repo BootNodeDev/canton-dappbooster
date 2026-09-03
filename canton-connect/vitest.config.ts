@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // Node 26's own localStorage global shadows jsdom's under vitest 4; vitest 5 fixes it.
+    execArgv: ['--no-experimental-webstorage'],
     // The suite's wall clock is SDK timer waits, not CPU; without an explicit count,
     // core-starved CI runners get too few workers to overlap the files.
     maxWorkers: 8,

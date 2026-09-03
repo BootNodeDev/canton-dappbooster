@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
     // jsdom despite no DOM assertions: the wallet SDK touches DOM globals on import.
     test: {
       environment: 'jsdom',
+      // Node 26's own localStorage global shadows jsdom's under vitest 4; vitest 5 fixes it.
+      execArgv: ['--no-experimental-webstorage'],
     },
   }
 })
