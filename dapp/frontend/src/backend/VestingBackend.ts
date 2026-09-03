@@ -38,6 +38,7 @@ export interface VestingBackend {
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  tap(partyId: string): Promise<void>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { encodeSchedule } from '@/backend/commands'
+import { encodeSchedule, TAP_AMOUNT } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
@@ -396,6 +396,25 @@ describe('LedgerBackend submissions', () => {
       ['pkg1:AmuletVesting:AmuletVestingContract', 'AmuletVestingContract_Cancel', 'c1'],
       ['pkg1:AmuletVesting:AmuletVestedClaim', 'AmuletVestedClaim_Withdraw', 'r1'],
     ])
+  })
+
+  it('taps AmuletRules for the connected party, on the same two disclosures', async () => {
+    const { backend, submissions } = harness()
+
+    await backend.tap('funder::1')
+
+    const command = submissions[0]?.commands?.[0]?.ExerciseCommand
+    expect([command?.templateId, command?.choice, command?.contractId]).toEqual([
+      transferContext.rulesTemplateId,
+      'AmuletRules_DevNet_Tap',
+      transferContext.ctx.amuletRules,
+    ])
+    expect(command?.choiceArgument).toEqual({
+      receiver: 'funder::1',
+      amount: TAP_AMOUNT,
+      openRound: transferContext.ctx.openMiningRound,
+    })
+    expect(submissions[0]?.disclosedContracts).toEqual(onSync(transferContext.disclosed))
   })
 
   it('carries the transfer context into every choice argument that takes one', async () => {

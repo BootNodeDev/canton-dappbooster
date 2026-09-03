@@ -7,6 +7,7 @@ import {
   buildClaimResidualCommand,
   buildCreateVestingCommand,
   buildSplitCommand,
+  buildTapCommand,
   buildWithdrawCommand,
 } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
@@ -226,11 +227,11 @@ export class LedgerBackend implements VestingBackend {
   // invariant is held here rather than re-spelled per choice; `extra` is what only Accept adds.
   private async submitWithContext(
     actAs: string,
-    build: (ctx: AppTransferContext) => LedgerCommand,
+    build: (ctx: AppTransferContext, rulesTemplateId: string) => LedgerCommand,
     extra: DisclosedContract[] = [],
   ): Promise<void> {
-    const { ctx, disclosed } = await fetchTransferContext(actAs)
-    await this.submit(actAs, build(ctx), [...disclosed, ...extra])
+    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext(actAs)
+    await this.submit(actAs, build(ctx, rulesTemplateId), [...disclosed, ...extra])
   }
 
   // Self-transfers `amount` into an Amulet of the funder's own and returns it, disclosure blob
@@ -367,6 +368,16 @@ export class LedgerBackend implements VestingBackend {
   async claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void> {
     await this.submitWithContext(args.receiver, (ctx) =>
       buildClaimResidualCommand(this.tid('AmuletVestedClaim'), args.claimCid, args.amount, ctx),
+    )
+  }
+
+  // The only write not on an amulet-vesting template: it exercises AmuletRules itself.
+  async tap(partyId: string): Promise<void> {
+    await this.submitWithContext(partyId, (ctx, rulesTemplateId) =>
+      buildTapCommand(rulesTemplateId, ctx.amuletRules, {
+        openMiningRound: ctx.openMiningRound,
+        receiver: partyId,
+      }),
     )
   }
 }
