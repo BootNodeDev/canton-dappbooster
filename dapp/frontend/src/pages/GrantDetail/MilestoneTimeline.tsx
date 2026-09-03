@@ -3,7 +3,7 @@ import { multiplyByFraction } from '@/utils/amount'
 import { cn } from '@/utils/cn'
 import { formatDate } from '@/utils/format'
 import type { VestingSchedule } from '@/utils/schedule'
-import { CC } from '@/utils/tokens'
+import { AMT } from '@/utils/tokens'
 
 interface MilestoneTimelineProps {
   nowMs: number
@@ -11,7 +11,7 @@ interface MilestoneTimelineProps {
   total: string
 }
 
-// Vertical list of milestone points with reached/pending state and the CC unlocked
+// Vertical list of milestone points with reached/pending state and the AMT unlocked
 // at each step (delta of cumulative fractions).
 export const MilestoneTimeline = ({
   schedule,
@@ -57,7 +57,7 @@ export const MilestoneTimeline = ({
                 </span>
               </div>
               <div className="mt-0.5 font-mono text-xs text-fg-muted">
-                {formatDate(point.time)} · +<CompactAmount value={unlocked} /> {CC.symbol}
+                {formatDate(point.time)} · +<CompactAmount value={unlocked} /> {AMT.symbol}
               </div>
             </div>
           </li>

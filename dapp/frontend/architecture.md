@@ -1,4 +1,4 @@
-# Architecture — Canton Coin vesting dApp
+# Architecture — Amulet vesting dApp
 
 The app's internal seams and the reasoning behind them. What this is and how to run it is in
 [`README.md`](README.md); repo-wide rules live in [`../../CLAUDE.md`](../../CLAUDE.md) and the
@@ -236,9 +236,9 @@ total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-**Neither field offers the token picker, and that is deliberate.** Both pass `token={CC}` and no
+**Neither field offers the token picker, and that is deliberate.** Both pass `token={AMT}` and no
 `onTokenSelect`, which is what makes the kit render the symbol as a static mark rather than a button.
-[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `CC` and nothing else, because that is the only
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `AMT` and nothing else, because that is the only
 instrument this deployment knows, so a picker over it would open a dialog to choose the value already
 chosen. The claim dialog has a second reason it will keep: what a grant pays out is fixed by the
 contract, so there is nothing there to pick.
@@ -248,11 +248,11 @@ Turning the create field back into a real picker takes three things, none of the
 - **A list to choose from.** `TOKENS` in `src/utils/tokens.tsx` is a hardcoded one-entry array. It
   becomes whatever enumerates the instruments a deployment actually holds, and the kit's
   `TokenListProvider` is what the picker reads it through.
-- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(CC)` and passes
+- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(AMT)` and passes
   `onTokenSelect`. Per-field rather than lifted, unless by then two amounts on one page must agree.
 - **The rest of the app told about it.** Today the pick would be display-only: the re-lock floor's
   wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say
-  Canton Coin in their own right. Each has to take the chosen token instead, or a pick would relabel
+  Amulet in their own right. Each has to take the chosen token instead, or a pick would relabel
   one field and silently mean nothing.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one

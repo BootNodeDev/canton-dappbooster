@@ -28,7 +28,7 @@ import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { copyToast, toast } from '@/utils/toast'
-import { CC } from '@/utils/tokens'
+import { AMT } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -326,7 +326,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                token={CC}
+                token={AMT}
                 usdValue="N/A"
                 value={amount}
               />

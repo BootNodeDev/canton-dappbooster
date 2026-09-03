@@ -1,8 +1,8 @@
-# @canton-dappbooster/frontend — Canton Coin vesting dApp
+# @canton-dappbooster/frontend — Amulet vesting dApp
 
-dApp for **Canton Coin vesting**: propose a grant, the receiver accepts, claim as it
-vests, or cancel into a residual claim. Accepting locks the funder's Canton Coin in an
-Amulet escrow and each claim releases part of it, so the figures on screen are real
+dApp for **Amulet vesting**: propose a grant, the receiver accepts, claim as it
+vests, or cancel into a residual claim. Accepting locks the funder's Amulet in
+escrow and each claim releases part of it, so the figures on screen are real
 holdings; grants render live vested/claimable figures from the pure schedule math in
 [`src/utils/schedule.ts`](src/utils/schedule.ts).
 

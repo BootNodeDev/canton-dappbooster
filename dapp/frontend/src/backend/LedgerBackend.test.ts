@@ -264,7 +264,7 @@ describe('LedgerBackend.createVesting', () => {
       },
     })
 
-    await expect(backend.createVesting(grant)).rejects.toThrow(/only 400 CC is free/)
+    await expect(backend.createVesting(grant)).rejects.toThrow(/only 400 AMT is free/)
   })
 
   it('exercises the factory choice with the composed note and schedule, disclosing only it', async () => {
@@ -311,10 +311,10 @@ describe('LedgerBackend.createVesting', () => {
     expect(submissions[1]?.disclosedContracts?.[0]).not.toHaveProperty('synchronizerId')
   })
 
-  it('refuses a grant the funder holds no Canton Coin for', async () => {
+  it('refuses a grant the funder holds no Amulet for', async () => {
     const { backend } = harness({ acs: {} })
 
-    await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 CC is free/)
+    await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 AMT is free/)
   })
 
   // A disclosure is an opaque blob, so the split reads the DSO off an Amulet it consumes.

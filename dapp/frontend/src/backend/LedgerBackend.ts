@@ -244,7 +244,7 @@ export class LedgerBackend implements VestingBackend {
     const freeTotal = addAmounts(...free.map(amuletValue))
     if (compareAmounts(freeTotal, amount) < 0) {
       throw new Error(
-        `only ${freeTotal} CC is free to fund this grant — the rest is pledged to a pending one`,
+        `only ${freeTotal} AMT is free to fund this grant — the rest is pledged to a pending one`,
       )
     }
     const dso = free.map(amuletDso).find((party) => party !== undefined)
