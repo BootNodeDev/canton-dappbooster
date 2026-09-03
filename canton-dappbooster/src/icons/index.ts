@@ -1,7 +1,5 @@
 export { CheckIcon } from '#src/icons/CheckIcon'
-export { ChevronDownIcon } from '#src/icons/ChevronDownIcon'
 export { CloseIcon } from '#src/icons/CloseIcon'
 export { CopyIcon } from '#src/icons/CopyIcon'
 export { ExternalLinkIcon } from '#src/icons/ExternalLinkIcon'
-export { LogoutIcon } from '#src/icons/LogoutIcon'
 export { SearchIcon } from '#src/icons/SearchIcon'

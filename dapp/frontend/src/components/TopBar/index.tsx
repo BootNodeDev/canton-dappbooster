@@ -1,7 +1,7 @@
 import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
+import { AccountMenu } from '@/components/TopBar/AccountMenu'
 import { Logo } from '@/components/TopBar/Logo'
-import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useParty } from '@/hooks/useParty'
 import { SpinnerIcon } from '@/icons'
@@ -17,6 +17,7 @@ const items = [
 export const TopBar = (): React.JSX.Element => {
   const { party } = useParty()
   const { sessionPending } = useBackend()
+  const wallet = party !== undefined ? <AccountMenu party={party} /> : <ConnectButton />
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
     party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
@@ -37,13 +38,13 @@ export const TopBar = (): React.JSX.Element => {
               <span className="sr-only">Restoring wallet session</span>
             </span>
           ) : (
-            <ConnectButton avatar={(partyId) => <PartyAvatar partyId={partyId} />} />
+            wallet
           )}
         </div>
       </div>
 
       {/* Centred over the row above from md, where there is room beside the logo and the wallet
-          chip; below that it takes a row of its own, since hiding it left Pending reachable
+          control; below that it takes a row of its own, since hiding it left Pending reachable
           only by typing the URL. */}
       <nav
         aria-label="Primary"

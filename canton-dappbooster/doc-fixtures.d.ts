@@ -51,6 +51,7 @@ declare const setAmount: (value: string) => void
 declare const setReceiver: (value: string) => void
 declare const setSelected: (token: FixtureToken) => void
 declare const setError: (error: unknown) => void
+declare const toggleMenu: () => void
 
 /* Consumer-side components and host wiring */
 
