@@ -17,7 +17,7 @@ interface AccountMenuProps {
   party: PartyRef
 }
 
-export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element | null => {
+export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLDivElement>()
   const panelId = useId()
 
