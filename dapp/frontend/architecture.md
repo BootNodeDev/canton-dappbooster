@@ -64,6 +64,14 @@ refuse the origin on the preflight and the validator's scan-proxy wants a bearer
 went with it: tap resolves the active one itself, and a LocalNet whose SV has not opened the first
 round yet fails the call, which is a wait rather than a bug.
 
+The faucet in the account menu is the one place the app taps for real. `LedgerBackend.tap` builds
+`AmuletRules_DevNet_Tap` for `TAP_AMOUNT` out of the same record and the same two disclosures every
+other write already fetches, and the wallet signs it as the connected party, so the button costs no
+extra read. Composed here rather than forwarded: wallet-service's own prepared tap carries a fixed
+amount, and this way `TAP_AMOUNT` is the app's to change. The choice exists on LocalNet and devnet
+only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
+moment not found`, which reaches the user as the failure toast.
+
 Where that call goes is `VITE_WALLET_RPC_URL`. Locally it is wallet-service itself; a deployed build
 sets it to `/api/rpc`, [the app's own function](api/rpc.ts), because an https page cannot call a
 plain-http wallet-service and Node's fetch has no such policy. The function forwards `amulet.tap`
