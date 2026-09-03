@@ -1,12 +1,17 @@
 import { truncateIdentifier, useCopyToClipboard } from '@bootnodedev/canton-dappbooster'
 import { DisconnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { useId } from 'react'
+import { TAP_AMOUNT } from '@/backend/commands'
+import type { VestingBackend } from '@/backend/VestingBackend'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { useDismissable } from '@/hooks/useDismissable'
 import type { PartyRef } from '@/hooks/useParty'
-import { CaretDownIcon, CheckIcon, CopyIcon, PowerIcon } from '@/icons'
+import { CaretDownIcon, CheckIcon, CopyIcon, DropletIcon, PowerIcon } from '@/icons'
+import { useBackend } from '@/providers/Backend'
 import { cn } from '@/utils/cn'
+import { errorText } from '@/utils/errorText'
 import { toast } from '@/utils/toast'
+import { AMT } from '@/utils/tokens'
 
 const TRUNCATE = { head: 6, hint: 12, tail: 6 }
 
@@ -27,8 +32,20 @@ interface AccountMenuProps {
 export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLDivElement>()
   const panelId = useId()
+  const { backend } = useBackend()
   const { copy, state: copyState } = useCopyToClipboard()
   const copied = copyState === 'copied'
+
+  // No store refresh follows: a tap creates an Amulet, and the store reads only the three
+  // amulet-vesting templates.
+  const runTap = (ledger: VestingBackend): void => {
+    setOpen(false)
+    toast.info(`Tapping ${TAP_AMOUNT} ${AMT.symbol}…`)
+    ledger.tap(party.partyId).then(
+      () => toast.success(`${TAP_AMOUNT} ${AMT.symbol} tapped`),
+      (err: unknown) => toast.error(errorText(err)),
+    )
+  }
 
   // The icon carries the success, but a rejected clipboard write leaves it unchanged, so the
   // failure needs its own words.
@@ -85,6 +102,28 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
             </div>
           </div>
           <hr className="-mx-4 border-border" />
+          {/* The rule below belongs to the button: without it the two would draw an empty band. */}
+          {backend !== undefined && (
+            <>
+              <button
+                className="-m-4 flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted"
+                onClick={() => runTap(backend)}
+                onMouseDown={keepFocus}
+                type="button"
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary-strong">
+                  <DropletIcon />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold text-fg">Tap {AMT.name}</span>
+                  <span className="text-xs text-fg-muted">
+                    Get {TAP_AMOUNT} {AMT.symbol} from the faucet
+                  </span>
+                </span>
+              </button>
+              <hr className="-mx-4 border-border" />
+            </>
+          )}
           {/* 12px under the rule; the panel's own padding sets the space below. */}
           <div className="-mt-1 flex items-center justify-between gap-2">
             <p className="flex items-center gap-2 text-xs text-fg-muted">
