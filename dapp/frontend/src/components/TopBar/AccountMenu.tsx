@@ -1,12 +1,13 @@
-import { truncateIdentifier, useCopyToClipboard } from '@bootnodedev/canton-dappbooster'
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { DisconnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { useId } from 'react'
 import { TAP_AMOUNT } from '@/backend/commands'
 import type { VestingBackend } from '@/backend/VestingBackend'
+import { CopyButton } from '@/components/CopyButton'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { useDismissable } from '@/hooks/useDismissable'
 import type { PartyRef } from '@/hooks/useParty'
-import { CaretDownIcon, CheckIcon, CopyIcon, DropletIcon, PowerIcon } from '@/icons'
+import { CaretDownIcon, DropletIcon, PowerIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
@@ -33,8 +34,6 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLDivElement>()
   const panelId = useId()
   const { backend } = useBackend()
-  const { copy, state: copyState } = useCopyToClipboard()
-  const copied = copyState === 'copied'
 
   // No store refresh follows: a tap creates an Amulet, and the store reads only the three
   // amulet-vesting templates.
@@ -45,16 +44,6 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
       () => toast.success(`${TAP_AMOUNT} ${AMT.symbol} tapped`),
       (err: unknown) => toast.error(errorText(err)),
     )
-  }
-
-  // The icon carries the success, but a rejected clipboard write leaves it unchanged, so the
-  // failure needs its own words.
-  const runCopy = (): void => {
-    void copy(party.partyId).then((outcome) => {
-      if (!outcome.ok) {
-        toast.error('Could not copy party id')
-      }
-    })
   }
 
   return (
@@ -85,19 +74,18 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
                   {truncateIdentifier(fingerprintOf(party.partyId), FINGERPRINT_TRUNCATE)}
                 </code>
                 {/* Copies the whole party id: a fingerprint on its own addresses nobody. */}
-                <button
-                  aria-label={copied ? 'Party id copied' : 'Copy party id'}
-                  className="shrink-0 transition-colors hover:text-fg"
-                  onClick={runCopy}
+                <CopyButton
+                  className="shrink-0"
+                  label="Party id"
+                  onOutcome={(outcome) => {
+                    if (!outcome.ok) {
+                      toast.error('Could not copy party id')
+                    }
+                  }}
                   onMouseDown={keepFocus}
-                  type="button"
-                >
-                  {copied ? (
-                    <CheckIcon width={14} height={14} />
-                  ) : (
-                    <CopyIcon width={14} height={14} />
-                  )}
-                </button>
+                  size={14}
+                  value={party.partyId}
+                />
               </p>
             </div>
           </div>
