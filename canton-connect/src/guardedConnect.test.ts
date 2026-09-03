@@ -1,6 +1,6 @@
 import { DappSDK } from '@canton-network/dapp-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
 import { guardedConnect } from '#src/guardedConnect'
 import { createAutoPicker } from '#src/testing/autoPicker'
 import { createFakeWallet } from '#src/testing/fakeWallet'
@@ -231,5 +231,81 @@ describe('guardedConnect', () => {
 
     await expect(guardedConnect(sdk)).rejects.toBe(pickerError)
     expect(window.open).toBe(original)
+  })
+
+  it('rejects as a cancel when the caller abandons the connect', async () => {
+    openStub(watchable())
+    const stubbed = window.open
+    const controller = new AbortController()
+
+    const settled = expect(
+      guardedConnect(stubSdk({ opens: true }), controller.signal),
+    ).rejects.toBeInstanceOf(ConnectCancelledError)
+
+    controller.abort()
+    await settled
+    // the forged pick is delivered on a task of its own, which counts as a pending timer here
+    await tick()
+
+    // the race's `finally` is what releases both, so an unsettled race would leak them
+    expect(vi.getTimerCount()).toBe(0)
+    expect(window.open).toBe(stubbed)
+  })
+
+  it('closes the picker window it captured', async () => {
+    const popup = watchable()
+    const close = vi.fn(() => {
+      popup.closed = true
+    })
+    popup.close = close
+    openStub(popup)
+    const controller = new AbortController()
+
+    const settled = expect(
+      guardedConnect(stubSdk({ opens: true }), controller.signal),
+    ).rejects.toBeInstanceOf(ConnectCancelledError)
+
+    controller.abort()
+    await settled
+
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('rejects at once on a signal already aborted', async () => {
+    openStub(watchable())
+
+    await expect(
+      guardedConnect(stubSdk({ opens: true }), AbortSignal.abort()),
+    ).rejects.toBeInstanceOf(ConnectCancelledError)
+  })
+
+  it('forges the abandoned pick only when no other connect is in flight', async () => {
+    openStub(watchable())
+    const posted = vi.spyOn(window, 'postMessage')
+    const abandonedPick = expect.objectContaining({ providerId: 'abandoned' })
+
+    const other = stubSdk()
+    const stranded = guardedConnect(other)
+    const controller = new AbortController()
+    const cancelling = guardedConnect(stubSdk({ opens: true }), controller.signal)
+
+    controller.abort()
+    await expect(cancelling).rejects.toBeInstanceOf(ConnectCancelledError)
+
+    // the message reaches every picker listener on the page, so it would settle `other`'s pick too
+    expect(posted).not.toHaveBeenCalledWith(abandonedPick, expect.anything())
+
+    other.settle()
+    await stranded
+
+    const alone = new AbortController()
+    const solo = guardedConnect(stubSdk({ opens: true }), alone.signal)
+
+    alone.abort()
+    await expect(solo).rejects.toBeInstanceOf(ConnectCancelledError)
+
+    expect(posted).toHaveBeenCalledWith(abandonedPick, expect.anything())
+
+    posted.mockRestore()
   })
 })
