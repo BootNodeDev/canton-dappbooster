@@ -3,7 +3,7 @@ import { DisconnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { useId } from 'react'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { useDismissable } from '@/hooks/useDismissable'
-import { useParty } from '@/hooks/useParty'
+import type { PartyRef } from '@/hooks/useParty'
 import { CaretDownIcon } from '@/icons'
 import { cn } from '@/utils/cn'
 import { copyToast } from '@/utils/toast'
@@ -13,12 +13,15 @@ const TRUNCATE = { head: 6, hint: 12, tail: 6 }
 const triggerClass =
   'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
 
-export const AccountMenu = (): React.JSX.Element | null => {
-  const { party } = useParty()
+interface AccountMenuProps {
+  party: PartyRef
+}
+
+export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element | null => {
   const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLDivElement>()
   const panelId = useId()
 
-  return party === undefined ? null : (
+  return (
     <div className="relative" ref={root} {...closers}>
       <button
         aria-controls={open ? panelId : undefined}

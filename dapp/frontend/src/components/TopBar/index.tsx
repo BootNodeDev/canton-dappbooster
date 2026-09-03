@@ -17,7 +17,7 @@ const items = [
 export const TopBar = (): React.JSX.Element => {
   const { party } = useParty()
   const { sessionPending } = useBackend()
-  const wallet = party !== undefined ? <AccountMenu /> : <ConnectButton />
+  const wallet = party !== undefined ? <AccountMenu party={party} /> : <ConnectButton />
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
     party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
