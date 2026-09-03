@@ -3,8 +3,8 @@ import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
- * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected, and
- * `reset` clears the last signature and error without touching the session.
+ * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected or no
+ * party is reported, and `reset` clears the last signature and error without touching the session.
  *
  * @category Hooks
  */
@@ -21,7 +21,7 @@ export interface UseSignMessageResult {
  * Wagmi: `useSignMessage`, same name and job.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
- * connected or the wallet rejects, the rejection also landing in `error`.
+ * connected or no party is reported. A wallet refusal throws too, and lands in `error`.
  *
  * @example
  * const { signMessage } = useSignMessage()
