@@ -285,7 +285,7 @@ describe('guardedConnect', () => {
     const abandonedPick = expect.objectContaining({ providerId: 'abandoned' })
 
     const other = stubSdk()
-    const stranded = guardedConnect(other)
+    const abandoned = guardedConnect(other)
     const controller = new AbortController()
     const cancelling = guardedConnect(stubSdk({ opens: true }), controller.signal)
 
@@ -296,7 +296,7 @@ describe('guardedConnect', () => {
     expect(posted).not.toHaveBeenCalledWith(abandonedPick, expect.anything())
 
     other.settle()
-    await stranded
+    await abandoned
 
     const alone = new AbortController()
     const solo = guardedConnect(stubSdk({ opens: true }), alone.signal)

@@ -22,21 +22,21 @@ Wrapping the call rather than supplying our own `walletPicker` is a stopgap: the
 deeper one and the SDK already offers it, but this package holds no picker UI by rule and the themed
 one (#50) has no merged implementation.
 
-## The orphaned connect
+## The abandoned connect
 
 A rejected race leaves the SDK's `connect()` running, still listening for a picker result and ready
 to swap the SDK's client from under the machine's event wiring on the next connect. That is what
 `PickerClosedError` is for: `connecting` takes it to `retiring`, which replaces the `DappSDK` and
 restores the session from the discovery session key that `connect()` never clears.
 
-Replacing the instance does not by itself reach the orphan. The abandoned `connect()` is parked
+Replacing the instance does not by itself reach it. The abandoned `connect()` is parked
 inside `core-wallet-ui-components` module scope, on a `message` listener keyed to nothing but our
 origin and the message type, so the next successful connect woke every past one: one
 `discovery.connect`, and one wallet approval prompt, per popup the user had closed.
 
 `settleAbandonedConnect` drains them at the close instead. It posts the SDK's own
 `SPLICE_WALLET_PICKER_RESULT` to our window, the only thing that makes that listener unsubscribe.
-The `providerId` matches no registered adapter, so the orphan fails with `WalletNotFoundError`
+The `providerId` matches no registered adapter, so it fails with `WalletNotFoundError`
 before reaching a wallet, then rejects out of `waitForWalletPickerRetrySelection` because the popup
 is closed. `walletType` stays `'browser'` to keep it out of the branch that registers a remote
 adapter from the message, and no `name` is sent, so anything else on the page watching for a pick
@@ -44,7 +44,7 @@ can tell the two apart; `dapp/frontend` does exactly that to label its connect b
 skipped while a second guard is in flight, since the message would resolve that one's live waiter
 too.
 
-This is a workaround, not containment: the orphan still runs. The real fix is an abort on
+This is a workaround, not containment: the abandoned connect still runs. The real fix is an abort on
 `DappSDK.connect()`, upstream. CIP-0103 has no cancel for a sent `connect` either.
 
 ## The watchdog stands down once a wallet is chosen

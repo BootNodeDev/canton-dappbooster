@@ -1169,7 +1169,7 @@ describe('connectionMachine', () => {
       actor.start()
       actor.send({ type: 'restore' })
       await pause(0)
-      const stranded = actor.getSnapshot().context.sdk
+      const abandoned = actor.getSnapshot().context.sdk
 
       actor.send({ type: 'disconnect' })
       clock.increment(DISCONNECT_TIMEOUT_MS - 1)
@@ -1178,7 +1178,7 @@ describe('connectionMachine', () => {
       clock.increment(1)
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
-      expect(actor.getSnapshot().context.sdk).not.toBe(stranded)
+      expect(actor.getSnapshot().context.sdk).not.toBe(abandoned)
 
       actor.stop()
     })
@@ -1312,16 +1312,16 @@ describe('connectionMachine', () => {
     })
   })
 
-  // A picker the user walked out on leaves sdk.connect() running inside the instance, so that
+  // A picker the user abandoned leaves sdk.connect() running inside the instance, so that
   // instance is abandoned and the session re-derived on a fresh one.
-  describe('retiring the stranded sdk', () => {
+  describe('retiring the abandoned sdk', () => {
     const closedPicker = fromPromise<WalletStatusUpdate, ConnectInput>(() =>
       Promise.reject(new PickerClosedError()),
     )
 
     // One name per instance, so which of them the machine inits after the swap is visible.
     const namedSdks = () => {
-      const names = ['stranded', 'replacement']
+      const names = ['abandoned', 'replacement']
       const inited: string[] = []
 
       const createSdk = () => {
@@ -1338,12 +1338,12 @@ describe('connectionMachine', () => {
       return { createSdk, inited }
     }
 
-    it('answers the walked-out connect as a cancel, on a replaced sdk', async () => {
+    it('answers the abandoned connect as a cancel, on a replaced sdk', async () => {
       const machine = connectionMachine.provide({ actors: { accounts, connect: closedPicker } })
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
-      const stranded = actor.getSnapshot().context.sdk
+      const abandoned = actor.getSnapshot().context.sdk
 
       actor.send({ type: 'connect' })
 
@@ -1354,7 +1354,7 @@ describe('connectionMachine', () => {
       expect(settled.hasTag('connect.failed')).toBe(false)
       // nothing failed, so nothing is left for a consumer to read
       expect(settled.context.lastConnectError).toBeUndefined()
-      expect(settled.context.sdk).not.toBe(stranded)
+      expect(settled.context.sdk).not.toBe(abandoned)
 
       actor.stop()
     })
@@ -1477,7 +1477,7 @@ describe('connectionMachine', () => {
 
     // A status of disconnected or idle in between would unmount a status-gated app while its
     // session survives, so every step of the resume must read as the attempt still running.
-    it('resumes the standing session when a wallet change is walked out on', async () => {
+    it('resumes the standing session when a wallet change is abandoned', async () => {
       const machine = connectionMachine.provide({
         actors: { accounts, init, restore, connect: closedPicker },
       })
@@ -1608,7 +1608,7 @@ describe('connectionMachine', () => {
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
-      const stranded = actor.getSnapshot().context.sdk
+      const abandoned = actor.getSnapshot().context.sdk
 
       actor.send({ type: 'connect' })
       actor.send({ type: 'connect.cancel' })
@@ -1621,7 +1621,7 @@ describe('connectionMachine', () => {
       // nothing failed, so nothing is left for a consumer to read
       expect(settled.context.lastConnectError).toBeUndefined()
       // the abandoned connect() still holds this instance's client
-      expect(settled.context.sdk).not.toBe(stranded)
+      expect(settled.context.sdk).not.toBe(abandoned)
 
       actor.stop()
     })

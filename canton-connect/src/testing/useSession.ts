@@ -21,7 +21,7 @@ type Session = {
 /**
  * Everything the reader hooks publish, in one object, so a provider test drives the real SDK and
  * asserts on the public surface. `sdk` rides along because no hook publishes it and a test watching
- * a stranded instance get replaced has nothing else to watch.
+ * an abandoned instance get replaced has nothing else to watch.
  *
  * @example
  * const { result } = renderHook(() => useSession(), { wrapper })

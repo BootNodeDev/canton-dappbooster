@@ -24,7 +24,7 @@ const strandOnClosedPicker = async (
   result: { current: { sdk: WalletSdk; connect: () => Promise<void> } },
   popup: StubPopup,
 ): Promise<WalletSdk> => {
-  const stranded = result.current.sdk
+  const abandoned = result.current.sdk
 
   await act(async () => {
     const connecting = expect(result.current.connect()).rejects.toBeInstanceOf(
@@ -35,8 +35,8 @@ const strandOnClosedPicker = async (
     await connecting
   })
 
-  await waitFor(() => expect(result.current.sdk).not.toBe(stranded))
-  return stranded
+  await waitFor(() => expect(result.current.sdk).not.toBe(abandoned))
+  return abandoned
 }
 
 describe('CantonConnectProvider restored sessions', () => {

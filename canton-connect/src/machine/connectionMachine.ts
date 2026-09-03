@@ -228,7 +228,7 @@ export const connectionMachine = setup({
       ),
     })),
     forgetError: assign({ lastConnectError: undefined }),
-    // The walked-out connect keeps waiting inside the old sdk and nothing can stop it, so a later
+    // The abandoned connect keeps waiting inside the old sdk and nothing can stop it, so a later
     // attempt on that sdk could have its client swapped mid-connect. Drop the instance, take a new
     // one.
     retireSdk: assign(({ context }) => ({ sdk: context.createSdk() })),
@@ -254,7 +254,7 @@ export const connectionMachine = setup({
         | 'connect.settled'
         // The connect is answered by the failure riding in `lastConnectError`.
         | 'connect.failed'
-        // The connect was walked out on: it ends with no session and no error recorded.
+        // The connect was abandoned: it ends with no session and no error recorded.
         | 'connect.cancelled'
         // A connect is still in progress to consumers, the account read after the wallet's answer
         // included.
