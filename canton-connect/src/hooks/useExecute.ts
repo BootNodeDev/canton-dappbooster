@@ -3,7 +3,7 @@ import { useCallback } from 'react'
 import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useTxFeed } from '#src/hooks/useTxFeed'
 import { useWalletCall } from '#src/hooks/useWalletCall'
-import type { Party, TxStatusSnapshot } from '#src/types'
+import type { TxStatusSnapshot } from '#src/types'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -12,8 +12,8 @@ export type { PrepareExecuteParams }
 
 // An unset `actAs` lets the wallet pick its own primary, which may not be the party the kit shows.
 /** Defaults `actAs` to the connected party, leaving a caller's own `actAs` untouched. */
-const withActAs = (params: PrepareExecuteParams, party: Party): PrepareExecuteParams =>
-  params.actAs === undefined ? { ...params, actAs: [party.partyId] } : params
+const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecuteParams =>
+  params.actAs === undefined ? { ...params, actAs: [partyId] } : params
 
 /**
  * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
@@ -53,8 +53,8 @@ export const useExecute = (): UseExecuteResult => {
 
   const execute = useCallback(
     (params: PrepareExecuteParams): Promise<unknown> =>
-      call((walletSdk, actingParty) =>
-        walletSdk.prepareExecuteAndWait(withActAs(params, actingParty)),
+      call((walletSdk, actingPartyId) =>
+        walletSdk.prepareExecuteAndWait(withActAs(params, actingPartyId)),
       ),
     [call],
   )
