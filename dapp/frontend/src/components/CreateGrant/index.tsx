@@ -181,9 +181,9 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
 
   const scheduleValid = validVestingSchedule(schedule)
   // Recomputed rather than stored from the last keystroke, so it can never outlive the value that
-  // produced it. Deliberately no `max`: the balance is what the field offers through Max, not a
-  // ceiling, since the holding fee keeps moving it and the ledger has the last word at Accept.
-  const amountError = validateAmount(amount)
+  // produced it, and so a balance that lands after the amount was typed still applies. Same call
+  // the field makes internally, which is what keeps the Continue button and its border in step.
+  const amountError = validateAmount(amount, { max: balance })
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
   const receiverWellFormed = isValidPartyId(receiver)
@@ -316,10 +316,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               {/* No `onTokenSelect` on purpose: the kit renders the symbol as a static mark
                   without it, and a picker over a one-entry list is a control that cannot do
                   anything. Restore it when a second instrument exists — see architecture.md. */}
-              {/* The field carries no message for now, so its flag is the app's own error and not
-                  the kit's, which would also flag an amount above the balance. */}
               <TokenInput
-                aria-invalid={amountError !== undefined}
                 balance={balance}
                 balanceState={balanceState}
                 className="w-full border-0 p-0"
