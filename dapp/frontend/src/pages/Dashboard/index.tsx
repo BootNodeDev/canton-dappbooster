@@ -1,4 +1,5 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
+import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
@@ -11,11 +12,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
+import { Pills } from '@/components/Pills'
 import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
-import { PlusIcon } from '@/icons'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
@@ -167,27 +168,9 @@ export const Dashboard = (): React.JSX.Element => {
       <PageTitle title="Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <fieldset className="flex flex-wrap items-center gap-2">
-          <legend className="sr-only">Filter grants</legend>
-          {FILTERS.map((entry) => (
-            <button
-              key={entry.value}
-              type="button"
-              aria-pressed={filter === entry.value}
-              onClick={() => setFilter(entry.value)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
-                filter === entry.value
-                  ? 'border-primary bg-primary-soft text-fg'
-                  : 'border-border text-fg-muted hover:text-fg',
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </fieldset>
+        <Pills label="Filter grants" onChange={setFilter} options={FILTERS} value={filter} />
         <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
-          <PlusIcon />
+          <Plus />
           Create
         </Button>
       </div>

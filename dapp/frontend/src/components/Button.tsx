@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
-import { SpinnerIcon } from '@/icons'
+import { Spinner } from '@/components/Spinner'
 import { cn } from '@/utils/cn'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
@@ -96,7 +96,7 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
     >
       {pending ? (
         <>
-          <SpinnerIcon width={16} height={16} />
+          <Spinner size={16} />
           Submitting…
         </>
       ) : (

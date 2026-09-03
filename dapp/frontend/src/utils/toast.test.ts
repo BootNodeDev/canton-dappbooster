@@ -1,39 +1,24 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast, useToastStore } from '@/utils/toast'
+import { afterEach, describe, expect, it } from 'vitest'
+import { toast, toaster } from '@/utils/toast'
 
-describe('toast auto-dismiss', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    useToastStore.setState({ toasts: [] })
-  })
-
+// Ark owns the clock; what is the app's is which tones are allowed to run out on it.
+describe('toast lifetime', () => {
   afterEach(() => {
-    vi.useRealTimers()
+    toaster.remove()
   })
 
-  it('runs the clock from the push, so a viewport remount cannot extend a toast', () => {
+  it('lets a plain toast time out on the shared duration', () => {
     toast.success('Claimed 250 AMT')
-    vi.advanceTimersByTime(3199)
-    expect(useToastStore.getState().toasts).toHaveLength(1)
-    vi.advanceTimersByTime(1)
-    expect(useToastStore.getState().toasts).toEqual([])
+    expect(toaster.getVisibleToasts()[0].duration).toBe(3200)
   })
 
-  it('keeps an error and a toast carrying an action', () => {
+  it('keeps an error until it is dismissed, since it has to be read in full and often copied', () => {
     toast.error('Wallet refused the submission')
-    toast.info('Grant created', { action: { label: 'View', to: '/grants/g1' } })
-    vi.advanceTimersByTime(60_000)
-    expect(useToastStore.getState().toasts).toHaveLength(2)
+    expect(toaster.getVisibleToasts()[0].duration).toBe(Number.POSITIVE_INFINITY)
   })
 
-  it('dismisses one by id and leaves the rest on their own clocks', () => {
-    toast.success('first')
-    toast.success('second')
-    const first = useToastStore.getState().toasts[0]
-    useToastStore.getState().dismiss(first.id)
-
-    expect(useToastStore.getState().toasts.map((t) => t.message)).toEqual(['second'])
-    vi.advanceTimersByTime(3200)
-    expect(useToastStore.getState().toasts).toEqual([])
+  it('keeps a toast carrying an action, whose link has to be there when it is reached for', () => {
+    toast.success('Grant created', { action: { label: 'View pending grants', to: '/pending' } })
+    expect(toaster.getVisibleToasts()[0].duration).toBe(Number.POSITIVE_INFINITY)
   })
 })

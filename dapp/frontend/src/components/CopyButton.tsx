@@ -1,5 +1,5 @@
 import { type CopyOutcome, useCopyToClipboard } from '@bootnodedev/canton-dappbooster'
-import { CheckIcon, CopyIcon } from '@/icons'
+import { Check, Copy } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
 interface CopyButtonProps extends React.ComponentPropsWithoutRef<'button'> {
@@ -15,6 +15,7 @@ interface CopyButtonProps extends React.ComponentPropsWithoutRef<'button'> {
 export const CopyButton = ({
   className,
   label,
+  onClick,
   onOutcome,
   size = 16,
   value,
@@ -26,11 +27,18 @@ export const CopyButton = ({
     <button
       aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
       className={cn('transition-colors hover:text-fg', className)}
-      onClick={() => void copy(value).then(onOutcome)}
+      // A wrapper's handler runs first and the copy stays the default action, so a menu item that
+      // renders this as its own child adds behaviour instead of silently dropping the copy.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented) {
+          void copy(value).then(onOutcome)
+        }
+      }}
       type="button"
       {...rest}
     >
-      {copied ? <CheckIcon width={size} height={size} /> : <CopyIcon width={size} height={size} />}
+      {copied ? <Check size={size} /> : <Copy size={size} />}
     </button>
   )
 }

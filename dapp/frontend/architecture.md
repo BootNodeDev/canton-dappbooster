@@ -14,11 +14,11 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useDismissable` carries the blur-and-Escape dismissal both hand-rolled dropdowns share, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
-| `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
+| `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
 | `api/` | Vercel functions, published at `/api/<name>` off the deployed origin. `rpc.ts` is the only one, and it forwards a single wallet-service method. Not part of the bundle and not reachable in `pnpm dev`. |
@@ -322,10 +322,12 @@ Counterparty ids go through one component:
 the direction-specific label, and the copy toast, and `GrantCard` and `PendingGrantCard` render it.
 Every `<Identifier>`
 the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
-would double-announce. That one region has to move: `Modal` opens a native `<dialog>` with
-`showModal()`, which inerts everything outside the dialog's subtree, so a toast raised over an open
-dialog — every failed submit — would be neither clickable nor announced. `utils/topLayer.ts` carries
-the open dialog element from `Modal` to the `Toaster`, which portals into it.
+would double-announce. The region stays where it mounts, which takes one arrangement with the
+dialog: Ark's `Dialog` aria-hides everything outside its own content but skips any element carrying
+`aria-live`, and the toast region carries one, so a toast raised over an open dialog — every failed
+submit — is still announced. Clicks are the other half. A modal dialog blocks the pointer outside
+itself and reads a click there as a dismissal, so `Modal` names the region in Ark's
+`persistentElements`, and `utils/toast.ts` exports the lookup that finds it by the id Zag gives it.
 
 That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
@@ -346,6 +348,36 @@ default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys t
 `--fg` / `--bg` set off the same attribute. The reload flash that comes with that, and why no
 pre-paint script sits in `index.html`, are the kit's call:
 [`canton-dappbooster/architecture.md`](../../canton-dappbooster/architecture.md).
+
+## Where the widgets come from
+
+Every menu, dialog, tooltip, select, toast, stepper, number input and progress bar is
+[Ark UI](https://ark-ui.com/react/docs/overview/introduction), and every generic icon is
+`lucide-react`. Ark wraps the same `@zag-js/*` machines `canton-dappbooster` already depends on and
+pins them to the exact version the kit resolves, so the lock file holds one copy of each rather than
+two. What the app still writes is the classes and the wording; what it stopped writing is
+dismissal, focus trapping, roving focus, live-region announcement and popper placement.
+
+`canton-dappbooster` stays on raw Zag. Its anatomy class strings are what `canton-theme` selects
+against, and Ark ships its own.
+
+Three things the library leaves to the caller, settled once here:
+
+- **A popper's z-index goes on its `Content`, never its `Positioner`.** Zag reads the content's
+  computed `z-index` and writes it onto the positioner as an inline `z-index: var(--z-index)`, so a
+  class on the positioner loses to that inline style and the panel lands on `auto`.
+- **A popper opened inside `Modal` renders inline with `strategy: 'fixed'` rather than in a
+  `Portal`.** A portal would put the panel outside the dialog, where Ark aria-hides it and blocks
+  the pointer. Fixed positioning is what frees it from the dialog's own scroll box without leaving
+  the dialog.
+- **`InfoTip` opens on tap.** Zag's tooltip ignores touch pointers by design, so the component adds
+  a `pointerup` toggle for `pointerType === 'touch'` and turns `closeOnClick` off, or the click that
+  follows the tap closes what the tap opened.
+
+The toast stack is the one Ark part that needs CSS the app has to supply: Zag places each toast
+absolutely and hands the offsets over as custom properties, so
+[`src/styles/index.css`](src/styles/index.css) turns them into a `translate` and a transition. With
+no rule there every toast draws on top of the one before it.
 
 ## Stylesheet layering
 

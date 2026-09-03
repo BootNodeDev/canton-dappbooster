@@ -1,10 +1,10 @@
 import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
+import { Spinner } from '@/components/Spinner'
 import { AccountMenu } from '@/components/TopBar/AccountMenu'
 import { Logo } from '@/components/TopBar/Logo'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useParty } from '@/hooks/useParty'
-import { SpinnerIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -34,7 +34,7 @@ export const TopBar = (): React.JSX.Element => {
               role="status"
               className="inline-flex size-9 items-center justify-center text-fg-muted"
             >
-              <SpinnerIcon width={18} height={18} />
+              <Spinner />
               <span className="sr-only">Restoring wallet session</span>
             </span>
           ) : (

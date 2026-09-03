@@ -1,7 +1,7 @@
 import { type IconProps, Svg } from '@/icons/Svg'
 
-export const XIcon = (p: IconProps): React.JSX.Element => (
-  <Svg fill="currentColor" stroke="none" viewBox="0 0 26 25" {...p}>
+export const XMark = (p: IconProps): React.JSX.Element => (
+  <Svg viewBox="0 0 26 25" {...p}>
     <path
       fillRule="evenodd"
       clipRule="evenodd"

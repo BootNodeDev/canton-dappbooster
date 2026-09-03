@@ -1,3 +1,5 @@
+import { NumberInput } from '@ark-ui/react/number-input'
+import { Steps } from '@ark-ui/react/steps'
 import {
   Identifier,
   isValidPartyId,
@@ -6,6 +8,7 @@ import {
   TokenInput,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
+import { Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
@@ -16,9 +19,9 @@ import { LiveScheduleCurve } from '@/components/CreateGrant/LiveScheduleCurve'
 import { FieldError } from '@/components/FieldError'
 import { InfoTip } from '@/components/InfoTip'
 import { Modal } from '@/components/Modal'
+import { Pills } from '@/components/Pills'
 import { Select } from '@/components/Select'
 import { useParty } from '@/hooks/useParty'
-import { TrashIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
@@ -104,6 +107,17 @@ const PRESETS = [
   { value: '600000', label: '10 min' },
 ]
 
+const CURVES = [
+  { value: 'linear', label: 'Linear' },
+  { value: 'milestone', label: 'Milestone' },
+] as const satisfies readonly { label: string; value: CurveKind }[]
+
+const STEPS = ['Grant', 'Schedule', 'Preview']
+const LAST_STEP = STEPS.length - 1
+
+// Ark makes a panel focusable so a keyboard reaches its content; the ring on it reads as a bug.
+const panelClass = 'focus-visible:outline-none'
+
 // The kit ships codes, not copy, so the wording is the app's. Exhaustive by construction: a new
 // code stops this compiling rather than rendering nothing.
 const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
@@ -132,7 +146,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const { curveKind, cliff, start, end, milestones, demo } = scheduleForm
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
   const [balance, setBalance] = useState<string>()
   const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
 
@@ -269,21 +283,48 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     }
   }
 
-  const stepValid = step === 1 ? titleValid && receiverValid && amountValid : scheduleValid
+  // One rule, read twice: Ark refuses the move and the Continue button shows that it will.
+  const stepIsValid = (index: number): boolean =>
+    index === 0 ? titleValid && receiverValid && amountValid : scheduleValid
 
   return (
     <Modal
       onClose={onClose}
-      title={`Create Grant (${step}/3)`}
+      title="Create grant"
       className="max-h-[85vh] max-w-2xl overflow-y-auto"
     >
-      {step === 1 && (
-        <>
+      <Steps.Root
+        count={STEPS.length}
+        // Not `linear`: that makes a step trigger inert, leaving three tabs a reader is told to
+        // click and nothing happens. Ark lets a trigger go back freely and asks this before any
+        // move forward, which is the rule the Continue button already shows.
+        isStepValid={stepIsValid}
+        onStepChange={(details) => setStep(details.step)}
+        step={step}
+      >
+        <Steps.List className="mb-7 flex items-center gap-3">
+          {STEPS.map((name, index) => (
+            <Steps.Item className="flex flex-1 items-center gap-3" index={index} key={name}>
+              <Steps.Trigger className="flex items-center gap-2 text-xs font-bold text-fg-muted data-[current]:text-fg">
+                <Steps.Indicator className="grid size-6 place-items-center rounded-full border border-border text-[0.7rem] data-[complete]:border-primary data-[current]:border-primary data-[current]:bg-primary-soft data-[current]:text-fg">
+                  {index + 1}
+                </Steps.Indicator>
+                {name}
+              </Steps.Trigger>
+              {index < LAST_STEP && <Steps.Separator className="h-px flex-1 bg-border" />}
+            </Steps.Item>
+          ))}
+        </Steps.List>
+
+        <Steps.Content index={0} className={panelClass}>
           <label htmlFor="title" className={labelClass}>
             Title
           </label>
           <input
             id="title"
+            // Ark focuses the first tabbable in the dialog, which is the step list; this is the
+            // field the form actually starts at.
+            data-autofocus
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -328,204 +369,207 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               />
             </div>
           </div>
-        </>
-      )}
+        </Steps.Content>
 
-      {step === 2 && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-fg">Schedule</h2>
-            <div className="inline-flex rounded-lg border border-border bg-surface p-1">
-              {(['linear', 'milestone'] as const).map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={curveKind === k}
-                  onClick={() => editSchedule({ curveKind: k })}
-                  className={cn(
-                    'rounded-md px-3 py-1 text-xs font-bold capitalize transition-colors',
-                    curveKind === k ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
-                  )}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={labelClass}>Demo duration</span>
-            <InfoTip label={DEMO_DURATION_HINT} />
-            <Select
-              className="ml-auto"
-              label="Demo duration"
-              value={demo === null ? 'none' : String(demo.durationMs)}
-              options={PRESETS}
-              onChange={applyPreset}
-            />
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <DateField
-              id="cliff"
-              label="Cliff date"
-              value={cliff}
-              onChange={(iso) => editSchedule({ cliff: iso })}
-              className="sm:col-span-2"
-            />
-            {curveKind === 'linear' ? (
-              <>
-                <DateField
-                  id="start"
-                  label="Start date"
-                  value={start}
-                  onChange={(iso) => editSchedule({ start: iso })}
+        {/* Ark hides a panel it is not on rather than unmounting it, so the two the wizard has yet
+            to reach are held back by hand: between them they carry five state machines and a curve
+            that redraws every second. The form state lives here, so nothing is lost either way. */}
+        <Steps.Content index={1} className={panelClass}>
+          {step >= 1 && (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-extrabold text-fg">Schedule</h2>
+                <Pills
+                  label="Curve"
+                  onChange={(kind) => editSchedule({ curveKind: kind })}
+                  options={CURVES}
+                  value={curveKind}
+                  variant="segmented"
                 />
-                <DateField
-                  id="end"
-                  label="End date"
-                  value={end}
-                  onChange={(iso) => editSchedule({ end: iso })}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className={labelClass}>Demo duration</span>
+                <InfoTip label={DEMO_DURATION_HINT} />
+                <Select
+                  className="ml-auto w-32"
+                  label="Demo duration"
+                  value={demo === null ? 'none' : String(demo.durationMs)}
+                  options={PRESETS}
+                  onChange={applyPreset}
                 />
-              </>
-            ) : (
-              <div className="sm:col-span-2">
-                <span className={labelClass}>Milestones (date · cumulative %)</span>
-                <p className="mt-1 text-xs text-fg-muted">
-                  Percentages are cumulative and must end at 100%.
-                </p>
-                <div className="mt-2 flex flex-col gap-2">
-                  {milestones.map((m, i) => (
-                    <div key={m.id} className="flex gap-2">
-                      <input
-                        type="date"
-                        aria-label={`Milestone ${i + 1} date`}
-                        value={dateOf(m.date)}
-                        onChange={(e) => setMilestone(i, { date: atMidnight(e.target.value) })}
-                        className={cn(inputClass, 'mt-0 flex-1')}
-                      />
-                      <input
-                        inputMode="numeric"
-                        aria-label={`Milestone ${i + 1} cumulative percent`}
-                        value={m.pct}
-                        onChange={(e) =>
-                          setMilestone(i, { pct: e.target.value.replace(/[^0-9]/g, '') })
-                        }
-                        className={cn(inputClass, 'mt-0 w-20 font-mono')}
-                      />
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <DateField
+                  id="cliff"
+                  label="Cliff date"
+                  value={cliff}
+                  onChange={(iso) => editSchedule({ cliff: iso })}
+                  className="sm:col-span-2"
+                />
+                {curveKind === 'linear' ? (
+                  <>
+                    <DateField
+                      id="start"
+                      label="Start date"
+                      value={start}
+                      onChange={(iso) => editSchedule({ start: iso })}
+                    />
+                    <DateField
+                      id="end"
+                      label="End date"
+                      value={end}
+                      onChange={(iso) => editSchedule({ end: iso })}
+                    />
+                  </>
+                ) : (
+                  <div className="sm:col-span-2">
+                    <span className={labelClass}>Milestones (date · cumulative %)</span>
+                    <p className="mt-1 text-xs text-fg-muted">
+                      Percentages are cumulative and must end at 100%.
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2">
+                      {milestones.map((m, i) => (
+                        <div key={m.id} className="flex gap-2">
+                          <input
+                            type="date"
+                            aria-label={`Milestone ${i + 1} date`}
+                            value={dateOf(m.date)}
+                            onChange={(e) => setMilestone(i, { date: atMidnight(e.target.value) })}
+                            className={cn(inputClass, 'mt-0 flex-1')}
+                          />
+                          <NumberInput.Root
+                            className="w-20 shrink-0"
+                            max={100}
+                            min={0}
+                            onValueChange={(details) => setMilestone(i, { pct: details.value })}
+                            value={m.pct}
+                          >
+                            <NumberInput.Input
+                              aria-label={`Milestone ${i + 1} cumulative percent`}
+                              className={cn(inputClass, 'mt-0 font-mono')}
+                            />
+                          </NumberInput.Root>
+                          <button
+                            type="button"
+                            aria-label={`Remove milestone ${i + 1}`}
+                            onClick={() => editMilestones((l) => l.filter((_, idx) => idx !== i))}
+                            disabled={milestones.length <= 1}
+                            className="grid h-11 w-9 shrink-0 place-items-center text-danger disabled:opacity-40"
+                          >
+                            <Trash2 />
+                          </button>
+                        </div>
+                      ))}
                       <button
                         type="button"
-                        aria-label={`Remove milestone ${i + 1}`}
-                        onClick={() => editMilestones((l) => l.filter((_, idx) => idx !== i))}
-                        disabled={milestones.length <= 1}
-                        className="grid h-11 w-9 shrink-0 place-items-center text-danger disabled:opacity-40"
+                        onClick={() =>
+                          editMilestones((l) => [
+                            ...l,
+                            {
+                              id: randomId().slice(0, 8),
+                              date: addMonths(new Date(now()), 24).toISOString(),
+                              pct: '100',
+                            },
+                          ])
+                        }
+                        className="self-start text-xs font-bold text-primary-strong hover:underline"
                       >
-                        <TrashIcon />
+                        + Add milestone
                       </button>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editMilestones((l) => [
-                        ...l,
-                        {
-                          id: randomId().slice(0, 8),
-                          date: addMonths(new Date(now()), 24).toISOString(),
-                          pct: '100',
-                        },
-                      ])
-                    }
-                    className="self-start text-xs font-bold text-primary-strong hover:underline"
-                  >
-                    + Add milestone
-                  </button>
+                  </div>
+                )}
+              </div>
+              {!scheduleValid && (
+                <p className="mt-3 text-xs text-danger">
+                  Schedule is invalid. Check that dates ascend, the cliff sits within the schedule,
+                  and milestone percentages strictly increase to 100%.
+                </p>
+              )}
+            </>
+          )}
+        </Steps.Content>
+
+        <Steps.Content index={LAST_STEP} className={panelClass}>
+          {step === LAST_STEP && (
+            <>
+              <h2 className="text-sm font-extrabold text-fg">Preview</h2>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="text-xs text-fg-muted">Total</span>
+                <AmountDisplay
+                  value={amountValid ? amount : '0'}
+                  className="text-xl font-semibold"
+                />
+              </div>
+              <div className="mt-1 flex items-baseline justify-between">
+                <span className="text-xs text-fg-muted">Receiver</span>
+                {receiver === '' ? (
+                  <span className="font-mono text-xs text-fg">—</span>
+                ) : (
+                  <Identifier
+                    announce={false}
+                    className="font-mono text-xs text-fg"
+                    label="receiver party id"
+                    onCopy={copyToast('Party id')}
+                    value={receiver}
+                  />
+                )}
+              </div>
+
+              <div className="mt-5">
+                {scheduleValid ? (
+                  <LiveScheduleCurve schedule={schedule} />
+                ) : (
+                  <div className="grid h-40 place-items-center rounded-xl border border-dashed border-border text-xs text-fg-muted">
+                    Enter a valid schedule to preview the curve
+                  </div>
+                )}
+              </div>
+
+              {backend === undefined ? (
+                <div className="mt-6">
+                  <ConnectPrompt />
                 </div>
-              </div>
-            )}
-          </div>
-          {!scheduleValid && (
-            <p className="mt-3 text-xs text-danger">
-              Schedule is invalid. Check that dates ascend, the cliff sits within the schedule, and
-              milestone percentages strictly increase to 100%.
-            </p>
+              ) : (
+                <p className="mt-5 text-xs text-fg-muted">
+                  The receiver must accept the grant to activate it.
+                </p>
+              )}
+            </>
           )}
-        </>
-      )}
+        </Steps.Content>
 
-      {step === 3 && (
-        <>
-          <h2 className="text-sm font-extrabold text-fg">Preview</h2>
-          <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-xs text-fg-muted">Total</span>
-            <AmountDisplay value={amountValid ? amount : '0'} className="text-xl font-semibold" />
-          </div>
-          <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-xs text-fg-muted">Receiver</span>
-            {receiver === '' ? (
-              <span className="font-mono text-xs text-fg">—</span>
-            ) : (
-              <Identifier
-                announce={false}
-                className="font-mono text-xs text-fg"
-                label="receiver party id"
-                onCopy={copyToast('Party id')}
-                value={receiver}
-              />
-            )}
-          </div>
-
-          <div className="mt-5">
-            {scheduleValid ? (
-              <LiveScheduleCurve schedule={schedule} />
-            ) : (
-              <div className="grid h-40 place-items-center rounded-xl border border-dashed border-border text-xs text-fg-muted">
-                Enter a valid schedule to preview the curve
-              </div>
-            )}
-          </div>
-
-          {backend === undefined ? (
-            <div className="mt-6">
-              <ConnectPrompt />
-            </div>
+        <div className="mt-12 flex items-center gap-3">
+          {step > 0 && (
+            <Steps.PrevTrigger asChild>
+              <Button variant="ghost" size="sm" className="px-0">
+                Back
+              </Button>
+            </Steps.PrevTrigger>
+          )}
+          {step < LAST_STEP ? (
+            <Steps.NextTrigger asChild>
+              <Button className="ml-auto" size="sm" disabled={!stepIsValid(step)}>
+                Continue
+              </Button>
+            </Steps.NextTrigger>
           ) : (
-            <p className="mt-5 text-xs text-fg-muted">
-              The receiver must accept the grant to activate it.
-            </p>
+            backend !== undefined && (
+              <Button
+                className="ml-auto"
+                size="sm"
+                disabled={!valid}
+                pending={submitting}
+                onClick={() => void submit()}
+              >
+                Create grant
+              </Button>
+            )
           )}
-        </>
-      )}
-
-      <div className="mt-12 flex items-center gap-3">
-        {step > 1 && (
-          <Button variant="ghost" size="sm" className="px-0" onClick={() => setStep(step - 1)}>
-            Back
-          </Button>
-        )}
-        {step < 3 ? (
-          <Button
-            className="ml-auto"
-            size="sm"
-            disabled={!stepValid}
-            onClick={() => setStep(step + 1)}
-          >
-            Continue
-          </Button>
-        ) : (
-          backend !== undefined && (
-            <Button
-              className="ml-auto"
-              size="sm"
-              disabled={!valid}
-              pending={submitting}
-              onClick={() => void submit()}
-            >
-              Create grant
-            </Button>
-          )
-        )}
-      </div>
+        </div>
+      </Steps.Root>
     </Modal>
   )
 }

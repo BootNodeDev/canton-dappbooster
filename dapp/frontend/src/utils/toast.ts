@@ -1,71 +1,54 @@
-import { create } from 'zustand'
-import { randomId } from '@/utils/randomId'
+import { createToaster, type ToastOptions } from '@ark-ui/react/toast'
 
 export type ToastTone = 'success' | 'error' | 'info'
 
+export interface ToastAction {
+  label: string
+  to: string
+}
+
 // A toast carrying an action never times out: the link has to still be there when it is reached for.
-interface ToastOptions {
-  action?: { label: string; to: string }
+export interface ToastMeta {
+  action?: ToastAction
 }
 
-export interface ToastItem extends ToastOptions {
-  id: string
-  message: string
-  tone: ToastTone
-}
-
-interface ToastState {
-  dismiss: (id: string) => void
-  push: (tone: ToastTone, message: string, options?: ToastOptions) => void
-  toasts: ToastItem[]
-}
-
-// Counted from the push, not from the row that renders it: the viewport moves between the body and
-// an open dialog, and remounting there would hand every toast on screen a fresh full life.
 const AUTO_DISMISS_MS = 3200
 
-// Held so a hand-dismissed toast can cancel its own clock. Without this the timer still fires into
-// an empty store, and `filter` returning a fresh array notifies every subscriber for a no-op.
-const timers = new Map<string, ReturnType<typeof setTimeout>>()
+const PLACEMENT = 'bottom-end'
 
-export const useToastStore = create<ToastState>((set) => {
-  const remove = (id: string): void => {
-    timers.delete(id)
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
-  }
+export const toaster = createToaster({ placement: PLACEMENT, duration: AUTO_DISMISS_MS, gap: 10 })
 
-  return {
-    toasts: [],
-    push: (tone, message, options) => {
-      const id = randomId()
-      set((state) => ({ toasts: [...state.toasts, { id, tone, message, ...options }] }))
-      // An error stays until dismissed: it is the only tone whose text the user has to read in full,
-      // and often copy, before it is any use.
-      if (tone !== 'error' && options?.action === undefined) {
-        timers.set(
-          id,
-          setTimeout(() => remove(id), AUTO_DISMISS_MS),
-        )
-      }
-    },
-    dismiss: (id) => {
-      const timer = timers.get(id)
-      if (timer !== undefined) {
-        clearTimeout(timer)
-      }
-      remove(id)
-    },
-  }
-})
+// A modal dialog treats every click outside its own content as a dismissal and blocks the pointer
+// there, so it has to be told the toast region is not "outside": a failed submit raises one over it.
+export const toastRegion = (): Element | null => document.getElementById(`toast-group:${PLACEMENT}`)
+
+// An error stays until dismissed: it is the only tone whose text the user has to read in full, and
+// often copy, before it is any use.
+const push = (tone: ToastTone, message: string, meta?: ToastMeta): void => {
+  const persist = tone === 'error' || meta?.action !== undefined
+  toaster.create({
+    type: tone,
+    title: message,
+    meta,
+    ...(persist && { duration: Number.POSITIVE_INFINITY }),
+  })
+}
 
 export const toast = {
-  success: (message: string, options?: ToastOptions): void =>
-    useToastStore.getState().push('success', message, options),
-  error: (message: string, options?: ToastOptions): void =>
-    useToastStore.getState().push('error', message, options),
-  info: (message: string, options?: ToastOptions): void =>
-    useToastStore.getState().push('info', message, options),
+  success: (message: string, meta?: ToastMeta): void => push('success', message, meta),
+  error: (message: string, meta?: ToastMeta): void => push('error', message, meta),
+  info: (message: string, meta?: ToastMeta): void => push('info', message, meta),
 }
+
+// Ark types a toast loosely — any meta, a ReactNode title — so the shape `push` actually writes is
+// read back here rather than narrowed again in the view.
+export const readToast = (
+  toast: ToastOptions,
+): { action?: ToastAction; message: string; tone: ToastTone } => ({
+  ...(toast.meta as ToastMeta | undefined),
+  message: String(toast.title),
+  tone: (toast.type ?? 'info') as ToastTone,
+})
 
 // The Toaster is the app's live region, so kit `<Identifier>`s using this pass `announce={false}`.
 export const copyToast =

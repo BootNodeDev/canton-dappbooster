@@ -1,3 +1,4 @@
+import { Eye, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
@@ -8,7 +9,6 @@ import { GrantLock } from '@/components/GrantLock'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { EyeIcon, TrashIcon } from '@/icons'
 import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
@@ -160,7 +160,7 @@ export const GrantCard = ({
                 asLink
                 to={`/grants/${grant.id}`}
               >
-                <EyeIcon width={16} height={16} />
+                <Eye size={16} />
               </Button>
               <Button
                 aria-label="Cancel grant"
@@ -168,7 +168,7 @@ export const GrantCard = ({
                 variant="danger-ghost"
                 onClick={() => onCancel(grant)}
               >
-                <TrashIcon width={16} height={16} />
+                <Trash2 size={16} />
               </Button>
             </div>
           </>

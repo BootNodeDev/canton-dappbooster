@@ -71,18 +71,26 @@
   :is(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
   }
+}
 
-  select {
-    appearance: none;
-    cursor: pointer;
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentColor 50%),
-      linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position:
-      right 0.95rem center,
-      right 0.65rem center;
-    background-size: 6px 6px;
-    background-repeat: no-repeat;
+@layer components {
+  /* Toast stack */
+
+  [data-scope="toast"][data-part="root"] {
+    translate: var(--x) var(--y);
+    scale: var(--scale);
+    z-index: var(--z-index);
+    height: var(--height);
+    opacity: var(--opacity);
+    will-change: translate, opacity, scale;
+    transition-property: translate, scale, opacity;
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.21, 1.02, 0.73, 1);
+  }
+
+  [data-scope="toast"][data-part="root"][data-state="closed"] {
+    transition-duration: 400ms, 400ms, 200ms;
+    transition-timing-function: cubic-bezier(0.06, 0.71, 0.55, 1);
   }
 }
 

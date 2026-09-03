@@ -1,4 +1,5 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
+import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { ClaimRecord } from '@/backend/VestingBackend'
@@ -16,8 +17,8 @@ import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
+import { Spinner } from '@/components/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
 import { deriveGrant, grantBacking, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
@@ -101,7 +102,7 @@ export const GrantDetail = (): React.JSX.Element => {
         onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg"
       >
-        <ArrowLeftIcon width={16} height={16} /> Back
+        <ArrowLeft size={16} /> Back
       </button>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -212,7 +213,7 @@ export const GrantDetail = (): React.JSX.Element => {
           <div className="mt-4 h-40 overflow-y-auto">
             {claims === undefined ? (
               <div role="status" className="flex h-full items-center justify-center text-fg-muted">
-                <SpinnerIcon width={20} height={20} />
+                <Spinner size={20} />
                 <span className="sr-only">Loading withdraw history</span>
               </div>
             ) : claims.length === 0 ? (
