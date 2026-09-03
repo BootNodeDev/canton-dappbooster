@@ -2,7 +2,7 @@ import { useParty as useWalletParty } from '@bootnodedev/canton-connect'
 import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { useMemo } from 'react'
 
-export type PartyRef = { name: string; partyId: string }
+export type PartyRef = { name: string; networkId: string; partyId: string }
 
 export interface UsePartyResult {
   party: PartyRef | undefined
@@ -16,7 +16,11 @@ export const useParty = (): UsePartyResult => {
     () =>
       party === undefined
         ? undefined
-        : { name: party.name ?? partyHint(party.partyId), partyId: party.partyId },
+        : {
+            name: party.name ?? partyHint(party.partyId),
+            networkId: party.networkId,
+            partyId: party.partyId,
+          },
     [party],
   )
 

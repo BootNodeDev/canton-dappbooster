@@ -53,24 +53,22 @@ Zag earns its place where the interaction is one HTML does not supply, such as a
 roving focus, a popup with dismiss and outside-click, or a composite navigated by arrow keys.
 Holding state is not the trigger; everything else is hand-rolled on plain React state. So a
 `@zag-js/*` dependency lands with the widget that needs it, never ahead of it: `@zag-js/dialog` and
-`@zag-js/react` arrived with `<TokenInput>`'s token select, `@zag-js/popover` with
-`<ConnectButton>`'s account face. The React adapter reaches for `react-dom` from `useMachine` down,
+`@zag-js/react` arrived with `<TokenInput>`'s token select. The React adapter reaches for
+`react-dom` from `useMachine` down,
 not only from `Portal`, and declares it a peer of its own, which is why `react-dom` joins `react` as
 a peer dependency here; a consumer already has it, so nothing new is asked of them.
 
-`@bootnodedev/canton-connect` is the third peer, and the one that does ask something. `<ConnectButton>`
-reads the wallet session from its hooks rather than from props, so it throws without a
-`<CantonConnectProvider>` above it — the only component here that requires an ancestor. That is the
+`@bootnodedev/canton-connect` is the third peer, and the one that does ask something. The three
+components behind `/connect` read the wallet session from its hooks rather than from props, so they
+throw without a `<CantonConnectProvider>` above them — the only components here requiring an
+ancestor. That is the
 price of one source of truth for the session: a prop mirroring it would let a caller contradict a
 connect already in flight (see the authoring rules in the root `CLAUDE.md`). Every other component
 in this package stays free of it.
 
-Nothing unopened is paid for. How far that reaches depends on where the trigger lives. The token
-select's sits in `<TokenInput>`, outside the dialog, so the dialog itself is mounting-is-opening and
-a field whose picker is never opened pays for no machine, no scope and no dismiss listeners. The
-account popover owns its trigger, which needs `aria-expanded`, `aria-controls` and the toggle from
-first paint, so its machine is mounted whenever the button is; what it defers is the panel, gated on
-`api.open`, so a popover never opened costs no portal, no positioner and no dismiss layer.
+Nothing unopened is paid for. The token select's trigger sits in `<TokenInput>`, outside the dialog,
+so the dialog itself is mounting-is-opening and a field whose picker is never opened pays for no
+machine, no scope and no dismiss listeners.
 
 The trigger pays for that. Mounting *is* the open state, so the machine lives inside the dialog and
 `<TokenInput>`'s symbol button cannot spread `api.getTriggerProps()`; it hand-rolls `aria-haspopup`,

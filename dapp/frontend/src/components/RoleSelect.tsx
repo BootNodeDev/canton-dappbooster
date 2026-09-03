@@ -1,5 +1,4 @@
-import type { FocusEvent, KeyboardEvent } from 'react'
-import { useRef, useState } from 'react'
+import { useDismissable } from '@/hooks/useDismissable'
 import { CaretDownIcon } from '@/icons'
 import type { Role } from '@/store/types'
 import { cn } from '@/utils/cn'
@@ -19,24 +18,10 @@ export const RoleSelect = ({
   onChange: (role: Role) => void
   value: Role
 }): React.JSX.Element => {
-  const [open, setOpen] = useState(false)
-  const root = useRef<HTMLSpanElement>(null)
-  const current = roles.find((role) => role.value === value) ?? roles[0]
-
   // On every button rather than on the wrapper, because focus leaving the whole control is what
   // closes it and a handler on a plain span is neither reachable nor allowed.
-  const closers = {
-    onBlur: (e: FocusEvent<HTMLElement>) => {
-      if (root.current?.contains(e.relatedTarget) !== true) {
-        setOpen(false)
-      }
-    },
-    onKeyDown: (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-      }
-    },
-  }
+  const { closers, keepFocus, open, root, setOpen, trigger } = useDismissable<HTMLSpanElement>()
+  const current = roles.find((role) => role.value === value) ?? roles[0]
 
   return (
     <span className="relative inline-flex" ref={root}>
@@ -46,6 +31,7 @@ export const RoleSelect = ({
         aria-expanded={open}
         aria-label={`View as: ${current.label}`}
         onClick={() => setOpen(!open)}
+        ref={trigger}
         className="inline-flex items-center gap-1.5 text-xl font-extrabold tracking-tight text-fg-muted transition-colors hover:text-fg"
       >
         {current.label}
@@ -59,9 +45,7 @@ export const RoleSelect = ({
               key={role.value}
               type="button"
               aria-pressed={role.value === value}
-              // Safari does not focus a button on mousedown, so without this the trigger blurs and
-              // the menu unmounts before the click it was aimed at ever lands.
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={keepFocus}
               onClick={() => {
                 onChange(role.value)
                 setOpen(false)
