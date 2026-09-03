@@ -107,7 +107,8 @@ is what chooses the wallet. Dismissing it rejects with `ConnectCancelledError`, 
 the close, so do not gate on that.
 
 `signMessage`, `execute` and `ledgerApi` refuse with no session, and refuse again while the wallet
-reports it is not authenticated; that is `isLocked`, and it happens after a successful connect. The
+reports it is not authenticated; that is `isLocked`, and it happens after a successful connect.
+`signMessage` and `execute` also refuse with no party, which `ledgerApi` does not need. The
 SDK's status carries one `isConnected` flag, so a lock and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.

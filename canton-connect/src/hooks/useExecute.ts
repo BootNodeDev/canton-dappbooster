@@ -17,8 +17,8 @@ const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecut
 
 /**
  * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
- * at submission, and throws when nothing is connected; `lastTx` follows the wallet's own
- * `txChanged` pushes, so it moves even while `execute` is still pending.
+ * at submission, and throws when nothing is connected or no party is reported; `lastTx` follows
+ * the wallet's own `txChanged` pushes, so it moves even while `execute` is still pending.
  *
  * @category Hooks
  */

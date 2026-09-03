@@ -4,8 +4,8 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
 import type { ConnectionStatus, Party } from '#src/types'
 
 /**
- * Return shape of {@link useParty}. `party` follows the wallet's primary account, so it changes
- * under a live session when the user switches accounts.
+ * Return shape of {@link useParty}. `party` is the primary among the accounts that can act on the
+ * ledger, so it need not be the one the wallet flags primary, and it changes under a live session.
  *
  * @category Hooks
  */

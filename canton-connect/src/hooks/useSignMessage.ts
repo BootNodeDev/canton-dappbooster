@@ -3,8 +3,8 @@ import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
- * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected, and
- * `reset` clears the last signature and error without touching the session.
+ * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected or no
+ * party is reported, and `reset` clears the last signature and error without touching the session.
  *
  * @category Hooks
  */
