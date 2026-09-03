@@ -26,7 +26,7 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   lock cannot be told from a wallet-side disconnect. `sdk` has no exit; nothing outlives it.
 - **Listeners register only inside a state's `invoke`.** `sdk.onX` binds to the current client and
   `sdk.connect()` swaps it.
-- **The provider selects nothing.** It publishes the config, the actor and three actions; each hook
+- **The provider selects nothing.** It publishes the config, the actor and four actions; each hook
   selects its own slice. Never add a field a hook could select.
 - **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
   narrows `DappSDK` to the methods this package calls.

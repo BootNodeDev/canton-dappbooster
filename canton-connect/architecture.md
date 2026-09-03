@@ -16,7 +16,7 @@ src/
     accountsMachine.ts      the account read, invoked inside session.authenticated
     accountsActors.ts       listAccounts reader and accountsChanged listener
   CantonConnectProvider/
-    index.tsx               the context: publishes the actor and three actions
+    index.tsx               the context: publishes the actor and four actions
     useConnectionActor.ts   creates the actor, sends the boot restore
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
@@ -84,7 +84,7 @@ a wallet login can take as long as it takes; it ends when the wallet answers or 
 ### The provider publishes, the hooks select
 
 The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
-through it, so the bridges stay the only senders) and three identity-stable actions. Each hook
+through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
 itself. `useConnect`, `useParty` and `useWalletStatus` read session state; `useLedger`, `useExecute`
 and `useSignMessage` select a guard plus the sdk and call it directly, never entering the machine.
@@ -101,7 +101,8 @@ the machine a `createSdk` closure rather than an instance.
 
 With the SDK popup in use, `guardedConnect` wraps `sdk.connect()` with a watchdog on the popup
 window, because the SDK misses a close (#49). A caught close rejects with `PickerClosedError`, which
-takes the machine to `retiring`, where the `DappSDK` is replaced.
+takes the machine to `retiring`, where the `DappSDK` is replaced. `cancelConnect` lands there too:
+the guard closes the popup itself, off the abort xstate fires when it stops the connect actor.
 
 ### Adapters
 
