@@ -251,7 +251,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     const finalSchedule = demo === null ? schedule : buildDemoSchedule(demo, now())
     setSubmitting(true)
     try {
-      const result = await createVesting(backend, partyId, {
+      await createVesting(backend, partyId, {
         proposer: partyId,
         receiver,
         totalAmount: amount,
@@ -259,10 +259,9 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
         title: title.trim(),
       })
       onClose()
-      toast.success(
-        `Grant created · delivered via explicit disclosure · ${result.disclosedBytes} bytes`,
-        { action: { label: 'View pending grants', to: '/pending?role=funder' } },
-      )
+      toast.success('Grant created', {
+        action: { label: 'View pending grants', to: '/pending?role=funder' },
+      })
     } catch (err) {
       toast.error(errorText(err))
     } finally {

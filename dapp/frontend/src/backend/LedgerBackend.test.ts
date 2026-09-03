@@ -270,7 +270,7 @@ describe('LedgerBackend.createVesting', () => {
   it('exercises the factory choice with the composed note and schedule, disclosing only it', async () => {
     const { backend, submissions } = harness()
 
-    const result = await backend.createVesting(grant)
+    await backend.createVesting(grant)
 
     expect(submissions[1]?.commands).toEqual([
       {
@@ -299,7 +299,6 @@ describe('LedgerBackend.createVesting', () => {
         synchronizerId: 'sync::1',
       },
     ])
-    expect(result.disclosedBytes).toBe(deployment.factoryBlob.length)
   })
 
   it('omits the synchronizer id when the config carries none', async () => {

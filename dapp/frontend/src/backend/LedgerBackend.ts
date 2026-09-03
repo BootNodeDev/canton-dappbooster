@@ -190,9 +190,8 @@ export class LedgerBackend implements VestingBackend {
   // and one Daml transaction cannot feed a contract that one command creates into the next. So the
   // funder splits exactly `totalAmount` off its unpledged holdings, and the grant names only what
   // the split produced. The factory is the operator's and observer-less, so the funder cannot read
-  // it and its disclosure comes from the deployment; the blob size is what lets the UI surface that
-  // mechanic.
-  async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
+  // it and its disclosure comes from the deployment.
+  async createVesting(args: CreateVestInput): Promise<void> {
     const escrow = await this.splitOff(args.proposer, args.totalAmount)
     const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
       proposer: args.proposer,
@@ -207,7 +206,6 @@ export class LedgerBackend implements VestingBackend {
     // Amulet no grant is waiting on. Appended rather than replacing, because every outstanding
     // grant's own Amulet has to stay disclosable.
     localStorage.setItem(AMULET_STORE_KEY, JSON.stringify([...storedAmulets(), escrow]))
-    return { disclosedBytes: this.factory.createdEventBlob.length }
   }
 
   // A transfer consumes everything it is given, so an Amulet an outstanding grant pledged has to
