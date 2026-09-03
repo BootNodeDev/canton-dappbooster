@@ -112,6 +112,23 @@ describe('validVestingSchedule', () => {
     ).toBe(false)
   })
 
+  // A half-typed percent ("-" or ".") reaches here as NaN, which fails every comparison and so
+  // would otherwise be read as an ascending fraction.
+  it('rejects a NaN milestone fraction, even when the last one still reaches 1', () => {
+    expect(
+      validVestingSchedule({
+        cliff: '2025-02-01T00:00:00Z',
+        curve: {
+          kind: 'milestone',
+          points: [
+            { time: '2025-02-01T00:00:00Z', fraction: Number.NaN },
+            { time: '2025-12-01T00:00:00Z', fraction: 1.0 },
+          ],
+        },
+      }),
+    ).toBe(false)
+  })
+
   it('rejects a zero-duration linear window (start === end)', () => {
     expect(
       validVestingSchedule({

@@ -106,7 +106,9 @@ export const validVestingSchedule = (schedule: VestingSchedule): boolean => {
     if (Number.isNaN(t) || t <= prevTime) {
       return false
     }
-    if (point.fraction <= prevFraction || point.fraction > 1) {
+    // A NaN fraction fails every comparison below, so without this it passes as valid and poisons
+    // the ones after it. The percent field can hand one over mid-edit: "-" parses to NaN.
+    if (!Number.isFinite(point.fraction) || point.fraction <= prevFraction || point.fraction > 1) {
       return false
     }
     prevTime = t
