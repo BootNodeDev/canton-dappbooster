@@ -4,10 +4,11 @@ import {
   assign,
   type DoneActorEvent,
   type ErrorActorEvent,
+  enqueueActions,
   type SnapshotFrom,
   setup,
 } from 'xstate'
-import { InitFailedError, PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, InitFailedError, PickerClosedError } from '#src/connectError'
 import { accountsMachine } from '#src/machine/accountsMachine'
 import {
   connect,
@@ -228,10 +229,17 @@ export const connectionMachine = setup({
       ),
     })),
     forgetError: assign({ lastConnectError: undefined }),
-    // The abandoned connect keeps waiting inside the old sdk and nothing can stop it, so a later
-    // attempt on that sdk could have its client swapped mid-connect. Drop the instance, take a new
-    // one.
-    retireSdk: assign(({ context }) => ({ sdk: context.createSdk() })),
+    retireSdk: enqueueActions(({ enqueue }) => {
+      enqueue(({ context }) => {
+        // A cancel can land before the popup exists, while connect() is still in the SDK's
+        // discovery wait. That connect() keeps running and opens the popup by calling
+        // `walletPicker`; a rejecting one ends it first.
+        Object.assign(context.sdk, {
+          walletPicker: () => Promise.reject(new ConnectCancelledError()),
+        })
+      })
+      enqueue.assign({ sdk: ({ context }) => context.createSdk() })
+    }),
   },
   guards: {
     // A guard that throws stops the actor, so an answer missing `connection` reads as not

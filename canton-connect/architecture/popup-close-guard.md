@@ -44,6 +44,11 @@ can tell the two apart; `dapp/frontend` does exactly that to label its connect b
 skipped while a second guard is in flight, since the message would resolve that one's live waiter
 too.
 
+A cancel can land before the popup exists: `connect()` waits ~300 ms on extension discovery before
+it calls the picker. A `connect.cancel` inside that wait finds nothing to close and nothing to
+drain, and the popup opened after it. So `retireSdk` overwrites `walletPicker` on the retired
+instance with one that rejects; `connect()` reads it only when it gets there.
+
 This is a workaround, not containment: the abandoned connect still runs. The real fix is an abort on
 `DappSDK.connect()`, upstream. CIP-0103 has no cancel for a sent `connect` either.
 
@@ -69,3 +74,8 @@ message: its type, its origin, and the `walletType` and `providerId` fields, non
 A rename turns the drain into a no-op that returns the duplicate prompts, and turns the stand-down
 back into abandoning a live connect, with nothing going red either way. Nor does any test reach
 #49's own cause, a real `WindowProxy` losing its `beforeunload` across the navigation.
+
+The pick refusal rests on a third internal: `connect()` reads `this.walletPicker` only when it
+reaches the picker. A later SDK version that copies the field at construction would ignore the swap,
+the popup after a cancel returns, and no test fails: the machine test only checks the field was
+overwritten.

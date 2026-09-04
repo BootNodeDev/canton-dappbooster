@@ -1,4 +1,6 @@
 // @vitest-environment node
+
+import type { WalletPickerFn } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createActor,
@@ -8,7 +10,7 @@ import {
   SimulatedClock,
   waitFor,
 } from 'xstate'
-import { PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
 import type { AccountsInput } from '#src/machine/accountsActors'
 import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
 import {
@@ -1672,6 +1674,23 @@ describe('connectionMachine', () => {
       expect(reported.at(-1)).toBe('connected')
 
       subscription.unsubscribe()
+      actor.stop()
+    })
+
+    it('refuses the pick the abandoned connect still owes', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, connect: neverAnswers } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      const abandoned = actor.getSnapshot().context.sdk as unknown as {
+        walletPicker: WalletPickerFn
+      }
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+
+      await expect(abandoned.walletPicker([])).rejects.toBeInstanceOf(ConnectCancelledError)
+
       actor.stop()
     })
   })

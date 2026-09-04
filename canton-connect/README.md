@@ -36,7 +36,7 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 | dapp-sdk gap | what it costs us | gone when |
 |---|---|---|
-| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state | `connect(signal)` truly aborts |
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state, `retireSdk`'s picker swap | `connect(signal)` truly aborts |
 | `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
 | `disconnect()` has no timeout (#105) | `DISCONNECT_TIMEOUT_MS`, and `retireSdk` when it fires | `disconnect()` times out itself |
 | lock and wallet-side disconnect are one push | `session.unauthenticated`, party-dropped-on-lock | CIP-0103 separates them (spec, not SDK) |

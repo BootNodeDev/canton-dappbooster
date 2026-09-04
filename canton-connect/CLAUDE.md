@@ -46,10 +46,14 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
 
 ## Bumping `dapp-sdk`
 
-`guardedConnect` rests on two SDK internals no test can pin: that the picker window comes from
-`window.open`, and the shape of the `SPLICE_WALLET_PICKER_RESULT` message it reads and posts. Why:
-[`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve `dapp/frontend` and
-walk all four:
+`guardedConnect` and `retireSdk` rest on three SDK internals no test can pin:
+
+- the picker popup is opened through `window.open`
+- the shape of the `SPLICE_WALLET_PICKER_RESULT` message
+- `connect()` calls `this.walletPicker` only when it reaches the picker, so a swapped one is honored
+
+Why: [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve `dapp/frontend`
+and walk all five:
 
 1. Close the picker without choosing, three times over: the button re-enables each time, and the
    next real connect raises exactly one approval prompt.
@@ -60,6 +64,8 @@ walk all four:
 4. Check that `new DappSDK()` still only initializes fields (true on 1.5.1). The machine constructs
    one inside a plain `assign`; if construction turns effectful, move the ritual into the provider's
    `createSdk` and dispose the abandoned instance on the same transition, never from an effect.
+5. Click Connect twice, fast: the button reads Connect again and no picker window appears. One
+   appearing means `connect()` no longer reads `walletPicker` off the instance at pick time.
 
 ## Layout
 
