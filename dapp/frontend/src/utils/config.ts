@@ -9,7 +9,7 @@ export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
 
 export const REGISTRY_URL = '/registry'
 
-export const ASSET_LIST_URL =
-  'https://raw.githubusercontent.com/canton-network/wallet/main/api-specs/assets.json'
+// The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.
+export const ASSET_LIST_URL = '/assets.json'
 
-export const ASSET_LIST_NETWORK: AssetListNetwork | undefined = undefined
+export const ASSET_LIST_NETWORK: AssetListNetwork | undefined = 'LocalNet'

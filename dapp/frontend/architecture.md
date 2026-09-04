@@ -262,11 +262,13 @@ and not in the kit because it is one repository's file rather than a standard: n
 versioning, and its shape is whoever maintains it to change. So it is trusted for artwork and for
 the symbol it publishes, never for identity or amounts, and the kit ships no reader for it.
 
-It is off by default. `ASSET_LIST_NETWORK` picks a top-level key of that file and `undefined` skips
-the source, which is the local case: the published file covers `MainNet`, `TestNet` and `DevNet`,
-and a LocalNet's DSO party is minted at `dev-stack.sh up` and lives until a `reset`, so no published
-entry names it. Exercising this locally means serving a file of your own with that party in it and
-pointing both constants at it.
+`ASSET_LIST_NETWORK` picks a top-level key of that file, and `undefined` skips the source
+altogether. The published file covers `MainNet`, `TestNet` and `DevNet` and no LocalNet, whose DSO
+party is minted with the stack, so the dev server serves the whole published list with a `LocalNet`
+section appended, built from the party its own scan reports. That is the reason it is generated
+rather than committed: a party in a file would be one developer's, and wrong for everyone else after
+the next `reset`. Either half failing costs labels and nothing else, so a stack that is down still
+serves a list.
 
 **The registry is reached through the dev server, not directly.** LocalNet serves it under the
 validator's authenticated prefix, so a browser gets a 401. `REGISTRY_URL` is therefore the

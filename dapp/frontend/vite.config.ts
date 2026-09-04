@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { loadEnv } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 // biome-ignore lint/style/noRestrictedImports: this file defines the @ alias, so it cannot use it.
 import { parseEnv } from './src/utils/env'
@@ -24,6 +24,41 @@ const registryTarget = (values: Record<string, string>) => {
   }
 }
 
+const ASSET_LIST_ROUTE = '/assets.json'
+const PUBLISHED_LIST =
+  'https://raw.githubusercontent.com/canton-network/wallet/main/api-specs/assets.json'
+const LOCALNET_SCAN = 'http://scan.localhost:4000/api/scan'
+
+const json = async (url: string): Promise<unknown> => (await fetch(url)).json()
+
+// The published list covers no LocalNet, and a LocalNet's DSO party is minted with the stack, so
+// the entry is read off the running scan here rather than every developer committing their own.
+// Either half missing costs labels and nothing else, so a stack that is down still serves a list.
+const localnetAssets = (values: Record<string, string>): Plugin => ({
+  apply: 'serve',
+  configureServer: (server) => {
+    server.middlewares.use(ASSET_LIST_ROUTE, async (_request, response) => {
+      const scan = values.SPLICE_SCAN_API_URL ?? LOCALNET_SCAN
+      const [published, dso] = await Promise.all([
+        json(PUBLISHED_LIST).catch(() => ({})),
+        json(`${scan}/v0/dso-party-id`)
+          .then((body) => (body as { dso_party_id?: string }).dso_party_id)
+          .catch(() => undefined),
+      ])
+      const entry = {
+        instrumentId: { admin: dso, id: 'Amulet' },
+        registryURLs: [REGISTRY_PROXY],
+        symbol: 'CC',
+      }
+      response.setHeader('content-type', 'application/json')
+      response.end(
+        JSON.stringify({ ...(published as object), LocalNet: dso === undefined ? [] : [entry] }),
+      )
+    })
+  },
+  name: 'localnet-asset-list',
+})
+
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url))
   const loaded = loadEnv(mode, envDir, '')
@@ -36,7 +71,7 @@ export default defineConfig(({ mode }) => {
     // Without this a leftover `dapp/frontend/.env.local` is still loaded, silently losing to the
     // root for exactly the keys defined above.
     envDir,
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), localnetAssets(loaded)],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
