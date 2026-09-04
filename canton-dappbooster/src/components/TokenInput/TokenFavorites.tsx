@@ -1,13 +1,14 @@
 import type { ReactElement } from 'react'
 import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
 import { MAX_FAVORITES } from '#src/components/TokenInput/constants'
-import { tokenLabel } from '#src/components/TokenInput/tokenLabel'
+import { getTokenLabel } from '#src/components/TokenInput/getTokenLabel'
 import { TokenLogo } from '#src/components/TokenLogo'
-import type { Token } from '#src/providers/TokenListProvider/context'
+import type { InstrumentId, Token } from '#src/providers/TokenListProvider/context'
 import { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
+import { tokenKey } from '#src/utils/tokenKey'
 
 interface TokenFavoritesProps {
-  ids?: readonly string[]
+  ids?: readonly InstrumentId[]
   onSelect: (token: Token) => void
 }
 
@@ -16,15 +17,15 @@ interface TokenFavoritesProps {
  * the order given, and drops the rest.
  *
  * @example
- * <TokenFavorites ids={['canton-coin']} onSelect={setToken} />
+ * <TokenFavorites ids={[{ admin: 'DSO::1220ab', id: 'Amulet' }]} onSelect={setToken} />
  */
 export const TokenFavorites = ({
   ids = [],
   onSelect,
 }: TokenFavoritesProps): ReactElement | null => {
-  const { byId } = useTokenList()
+  const { byKey } = useTokenList()
   const favorites = ids
-    .map((id) => byId.get(id))
+    .map((id) => byKey.get(tokenKey(id)))
     .filter((token) => token !== undefined)
     .slice(0, MAX_FAVORITES)
 
@@ -34,9 +35,9 @@ export const TokenFavorites = ({
     <section aria-label="Favorite tokens" className={anatomy.parts.favorites}>
       {favorites.map((token) => (
         <button
-          aria-label={tokenLabel(token)}
+          aria-label={getTokenLabel(token)}
           className={anatomy.parts.favorite}
-          key={token.id}
+          key={tokenKey(token.instrumentId)}
           onClick={() => onSelect(token)}
           type="button"
         >

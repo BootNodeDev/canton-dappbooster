@@ -20,14 +20,17 @@ const favorites = (
 )
 
 const many = Array.from({ length: MAX_FAVORITES + 3 }, (_, index) => ({
-  id: `token-${index}`,
+  instrumentId: { admin: 'registry::1220ab', id: `token-${index}` },
   name: `Token ${index}`,
   symbol: `TK${index}`,
 }))
 
+const [CC, USDC] = TOKENS
+const GONE = { admin: 'nobody::1220ff', id: 'GONE' }
+
 describe('TokenFavorites', () => {
   it('renders the tokens its ids resolve to, in the order given', () => {
-    render(favorites({ ids: ['usdc', 'canton-coin'], onSelect: vi.fn() }))
+    render(favorites({ ids: [USDC.instrumentId, CC.instrumentId], onSelect: vi.fn() }))
 
     const symbols = screen
       .getAllByRole('button')
@@ -39,17 +42,17 @@ describe('TokenFavorites', () => {
   })
 
   it('drops an id the list does not hold', () => {
-    render(favorites({ ids: ['canton-coin', 'gone'], onSelect: vi.fn() }))
+    render(favorites({ ids: [CC.instrumentId, GONE], onSelect: vi.fn() }))
     expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
   it('renders nothing without an id that resolves', () => {
-    const { container } = render(favorites({ ids: ['gone'], onSelect: vi.fn() }))
+    const { container } = render(favorites({ ids: [GONE], onSelect: vi.fn() }))
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders no more chips than the cap, keeping the first', () => {
-    render(favorites({ ids: many.map((token) => token.id), onSelect: vi.fn() }, many))
+    render(favorites({ ids: many.map((token) => token.instrumentId), onSelect: vi.fn() }, many))
 
     const chips = screen.getAllByRole('button')
     expect(chips).toHaveLength(MAX_FAVORITES)
@@ -58,7 +61,7 @@ describe('TokenFavorites', () => {
 
   it('hands the whole token to onSelect', () => {
     const onSelect = vi.fn()
-    render(favorites({ ids: ['canton-coin'], onSelect }))
+    render(favorites({ ids: [CC.instrumentId], onSelect }))
     fireEvent.click(screen.getByRole('button', { name: 'Canton Coin CC' }))
 
     expect(onSelect).toHaveBeenCalledWith(TOKENS[0])

@@ -13,10 +13,10 @@ interfaces carry that, and every other decision hangs off them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
-| `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
@@ -244,24 +244,74 @@ total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-**Neither field offers the token picker, and that is deliberate.** Both pass `token={AMT}` and no
-`onTokenSelect`, which is what makes the kit render the symbol as a static mark rather than a button.
-[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `AMT` and nothing else, because that is the only
-instrument this deployment knows, so a picker over it would open a dialog to choose the value already
-chosen. The claim dialog has a second reason it will keep: what a grant pays out is fixed by the
-contract, so there is nothing there to pick.
+**The create field offers the picker; the claim dialog does not, and will not.** What a grant pays
+out is fixed by the contract, so `Claim` passes `token={AMT}` and no `onTokenSelect`, which is what
+makes the kit render the symbol as a static mark rather than a button.
 
-Turning the create field back into a real picker takes three things, none of them wired yet:
+The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/Tokens.tsx) reads the
+kit's `useHoldings`, groups it with `sumHoldings`, reads the registry's catalogue with
+`readInstruments`, and hands the merged result to `TokenListProvider`.
 
-- **A list to choose from.** `TOKENS` in `src/utils/tokens.tsx` is a hardcoded one-entry array. It
-  becomes whatever enumerates the instruments a deployment actually holds, and the kit's
-  `TokenListProvider` is what the picker reads it through.
-- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(AMT)` and passes
-  `onTokenSelect`. Per-field rather than lifted, unless by then two amounts on one page must agree.
-- **The rest of the app told about it.** Today the pick would be display-only: the re-lock floor's
-  wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say
-  Amulet in their own right. Each has to take the chosen token instead, or a pick would relabel
-  one field and silently mean nothing.
+The rows are the union of what every source knows, merged by the kit's `mergeTokens`: the curated
+list, then the registries, then the balances, then the app's own artwork. Later sources win field by
+field, so the registry has the last word on a label and the curated list supplies the logo it does
+not serve. A source that will not answer costs labels and no rows.
+
+**A token the party holds none of is still a row.** The list is a catalogue, and a picker that only
+offered what you already hold could never serve a swap's buy side. This form does not filter it
+either: picking a token you hold nothing of simply leaves you unable to grant it, which is the
+field's own rule to enforce.
+
+**Canton Coin's figures are this app's, not the ledger's.** Its `balance` is what `balanceOf`
+reports, the coin free to fund a grant, and its `locked` is the escrowed coin plus whatever a
+pending grant has pledged. The three still sum to everything held, so the row hides nothing; it
+splits it the way this app can act on. Every other row keeps the ledger's own split, and when the
+app moves more than Canton Coin that rule needs revisiting.
+
+That is also why the create field no longer reads a balance of its own: it takes the row the picker
+handed back, so its Max and its ceiling are the figure the row showed. Pick a token you hold none of
+and Max is disabled, which is the correct dead end.
+
+A row carries a figure or it does not, so a read that failed looks exactly like one still running.
+`useTokenFigures` is what tells them apart: `Tokens` publishes whether either read failed, and the
+field turns that into the kit's `balanceState="error"`, which is the `Balance: N/A` face.
+
+Which registries to ask comes from the same curated list: the first URL each entry publishes, plus
+`REGISTRY_URL`, which is the fallback and the only address a LocalNet has. Every one of them is read,
+not only the ones behind a holding, because a catalogue is the point. A CNS lookup would be the
+authoritative way to resolve those URLs and is not worth it while one file answers.
+
+The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
+in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here
+and not in the kit because it is one repository's file rather than a standard: no CIP, no schema, no
+versioning, and its shape is whoever maintains it to change. So it is trusted for artwork and for
+the symbol it publishes, never for identity or amounts, and the kit ships no reader for it.
+
+`ASSET_LIST_NETWORK` picks a top-level key of that file, and `undefined` skips the source
+altogether. The published file covers `MainNet`, `TestNet` and `DevNet` and no LocalNet, whose DSO
+party is minted with the stack, so the dev server serves the whole published list with a `LocalNet`
+section appended, built from the party its own scan reports. That is the reason it is generated
+rather than committed: a party in a file would be one developer's, and wrong for everyone else after
+the next `reset`. Either half failing costs labels and nothing else, so a stack that is down still
+serves a list.
+
+**The registry is reached through the dev server, not directly.** LocalNet serves it under the
+validator's authenticated prefix, so a browser gets a 401. `REGISTRY_URL` is therefore the
+same-origin `/registry`, and [`vite.config.ts`](vite.config.ts) proxies that to
+`SPLICE_REGISTRY_API_URL` with the bearer from the root `.env`. The token stays in the dev server
+and never reaches the bundle. It is a constant rather than a `VITE_` variable because every build
+has the same value for it; a deployment pointing at another registry is what would earn the
+variable, and that deployment does not work yet — the proxy is the dev server's, so a deployed build
+reads no metadata at all.
+
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) is down to the artwork, the name and the symbol,
+matched by instrument id: a token this deployment does not know is listed under its raw id rather
+than dropped.
+
+One thing the pick still does not do: **it changes nothing but the field.** The re-lock floor's
+wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say Amulet
+in their own right. Each has to take the chosen token instead, or a pick relabels one field and
+means nothing.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
@@ -286,20 +336,20 @@ the ledger aborts on. `grantBacking` sits beside `deriveGrant` rather than insid
 `claimAvailable`: it does not move with the clock. A residual claim carries no schedule, so its two
 are the same amount and `Claim`'s `backing` prop defaults to `available`.
 
-Only the claim dialog has a ceiling, and it is the grant's own `claimable`. The create form has a
-balance without one: `VestingBackend.balanceOf` reads what the funder holds and the field offers it
-through `Max`, but `validateAmount` is called with no `max`, so a larger amount is neither flagged
-nor blocked and the split refuses it instead, naming what is actually free. That is also why the
-field's `aria-invalid` is passed in rather than left to the kit, which would flag an amount above
-the `balance` it was given.
+Both dialogs have a ceiling, and both hand it to the field as `balance`: the claim dialog's is the
+grant's own `claimable`, the create form's is whatever figure the picked row carries. So neither
+passes `aria-invalid` for the amount — the kit flags anything above the `balance` it was given — and
+where a read leaves no figure to give, the split refuses the amount instead, naming what is actually
+free.
 
 A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
 set `splitOff` will draw from: coin already escrowed is a `LockedAmulet` and so out by template, and
 coin an outstanding grant pledged is out because spending it would leave that grant unacceptable.
 The two agreeing is the point — a `Max` that offered more would put an amount in the field that the
-next step always refuses. The read runs once, on mount: nothing the form does moves the funder's
-coin.
+next step always refuses. The read belongs to `Tokens` now rather than to the form, so it runs when
+the party changes and again whenever the create dialog opens: a grant that dialog created has
+pledged coin since, and the figure it showed before would be the one from before the grant.
 
 The amount field shows no validation message at all for now, which is why nothing words
 `MIN_GRANT_AMOUNT` or a bad decimal to the user; both still gate `Continue`. `AMOUNT_ERROR_TEXT`

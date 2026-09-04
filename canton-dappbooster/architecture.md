@@ -146,6 +146,48 @@ number is arbitrary and human-picked, which is the point — the row wraps and d
 without a cap its height is the consumer's to set and the card has no scroll of its own to catch
 the spill.
 
+## Where a token's identity and its balance come from
+
+The list is the consumer's, and the kit reads no ledger. What that costs and buys:
+
+- **A token is identified by its `instrumentId`**, the admin party plus the id that registry gave
+  it, because nothing on Canton is a global address and two registries can both issue a `USDC`.
+  Nothing takes one string for a token, so `tokenKey` is what makes a map key, a React key or an
+  equality check out of the pair. Compare keys, never symbols.
+- **`balance` sits on the token, beside the metadata.** A party's holdings are private to the
+  participant hosting it, so only a read through the connected wallet can supply them: `useHoldings`
+  on the `/connect` sub-path is that read, and `sumHoldings` groups its one-per-contract answer into
+  one row per instrument. An absent balance means the read has not reached, not that the party holds
+  nothing, so the row shows no figure and sorts below every one that has a figure.
+- **A list is a catalogue, not a balance sheet.** `mergeTokens` builds one row per instrument out of
+  every source that knows about it, later sources winning field by field and an absent field meaning
+  a source had nothing to say. So holdings annotate rows rather than create them: a token nobody
+  holds is still offerable, which is what a swap's buy side needs, and an app that wants only what
+  it can spend filters the result itself. That filter is a screen's rule, never the list's.
+- **Metadata comes from the registry, over plain HTTP.** `readInstruments` reads a registry's
+  catalogue and stamps its admin party, taken from that registry's own `/info`, onto every id: the
+  instrument list carries bare ids, and an id identifies a token only together with the party that
+  issued it. It serves no logo, so artwork stays the app's or a curated list's. No session, so it
+  sits on the main barrel beside `sumHoldings`.
+- **The read lives here rather than in `canton-connect`**, even though it needs that package's
+  session. What it knows is the token standard — an interface id, the shape of a holding view, an
+  instrument id — and `canton-connect` is a layer over the wallet SDK, kept thin enough to delete.
+  Putting it there duplicated `InstrumentId` across two published packages and split one operation
+  in half, because the exact-decimal summing is here and that package cannot import it.
+  `useLedger` is the documented escape hatch for a read like this, and this is what it is for.
+- **`balance` is what the party can spend, and `locked` is the rest.** Not the total, because
+  `balance` is also what `<TokenInput>`'s Max fills and what it validates against, so a total would
+  have Max offer coin the ledger then refuses. The row shows locked as a second, quieter figure
+  under the first, and both reach the row's accessible name: the lock icon is `aria-hidden` and says
+  nothing on its own. Nothing locked and no read at all are one case — `getLockedFigure` drops both,
+  rather than putting a `0` on every row.
+- **`TokenListProvider` owns the order**, balance first and then the order given, so the field, the
+  list and the favourites cannot disagree about which token leads. A query re-ranks on top of that,
+  by match kind, in `filterTokens`.
+- **A token the metadata missed still renders.** `mergeTokens` fills `name` and `symbol` from the
+  raw instrument id rather than leaving them out: the row, the chip and the logo's initials all
+  need them, and a holding that renders as nothing is worse than one that renders as its id.
+
 ## What `<TokenInput>` does not take
 
 Three props a token field usually has are deliberately absent. **Precision** is not configurable

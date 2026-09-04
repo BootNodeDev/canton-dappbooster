@@ -1,8 +1,11 @@
 import type { KeyboardEvent, ReactElement } from 'react'
 import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
 import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
-import { tokenLabel } from '#src/components/TokenInput/tokenLabel'
+import { formatFigure } from '#src/components/TokenInput/formatFigure'
+import { getLockedFigure } from '#src/components/TokenInput/getLockedFigure'
+import { getTokenLabel } from '#src/components/TokenInput/getTokenLabel'
 import { TokenLogo } from '#src/components/TokenLogo'
+import { LockIcon } from '#src/icons'
 import type { Token } from '#src/providers/TokenListProvider/context'
 
 interface TokenRowProps {
@@ -18,8 +21,8 @@ interface TokenRowProps {
  * carries it: a tab stop per row is what the windowing exists to avoid.
  *
  * @example
- * <TokenRow onFocus={() => setActiveId(token.id)} onKeyDown={move} onSelect={setToken}
- *   tabbable={index === active} token={token} />
+ * <TokenRow onFocus={() => setActiveKey(tokenKey(token.instrumentId))} onKeyDown={move}
+ *   onSelect={setToken} tabbable={index === active} token={token} />
  */
 export const TokenRow = ({
   onFocus,
@@ -27,21 +30,37 @@ export const TokenRow = ({
   onSelect,
   tabbable,
   token,
-}: TokenRowProps): ReactElement => (
-  <button
-    aria-label={tokenLabel(token)}
-    className={anatomy.parts.row}
-    onClick={() => onSelect(token)}
-    onFocus={onFocus}
-    onKeyDown={onKeyDown}
-    style={{ height: `${ROW_HEIGHT_REM}rem` }}
-    tabIndex={tabbable ? 0 : -1}
-    type="button"
-  >
-    <TokenLogo className={anatomy.parts.rowLogo} logo={token.logo} symbol={token.symbol} />
-    <span className={anatomy.parts.rowText}>
-      <span className={anatomy.parts.rowName}>{token.name}</span>
-      <span className={anatomy.parts.rowSymbol}>{token.symbol}</span>
-    </span>
-  </button>
-)
+}: TokenRowProps): ReactElement => {
+  const balance = token.balance === undefined ? undefined : formatFigure(token.balance)
+  const locked = getLockedFigure(token)
+
+  return (
+    <button
+      aria-label={getTokenLabel(token)}
+      className={anatomy.parts.row}
+      onClick={() => onSelect(token)}
+      onFocus={onFocus}
+      onKeyDown={onKeyDown}
+      style={{ height: `${ROW_HEIGHT_REM}rem` }}
+      tabIndex={tabbable ? 0 : -1}
+      type="button"
+    >
+      <TokenLogo className={anatomy.parts.rowLogo} logo={token.logo} symbol={token.symbol} />
+      <span className={anatomy.parts.rowText}>
+        <span className={anatomy.parts.rowName}>{token.name}</span>
+        <span className={anatomy.parts.rowSymbol}>{token.symbol}</span>
+      </span>
+      {(balance !== undefined || locked !== undefined) && (
+        <span className={anatomy.parts.rowFigures}>
+          {balance !== undefined && <span className={anatomy.parts.rowBalance}>{balance}</span>}
+          {locked !== undefined && (
+            <span className={anatomy.parts.rowLocked}>
+              {locked}
+              <LockIcon />
+            </span>
+          )}
+        </span>
+      )}
+    </button>
+  )
+}

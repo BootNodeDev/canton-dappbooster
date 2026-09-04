@@ -14,3 +14,4 @@ export {
   DisconnectButton,
   type DisconnectButtonProps,
 } from '#src/components/WalletButton/DisconnectButton'
+export { type UseHoldingsResult, useHoldings } from '#src/hooks/useHoldings'

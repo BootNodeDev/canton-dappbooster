@@ -6,6 +6,8 @@ import {
   type PartyIdError,
   PartyIdInput,
   TokenInput,
+  tokenKey,
+  useTokenList,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
 import { Trash2 } from 'lucide-react'
@@ -22,6 +24,7 @@ import { Pills } from '@/components/Pills'
 import { Select } from '@/components/Select'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
+import { useTokenFigures } from '@/providers/Tokens'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
 import { now } from '@/utils/clock'
@@ -30,7 +33,7 @@ import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
-import { AMT } from '@/utils/tokens'
+import { AMT, isAmulet } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -146,31 +149,24 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
-  const [balance, setBalance] = useState<string>()
-  const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
-
+  // The pick is display-only: a grant is Canton Coin whatever the field shows. Held as a key rather
+  // than as the row itself, so the figures the reads fill in later still reach the field.
+  const [pickedKey, setPickedKey] = useState<string>()
+  const { byKey, tokens } = useTokenList()
+  const token =
+    (pickedKey === undefined ? undefined : byKey.get(pickedKey)) ??
+    tokens.find(({ instrumentId }) => isAmulet(instrumentId))
+  const { failed, refresh } = useTokenFigures()
+  // The figures are read once a session, and a grant created through this form has moved the
+  // funder's coin since. This dialog is the only place they are shown, so it is where they are
+  // worth re-reading.
   useEffect(() => {
-    if (backend === undefined || partyId === '') {
-      return
-    }
-    let live = true
-    backend.balanceOf(partyId).then(
-      (value) => {
-        if (live) {
-          setBalance(value)
-          setBalanceState(undefined)
-        }
-      },
-      () => {
-        if (live) {
-          setBalanceState('error')
-        }
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [backend, partyId])
+    refresh()
+  }, [refresh])
+  // A read that failed leaves the row carrying the ledger's own unlocked total, which counts coin a
+  // pending grant has pledged, so no ceiling is known rather than that one.
+  const balance = failed ? undefined : token?.balance
+  const balanceState = failed ? 'error' : balance === undefined ? 'loading' : undefined
 
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)
@@ -337,7 +333,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                token={AMT}
+                onTokenSelect={({ instrumentId }) => setPickedKey(tokenKey(instrumentId))}
+                token={token ?? AMT}
                 usdValue="N/A"
                 value={amount}
               />
