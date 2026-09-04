@@ -30,8 +30,9 @@ describe('the registry env block bootstrap prints', () => {
     assert.doesNotMatch(block, /eyJ[A-Za-z0-9_-]+\./)
   })
 
-  it('is the exact block dev-stack.sh parses back out of stdout', () => {
-    // Line count, key order, and no trailing newline are load-bearing for dev-stack.sh's parse.
+  it('is a nine-line block pasteable into the registry .env as it stands', () => {
+    // Nothing parses this back out: the shape is pinned because a human copies it, and a
+    // silently reordered or truncated block is what they would not notice.
     const lines = block.split('\n')
     assert.equal(lines.length, 9)
     assert.doesNotMatch(block, /\n$/)

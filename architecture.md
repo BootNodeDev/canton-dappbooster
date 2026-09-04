@@ -69,6 +69,7 @@ State boundaries:
 | wallet-service | `http://localhost:3010` | wallet bridge for onboarding and JSON API calls |
 | CIP-0103 browser wallet | `http://localhost:3011` | browser wallet UI/provider, run from its own repo |
 | dApp frontend | `http://localhost:3012` | example dApp |
+| canton-token-forge registry | `http://localhost:3013` | CIP-56 registry, run from the env block `bootstrap` prints |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
 | app-user Admin API | `grpc://localhost:2902` | wallet-service/tools |

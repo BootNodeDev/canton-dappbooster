@@ -36,7 +36,7 @@ export const REGISTRY_TEMPLATE_IDS = {
 }
 
 // Every template id is single-quoted: a value starting with `#` is otherwise read
-// as a comment and the variable parses as empty. dev-stack.sh strips the quotes.
+// as a comment and the variable parses as empty.
 export const formatRegistryEnv = ({ ledgerApiUrl, adminParty, port }) =>
   [
     `LEDGER_API_URL=${ledgerApiUrl}`,
@@ -102,16 +102,16 @@ const createParty = async (hint) => {
 
 // Ask the participant which package it would pick for the name, so a stale id cannot silently
 // produce an empty dashboard. Fails loudly with PACKAGE_NAMES_NOT_FOUND if the DAR is not deployed.
-const resolvePackage = async (party) => {
+const resolvePackage = async (party, packageName = PACKAGE_NAME) => {
   const result = await ledger(
     'get',
     '/v2/interactive-submission/preferred-package-version',
     undefined,
-    { 'package-name': PACKAGE_NAME, parties: party },
+    { 'package-name': packageName, parties: party },
   )
   const pkg = result?.packagePreference?.packageReference?.packageId
   if (typeof pkg !== 'string' || pkg.length === 0) {
-    throw new Error(`participant returned no package id for ${PACKAGE_NAME}`)
+    throw new Error(`participant returned no package id for ${packageName}`)
   }
   return pkg
 }
@@ -212,6 +212,10 @@ const main = async () => {
   }
   console.log(`factory    ${active.createdEvent.contractId}`)
 
+  // Preflight before the admin exists, so an undeployed vendor/canton-token-forge.dar fails
+  // with PACKAGE_NAMES_NOT_FOUND rather than a raw create error and a stray party.
+  await resolvePackage(operator, TOKEN_FORGE_PACKAGE)
+
   // A fresh admin per run, so (admin, instrumentId) is new every time and the registry
   // can never find two configs for one instrument.
   const admin = await createParty(`instrument-admin-${STAMP}`)
@@ -223,7 +227,7 @@ const main = async () => {
     commands: [
       {
         CreateCommand: {
-          templateId: `#${TOKEN_FORGE_PACKAGE}:Canton.TokenForge.Registry:InstrumentConfig`,
+          templateId: REGISTRY_TEMPLATE_IDS.INSTRUMENT_CONFIG_TEMPLATE_ID,
           createArguments: {
             admin,
             instrumentId: INSTRUMENT.instrumentId,
@@ -245,13 +249,13 @@ const main = async () => {
   console.log('\nregistry env')
   console.log(
     formatRegistryEnv({
-      ledgerApiUrl: process.env.CANTON_JSON_API_URL ?? 'http://localhost:2975',
+      ledgerApiUrl: process.env.CANTON_JSON_API_URL || 'http://localhost:2975',
       adminParty: admin,
       port: REGISTRY_PORT,
     }),
   )
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] === import.meta.filename) {
   await main()
 }
