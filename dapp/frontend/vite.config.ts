@@ -13,8 +13,13 @@ import { parseEnv } from './src/utils/env'
 const REGISTRY_PROXY = '/registry'
 const LOCALNET_REGISTRY = 'http://localhost:2000/api/validator/v0/scan-proxy'
 
+// `loadEnv` reads a key present but set to nothing as an empty string, which is a `.env` asking for
+// the default rather than an address to reach: `new URL('')` throws and takes the dev server with it.
+const address = (value: string | undefined, fallback: string): string =>
+  value === undefined || value === '' ? fallback : value
+
 const registryTarget = (values: Record<string, string>) => {
-  const upstream = new URL(values.SPLICE_REGISTRY_API_URL ?? LOCALNET_REGISTRY)
+  const upstream = new URL(address(values.SPLICE_REGISTRY_API_URL, LOCALNET_REGISTRY))
   const token = values.CANTON_BACKEND_TOKEN ?? ''
   return {
     changeOrigin: true,
@@ -38,7 +43,7 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
   apply: 'serve',
   configureServer: (server) => {
     server.middlewares.use(ASSET_LIST_ROUTE, async (_request, response) => {
-      const scan = values.SPLICE_SCAN_API_URL ?? LOCALNET_SCAN
+      const scan = address(values.SPLICE_SCAN_API_URL, LOCALNET_SCAN)
       const [published, dso] = await Promise.all([
         json(PUBLISHED_LIST).catch(() => ({})),
         json(`${scan}/v0/dso-party-id`)
