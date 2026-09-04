@@ -184,8 +184,8 @@ The list is the consumer's, and the kit reads no ledger. What that costs and buy
 - **`TokenListProvider` owns the order**, balance first and then the order given, so the field, the
   list and the favourites cannot disagree about which token leads. A query re-ranks on top of that,
   by match kind, in `filterTokens`.
-- **A token the metadata missed still renders.** Fill `name` and `symbol` from the raw instrument id
-  in the list source rather than leaving them out: the row, the chip and the logo's initials all
+- **A token the metadata missed still renders.** `mergeTokens` fills `name` and `symbol` from the
+  raw instrument id rather than leaving them out: the row, the chip and the logo's initials all
   need them, and a holding that renders as nothing is worse than one that renders as its id.
 
 ## What `<TokenInput>` does not take
