@@ -1,3 +1,4 @@
+import { Eye, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
@@ -8,7 +9,6 @@ import { GrantLock } from '@/components/GrantLock'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { EyeIcon, TrashIcon } from '@/icons'
 import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { GrantDerived } from '@/store/useVestingStore'
@@ -26,7 +26,6 @@ interface GrantCardProps {
   role: Role
 }
 
-// The relative wording is the readable one, so the exact date rides along in a tooltip.
 const scheduleMeta = (
   grant: Grant,
   derived: GrantDerived,
@@ -78,7 +77,7 @@ export const GrantCard = ({
         <h2>
           <Link
             to={`/grants/${grant.id}`}
-            className="block truncate text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
+            className="inline-block max-w-full truncate align-bottom text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
           >
             {grant.title}
           </Link>
@@ -152,7 +151,7 @@ export const GrantCard = ({
               </div>
               <AmountDisplay value={derived.unvested} className="text-xl font-semibold text-fg" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <Button
                 aria-label="Grant details"
                 size="icon"
@@ -160,7 +159,7 @@ export const GrantCard = ({
                 asLink
                 to={`/grants/${grant.id}`}
               >
-                <EyeIcon width={16} height={16} />
+                <Eye size={16} />
               </Button>
               <Button
                 aria-label="Cancel grant"
@@ -168,7 +167,7 @@ export const GrantCard = ({
                 variant="danger-ghost"
                 onClick={() => onCancel(grant)}
               >
-                <TrashIcon width={16} height={16} />
+                <Trash2 size={16} />
               </Button>
             </div>
           </>

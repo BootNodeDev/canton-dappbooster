@@ -36,8 +36,6 @@ describe('vestedFraction', () => {
   })
 
   it('interpolates linearly after the cliff', () => {
-    // The window is 365 days; vesting is ms-based, so fractions follow day counts.
-    // 2025-06-01 is 151 days in, 2025-07-01 is 181 days in.
     expect(vestedFraction(linear, ms('2025-06-01T00:00:00Z'))).toBeCloseTo(151 / 365, 4)
     expect(vestedFraction(linear, ms('2025-07-01T00:00:00Z'))).toBeCloseTo(181 / 365, 4)
   })
@@ -112,6 +110,21 @@ describe('validVestingSchedule', () => {
     ).toBe(false)
   })
 
+  it('rejects a NaN milestone fraction, even when the last one still reaches 1', () => {
+    expect(
+      validVestingSchedule({
+        cliff: '2025-02-01T00:00:00Z',
+        curve: {
+          kind: 'milestone',
+          points: [
+            { time: '2025-02-01T00:00:00Z', fraction: Number.NaN },
+            { time: '2025-12-01T00:00:00Z', fraction: 1.0 },
+          ],
+        },
+      }),
+    ).toBe(false)
+  })
+
   it('rejects a zero-duration linear window (start === end)', () => {
     expect(
       validVestingSchedule({
@@ -174,8 +187,6 @@ describe('validVestingSchedule', () => {
 })
 
 describe('vestedFraction cliff boundary', () => {
-  // cliff (2025-06-01) sits after start (2025-01-01): a true cliff that jumps
-  // straight to the accrued-up-to-cliff fraction the instant it passes.
   it('is 0 one second before the cliff', () => {
     expect(vestedFraction(linear, ms('2025-06-01T00:00:00Z') - 1000)).toBe(0)
   })
@@ -231,8 +242,6 @@ describe('meetsRelockFloor', () => {
     expect(meetsRelockFloor('0.5', '0.2')).toBe(false)
   })
 
-  // The remainder is one unit at the 10th decimal place — float subtraction of two
-  // numbers this close in magnitude would lose that digit entirely.
   it('rejects a full-precision remainder of one unit at the 10th decimal place', () => {
     expect(meetsRelockFloor('8421337.1234567891', '8421337.1234567890')).toBe(false)
   })
@@ -248,7 +257,6 @@ describe('residualMeetsFloor', () => {
     expect(residualMeetsFloor('250.5')).toBe(true)
   })
 
-  // The window AmuletVestingContract_Cancel asserts on: owed is neither zero nor a fundable claim.
   it('rejects a residual between zero and the floor', () => {
     expect(residualMeetsFloor('0.0000000001')).toBe(false)
     expect(residualMeetsFloor('0.99')).toBe(false)

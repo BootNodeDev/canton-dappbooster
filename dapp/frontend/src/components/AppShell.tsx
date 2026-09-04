@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Outlet, ScrollRestoration } from 'react-router-dom'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
 import { Footer } from '@/components/Footer'
@@ -10,16 +11,26 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError } = useBackend()
+  const { backend, configPending, configError, sessionPending } = useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
-  // the action would otherwise repeat the mount, and a reader can open it from any of them. Held
-  // until there is a backend so a deep link with no session still lands on the page's connect card.
+  // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
 
   useConnectErrorToast()
 
+  // A lock or a disconnect takes the action away, so the param goes too: left in the URL it would
+  // reopen the dialog on the next connect. Only once the session is settled, or a reload would drop
+  // it before the restore has had its chance.
+  const noSession = !sessionPending && !configPending && backend === undefined
+  useEffect(() => {
+    if (creating && noSession) {
+      setCreating(false)
+    }
+  }, [creating, noSession, setCreating])
+
   return (
     <div className="flex min-h-screen">
+      <ScrollRestoration getKey={(location) => location.pathname} />
       <div className="relative flex min-w-0 flex-1 flex-col">
         <a
           href="#main"

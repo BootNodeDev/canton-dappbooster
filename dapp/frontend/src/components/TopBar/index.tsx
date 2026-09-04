@@ -1,10 +1,10 @@
 import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
+import { Spinner } from '@/components/Spinner'
 import { AccountMenu } from '@/components/TopBar/AccountMenu'
 import { Logo } from '@/components/TopBar/Logo'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useParty } from '@/hooks/useParty'
-import { SpinnerIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -34,7 +34,7 @@ export const TopBar = (): React.JSX.Element => {
               role="status"
               className="inline-flex size-9 items-center justify-center text-fg-muted"
             >
-              <SpinnerIcon width={18} height={18} />
+              <Spinner />
               <span className="sr-only">Restoring wallet session</span>
             </span>
           ) : (
@@ -43,9 +43,6 @@ export const TopBar = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* Centred over the row above from md, where there is room beside the logo and the wallet
-          control; below that it takes a row of its own, since hiding it left Pending reachable
-          only by typing the URL. */}
       <nav
         aria-label="Primary"
         className="flex items-center gap-1 border-t border-border px-5 py-2 sm:px-8 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:border-0 md:p-0"

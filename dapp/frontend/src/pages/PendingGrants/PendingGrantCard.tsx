@@ -33,7 +33,9 @@ export const PendingGrantCard = ({
   return (
     <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
       <div className="min-w-0">
-        <h2 className="text-base font-bold tracking-tight text-fg">{pendingGrant.title}</h2>
+        <h2 className="inline-block max-w-full truncate align-bottom text-base font-bold tracking-tight text-fg">
+          {pendingGrant.title}
+        </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <CurvePill curve={curve} />
           <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
