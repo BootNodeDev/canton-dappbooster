@@ -26,7 +26,6 @@ export interface UseConnectResult {
  * Connects and disconnects the wallet, and reports that transition. `connect` takes no argument:
  * the picker chooses the wallet, so there is no mode to pass. Gate a pending face on `isPending`
  * and session-dependent content on `useParty().party`, not on `isConnected`.
- * Wagmi: `useConnect` + `useDisconnect`, bundled because one provider owns the session.
  *
  * @throws with no {@link CantonConnectProvider} above it, as every hook here does.
  *

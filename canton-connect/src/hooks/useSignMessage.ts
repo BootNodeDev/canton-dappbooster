@@ -18,7 +18,6 @@ export interface UseSignMessageResult {
 
 /**
  * Signs an arbitrary message with the connected wallet; the SDK owns the encoding.
- * Wagmi: `useSignMessage`, same name and job.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
  * connected or no party is reported. A wallet refusal throws too, and lands in `error`.

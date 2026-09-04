@@ -34,7 +34,6 @@ export interface UseExecuteResult {
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
  * event. `actAs` defaults to the party `useParty` reports, so a submit acts as the party the UI
  * shows rather than the wallet's own primary.
- * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, `execute` resolving after execution.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
  * connected or no party is reported. A command that fails throws too, and lands in `error`.
