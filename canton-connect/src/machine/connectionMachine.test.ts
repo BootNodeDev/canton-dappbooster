@@ -29,10 +29,11 @@ import {
 // Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a
 // DOM.
 import { connectionInput } from '#src/testing/connectionInput'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 
 // Provided wherever a recorded sequence walks through a session: the real read reaches an sdk
 // double that never answers, which would park those sequences in `reading`.

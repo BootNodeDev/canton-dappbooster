@@ -11,6 +11,8 @@ import type { Party } from '#src/types'
 interface RawWalletAccount {
   primary?: boolean
   partyId: string
+  namespace: string
+  signingProviderId: string
   hint?: string
   publicKey?: string
   networkId?: string
@@ -50,6 +52,8 @@ export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAcc
 export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): Party => ({
   partyId: account.partyId,
   networkId: account.networkId ?? fallbackNetworkId,
+  namespace: account.namespace,
+  signingProviderId: account.signingProviderId,
   ...(account.hint === undefined ? {} : { name: account.hint }),
   ...(account.publicKey === undefined ? {} : { publicKey: account.publicKey }),
 })

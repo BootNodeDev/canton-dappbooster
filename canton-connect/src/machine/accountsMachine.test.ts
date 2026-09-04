@@ -10,12 +10,13 @@ import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connect
 // DOM.
 import { accountsInput } from '#src/testing/accountsInput'
 import { connectionInput } from '#src/testing/connectionInput'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 const accounts: WalletAccounts = { party }
-const pushedParty = { partyId: 'bob::1220cd', networkId: 'canton:local' }
+const pushedParty = testParty('bob::1220cd')
 
 const sessionWith = (accountsLogic: typeof accountsMachine) =>
   connectionMachine.provide({

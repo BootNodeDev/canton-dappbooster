@@ -26,6 +26,7 @@ export interface FakeWalletAccount {
   name?: string
   publicKey?: string
   networkId?: string
+  signingProviderId?: string
 }
 
 // Reports a network the way a real wallet does; toParty's config fallback is covered by
@@ -39,7 +40,7 @@ const toWallet = (account: FakeWalletAccount): Wallet => ({
   publicKey: account.publicKey ?? FAKE_PUBLIC_KEY,
   namespace: account.partyId.split('::')[1] ?? account.partyId,
   networkId: account.networkId ?? FAKE_NETWORK_ID,
-  signingProviderId: FAKE_SIGNING_PROVIDER_ID,
+  signingProviderId: account.signingProviderId ?? FAKE_SIGNING_PROVIDER_ID,
 })
 
 /**

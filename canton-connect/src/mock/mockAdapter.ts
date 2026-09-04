@@ -31,6 +31,7 @@ export interface MockAccount {
   partyId: string
   name?: string
   publicKey?: string
+  signingProviderId?: string
 }
 
 /**
@@ -88,7 +89,7 @@ const toWallet = (
     publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
     // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
     namespace: account.partyId.split('::')[1] ?? account.partyId,
-    signingProviderId: MOCK_SIGNING_PROVIDER_ID,
+    signingProviderId: account.signingProviderId ?? MOCK_SIGNING_PROVIDER_ID,
     // A mock has no network of its own — omitting this lets toParty's config fallback apply.
     ...(networkId === undefined ? {} : { networkId }),
   }) as Wallet

@@ -6,11 +6,12 @@ import type { AccountsInput } from '#src/machine/accountsActors'
 import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
 import type { ConnectInput, InitInput } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 import { startConnection } from '#src/testing/startConnection'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 
 const readingAccounts = (read: () => Promise<WalletAccounts>) =>
   accountsMachine.provide({
