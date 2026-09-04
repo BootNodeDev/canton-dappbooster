@@ -141,6 +141,18 @@ wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
   return 1
 }
 
+# `kill` returns before the process has released its socket, so a restart needs this
+# between the stop and the next bind.
+wait_for_port_free() { # wait_for_port_free <seconds> <port>
+  local timeout="$1" port="$2" deadline
+  deadline=$((SECONDS + timeout))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1 || return 0
+    sleep 1
+  done
+  return 1
+}
+
 # Returns non-zero rather than exiting, so `down` still stops the host processes and
 # `status` still prints the ports when the LocalNet itself is unreachable.
 localnet() { # localnet <start|stop|reset|status|logs> [args…]
@@ -231,14 +243,21 @@ start_registry() {
   done
   port="$(read_bootstrap_env PORT)"
 
+  # Restarted rather than skipped: bootstrap mints a fresh admin party each run, so a
+  # leftover registry serves a superseded instrument and still answers /readyz.
   if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-    warn "Port $port already in use; skipping the token registry."
-    return 0
+    log "Port $port in use; restarting the token registry."
+    stop_pidfile "$REGISTRY_PID" "token registry"
+    pkill -f "canton-token-forge/registry/dist" 2>/dev/null || true
+    wait_for_port_free 10 "$port" \
+      || die "Port $port is held by something other than the token registry; free it, then run 'up'."
   fi
 
   log "Starting the token registry -> http://localhost:$port"
-  nohup env "${registry_env[@]}" LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" \
-    pnpm exec canton-token-forge-registry >"$REGISTRY_LOG" 2>&1 &
+  # The bearer goes in the environment rather than through `env`'s argv, where `ps`
+  # would show it to every local user for the life of the process.
+  LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" \
+    nohup env "${registry_env[@]}" pnpm exec canton-token-forge-registry >"$REGISTRY_LOG" 2>&1 &
   echo $! >"$REGISTRY_PID"
 
   # /readyz rather than /healthz: it reads the ledger end, so a 2xx proves the
@@ -333,8 +352,10 @@ up() {
   # than swallowed: the registry's whole non-secret configuration is in it, and a
   # manual run still wants to read the block. `set -o pipefail` is on, so a failing
   # bootstrap still fails here.
+  # The URL is passed explicitly, which bootstrap's own --env-file loses to: otherwise a
+  # caller override moves the upload and the probe but not what the registry points at.
   log "Bootstrapping the vesting operator, factory and DBT instrument..."
-  pnpm run bootstrap | tee "$BOOTSTRAP_LOG"
+  CANTON_JSON_API_URL="$JSON_API_URL" pnpm run bootstrap | tee "$BOOTSTRAP_LOG"
 
   # 5. Token registry (3013), which needs the admin party bootstrap just created
   start_registry
