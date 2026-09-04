@@ -118,7 +118,7 @@ export const GrantDetail = (): React.JSX.Element => {
               <GrantLock className="self-center" />
             ) : (
               <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
-                Claim <CompactAmount value={derived.claimable} plain /> CC
+                Claim <CompactAmount value={derived.claimable} plain /> AMT
               </Button>
             ))}
           {isCreator && (
@@ -234,7 +234,7 @@ export const GrantDetail = (): React.JSX.Element => {
       {claimOpen && (
         <Claim
           onClose={() => setClaimOpen(false)}
-          title="Claim vested CC"
+          title="Claim vested AMT"
           available={derived.claimable}
           backing={grantBacking(grant)}
           onConfirm={async (amount) => {
@@ -255,7 +255,7 @@ export const GrantDetail = (): React.JSX.Element => {
           onClose={() => setCancelOpen(false)}
           grant={grant}
           nowMs={nowMs}
-          description="Vested-but-unclaimed CC becomes a residual claim for the receiver; the contract is archived."
+          description="Vested-but-unclaimed AMT becomes a residual claim for the receiver; the contract is archived."
           successMessage="Grant cancelled"
           onConfirm={async () => {
             // Cancel archives the grant for good, so staying here would read "Grant not found".

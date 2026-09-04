@@ -12,7 +12,7 @@ describe('toast auto-dismiss', () => {
   })
 
   it('runs the clock from the push, so a viewport remount cannot extend a toast', () => {
-    toast.success('Claimed 250 CC')
+    toast.success('Claimed 250 AMT')
     vi.advanceTimersByTime(3199)
     expect(useToastStore.getState().toasts).toHaveLength(1)
     vi.advanceTimersByTime(1)

@@ -6,10 +6,10 @@ import { Modal } from '@/components/Modal'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
-import { formatCCFull } from '@/utils/format'
+import { formatFigureFull } from '@/utils/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
-import { CC } from '@/utils/tokens'
+import { AMT } from '@/utils/tokens'
 
 interface ClaimProps {
   available: string
@@ -42,7 +42,7 @@ export const Claim = ({
     amountError !== undefined
       ? AMOUNT_ERROR_TEXT[amountError]
       : !floorOk && isPositive(raw)
-        ? `Remainder must be 0 or at least ${MIN_GRANT_AMOUNT} CC (re-lock floor).`
+        ? `Remainder must be 0 or at least ${MIN_GRANT_AMOUNT} AMT (re-lock floor).`
         : undefined
 
   const valid = amountError === undefined && isPositive(raw) && floorOk
@@ -56,7 +56,7 @@ export const Claim = ({
       await onConfirm(raw)
       // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
       // tooltip to recover the digits from.
-      toast.success(`Claimed ${formatCCFull(raw)} ${CC.symbol}`)
+      toast.success(`Claimed ${formatFigureFull(raw)} ${AMT.symbol}`)
       onClose()
     } catch (err) {
       toast.error(errorText(err))
@@ -74,7 +74,7 @@ export const Claim = ({
         id="claim-amount"
         label="Available to claim"
         onChange={(next) => setRaw(next)}
-        token={CC}
+        token={AMT}
         usdValue="Not Available"
         value={raw}
       />

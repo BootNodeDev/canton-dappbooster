@@ -7,6 +7,7 @@ import {
   buildClaimResidualCommand,
   buildCreateVestingCommand,
   buildSplitCommand,
+  buildTapCommand,
   buildWithdrawCommand,
 } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
@@ -189,9 +190,8 @@ export class LedgerBackend implements VestingBackend {
   // and one Daml transaction cannot feed a contract that one command creates into the next. So the
   // funder splits exactly `totalAmount` off its unpledged holdings, and the grant names only what
   // the split produced. The factory is the operator's and observer-less, so the funder cannot read
-  // it and its disclosure comes from the deployment; the blob size is what lets the UI surface that
-  // mechanic.
-  async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
+  // it and its disclosure comes from the deployment.
+  async createVesting(args: CreateVestInput): Promise<void> {
     const escrow = await this.splitOff(args.proposer, args.totalAmount)
     const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
       proposer: args.proposer,
@@ -206,7 +206,6 @@ export class LedgerBackend implements VestingBackend {
     // Amulet no grant is waiting on. Appended rather than replacing, because every outstanding
     // grant's own Amulet has to stay disclosable.
     localStorage.setItem(AMULET_STORE_KEY, JSON.stringify([...storedAmulets(), escrow]))
-    return { disclosedBytes: this.factory.createdEventBlob.length }
   }
 
   // A transfer consumes everything it is given, so an Amulet an outstanding grant pledged has to
@@ -226,11 +225,11 @@ export class LedgerBackend implements VestingBackend {
   // invariant is held here rather than re-spelled per choice; `extra` is what only Accept adds.
   private async submitWithContext(
     actAs: string,
-    build: (ctx: AppTransferContext) => LedgerCommand,
+    build: (ctx: AppTransferContext, rulesTemplateId: string) => LedgerCommand,
     extra: DisclosedContract[] = [],
   ): Promise<void> {
-    const { ctx, disclosed } = await fetchTransferContext(actAs)
-    await this.submit(actAs, build(ctx), [...disclosed, ...extra])
+    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext(actAs)
+    await this.submit(actAs, build(ctx, rulesTemplateId), [...disclosed, ...extra])
   }
 
   // Self-transfers `amount` into an Amulet of the funder's own and returns it, disclosure blob
@@ -244,7 +243,7 @@ export class LedgerBackend implements VestingBackend {
     const freeTotal = addAmounts(...free.map(amuletValue))
     if (compareAmounts(freeTotal, amount) < 0) {
       throw new Error(
-        `only ${freeTotal} CC is free to fund this grant — the rest is pledged to a pending one`,
+        `only ${freeTotal} AMT is free to fund this grant — the rest is pledged to a pending one`,
       )
     }
     const dso = free.map(amuletDso).find((party) => party !== undefined)
@@ -367,6 +366,16 @@ export class LedgerBackend implements VestingBackend {
   async claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void> {
     await this.submitWithContext(args.receiver, (ctx) =>
       buildClaimResidualCommand(this.tid('AmuletVestedClaim'), args.claimCid, args.amount, ctx),
+    )
+  }
+
+  // The only write not on an amulet-vesting template: it exercises AmuletRules itself.
+  async tap(partyId: string): Promise<void> {
+    await this.submitWithContext(partyId, (ctx, rulesTemplateId) =>
+      buildTapCommand(rulesTemplateId, ctx.amuletRules, {
+        openMiningRound: ctx.openMiningRound,
+        receiver: partyId,
+      }),
     )
   }
 }

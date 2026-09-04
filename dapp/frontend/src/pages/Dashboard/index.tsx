@@ -29,7 +29,7 @@ import {
 import { addAmounts, isPositive } from '@/utils/amount'
 import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
-import { CC } from '@/utils/tokens'
+import { AMT } from '@/utils/tokens'
 
 interface GrantRow {
   derived: GrantDerived
@@ -249,7 +249,7 @@ export const Dashboard = (): React.JSX.Element => {
             <span className="font-mono text-xs text-fg-muted">
               {isPositive(residualClaimable) && (
                 <>
-                  <CompactAmount value={residualClaimable} /> {CC.symbol} claimable
+                  <CompactAmount value={residualClaimable} /> {AMT.symbol} claimable
                 </>
               )}
             </span>
@@ -288,7 +288,7 @@ export const Dashboard = (): React.JSX.Element => {
       {claimTarget !== null && (
         <Claim
           onClose={() => setClaimTarget(null)}
-          title={claimTarget.kind === 'grant' ? 'Claim vested CC' : 'Claim residual'}
+          title={claimTarget.kind === 'grant' ? 'Claim vested AMT' : 'Claim residual'}
           available={claimTarget.available}
           backing={claimTarget.backing}
           onConfirm={onConfirmClaim}
@@ -300,7 +300,7 @@ export const Dashboard = (): React.JSX.Element => {
           onClose={() => setCancelTarget(null)}
           grant={cancelTarget}
           nowMs={nowMs}
-          description={`Vested-but-unclaimed CC is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
+          description={`Vested-but-unclaimed AMT is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
           successMessage="Grant cancelled; earned residual set aside for the receiver"
           onConfirm={() => cancel(backend, partyId, cancelTarget.id)}
         />
