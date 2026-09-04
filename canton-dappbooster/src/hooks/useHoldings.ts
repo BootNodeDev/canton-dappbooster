@@ -74,13 +74,13 @@ const readPartyHoldings = async (
 }
 
 interface HoldingsState {
+  error: Error | undefined
   holdings: readonly Holding[] | undefined
   isLoading: boolean
-  error: Error | undefined
 }
 
-const IDLE: HoldingsState = { holdings: undefined, isLoading: false, error: undefined }
-const LOADING: HoldingsState = { holdings: undefined, isLoading: true, error: undefined }
+const IDLE: HoldingsState = { error: undefined, holdings: undefined, isLoading: false }
+const LOADING: HoldingsState = { error: undefined, holdings: undefined, isLoading: true }
 
 const toError = (value: unknown): Error =>
   value instanceof Error ? value : new Error(String(value))
@@ -92,9 +92,9 @@ const toError = (value: unknown): Error =>
  * @category Hooks
  */
 export interface UseHoldingsResult {
+  error: Error | undefined
   holdings: readonly Holding[] | undefined
   isLoading: boolean
-  error: Error | undefined
   refetch: () => void
 }
 
@@ -129,7 +129,7 @@ export const useHoldings = (): UseHoldingsResult => {
     setState(LOADING)
     readPartyHoldings(ledgerApi, partyId).then(
       (holdings) => {
-        if (request === newest.current) setState({ holdings, isLoading: false, error: undefined })
+        if (request === newest.current) setState({ error: undefined, holdings, isLoading: false })
       },
       (err) => {
         if (request === newest.current) setState({ ...IDLE, error: toError(err) })
