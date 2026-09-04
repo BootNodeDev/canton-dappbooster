@@ -159,6 +159,11 @@ The list is the consumer's, and the kit reads no ledger. What that costs and buy
   on the `/connect` sub-path is that read, and `sumHoldings` groups its one-per-contract answer into
   one row per instrument. An absent balance means the read has not reached, not that the party holds
   nothing, so the row shows no figure and sorts below every one that has a figure.
+- **A list is a catalogue, not a balance sheet.** `mergeTokens` builds one row per instrument out of
+  every source that knows about it, later sources winning field by field and an absent field meaning
+  a source had nothing to say. So holdings annotate rows rather than create them: a token nobody
+  holds is still offerable, which is what a swap's buy side needs, and an app that wants only what
+  it can spend filters the result itself. That filter is a screen's rule, never the list's.
 - **Metadata comes from the registry, over plain HTTP.** `readInstruments` reads a registry's
   catalogue and stamps its admin party, taken from that registry's own `/info`, onto every id: the
   instrument list carries bare ids, and an id identifies a token only together with the party that

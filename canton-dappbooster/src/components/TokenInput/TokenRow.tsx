@@ -1,12 +1,12 @@
 import type { KeyboardEvent, ReactElement } from 'react'
 import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
 import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
+import { formatFigure } from '#src/components/TokenInput/formatFigure'
 import { getLockedFigure } from '#src/components/TokenInput/getLockedFigure'
 import { getTokenLabel } from '#src/components/TokenInput/getTokenLabel'
 import { TokenLogo } from '#src/components/TokenLogo'
 import { LockIcon } from '#src/icons'
 import type { Token } from '#src/providers/TokenListProvider/context'
-import { formatAmount } from '#src/utils/tokenAmount'
 
 interface TokenRowProps {
   onFocus: () => void
@@ -31,7 +31,7 @@ export const TokenRow = ({
   tabbable,
   token,
 }: TokenRowProps): ReactElement => {
-  const balance = token.balance === undefined ? undefined : formatAmount(token.balance)
+  const balance = token.balance === undefined ? undefined : formatFigure(token.balance)
   const locked = getLockedFigure(token)
 
   return (

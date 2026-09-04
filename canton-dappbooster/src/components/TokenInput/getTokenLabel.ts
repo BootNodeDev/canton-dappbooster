@@ -1,6 +1,6 @@
+import { formatFigure } from '#src/components/TokenInput/formatFigure'
 import { getLockedFigure } from '#src/components/TokenInput/getLockedFigure'
 import type { Token } from '#src/providers/TokenListProvider/context'
-import { formatAmount } from '#src/utils/tokenAmount'
 
 // The accessible name a token is announced by
 export const getTokenLabel = (token: Token): string => {
@@ -8,7 +8,7 @@ export const getTokenLabel = (token: Token): string => {
   const parts = [`${token.name} ${token.symbol}`]
 
   if (token.balance !== undefined) {
-    parts.push(`balance ${formatAmount(token.balance)}`)
+    parts.push(`balance ${formatFigure(token.balance)}`)
   }
 
   if (locked !== undefined) {

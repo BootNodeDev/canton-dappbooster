@@ -3,11 +3,11 @@ import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
 import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
+import { formatFigure } from '#src/components/TokenInput/formatFigure'
 import { TokenList } from '#src/components/TokenInput/TokenList'
 import { TokenListProvider } from '#src/providers/TokenListProvider'
 import type { Token } from '#src/providers/TokenListProvider/context'
 import { stubViewport } from '#src/testing/viewport'
-import { formatAmount } from '#src/utils/tokenAmount'
 
 // jsdom's root font size is the 16px default, so the hook under the list resolves rem to this.
 const ROW = ROW_HEIGHT_REM * 16
@@ -98,7 +98,7 @@ describe('TokenList', () => {
   })
 
   it('shows the balance and carries it into the row name', () => {
-    const balance = formatAmount('1234.5')
+    const balance = formatFigure('1234.5')
     const { container } = one({ balance: '1234.5' })
 
     expect(container.querySelector(`.${anatomy.parts.rowBalance}`)).toHaveTextContent(balance)
@@ -120,7 +120,7 @@ describe('TokenList', () => {
       'aria-hidden',
     )
     expect(
-      screen.getByRole('button', { name: 'Token 0 TK0, balance 900, 100 locked' }),
+      screen.getByRole('button', { name: 'Token 0 TK0, balance 900.00, 100.00 locked' }),
     ).toBeInTheDocument()
   })
 
