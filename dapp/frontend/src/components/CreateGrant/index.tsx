@@ -5,12 +5,13 @@ import {
   isValidPartyId,
   type PartyIdError,
   PartyIdInput,
+  type Token,
   TokenInput,
-  type TokenMeta,
+  useTokenList,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
 import { Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { DateField } from '@/components/CreateGrant/DateField'
@@ -31,7 +32,7 @@ import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
-import { AMT } from '@/utils/tokens'
+import { AMT, AMULET_ID } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -147,33 +148,12 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
-  const [balance, setBalance] = useState<string>()
-  const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
   // The pick is display-only: a grant is Canton Coin whatever the field shows.
-  const [token, setToken] = useState<TokenMeta>(AMT)
-
-  useEffect(() => {
-    if (backend === undefined || partyId === '') {
-      return
-    }
-    let live = true
-    backend.balanceOf(partyId).then(
-      (value) => {
-        if (live) {
-          setBalance(value)
-          setBalanceState(undefined)
-        }
-      },
-      () => {
-        if (live) {
-          setBalanceState('error')
-        }
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [backend, partyId])
+  const [picked, setPicked] = useState<Token>()
+  const { tokens } = useTokenList()
+  const token = picked ?? tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
+  const balance = token?.balance
+  const balanceState = balance === undefined ? 'loading' : undefined
 
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)
@@ -340,8 +320,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                onTokenSelect={setToken}
-                token={token}
+                onTokenSelect={setPicked}
+                token={token ?? AMT}
                 usdValue="N/A"
                 value={amount}
               />

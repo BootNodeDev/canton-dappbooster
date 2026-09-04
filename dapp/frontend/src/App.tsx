@@ -14,11 +14,11 @@ export const App = (): React.JSX.Element => (
   <LucideProvider size={18} strokeWidth={1.8}>
     <ThemeProvider>
       <CantonConnectProvider config={connectConfig}>
-        <Tokens>
-          <Backend>
+        <Backend>
+          <Tokens>
             <RouterProvider router={router} />
-          </Backend>
-        </Tokens>
+          </Tokens>
+        </Backend>
       </CantonConnectProvider>
     </ThemeProvider>
   </LucideProvider>

@@ -9,6 +9,9 @@ import {
 } from '@bootnodedev/canton-dappbooster'
 import { useHoldings } from '@bootnodedev/canton-dappbooster/connect'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useParty } from '@/hooks/useParty'
+import { useBackend } from '@/providers/Backend'
+import { addAmounts, subtractAmounts } from '@/utils/amount'
 import { type AssetListEntry, readAssetList } from '@/utils/assetList'
 import { ASSET_LIST_NETWORK, ASSET_LIST_URL, REGISTRY_URL } from '@/utils/config'
 import { AMT, AMULET_ID } from '@/utils/tokens'
@@ -30,10 +33,47 @@ const fromApp = (rows: readonly PartialToken[]): readonly PartialToken[] =>
     .filter(({ instrumentId }) => instrumentId.id === AMULET_ID)
     .map(({ instrumentId }) => ({ instrumentId, logo: AMT.logo }))
 
+// The figures this app can act on, which are not the ledger's: what is free to fund a grant is the
+// balance, and coin a pending grant pledged joins the escrowed coin as locked. The three still sum
+// to everything held, so the row hides nothing.
+const fromVesting = (
+  rows: readonly PartialToken[],
+  free: string | undefined,
+): readonly PartialToken[] =>
+  free === undefined
+    ? []
+    : rows
+        .filter(
+          ({ balance, instrumentId }) => instrumentId.id === AMULET_ID && balance !== undefined,
+        )
+        .map(({ balance = '0', instrumentId, locked = '0' }) => ({
+          balance: free,
+          instrumentId,
+          locked: addAmounts(locked, subtractAmounts(balance, free)),
+        }))
+
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const { holdings } = useHoldings()
+  const { backend } = useBackend()
+  const { party } = useParty()
+  const partyId = party?.partyId
   const [instruments, setInstruments] = useState<readonly Instrument[]>([])
   const [curated, setCurated] = useState<readonly AssetListEntry[]>([])
+  const [free, setFree] = useState<string>()
+
+  useEffect(() => {
+    if (backend === undefined || partyId === undefined) return
+    let live = true
+    backend.balanceOf(partyId).then(
+      (value) => {
+        if (live) setFree(value)
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [backend, partyId])
 
   useEffect(() => {
     let live = true
@@ -70,12 +110,16 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
 
   const tokens = useMemo<readonly Token[]>(() => {
     const sources = [fromCurated(curated), fromRegistries(instruments), sumHoldings(holdings ?? [])]
-    const rows = mergeTokens([...sources, fromApp(sources.flat())])
+    const rows = mergeTokens([
+      ...sources,
+      fromApp(sources.flat()),
+      fromVesting(sumHoldings(holdings ?? []), free),
+    ])
     // The read enumerates every holding, so once it answers, a token missing from it is one the
     // party holds none of rather than one nobody asked about.
     if (holdings === undefined) return rows
     return rows.map((row) => (row.balance === undefined ? { ...row, balance: '0' } : row))
-  }, [curated, holdings, instruments])
+  }, [curated, free, holdings, instruments])
 
   return <TokenListProvider tokens={tokens}>{children}</TokenListProvider>
 }
