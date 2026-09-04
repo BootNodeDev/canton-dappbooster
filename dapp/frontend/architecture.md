@@ -16,7 +16,7 @@ interfaces carry that, and every other decision hangs off them.
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session; `Tokens` builds the token list from the party's holdings and hands it to the kit's `TokenListProvider`. The theme provider comes from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
@@ -252,9 +252,21 @@ The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/T
 kit's `useHoldings`, groups it with `sumHoldings`, reads the registry's catalogue with
 `readInstruments`, and hands the merged result to `TokenListProvider`.
 
-Three sources, in that precedence: the raw instrument id, then whatever the registry names it, then
-the app's own entry, which wins because it is the only one carrying artwork. A registry that will
-not answer costs labels and no rows, since the holdings list either way.
+Four sources, in that precedence: the raw instrument id, then whatever the registry names it, then
+the curated list, then the app's own entry. A source that will not answer costs labels and no rows,
+since the holdings list either way.
+
+The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
+in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here
+and not in the kit because it is one repository's file rather than a standard: no CIP, no schema, no
+versioning, and its shape is whoever maintains it to change. So it is trusted for artwork and for
+the symbol it publishes, never for identity or amounts, and the kit ships no reader for it.
+
+It is off by default. `ASSET_LIST_NETWORK` picks a top-level key of that file and `undefined` skips
+the source, which is the local case: the published file covers `MainNet`, `TestNet` and `DevNet`,
+and a LocalNet's DSO party is minted at `dev-stack.sh up` and lives until a `reset`, so no published
+entry names it. Exercising this locally means serving a file of your own with that party in it and
+pointing both constants at it.
 
 **The registry is reached through the dev server, not directly.** LocalNet serves it under the
 validator's authenticated prefix, so a browser gets a 401. `REGISTRY_URL` is therefore the
