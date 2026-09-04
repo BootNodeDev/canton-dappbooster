@@ -8,7 +8,7 @@ import {
   TokenListProvider,
 } from '@bootnodedev/canton-dappbooster'
 import { useHoldings } from '@bootnodedev/canton-dappbooster/connect'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { addAmounts, subtractAmounts } from '@/utils/amount'
@@ -52,28 +52,45 @@ const fromVesting = (
           locked: addAmounts(locked, subtractAmounts(balance, free)),
         }))
 
+// A row carries a figure or it does not, so a read that failed and one still running look the same
+// on it. This is what tells them apart, and what lets a field say so.
+export interface TokenFigures {
+  failed: boolean
+}
+
+const FiguresContext = createContext<TokenFigures | undefined>(undefined)
+
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
-  const { holdings } = useHoldings()
+  const { error: holdingsError, holdings } = useHoldings()
   const { backend } = useBackend()
   const { party } = useParty()
   const partyId = party?.partyId
   const [instruments, setInstruments] = useState<readonly Instrument[]>([])
   const [curated, setCurated] = useState<readonly AssetListEntry[]>([])
   const [free, setFree] = useState<string>()
+  const [freeFailed, setFreeFailed] = useState(false)
 
   useEffect(() => {
     if (backend === undefined || partyId === undefined) return
     let live = true
+    setFreeFailed(false)
     backend.balanceOf(partyId).then(
       (value) => {
         if (live) setFree(value)
       },
-      () => undefined,
+      () => {
+        if (live) setFreeFailed(true)
+      },
     )
     return () => {
       live = false
     }
   }, [backend, partyId])
+
+  const figures = useMemo<TokenFigures>(
+    () => ({ failed: freeFailed || holdingsError !== undefined }),
+    [freeFailed, holdingsError],
+  )
 
   useEffect(() => {
     let live = true
@@ -121,5 +138,17 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
     return rows.map((row) => (row.balance === undefined ? { ...row, balance: '0' } : row))
   }, [curated, free, holdings, instruments])
 
-  return <TokenListProvider tokens={tokens}>{children}</TokenListProvider>
+  return (
+    <FiguresContext.Provider value={figures}>
+      <TokenListProvider tokens={tokens}>{children}</TokenListProvider>
+    </FiguresContext.Provider>
+  )
+}
+
+export const useTokenFigures = (): TokenFigures => {
+  const state = useContext(FiguresContext)
+  if (state === undefined) {
+    throw new Error('useTokenFigures must be used within a Tokens')
+  }
+  return state
 }

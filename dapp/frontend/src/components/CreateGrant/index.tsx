@@ -24,6 +24,7 @@ import { Pills } from '@/components/Pills'
 import { Select } from '@/components/Select'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
+import { useTokenFigures } from '@/providers/Tokens'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
 import { now } from '@/utils/clock'
@@ -153,7 +154,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const { tokens } = useTokenList()
   const token = picked ?? tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
   const balance = token?.balance
-  const balanceState = balance === undefined ? 'loading' : undefined
+  const { failed } = useTokenFigures()
+  const balanceState = failed ? 'error' : balance === undefined ? 'loading' : undefined
 
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
     setReceiver(value)

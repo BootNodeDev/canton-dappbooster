@@ -272,6 +272,10 @@ That is also why the create field no longer reads a balance of its own: it takes
 handed back, so its Max and its ceiling are the figure the row showed. Pick a token you hold none of
 and Max is disabled, which is the correct dead end.
 
+A row carries a figure or it does not, so a read that failed looks exactly like one still running.
+`useTokenFigures` is what tells them apart: `Tokens` publishes whether either read failed, and the
+field turns that into the kit's `balanceState="error"`, which is the `Balance: N/A` face.
+
 Which registries to ask comes from the same curated list: the first URL each entry publishes, plus
 `REGISTRY_URL`, which is the fallback and the only address a LocalNet has. Every one of them is read,
 not only the ones behind a holding, because a catalogue is the point. A CNS lookup would be the
