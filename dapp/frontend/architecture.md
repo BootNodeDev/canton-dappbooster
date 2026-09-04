@@ -256,6 +256,12 @@ Four sources, in that precedence: the raw instrument id, then whatever the regis
 the curated list, then the app's own entry. A source that will not answer costs labels and no rows,
 since the holdings list either way.
 
+Which registry to ask comes from the same curated list: one per admin party actually held, addressed
+by the first URL published for it, with `REGISTRY_URL` as the fallback and the only address a
+LocalNet has. So a token from a second registry is read from that registry, not from ours. A CNS
+lookup would be the authoritative way to resolve those URLs and is not worth it while one file
+answers.
+
 The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
 in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here
 and not in the kit because it is one repository's file rather than a standard: no CIP, no schema, no

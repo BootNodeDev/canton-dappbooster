@@ -15,15 +15,11 @@ import { AMT, AMULET_ID } from '@/utils/tokens'
 
 type Meta = Partial<Token>
 
-// The app supplies the artwork and wins on the label, because this deployment calls the instrument
-// what its own UI calls it.
 const appMeta = ({ id }: InstrumentId): Meta => (id === AMULET_ID ? AMT : {})
 
 const registryMeta = (known: Instrument | undefined): Meta =>
   known === undefined ? {} : { name: known.name, symbol: known.symbol }
 
-// The curated list is one repo's file rather than a standard, so it is trusted for artwork and for
-// the symbol its maintainers publish, never for the amounts or the identity.
 const curatedMeta = (entry: AssetListEntry | undefined): Meta =>
   entry === undefined
     ? {}
@@ -45,13 +41,6 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
 
   useEffect(() => {
     let live = true
-    // A source that will not answer costs labels, not rows: the holdings list either way.
-    readInstruments(REGISTRY_URL).then(
-      (found) => {
-        if (live) setInstruments(found)
-      },
-      () => undefined,
-    )
     if (ASSET_LIST_NETWORK !== undefined) {
       readAssetList(ASSET_LIST_URL, ASSET_LIST_NETWORK).then(
         (found) => {
@@ -64,6 +53,25 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
       live = false
     }
   }, [])
+
+  const registryUrls = useMemo(() => {
+    const published = new Map(
+      curated.map(({ instrumentId, registryUrls }) => [instrumentId.admin, registryUrls[0]]),
+    )
+    const admins = new Set((holdings ?? []).map(({ instrumentId }) => instrumentId.admin))
+    return [...new Set([...admins].map((admin) => published.get(admin) ?? REGISTRY_URL))]
+  }, [curated, holdings])
+
+  useEffect(() => {
+    let live = true
+    // A registry that will not answer costs labels, not rows: the holdings list either way.
+    Promise.all(registryUrls.map((url) => readInstruments(url).catch(() => []))).then((found) => {
+      if (live) setInstruments(found.flat())
+    })
+    return () => {
+      live = false
+    }
+  }, [registryUrls])
 
   const tokens = useMemo<Token[]>(() => {
     const known = byInstrument(instruments)
@@ -80,7 +88,6 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
         instrumentId,
         locked,
         logo: meta.logo,
-        // A raw id reads badly, and reads worse as a missing row.
         name: meta.name ?? instrumentId.id,
         symbol: meta.symbol ?? instrumentId.id,
       }
