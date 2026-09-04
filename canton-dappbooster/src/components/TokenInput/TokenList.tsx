@@ -18,14 +18,11 @@ interface TokenListProps {
 
 // Builds the text for the live region that tells a screen reader how far the search
 // narrowed the list.
-const announce = (needle: string, count: number): string =>
-  needle === ''
-    ? ''
-    : count === 0
-      ? NO_TOKENS
-      : count === 1
-        ? '1 token found'
-        : `${count} tokens found`
+const announce = (needle: string, count: number): string => {
+  if (needle === '') return ''
+  if (count === 0) return NO_TOKENS
+  return count === 1 ? '1 token found' : `${count} tokens found`
+}
 
 /**
  * The token select's scrolling list. Windowed, so it walks on one roving tab stop and the arrow

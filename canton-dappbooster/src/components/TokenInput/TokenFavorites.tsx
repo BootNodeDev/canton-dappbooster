@@ -29,7 +29,9 @@ export const TokenFavorites = ({
     .filter((token) => token !== undefined)
     .slice(0, MAX_FAVORITES)
 
-  return favorites.length === 0 ? null : (
+  if (favorites.length === 0) return null
+
+  return (
     <section aria-label="Favorite tokens" className={anatomy.parts.favorites}>
       {favorites.map((token) => (
         <button

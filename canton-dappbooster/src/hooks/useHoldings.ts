@@ -22,19 +22,19 @@ const holdingFromView = (view: unknown): Holding | undefined => {
 }
 
 const holdingsFromAcsRows = (rows: unknown): readonly Holding[] => {
-  return !Array.isArray(rows)
-    ? []
-    : rows.flatMap((row) => {
-        const views = valueAt(
-          row,
-          'contractEntry',
-          'JsActiveContract',
-          'createdEvent',
-          'interfaceViews',
-        )
-        if (!Array.isArray(views)) return []
-        return views.flatMap((view) => holdingFromView(view) ?? [])
-      })
+  if (!Array.isArray(rows)) return []
+
+  return rows.flatMap((row) => {
+    const views = valueAt(
+      row,
+      'contractEntry',
+      'JsActiveContract',
+      'createdEvent',
+      'interfaceViews',
+    )
+    if (!Array.isArray(views)) return []
+    return views.flatMap((view) => holdingFromView(view) ?? [])
+  })
 }
 
 const acsRequest = (partyId: string, offset: string | number): LedgerApiParams => ({
