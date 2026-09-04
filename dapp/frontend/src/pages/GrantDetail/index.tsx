@@ -1,4 +1,5 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
+import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { ClaimRecord } from '@/backend/VestingBackend'
@@ -16,13 +17,12 @@ import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
+import { Spinner } from '@/components/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { ArrowLeftIcon, SpinnerIcon } from '@/icons'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
 import { deriveGrant, grantBacking, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
 import { formatDate } from '@/utils/format'
-import { copyToast } from '@/utils/toast'
 
 export const GrantDetail = (): React.JSX.Element => {
   const nowMs = useNow()
@@ -36,8 +36,6 @@ export const GrantDetail = (): React.JSX.Element => {
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  // Undefined until the read lands, which is what the card shows a spinner for. Re-read whenever
-  // the contract id changes, since a claim of ours is exactly what replaces it.
   const [claims, setClaims] = useState<ClaimRecord[] | undefined>(undefined)
 
   const contractId = grant?.id
@@ -67,7 +65,6 @@ export const GrantDetail = (): React.JSX.Element => {
     return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
-  // Without this a direct link reads as a missing grant until the first ACS read lands.
   if (grant === undefined && loading) {
     return <Loading />
   }
@@ -94,14 +91,12 @@ export const GrantDetail = (): React.JSX.Element => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* A real history back, so the dashboard's lens and scroll return with it; a deep link has no
-          entry to go back to, hence the fallback. */}
       <button
         type="button"
         onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg"
       >
-        <ArrowLeftIcon width={16} height={16} /> Back
+        <ArrowLeft size={16} /> Back
       </button>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -197,8 +192,6 @@ export const GrantDetail = (): React.JSX.Element => {
                   <Identifier
                     value={value}
                     label={`${label.toLowerCase()} party id`}
-                    announce={false}
-                    onCopy={copyToast(`${label} party id`)}
                     className="text-xs"
                   />
                 </dd>
@@ -212,7 +205,7 @@ export const GrantDetail = (): React.JSX.Element => {
           <div className="mt-4 h-40 overflow-y-auto">
             {claims === undefined ? (
               <div role="status" className="flex h-full items-center justify-center text-fg-muted">
-                <SpinnerIcon width={20} height={20} />
+                <Spinner size={20} />
                 <span className="sr-only">Loading withdraw history</span>
               </div>
             ) : claims.length === 0 ? (
@@ -238,8 +231,6 @@ export const GrantDetail = (): React.JSX.Element => {
           available={derived.claimable}
           backing={grantBacking(grant)}
           onConfirm={async (amount) => {
-            // A partial claim archives this contract and re-creates it, so the URL follows the
-            // successor. A drain leaves none, and staying here would read "Grant not found".
             const next = await withdraw(backend, partyId, grant.id, amount)
             if (next === undefined) {
               navigate('/', { replace: true })
@@ -258,7 +249,6 @@ export const GrantDetail = (): React.JSX.Element => {
           description="Vested-but-unclaimed AMT becomes a residual claim for the receiver; the contract is archived."
           successMessage="Grant cancelled"
           onConfirm={async () => {
-            // Cancel archives the grant for good, so staying here would read "Grant not found".
             await cancel(backend, partyId, grant.id)
             navigate('/', { replace: true })
           }}
