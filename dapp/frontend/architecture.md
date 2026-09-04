@@ -252,15 +252,20 @@ The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/T
 kit's `useHoldings`, groups it with `sumHoldings`, reads the registry's catalogue with
 `readInstruments`, and hands the merged result to `TokenListProvider`.
 
-Four sources, in that precedence: the raw instrument id, then whatever the registry names it, then
-the curated list, then the app's own entry. A source that will not answer costs labels and no rows,
-since the holdings list either way.
+The rows are the union of what every source knows, merged by the kit's `mergeTokens`: the curated
+list, then the registries, then the balances, then the app's own artwork. Later sources win field by
+field, so the registry has the last word on a label and the curated list supplies the logo it does
+not serve. A source that will not answer costs labels and no rows.
 
-Which registry to ask comes from the same curated list: one per admin party actually held, addressed
-by the first URL published for it, with `REGISTRY_URL` as the fallback and the only address a
-LocalNet has. So a token from a second registry is read from that registry, not from ours. A CNS
-lookup would be the authoritative way to resolve those URLs and is not worth it while one file
-answers.
+**A token the party holds none of is still a row.** The list is a catalogue, and a picker that only
+offered what you already hold could never serve a swap's buy side. This form does not filter it
+either: picking a token you hold nothing of simply leaves you unable to grant it, which is the
+field's own rule to enforce.
+
+Which registries to ask comes from the same curated list: the first URL each entry publishes, plus
+`REGISTRY_URL`, which is the fallback and the only address a LocalNet has. Every one of them is read,
+not only the ones behind a holding, because a catalogue is the point. A CNS lookup would be the
+authoritative way to resolve those URLs and is not worth it while one file answers.
 
 The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
 in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here

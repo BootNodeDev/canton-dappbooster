@@ -1,11 +1,11 @@
 import {
   type Instrument,
-  type InstrumentId,
+  mergeTokens,
+  type PartialToken,
   readInstruments,
   sumHoldings,
   type Token,
   TokenListProvider,
-  tokenKey,
 } from '@bootnodedev/canton-dappbooster'
 import { useHoldings } from '@bootnodedev/canton-dappbooster/connect'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
@@ -13,26 +13,22 @@ import { type AssetListEntry, readAssetList } from '@/utils/assetList'
 import { ASSET_LIST_NETWORK, ASSET_LIST_URL, REGISTRY_URL } from '@/utils/config'
 import { AMT, AMULET_ID } from '@/utils/tokens'
 
-type Meta = Partial<Token>
+const fromCurated = (entries: readonly AssetListEntry[]): readonly PartialToken[] =>
+  entries.map(({ instrumentId, logoUrl, symbol }) => ({
+    instrumentId,
+    symbol,
+    ...(logoUrl === undefined
+      ? {}
+      : { logo: <img alt="" className="size-full object-contain" src={logoUrl} /> }),
+  }))
 
-const appMeta = ({ id }: InstrumentId): Meta => (id === AMULET_ID ? AMT : {})
+const fromRegistries = (instruments: readonly Instrument[]): readonly PartialToken[] =>
+  instruments.map(({ instrumentId, name, symbol }) => ({ instrumentId, name, symbol }))
 
-const registryMeta = (known: Instrument | undefined): Meta =>
-  known === undefined ? {} : { name: known.name, symbol: known.symbol }
-
-const curatedMeta = (entry: AssetListEntry | undefined): Meta =>
-  entry === undefined
-    ? {}
-    : {
-        symbol: entry.symbol,
-        ...(entry.logoUrl === undefined
-          ? {}
-          : { logo: <img alt="" className="size-full object-contain" src={entry.logoUrl} /> }),
-      }
-
-const byInstrument = <T extends { instrumentId: InstrumentId }>(
-  entries: readonly T[],
-): ReadonlyMap<string, T> => new Map(entries.map((one) => [tokenKey(one.instrumentId), one]))
+const fromApp = (rows: readonly PartialToken[]): readonly PartialToken[] =>
+  rows
+    .filter(({ instrumentId }) => instrumentId.id === AMULET_ID)
+    .map(({ instrumentId }) => ({ instrumentId, logo: AMT.logo }))
 
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const { holdings } = useHoldings()
@@ -55,16 +51,15 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
   }, [])
 
   const registryUrls = useMemo(() => {
-    const published = new Map(
-      curated.map(({ instrumentId, registryUrls }) => [instrumentId.admin, registryUrls[0]]),
-    )
-    const admins = new Set((holdings ?? []).map(({ instrumentId }) => instrumentId.admin))
-    return [...new Set([...admins].map((admin) => published.get(admin) ?? REGISTRY_URL))]
-  }, [curated, holdings])
+    const published = curated
+      .map(({ registryUrls }) => registryUrls[0])
+      .filter((url) => url !== undefined)
+    return [...new Set([REGISTRY_URL, ...published])]
+  }, [curated])
 
   useEffect(() => {
     let live = true
-    // A registry that will not answer costs labels, not rows: the holdings list either way.
+    // A registry that will not answer costs labels, not rows: the other sources still list.
     Promise.all(registryUrls.map((url) => readInstruments(url).catch(() => []))).then((found) => {
       if (live) setInstruments(found.flat())
     })
@@ -73,25 +68,13 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
     }
   }, [registryUrls])
 
-  const tokens = useMemo<Token[]>(() => {
-    const known = byInstrument(instruments)
-    const published = byInstrument(curated)
-    return sumHoldings(holdings ?? []).map(({ balance, instrumentId, locked }) => {
-      const key = tokenKey(instrumentId)
-      const meta = {
-        ...registryMeta(known.get(key)),
-        ...curatedMeta(published.get(key)),
-        ...appMeta(instrumentId),
-      }
-      return {
-        balance,
-        instrumentId,
-        locked,
-        logo: meta.logo,
-        name: meta.name ?? instrumentId.id,
-        symbol: meta.symbol ?? instrumentId.id,
-      }
-    })
+  const tokens = useMemo<readonly Token[]>(() => {
+    const sources = [fromCurated(curated), fromRegistries(instruments), sumHoldings(holdings ?? [])]
+    const rows = mergeTokens([...sources, fromApp(sources.flat())])
+    // The read enumerates every holding, so once it answers, a token missing from it is one the
+    // party holds none of rather than one nobody asked about.
+    if (holdings === undefined) return rows
+    return rows.map((row) => (row.balance === undefined ? { ...row, balance: '0' } : row))
   }, [curated, holdings, instruments])
 
   return <TokenListProvider tokens={tokens}>{children}</TokenListProvider>
