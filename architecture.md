@@ -69,6 +69,7 @@ State boundaries:
 | wallet-service | `http://localhost:3010` | wallet bridge for onboarding and JSON API calls |
 | CIP-0103 browser wallet | `http://localhost:3011` | browser wallet UI/provider, run from its own repo |
 | dApp frontend | `http://localhost:3012` | example dApp |
+| canton-token-forge registry | `http://localhost:3013` | CIP-56 registry, run from the env block `bootstrap` prints |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
 | app-user Admin API | `grpc://localhost:2902` | wallet-service/tools |
@@ -116,7 +117,7 @@ with the same script, configured manually in its LocalNet settings.
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | fetch the Splice deps, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `pnpm run bootstrap` | create the vesting operator and its factory |
+| `pnpm run bootstrap` | create the vesting operator and its factory, the instrument admin and its `DBT` InstrumentConfig, and print the registry env block |
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
