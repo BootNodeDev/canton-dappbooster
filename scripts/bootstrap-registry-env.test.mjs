@@ -10,8 +10,9 @@ const block = formatRegistryEnv({
 
 describe('the registry env block bootstrap prints', () => {
   it('quotes every template id, because dotenv reads the leading # as a comment', () => {
+    const lines = block.split('\n')
     for (const [key, id] of Object.entries(REGISTRY_TEMPLATE_IDS)) {
-      assert.match(block, new RegExp(`^${key}='${id}'$`, 'm'))
+      assert.ok(lines.includes(`${key}='${id}'`))
       assert.ok(id.startsWith('#canton-token-forge:'), `${key} is not package-name form`)
     }
   })
@@ -27,5 +28,22 @@ describe('the registry env block bootstrap prints', () => {
     // it: bootstrap's stdout reaches terminal scrollback and a dev-stack log file.
     assert.match(block, /^LEDGER_API_TOKEN=<[^>]+>$/m)
     assert.doesNotMatch(block, /eyJ[A-Za-z0-9_-]+\./)
+  })
+
+  it('is the exact block dev-stack.sh parses back out of stdout', () => {
+    // Line count, key order, and no trailing newline are load-bearing for Task 5's parse.
+    const lines = block.split('\n')
+    assert.equal(lines.length, 9)
+    assert.doesNotMatch(block, /\n$/)
+    assert.deepEqual(
+      lines.map((line) => line.split('=')[0]),
+      [
+        'LEDGER_API_URL',
+        'LEDGER_API_TOKEN',
+        'ADMIN_PARTY',
+        ...Object.keys(REGISTRY_TEMPLATE_IDS),
+        'PORT',
+      ],
+    )
   })
 })
