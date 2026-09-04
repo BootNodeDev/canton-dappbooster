@@ -146,6 +146,32 @@ number is arbitrary and human-picked, which is the point — the row wraps and d
 without a cap its height is the consumer's to set and the card has no scroll of its own to catch
 the spill.
 
+## Where a token's identity and its balance come from
+
+The list is the consumer's, and the kit reads no ledger. What that costs and buys:
+
+- **A token is identified by its `instrumentId`**, the admin party plus the id that registry gave
+  it, because nothing on Canton is a global address and two registries can both issue a `USDC`.
+  Nothing takes one string for a token, so `tokenKey` is what makes a map key, a React key or an
+  equality check out of the pair. Compare keys, never symbols.
+- **`balance` sits on the token, beside the metadata.** A party's holdings are private to the
+  participant hosting it, so only the consumer's own read can supply them; a list source merges the
+  two by `instrumentId` and hands over one array. An absent balance means the read has not reached,
+  not that the party holds nothing, so the row shows no figure and sorts below every one that has
+  a figure.
+- **`balance` is what the party can spend, and `locked` is the rest.** Not the total, because
+  `balance` is also what `<TokenInput>`'s Max fills and what it validates against, so a total would
+  have Max offer coin the ledger then refuses. The row shows locked as a second, quieter figure
+  under the first, and both reach the row's accessible name: the lock icon is `aria-hidden` and says
+  nothing on its own. Nothing locked and no read at all are one case — `getLockedFigure` drops both,
+  rather than putting a `0` on every row.
+- **`TokenListProvider` owns the order**, balance first and then the order given, so the field, the
+  list and the favourites cannot disagree about which token leads. A query re-ranks on top of that,
+  by match kind, in `filterTokens`.
+- **A token the metadata missed still renders.** Fill `name` and `symbol` from the raw instrument id
+  in the list source rather than leaving them out: the row, the chip and the logo's initials all
+  need them, and a holding that renders as nothing is worse than one that renders as its id.
+
 ## What `<TokenInput>` does not take
 
 Three props a token field usually has are deliberately absent. **Precision** is not configurable

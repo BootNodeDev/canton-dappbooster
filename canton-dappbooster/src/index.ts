@@ -35,7 +35,11 @@ export {
   TokenListProvider,
   type TokenListProviderProps,
 } from '#src/providers/TokenListProvider'
-export type { Token, UseTokenListResult } from '#src/providers/TokenListProvider/context'
+export type {
+  InstrumentId,
+  Token,
+  UseTokenListResult,
+} from '#src/providers/TokenListProvider/context'
 export { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
 export { isValidPartyId, type PartyIdError, validatePartyId } from '#src/utils/partyId'
 export {
@@ -47,3 +51,4 @@ export {
   type TokenAmountError,
   validateAmount,
 } from '#src/utils/tokenAmount'
+export { tokenKey } from '#src/utils/tokenKey'

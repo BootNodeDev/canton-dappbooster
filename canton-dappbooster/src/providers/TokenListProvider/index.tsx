@@ -4,6 +4,18 @@ import {
   TokenListContext,
   type UseTokenListResult,
 } from '#src/providers/TokenListProvider/context'
+import { parseAmount } from '#src/utils/tokenAmount'
+import { tokenKey } from '#src/utils/tokenKey'
+
+// Turns a token's balance into a number the sort can compare
+const held = (token: Token): bigint => parseAmount(token.balance ?? '') ?? -1n
+
+const byBalance = (left: Token, right: Token): number => {
+  const a = held(left)
+  const b = held(right)
+  if (a === b) return 0
+  return a > b ? -1 : 1
+}
 
 /**
  * Props for {@link TokenListProvider}. `tokens` is read by identity, so hoist the array or memoise
@@ -20,10 +32,7 @@ export interface TokenListProviderProps {
 }
 
 /**
- * Supplies the token list every picker in the tree chooses from, plus the `byId` lookup a consumer
- * needs to turn a stored token id back into a token. Renders no DOM of its own, and there is no
- * ambient fallback: `useTokenList` throws without it, because a picker with nothing to pick from is
- * worse than one that fails loudly in dev.
+ * Supplies the token list every picker in the tree chooses from.
  *
  * @example
  * <TokenListProvider tokens={tokens}>
@@ -34,13 +43,13 @@ export interface TokenListProviderProps {
  * @category Components
  */
 export const TokenListProvider = ({ children, tokens }: TokenListProviderProps): ReactElement => {
-  const value = useMemo<UseTokenListResult>(
-    () => ({
-      byId: new Map(tokens.map((token) => [token.id, token])),
-      tokens,
-    }),
-    [tokens],
-  )
+  const value = useMemo<UseTokenListResult>(() => {
+    const sorted = [...tokens].sort(byBalance)
+    return {
+      byKey: new Map(sorted.map((token) => [tokenKey(token.instrumentId), token])),
+      tokens: sorted,
+    }
+  }, [tokens])
 
   return <TokenListContext.Provider value={value}>{children}</TokenListContext.Provider>
 }

@@ -15,6 +15,7 @@ import { useVirtualRows } from '#src/components/TokenInput/useVirtualRows'
 import type { Token } from '#src/providers/TokenListProvider/context'
 import { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
 import { SR_ONLY } from '#src/utils/srOnly'
+import { tokenKey } from '#src/utils/tokenKey'
 
 interface TokenListProps {
   onSelect: (token: Token) => void
@@ -40,13 +41,16 @@ const nextIndex = (key: string, active: number, page: number, last: number): num
   }
 }
 
-// The narrowing is otherwise carried only by rows going missing, which nobody is reading. Silent
-// without a needle, so mounting a list never announces a count nobody asked for.
-const announce = (needle: string, count: number): string => {
-  if (needle === '') return ''
-  if (count === 0) return NO_TOKENS
-  return count === 1 ? '1 token found' : `${count} tokens found`
-}
+// Builds the text for the live region that tells a screen reader how far the search
+// narrowed the list.
+const announce = (needle: string, count: number): string =>
+  needle === ''
+    ? ''
+    : count === 0
+      ? NO_TOKENS
+      : count === 1
+        ? '1 token found'
+        : `${count} tokens found`
 
 /**
  * The token select's scrolling list. Windowed, so it walks on one roving tab stop and the arrow
@@ -68,36 +72,34 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
     scrollRef,
   })
 
-  // Held by id, not by index: a provider handing over an equal-but-new array must not move it.
-  const [activeId, setActiveId] = useState<string>()
+  // Held by key, not by index: a provider handing over an equal-but-new array must not move it.
+  const [activeKey, setActiveKey] = useState<string>()
   const active = useMemo(
     () =>
       Math.max(
         0,
-        tokens.findIndex((token) => token.id === activeId),
+        tokens.findIndex((token) => tokenKey(token.instrumentId) === activeKey),
       ),
-    [activeId, tokens],
+    [activeKey, tokens],
   )
-  // Raised only by the keys that move the tab stop, so a re-render from scrolling never pulls
-  // focus.
+  // Raised only by the keys that move the tab stop
+  // A re-render from scrolling never pulls focus.
   const pullFocus = useRef(false)
   const hadFocus = useRef(false)
 
-  // A new needle makes the old tab stop meaningless, so it goes back to the top; no token carries
-  // an unset id, which is what lands it on the first row.
+  // A new needle makes the old tab stop meaningless, so it goes back to the top; no token has an
+  // unset key, which is what lands it on the first row.
   const [applied, setApplied] = useState(needle)
   if (applied !== needle) {
     setApplied(needle)
-    setActiveId(undefined)
+    setActiveKey(undefined)
   }
 
   const focusActive = (): void => {
     scrollRef.current?.querySelector<HTMLElement>(`.${anatomy.parts.row}[tabindex="0"]`)?.focus()
   }
 
-  // Two jobs per commit: hand focus to the tab stop the keys just moved, and take it back when a
-  // scroll re-rendered the row that held it. Focus landing on `body` is what tells the two apart
-  // from the caller having tabbed away, which re-renders nothing.
+  // Puts focus back where it belongs, once per commit, before the browser paints.
   useLayoutEffect(() => {
     const node = scrollRef.current
     if (node === null) return
@@ -116,7 +118,7 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
       return
     }
     pullFocus.current = true
-    setActiveId(tokens[next].id)
+    setActiveKey(tokenKey(tokens[next].instrumentId))
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>): void => {
@@ -129,12 +131,12 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
 
   const onRowFocus = (token: Token): void => {
     hadFocus.current = true
-    setActiveId(token.id)
+    setActiveKey(tokenKey(token.instrumentId))
   }
 
   const row = (token: Token, index: number): ReactElement => (
     <TokenRow
-      key={token.id}
+      key={tokenKey(token.instrumentId)}
       onFocus={() => onRowFocus(token)}
       onKeyDown={onKeyDown}
       onSelect={onSelect}
@@ -143,8 +145,8 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
     />
   )
 
-  // Kept mounted at its own offset once the scroll leaves it behind: unmounting the row that holds
-  // focus drops the caller back to the top of the document.
+  // Keeps the one row that holds focus mounted after scrolling has pushed it out of
+  // the rendered window.
   const stray =
     tokens.length > 0 && (active < start || active >= end) ? (
       <div
@@ -157,8 +159,7 @@ export const TokenList = ({ onSelect, query = '' }: TokenListProps): ReactElemen
 
   return (
     <section aria-label="Tokens" className={anatomy.parts.list} ref={scrollRef}>
-      {/* Out of flow and always mounted: a live region must precede the change it announces, and
-          an in-flow one would offset the rows the sizer positions. */}
+      {/* live region for screen readers */}
       <span className={anatomy.parts.status} role="status" style={SR_ONLY}>
         {announce(needle, tokens.length)}
       </span>

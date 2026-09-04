@@ -7,13 +7,14 @@ import { TokenList } from '#src/components/TokenInput/TokenList'
 import { TokenListProvider } from '#src/providers/TokenListProvider'
 import type { Token } from '#src/providers/TokenListProvider/context'
 import { stubViewport } from '#src/testing/viewport'
+import { formatAmount } from '#src/utils/tokenAmount'
 
 // jsdom's root font size is the 16px default, so the hook under the list resolves rem to this.
 const ROW = ROW_HEIGHT_REM * 16
 const VIEWPORT = ROW * 4
 
 const tokens: Token[] = Array.from({ length: 100 }, (_, index) => ({
-  id: `token-${index}`,
+  instrumentId: { admin: 'registry::1220ab', id: `token-${index}` },
   name: `Token ${index}`,
   symbol: `TK${index}`,
 }))
@@ -38,6 +39,13 @@ const setup = (query?: string) => {
   const { container, rerender, scroller } = renderList(list(query))
   return { container, onSelect, scroller, search: (next?: string) => rerender(list(next)) }
 }
+
+const one = (figures: Partial<Token>) =>
+  renderList(
+    <TokenListProvider tokens={[{ ...tokens[0], ...figures }]}>
+      <TokenList onSelect={vi.fn()} />
+    </TokenListProvider>,
+  )
 
 const rows = (): HTMLElement[] => screen.getAllByRole('button')
 
@@ -87,6 +95,39 @@ describe('TokenList', () => {
 
     expect(container.querySelector(`.${anatomy.parts.rowLogo}`)).toHaveAttribute('aria-hidden')
     expect(row(0)).toBeInTheDocument()
+  })
+
+  it('shows the balance and carries it into the row name', () => {
+    const balance = formatAmount('1234.5')
+    const { container } = one({ balance: '1234.5' })
+
+    expect(container.querySelector(`.${anatomy.parts.rowBalance}`)).toHaveTextContent(balance)
+    expect(
+      screen.getByRole('button', { name: `Token 0 TK0, balance ${balance}` }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders no figure for a token whose balance is unknown', () => {
+    const { container } = setup()
+    expect(container.querySelector(`.${anatomy.parts.rowBalance}`)).not.toBeInTheDocument()
+  })
+
+  it('shows what is locked under the balance, named and not left to the icon', () => {
+    const { container } = one({ balance: '900', locked: '100' })
+
+    expect(container.querySelector(`.${anatomy.parts.rowLocked}`)).toHaveTextContent('100')
+    expect(container.querySelector(`.${anatomy.parts.rowLocked} svg`)).toHaveAttribute(
+      'aria-hidden',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Token 0 TK0, balance 900, 100 locked' }),
+    ).toBeInTheDocument()
+  })
+
+  // A row per token, so a lock nothing holds is a lock on every row.
+  it('leaves the locked line out when nothing is locked', () => {
+    const { container } = one({ balance: '900', locked: '0' })
+    expect(container.querySelector(`.${anatomy.parts.rowLocked}`)).not.toBeInTheDocument()
   })
 
   // Windowed, so the rows out of view are not in the DOM to tab to: one tab stop and the arrow keys

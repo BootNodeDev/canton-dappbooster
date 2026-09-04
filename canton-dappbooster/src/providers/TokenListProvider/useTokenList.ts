@@ -9,7 +9,7 @@ import { TokenListContext, type UseTokenListResult } from '#src/providers/TokenL
  *
  * @example
  * const { tokens } = useTokenList()
- * tokens.map((token) => <TokenRow key={token.id} token={token} />)
+ * tokens.map((token) => <TokenRow key={tokenKey(token.instrumentId)} token={token} />)
  *
  * @category Hooks
  */
