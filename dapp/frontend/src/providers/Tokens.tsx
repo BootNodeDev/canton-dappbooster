@@ -70,10 +70,13 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
   const [free, setFree] = useState<string>()
   const [freeFailed, setFreeFailed] = useState(false)
 
+  // The figure belongs to one party, so it goes when that party does and when the read that owns it
+  // fails: kept, it would report the last party's spendable coin as this one's.
   useEffect(() => {
+    setFree(undefined)
+    setFreeFailed(false)
     if (backend === undefined || partyId === undefined) return
     let live = true
-    setFreeFailed(false)
     backend.balanceOf(partyId).then(
       (value) => {
         if (live) setFree(value)

@@ -156,8 +156,10 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const token =
     (pickedKey === undefined ? undefined : byKey.get(pickedKey)) ??
     tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
-  const balance = token?.balance
   const { failed } = useTokenFigures()
+  // A read that failed leaves the row carrying the ledger's own unlocked total, which counts coin a
+  // pending grant has pledged, so no ceiling is known rather than that one.
+  const balance = failed ? undefined : token?.balance
   const balanceState = failed ? 'error' : balance === undefined ? 'loading' : undefined
 
   const editReceiver = (value: string, error: PartyIdError | undefined): void => {
