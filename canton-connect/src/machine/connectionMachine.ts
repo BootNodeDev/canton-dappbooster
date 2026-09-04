@@ -370,7 +370,11 @@ export const connectionMachine = setup({
             ],
           },
           states: {
-            reading: { tags: ['connecting'] },
+            reading: {
+              tags: ['connecting'],
+              // The wallet is connected by now, so ending the attempt means ending the session.
+              on: { 'connect.cancel': { target: '#connection.disconnecting' } },
+            },
             ready: { tags: ['connect.settled'] },
             unavailable: { tags: ['connect.failed'] },
           },

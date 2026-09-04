@@ -1693,6 +1693,35 @@ describe('connectionMachine', () => {
 
       actor.stop()
     })
+
+    it('ends the session when cancelled during the party ready', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect,
+          disconnect,
+          accounts: accountsMachine.provide({
+            actors: {
+              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => new Promise(() => {})),
+            },
+          }),
+        },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'reading' } })).toBe(true)
+
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(true)
+
+      actor.stop()
+    })
   })
 
   describe('reset', () => {

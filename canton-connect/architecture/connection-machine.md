@@ -24,7 +24,7 @@ stateDiagram-v2
     connecting --> retiring: picker closed, or cancelled
     retiring --> restoring: replacement booted
     retiring --> failure: replacement failed too
-    session --> disconnecting: disconnect
+    session --> disconnecting: disconnect, or cancelled during the party read
     disconnecting --> disconnected: settled, or 10 s silence
 ```
 
@@ -75,7 +75,9 @@ Which states record, keep and clear `lastConnectError` is the machine's own rule
 comment carries the why (a recovered session can still say why the attempt before it failed).
 
 A user's own cancel records nothing either: `connect.cancel` takes the same route to `retiring`,
-and the abort xstate fires on the stopped actor is what closes the picker window.
+and the abort xstate fires on the stopped actor is what closes the picker window. Once the wallet
+has approved, the read of the party still shows as connecting, but a session already stands, so a
+cancel there goes to `disconnecting` and ends it; `disconnected` answers the wait as a cancel.
 
 A picker close reaches the caller two ways. A close the watchdog catches records nothing:
 `connecting` goes to `retiring` and `connect()` rejects with a fresh `ConnectCancelledError`. A
