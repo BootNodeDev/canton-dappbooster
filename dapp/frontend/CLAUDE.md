@@ -28,9 +28,15 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
 
 One implementation each, so a second one is a bug and not a choice:
 
+- **Every interactive control is [Ark UI](https://ark-ui.com/react/docs/overview/introduction).**
+  Menus, the dialog, tooltips, the select, toasts, the wizard's steps, the number input and the
+  toggle groups are all Ark's, so nothing here re-derives dismissal, focus trapping or roving focus.
+  What the app writes is the markup's classes and its wording. The rules the library leaves open are
+  in [`architecture.md`](architecture.md).
 - **Hover explanation: `components/InfoTip`.** Never a native `title` (a one-second delay, no touch,
   unstyled) and never a hand-rolled bubble. With a string child it dash-underlines the words; with an
-  element it does not, so an icon trigger is a legal child. Childless it is a `?` badge.
+  element it does not, so an icon trigger is a legal child. Childless it is a `?` badge. It adds the
+  tap-to-open Ark leaves out.
 - **A figure: `components/AmountDisplay`.** It owns the grouping, the forced two decimals, and the
   Amulet mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
   Where the surrounding text already spells out the unit, reach for `components/CompactAmount`, the
@@ -42,11 +48,17 @@ One implementation each, so a second one is a bug and not a choice:
   `TopBar/AccountMenu`'s trigger, which transcribes the kit's `.cnc-connect-button` instead so the
   header keeps one look across the two faces the session swaps between; `cn` is a plain join and
   cannot override a `buttonClass` variant, so there is no way to have both.
-- **A dropdown dismissed by blur and Escape: `hooks/useDismissable`.** It owns the focusout test
-  against the root, the Escape close, the focus returned to the trigger, and `keepFocus`, the
-  mousedown guard without which Safari unmounts the panel before the click it was aimed at lands.
-  Spread `closers` where a handler is legal — the wrapper, or every button where it is not — and
-  `keepFocus` on whatever the panel can be clicked on.
+- **A choice out of a short, always-visible set: `components/Pills`.** One Ark toggle group behind
+  two looks — `outline` for the dashboard's filters, `segmented` for the create form's curve switch.
+  It reports the choice as a radio group, so the picked pill is a checked radio rather than a class
+  name. A value picked from a dropdown is `components/Select`; a *view* picked from one is
+  `components/RoleSelect`, which is a menu rather than a listbox because it commands the page
+  instead of holding a value. All three panels take their surface from `utils/popover`.
+- **A generic icon comes from `lucide-react`; `src/icons/` holds only the brand and house marks,**
+  each named `*Mark`. `App.tsx` sets lucide's size and stroke width once through `LucideProvider`,
+  so a call site passes `size` only where it wants something other than the shared default. The one
+  wrapper is `components/Spinner`, which owns `animate-spin`: lucide ships no animation, and a
+  second call site spelling that class out is how one of them ends up frozen.
 - **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
   be offered, `components/GrantLock`. Each owns its own wording, tone and base classes, so a caller
   passes alignment at most and never re-spells the mapping. There is no drained-grant badge: a

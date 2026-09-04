@@ -1,23 +1,23 @@
 import type { ReactNode } from 'react'
-import { BootNodeMark, DocsIcon, GithubIcon, LinkedInIcon, TelegramIcon, XIcon } from '@/icons'
+import { BootNodeMark, DocsMark, GithubMark, LinkedInMark, TelegramMark, XMark } from '@/icons'
 import { cn } from '@/utils/cn'
 
 const BOOTNODE = 'https://www.bootnode.dev/'
 
 const socials = [
-  { label: 'Telegram', href: 'https://t.me/dAppBooster', Icon: TelegramIcon },
-  { label: 'GitHub', href: 'https://github.com/BootNodeDev', Icon: GithubIcon },
-  { label: 'Twitter/X', href: 'https://twitter.com/bootnodedev', Icon: XIcon },
-  { label: 'LinkedIn', href: 'https://www.linkedin.com/company/bootnode-dev/', Icon: LinkedInIcon },
+  { label: 'Telegram', href: 'https://t.me/dAppBooster', Icon: TelegramMark },
+  { label: 'GitHub', href: 'https://github.com/BootNodeDev', Icon: GithubMark },
+  { label: 'Twitter/X', href: 'https://twitter.com/bootnodedev', Icon: XMark },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/company/bootnode-dev/', Icon: LinkedInMark },
 ]
 
 const resources = [
   {
     label: 'GitHub',
     href: 'https://github.com/BootNodeDev/canton-dappbooster',
-    Icon: GithubIcon,
+    Icon: GithubMark,
   },
-  { label: 'Docs', href: 'https://docs.dappbooster.cc/', Icon: DocsIcon },
+  { label: 'Docs', href: 'https://docs.dappbooster.cc/', Icon: DocsMark },
 ]
 
 const Outbound = ({
@@ -48,7 +48,6 @@ export const Footer = (): React.JSX.Element => (
       <Outbound className="flex items-center gap-2 font-semibold" href={BOOTNODE}>
         Built by
         <BootNodeMark width={19} height={16} />
-        {/* The mark is the only thing naming the destination, and it is aria-hidden. */}
         <span className="sr-only">BootNode</span>
       </Outbound>
       <nav

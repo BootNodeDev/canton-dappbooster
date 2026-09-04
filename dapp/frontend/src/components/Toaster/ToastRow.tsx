@@ -1,8 +1,9 @@
+import { Toast, type ToastOptions, useToastContext } from '@ark-ui/react/toast'
+import { Check, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { CopyButton } from '@/components/CopyButton'
-import { CheckIcon } from '@/icons'
 import { cn } from '@/utils/cn'
-import { type ToastItem, type ToastTone, useToastStore } from '@/utils/toast'
+import { readToast, type ToastTone } from '@/utils/toast'
 
 const toneStyles: Record<ToastTone, string> = {
   success: 'border-success/40 text-success',
@@ -10,41 +11,39 @@ const toneStyles: Record<ToastTone, string> = {
   info: 'border-accent/40 text-accent-strong',
 }
 
-export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
-  const dismiss = useToastStore((s) => s.dismiss)
-  // A ledger rejection arrives as a wall of text, so only that tone is worth scrolling and copying.
-  const isError = item.tone === 'error'
+export const ToastRow = ({ toast }: { toast: ToastOptions }): React.JSX.Element => {
+  const { dismiss } = useToastContext()
+  const { action, message, tone } = readToast(toast)
+  const isError = tone === 'error'
+
   return (
-    <div
+    <Toast.Root
       className={cn(
-        'pointer-events-auto flex w-full items-start gap-2.5 rounded-xl border bg-surface px-4 py-3 text-left text-sm font-semibold shadow-[var(--shadow-popover)]',
-        toneStyles[item.tone],
+        'flex w-80 items-start gap-2.5 rounded-xl border bg-surface px-4 py-3 text-left text-sm font-semibold shadow-[var(--shadow-popover)]',
+        toneStyles[tone],
       )}
     >
-      {item.tone === 'success' && <CheckIcon width={16} height={16} className="mt-0.5 shrink-0" />}
+      {tone === 'success' && <Check size={16} className="mt-0.5 shrink-0" />}
       <div className="min-w-0 flex-1 text-fg">
-        <p className={cn('break-words', isError && 'max-h-40 overflow-y-auto')}>{item.message}</p>
-        {item.action !== undefined && (
+        <Toast.Title className={cn('break-words', isError && 'max-h-40 overflow-y-auto')}>
+          {message}
+        </Toast.Title>
+        {action !== undefined && (
           <Link
-            to={item.action.to}
-            onClick={() => dismiss(item.id)}
+            to={action.to}
+            onClick={dismiss}
             className="mt-1 block text-xs font-bold text-primary-strong hover:underline"
           >
-            {item.action.label}
+            {action.label}
           </Link>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {isError && <CopyButton className="text-fg-muted" label="Error" value={item.message} />}
-        <button
-          type="button"
-          aria-label="Dismiss"
-          onClick={() => dismiss(item.id)}
-          className="grid size-6 place-items-center text-fg-muted transition-colors hover:text-fg"
-        >
-          ✕
-        </button>
+        {isError && <CopyButton className="text-fg-muted" label="Error" value={message} />}
+        <Toast.CloseTrigger className="grid size-6 place-items-center text-fg-muted transition-colors hover:text-fg">
+          <X size={14} />
+        </Toast.CloseTrigger>
       </div>
-    </div>
+    </Toast.Root>
   )
 }
