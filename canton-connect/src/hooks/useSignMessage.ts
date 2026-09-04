@@ -11,7 +11,7 @@ import { useWalletCall } from '#src/hooks/useWalletCall'
 export interface UseSignMessageResult {
   signMessage: (message: string) => Promise<string>
   signature: string | undefined
-  isSigning: boolean
+  isPending: boolean
   error: Error | undefined
   reset: () => void
 }
@@ -30,7 +30,7 @@ export interface UseSignMessageResult {
  * @category Hooks
  */
 export const useSignMessage = (): UseSignMessageResult => {
-  const { call, isBusy, error, reset: resetCall } = useWalletCall()
+  const { call, isPending, error, reset: resetCall } = useWalletCall()
 
   const [signature, setSignature] = useState<string | undefined>(undefined)
 
@@ -51,5 +51,5 @@ export const useSignMessage = (): UseSignMessageResult => {
     resetCall()
   }, [resetCall])
 
-  return { signMessage, signature, isSigning: isBusy, error, reset }
+  return { signMessage, signature, isPending, error, reset }
 }

@@ -33,7 +33,7 @@ export interface UseLedgerResult {
  * @category Hooks
  */
 export const useLedger = (): UseLedgerResult => {
-  // Guards without `call`: a stateless query needs no busy/error renders around it.
+  // Guards without `call`: a stateless query needs no pending/error renders around it.
   const { sdk, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(

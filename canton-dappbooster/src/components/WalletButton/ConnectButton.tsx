@@ -32,7 +32,7 @@ export const ConnectButton = ({
   ...rest
 }: ConnectButtonProps): ReactElement => {
   const session = useConnect()
-  const pending = session.isConnecting
+  const pending = session.isPending
   const handleClick = composeAction(onClick, session.connect)
 
   return (

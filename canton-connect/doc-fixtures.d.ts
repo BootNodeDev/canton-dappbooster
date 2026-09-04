@@ -11,7 +11,7 @@ type FixtureElement = import('react').ReactElement
 
 declare const partyId: string
 declare const PARTY: string
-declare const connectError: Error | undefined
+declare const error: Error | undefined
 
 /* Consumer-side wiring */
 

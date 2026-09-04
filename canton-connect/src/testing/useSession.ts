@@ -8,10 +8,10 @@ import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
 /** Every slice of the session in one object, which is what the suites assert against. */
 type Session = {
   connect: () => Promise<void>
-  connectError: Error | undefined
   disconnect: () => Promise<void>
-  isConnecting: boolean
+  error: Error | undefined
   isLocked: boolean
+  isPending: boolean
   party: Party | undefined
   reset: () => void
   sdk: WalletSdk
@@ -30,11 +30,11 @@ type Session = {
 export const useSession = (): Session => {
   const { connection } = useCantonConnectContext()
 
-  const { connect, connectError, disconnect, isConnecting, reset } = useConnect()
+  const { connect, disconnect, error, isPending, reset } = useConnect()
   const { party, status } = useParty()
   const { isLocked } = useWalletStatus()
 
   const sdk = useSelector(connection, (snapshot) => snapshot.context.sdk)
 
-  return { connect, connectError, disconnect, isConnecting, isLocked, party, reset, sdk, status }
+  return { connect, disconnect, error, isLocked, isPending, party, reset, sdk, status }
 }

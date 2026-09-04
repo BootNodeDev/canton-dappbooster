@@ -12,12 +12,12 @@ describe('FakeSessionProvider', () => {
     )
     const { result } = renderHook(() => useConnect(), { wrapper })
 
-    expect(result.current.connectError).toBe(failed)
+    expect(result.current.error).toBe(failed)
 
     act(() => {
       result.current.reset()
     })
 
-    expect(result.current.connectError).toBeUndefined()
+    expect(result.current.error).toBeUndefined()
   })
 })

@@ -30,7 +30,7 @@ describe('useSignMessage', () => {
     expect(signMessage).toHaveBeenCalledWith({ message: 'hello' })
     expect(result.current.signature).toBe('sig')
     expect(result.current.error).toBeUndefined()
-    expect(result.current.isSigning).toBe(false)
+    expect(result.current.isPending).toBe(false)
   })
 
   it('captures the wallet refusal and rethrows it', async () => {
@@ -44,7 +44,7 @@ describe('useSignMessage', () => {
 
     expect(result.current.error).toBe(refused)
     expect(result.current.signature).toBeUndefined()
-    expect(result.current.isSigning).toBe(false)
+    expect(result.current.isPending).toBe(false)
   })
 
   it('publishes a refusal that arrived as a JSON-RPC object as an Error', async () => {
