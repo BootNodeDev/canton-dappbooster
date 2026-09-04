@@ -63,7 +63,7 @@ export const CancelGrant = ({
         {!floorOk && (
           <FieldError
             id="cancel-residual-floor"
-            message={`The residual must be 0 or at least ${MIN_GRANT_AMOUNT} CC. Cancel once more has vested, or let the receiver claim it down to zero.`}
+            message={`The residual must be 0 or at least ${MIN_GRANT_AMOUNT} AMT. Cancel once more has vested, or let the receiver claim it down to zero.`}
           />
         )}
         <Button
