@@ -302,21 +302,16 @@ same-origin `/registry`, and [`vite.config.ts`](vite.config.ts) proxies that to
 and never reaches the bundle. It is a constant rather than a `VITE_` variable because every build
 has the same value for it; a deployment pointing at another registry is what would earn the
 variable, and that deployment does not work yet — the proxy is the dev server's, so a deployed build
-reads no metadata at all. So every row is an instrument the connected party actually holds, carrying its
-own admin party, its spendable balance and whatever is locked.
+reads no metadata at all.
+
 [`src/utils/tokens.tsx`](src/utils/tokens.tsx) is down to the artwork, the name and the symbol,
 matched by instrument id: a token this deployment does not know is listed under its raw id rather
 than dropped.
 
-Two things the pick still does not do:
-
-- **It changes nothing but the field.** The re-lock floor's wording, the claim toast,
-  `AmountDisplay`'s coin mark and the grant that gets created all say Amulet in their own right.
-  Each has to take the chosen token instead, or a pick relabels one field and means nothing.
-- **It does not move the ceiling.** `balance` on the field stays `backend.balanceOf`, which is the
-  *free* Amulet total: coin an outstanding grant has pledged is excluded, and no holdings read knows
-  that rule. So the picker's figure is what the party holds and the field's Max is what this app
-  may spend, and they legitimately differ.
+One thing the pick still does not do: **it changes nothing but the field.** The re-lock floor's
+wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say Amulet
+in their own right. Each has to take the chosen token instead, or a pick relabels one field and
+means nothing.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
@@ -341,20 +336,20 @@ the ledger aborts on. `grantBacking` sits beside `deriveGrant` rather than insid
 `claimAvailable`: it does not move with the clock. A residual claim carries no schedule, so its two
 are the same amount and `Claim`'s `backing` prop defaults to `available`.
 
-Only the claim dialog has a ceiling, and it is the grant's own `claimable`. The create form has a
-balance without one: `VestingBackend.balanceOf` reads what the funder holds and the field offers it
-through `Max`, but `validateAmount` is called with no `max`, so a larger amount is neither flagged
-nor blocked and the split refuses it instead, naming what is actually free. That is also why the
-field's `aria-invalid` is passed in rather than left to the kit, which would flag an amount above
-the `balance` it was given.
+Both dialogs have a ceiling, and both hand it to the field as `balance`: the claim dialog's is the
+grant's own `claimable`, the create form's is whatever figure the picked row carries. So neither
+passes `aria-invalid` for the amount — the kit flags anything above the `balance` it was given — and
+where a read leaves no figure to give, the split refuses the amount instead, naming what is actually
+free.
 
 A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
 set `splitOff` will draw from: coin already escrowed is a `LockedAmulet` and so out by template, and
 coin an outstanding grant pledged is out because spending it would leave that grant unacceptable.
 The two agreeing is the point — a `Max` that offered more would put an amount in the field that the
-next step always refuses. The read runs once, on mount: nothing the form does moves the funder's
-coin.
+next step always refuses. The read belongs to `Tokens` now rather than to the form, so it runs when
+the party changes and again whenever the create dialog opens: a grant that dialog created has
+pledged coin since, and the figure it showed before would be the one from before the grant.
 
 The amount field shows no validation message at all for now, which is why nothing words
 `MIN_GRANT_AMOUNT` or a bad decimal to the user; both still gate `Continue`. `AMOUNT_ERROR_TEXT`
