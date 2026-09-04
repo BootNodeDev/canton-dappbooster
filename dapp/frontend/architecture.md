@@ -13,7 +13,7 @@ interfaces carry that, and every other decision hangs off them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
-| `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session; `Tokens` builds the token list from the party's holdings and hands it to the kit's `TokenListProvider`. The theme provider comes from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
@@ -244,24 +244,26 @@ total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-**Neither field offers the token picker, and that is deliberate.** Both pass `token={AMT}` and no
-`onTokenSelect`, which is what makes the kit render the symbol as a static mark rather than a button.
-[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `AMT` and nothing else, because that is the only
-instrument this deployment knows, so a picker over it would open a dialog to choose the value already
-chosen. The claim dialog has a second reason it will keep: what a grant pays out is fixed by the
-contract, so there is nothing there to pick.
+**The create field offers the picker; the claim dialog does not, and will not.** What a grant pays
+out is fixed by the contract, so `Claim` passes `token={AMT}` and no `onTokenSelect`, which is what
+makes the kit render the symbol as a static mark rather than a button.
 
-Turning the create field back into a real picker takes three things, none of them wired yet:
+The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/Tokens.tsx) reads the
+kit's `useHoldings`, groups it with `sumHoldings`, and hands the result to `TokenListProvider`. So every row is an instrument the connected party actually holds, carrying its
+own admin party, its spendable balance and whatever is locked.
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) is down to the artwork, the name and the symbol,
+matched by instrument id: a token this deployment does not know is listed under its raw id rather
+than dropped.
 
-- **A list to choose from.** `TOKENS` in `src/utils/tokens.tsx` is a hardcoded one-entry array. It
-  becomes whatever enumerates the instruments a deployment actually holds, and the kit's
-  `TokenListProvider` is what the picker reads it through.
-- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(AMT)` and passes
-  `onTokenSelect`. Per-field rather than lifted, unless by then two amounts on one page must agree.
-- **The rest of the app told about it.** Today the pick would be display-only: the re-lock floor's
-  wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say
-  Amulet in their own right. Each has to take the chosen token instead, or a pick would relabel
-  one field and silently mean nothing.
+Two things the pick still does not do:
+
+- **It changes nothing but the field.** The re-lock floor's wording, the claim toast,
+  `AmountDisplay`'s coin mark and the grant that gets created all say Amulet in their own right.
+  Each has to take the chosen token instead, or a pick relabels one field and means nothing.
+- **It does not move the ceiling.** `balance` on the field stays `backend.balanceOf`, which is the
+  *free* Amulet total: coin an outstanding grant has pledged is excluded, and no holdings read knows
+  that rule. So the picker's figure is what the party holds and the field's Max is what this app
+  may spend, and they legitimately differ.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
 `onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
