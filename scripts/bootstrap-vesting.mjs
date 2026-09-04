@@ -12,6 +12,40 @@ const RPC_URL = process.env.RPC_URL ?? 'http://localhost:3010/rpc'
 const PACKAGE_NAME = 'amulet-vesting'
 const STAMP = Date.now()
 
+const TOKEN_FORGE_PACKAGE = 'canton-token-forge'
+const INSTRUMENT = {
+  instrumentId: 'DBT',
+  name: 'dAppBooster Token',
+  symbol: 'DBT',
+  decimals: 10,
+  maxPerTap: '1000.0',
+}
+
+export const REGISTRY_PORT = 3013
+
+// Spelled out rather than built from a helper, so these read the same here, in
+// the registry's own .env.example, and in a grep.
+export const REGISTRY_TEMPLATE_IDS = {
+  INSTRUMENT_CONFIG_TEMPLATE_ID: '#canton-token-forge:Canton.TokenForge.Registry:InstrumentConfig',
+  PREAPPROVAL_TEMPLATE_ID:
+    '#canton-token-forge:Canton.TokenForge.Registry:TokenTransferPreapproval',
+  LOCKED_TOKEN_TEMPLATE_ID: '#canton-token-forge:Canton.TokenForge.Locked:LockedToken',
+  TRANSFER_INSTRUCTION_TEMPLATE_ID:
+    '#canton-token-forge:Canton.TokenForge.Instruction:TokenTransferInstruction',
+  ALLOCATION_TEMPLATE_ID: '#canton-token-forge:Canton.TokenForge.Allocation:TokenAllocation',
+}
+
+// Every template id is single-quoted: a value starting with `#` is otherwise read
+// as a comment and the variable parses as empty. dev-stack.sh strips the quotes.
+export const formatRegistryEnv = ({ ledgerApiUrl, adminParty, port }) =>
+  [
+    `LEDGER_API_URL=${ledgerApiUrl}`,
+    'LEDGER_API_TOKEN=<the CANTON_BACKEND_TOKEN from .env>',
+    `ADMIN_PARTY=${adminParty}`,
+    ...Object.entries(REGISTRY_TEMPLATE_IDS).map(([key, id]) => `${key}='${id}'`),
+    `PORT=${port}`,
+  ].join('\n')
+
 const rpc = async (method, params) => {
   const response = await fetch(RPC_URL, {
     method: 'POST',
@@ -44,7 +78,10 @@ const ledger = (requestMethod, resource, body, query) =>
     ...(query === undefined ? {} : { query }),
   })
 
-const createOperator = async (hint) => {
+// Allocates the party and grants the authenticated user rights over it. That user is
+// whoever the participant authenticated CANTON_BACKEND_TOKEN as, which is also the
+// token the registry reads with, so this grant is what lets it read as the admin.
+const createParty = async (hint) => {
   const result = await ledger('post', '/v2/parties', { partyIdHint: hint })
   const party = result?.partyDetails?.party
   if (typeof party !== 'string' || party.length === 0) {
@@ -79,10 +116,51 @@ const resolvePackage = async (party) => {
   return pkg
 }
 
+// Read back from the ACS rather than out of the submission response, so this does not
+// depend on where a given Canton version puts a create result in the envelope. The
+// filter takes the package-name reference; the participant rejects a package id here.
+const findInstrumentConfig = async (admin) => {
+  const end = await ledger('get', '/v2/state/ledger-end')
+  if (end?.offset === undefined) {
+    throw new Error('participant returned no ledger-end offset')
+  }
+  const rows = await ledger('post', '/v2/state/active-contracts', {
+    filter: {
+      filtersByParty: {
+        [admin]: {
+          cumulative: [
+            {
+              identifierFilter: {
+                TemplateFilter: {
+                  value: {
+                    templateId: REGISTRY_TEMPLATE_IDS.INSTRUMENT_CONFIG_TEMPLATE_ID,
+                    includeCreatedEventBlob: false,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+    activeAtOffset: end.offset,
+    verbose: true,
+  })
+  const configs = (Array.isArray(rows) ? rows : [])
+    .map((row) => row?.contractEntry?.JsActiveContract?.createdEvent)
+    .filter((event) => event?.createArgument?.instrumentId === INSTRUMENT.instrumentId)
+  if (configs.length !== 1) {
+    throw new Error(
+      `expected one ${INSTRUMENT.instrumentId} InstrumentConfig for ${admin}, found ${configs.length}`,
+    )
+  }
+  return configs[0].contractId
+}
+
 const main = async () => {
   // A fresh operator per run, so the config always matches a factory this run created. Earlier
   // operators and factories stay active on the local ledger and are simply superseded.
-  const operator = await createOperator(`vesting-operator-${STAMP}`)
+  const operator = await createParty(`vesting-operator-${STAMP}`)
   console.log(`operator   ${operator}`)
 
   const pkg = process.env.PKG ?? (await resolvePackage(operator))
@@ -133,6 +211,47 @@ const main = async () => {
     throw new Error('factory created but no createdEventBlob came back from the ACS read')
   }
   console.log(`factory    ${active.createdEvent.contractId}`)
+
+  // A fresh admin per run, so (admin, instrumentId) is new every time and the registry
+  // can never find two configs for one instrument.
+  const admin = await createParty(`instrument-admin-${STAMP}`)
+
+  await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+    commandId: `instrument-config-${STAMP}`,
+    actAs: [admin],
+    readAs: [admin],
+    commands: [
+      {
+        CreateCommand: {
+          templateId: `#${TOKEN_FORGE_PACKAGE}:Canton.TokenForge.Registry:InstrumentConfig`,
+          createArguments: {
+            admin,
+            instrumentId: INSTRUMENT.instrumentId,
+            name: INSTRUMENT.name,
+            symbol: INSTRUMENT.symbol,
+            // Int64 is encoded as a JSON string; a bare number is rejected.
+            decimals: String(INSTRUMENT.decimals),
+            faucet: { maxPerTap: INSTRUMENT.maxPerTap },
+            meta: { values: {} },
+          },
+        },
+      },
+    ],
+  })
+
+  const configCid = await findInstrumentConfig(admin)
+  console.log(`admin      ${admin}`)
+  console.log(`instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${configCid}`)
+  console.log('\nregistry env')
+  console.log(
+    formatRegistryEnv({
+      ledgerApiUrl: process.env.CANTON_JSON_API_URL ?? 'http://localhost:2975',
+      adminParty: admin,
+      port: REGISTRY_PORT,
+    }),
+  )
 }
 
-await main()
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await main()
+}

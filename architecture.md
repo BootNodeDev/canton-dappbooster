@@ -116,7 +116,7 @@ with the same script, configured manually in its LocalNet settings.
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | fetch the Splice deps, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `pnpm run bootstrap` | create the vesting operator and its factory |
+| `pnpm run bootstrap` | create the vesting operator and its factory, the instrument admin and its `DBT` InstrumentConfig, and print the registry env block |
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
