@@ -111,6 +111,17 @@ init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3
 `networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
 `Party.networkId` for a wallet that reports none.
 
+### The party type
+
+`Party.partyType` is Canton's own distinction: a local party lives under the namespace of the
+participant hosting it, an external party under its own key's. CIP-0103 carries no such field and
+leaves `signingProviderId` a free string, so the type is derived from the one fact both sides carry:
+the account's `namespace` against the participant's, read once per authenticated session through
+`ledgerApi` (`GET /v2/parties/participant-id`, open to a `CanActAs` token). Nothing else is
+consulted, and a failed read leaves `'unknown'`. Checked on LocalNet: every party there is hosted on
+the one node, so the parties endpoint's `isLocal` is not the signal and the namespace is. A dApp
+cares because the reference gateway refuses `signMessage` for a local party.
+
 ### Testing doubles
 
 `createFakeWallet` is a real CIP-0103 extension over `postMessage`, so a test walks the SDK's own

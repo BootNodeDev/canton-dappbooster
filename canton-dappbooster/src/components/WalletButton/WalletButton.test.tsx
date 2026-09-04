@@ -12,6 +12,7 @@ const party = {
   networkId: NETWORK,
   namespace: PARTY.split('::')[1] ?? PARTY,
   signingProviderId: 'test',
+  partyType: 'unknown' as const,
 }
 
 const renderInSession = (ui: ReactElement, isLocked = false): ReturnType<typeof render> =>

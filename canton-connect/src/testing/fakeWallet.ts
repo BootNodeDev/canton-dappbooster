@@ -4,6 +4,7 @@ import {
   WalletEvent,
 } from '@canton-network/core-types'
 import type { ConnectResult, StatusEvent, Wallet } from '@canton-network/dapp-sdk'
+import { PARTICIPANT_ID_RESOURCE } from '#src/walletAccount'
 
 const JSON_RPC_METHOD_NOT_FOUND = -32601
 
@@ -45,9 +46,9 @@ const toWallet = (account: FakeWalletAccount): Wallet => ({
 
 /**
  * Wiring for {@link createFakeWallet}. `id` is announced to `window` and doubles as the postMessage
- * target and the display name unless `target` or `name` override it, and `accounts` defaults to one
- * account with `id` as its party prefix. `statusResponses` is `isConnected` per successive `status`
- * call, last entry repeating, which is how a test restores a session and then reports it locked.
+ * target and display name unless `target` or `name` override it; `accounts` defaults to one with
+ * `id` as its party prefix. `statusResponses` is `isConnected` per successive `status` call, last
+ * entry repeating; omitting `participantId` fails the participant-id read, leaving `'unknown'`.
  *
  * @example
  * const options: FakeWalletOptions = { id: 'mock', statusResponses: [true, false] }
@@ -60,6 +61,7 @@ export interface FakeWalletOptions {
   target?: string
   accounts?: FakeWalletAccount[]
   statusResponses?: boolean[]
+  participantId?: string
 }
 
 /**
@@ -78,7 +80,7 @@ export interface FakeWallet {
 /** A postMessage payload off `window`, before it is checked for being one of ours. */
 interface IncomingMessage {
   type?: string
-  request?: { id?: string | number | null; method?: string }
+  request?: { id?: string | number | null; method?: string; params?: unknown }
   target?: string
 }
 
@@ -134,17 +136,38 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     disconnect: () => ({}),
   }
 
+  const notImplemented = (what: string): Record<string, unknown> => ({
+    error: {
+      code: JSON_RPC_METHOD_NOT_FOUND,
+      message: `createFakeWallet does not implement ${what}`,
+    },
+  })
+
+  // The one ledger read the connect flow makes; anything else is refused like an unknown method.
+  const answerLedgerApi = (params: unknown): Record<string, unknown> => {
+    const { requestMethod, resource } = (params ?? {}) as {
+      requestMethod?: string
+      resource?: string
+    }
+    const isParticipantIdRead = requestMethod === 'get' && resource === PARTICIPANT_ID_RESOURCE
+
+    if (options.participantId === undefined || !isParticipantIdRead) {
+      return notImplemented(`"ledgerApi" for ${resource}`)
+    }
+
+    return { result: { participantId: options.participantId } }
+  }
+
   // An error frame, not a throw: the transport only settles on a response, so throwing here would
   // leave the caller's request pending forever.
-  const answer = (method: string): Record<string, unknown> => {
+  const answer = (method: string, params: unknown): Record<string, unknown> => {
+    if (method === 'ledgerApi') {
+      return answerLedgerApi(params)
+    }
+
     const handler = responses[method]
     if (handler === undefined) {
-      return {
-        error: {
-          code: JSON_RPC_METHOD_NOT_FOUND,
-          message: `createFakeWallet does not implement "${method}"`,
-        },
-      }
+      return notImplemented(`"${method}"`)
     }
 
     return { result: handler() }
@@ -182,7 +205,7 @@ export const createFakeWallet = (options: FakeWalletOptions): FakeWallet => {
     window.postMessage(
       {
         type: WalletEvent.SPLICE_WALLET_RESPONSE,
-        response: { jsonrpc: '2.0', id: requestId, ...answer(method) },
+        response: { jsonrpc: '2.0', id: requestId, ...answer(method, data.request?.params) },
       },
       '*',
     )

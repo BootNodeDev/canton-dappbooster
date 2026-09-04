@@ -3,7 +3,10 @@
 
 import { WALLET_DISABLED_REASON } from '@canton-network/core-types'
 import type { Wallet } from '@canton-network/dapp-sdk'
-import type { Party } from '#src/types'
+import type { Party, PartyType } from '#src/types'
+
+/** The JSON Ledger API resource answering the participant's own id. */
+export const PARTICIPANT_ID_RESOURCE = '/v2/parties/participant-id'
 
 /** One entry of a CIP-0103 `listAccounts` response, before it is mapped to a `Party`. */
 // Looser than the SDK's `Wallet` on purpose: `createMockAdapter` omits `networkId`, so
@@ -47,13 +50,43 @@ export const selectUsableAccounts = (accounts: RawWalletAccount[]): RawWalletAcc
 export const selectPrimaryAccount = (accounts: RawWalletAccount[]): RawWalletAccount | undefined =>
   accounts.find((a) => a.primary) ?? accounts[0]
 
-// hint becomes name; an account's own networkId outranks the config fallback.
+/** The namespace of a `hint::namespace` id, party or participant alike. */
+export const namespaceOf = (id: string): string | undefined => {
+  const separator = id.indexOf('::')
+
+  return separator === -1 ? undefined : id.slice(separator + 2)
+}
+
+// Canton's definition, not a wallet's: local shares the participant's namespace, external its own.
+/** Classifies a party by its namespace against the participant's; `unknown` until that is read. */
+export const partyTypeOf = (
+  namespace: string,
+  participantNamespace: string | undefined,
+): PartyType => {
+  if (participantNamespace === undefined) {
+    return 'unknown'
+  }
+
+  return namespace === participantNamespace ? 'local' : 'external'
+}
+
+// Same object back when nothing changes, so a selector holding the party does not re-render.
+/** Re-derives `partyType` once the participant namespace is known. */
+export const withPartyType = (party: Party, participantNamespace: string | undefined): Party => {
+  const partyType = partyTypeOf(party.namespace, participantNamespace)
+
+  return partyType === party.partyType ? party : { ...party, partyType }
+}
+
+// hint becomes name; an account's own networkId outranks the config fallback; the type waits on the
+// participant read.
 /** Maps one raw account entry to the public `Party` shape the hooks expose. */
 export const toParty = (account: RawWalletAccount, fallbackNetworkId: string): Party => ({
   partyId: account.partyId,
   networkId: account.networkId ?? fallbackNetworkId,
   namespace: account.namespace,
   signingProviderId: account.signingProviderId,
+  partyType: 'unknown',
   ...(account.hint === undefined ? {} : { name: account.hint }),
   ...(account.publicKey === undefined ? {} : { publicKey: account.publicKey }),
 })

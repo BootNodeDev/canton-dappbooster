@@ -6,4 +6,5 @@ export const testParty = (partyId: string, networkId = 'canton:local'): Party =>
   networkId,
   namespace: partyId.split('::')[1] ?? partyId,
   signingProviderId: 'test',
+  partyType: 'unknown',
 })

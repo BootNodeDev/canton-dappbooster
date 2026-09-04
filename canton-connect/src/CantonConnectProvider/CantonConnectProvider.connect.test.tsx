@@ -6,6 +6,7 @@ import { useConnect } from '#src/hooks/useConnect'
 import { createMockAdapter } from '#src/mock/mockAdapter'
 import { createAutoPicker } from '#src/testing/autoPicker'
 import { clearDiscoveryStorage } from '#src/testing/discoveryStorage'
+import { createFakeWallet } from '#src/testing/fakeWallet'
 import { renderSession } from '#src/testing/renderSession'
 import { throwingPicker } from '#src/testing/throwingPicker'
 import { useSession } from '#src/testing/useSession'
@@ -149,5 +150,63 @@ describe('CantonConnectProvider connect flow', () => {
     })
 
     expect(openSpy).toHaveBeenCalled()
+  })
+})
+
+describe('CantonConnectProvider party type', () => {
+  afterEach(() => {
+    clearDiscoveryStorage()
+  })
+
+  it('is local when the wallet party shares the participant namespace', async () => {
+    const wallet = createFakeWallet({
+      id: 'wallet-local',
+      accounts: [{ partyId: 'operator::1220ab', primary: true }],
+      participantId: 'participant::1220ab',
+    })
+
+    const { result } = renderSession(() => useSession())
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    await waitFor(() => expect(result.current.party?.partyType).toBe('local'))
+
+    wallet.dispose()
+  })
+
+  it('is external when the party carries its own namespace', async () => {
+    const mock = createMockAdapter({
+      id: 'mock-external',
+      accounts: [{ partyId: 'alice::1220cd' }],
+      participantId: 'participant::1220ab',
+    })
+
+    const { result } = renderSession(() => useSession(), {
+      additionalAdapters: [mock],
+      walletPicker: createAutoPicker('mock-external'),
+    })
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    await waitFor(() => expect(result.current.party?.partyType).toBe('external'))
+  })
+
+  it('stays unknown when the wallet serves no participant id', async () => {
+    const wallet = walletA()
+
+    const { result } = renderSession(() => useSession())
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    expect(result.current.party?.partyType).toBe('unknown')
+
+    wallet.dispose()
   })
 })

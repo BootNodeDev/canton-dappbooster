@@ -13,6 +13,7 @@ const party = {
   networkId: NETWORK,
   namespace: PARTY.split('::')[1] ?? PARTY,
   signingProviderId: 'test',
+  partyType: 'unknown' as const,
 }
 
 // The button renders whatever the session says, so the session itself is what a disconnect asserts.

@@ -1,6 +1,14 @@
 import { WALLET_DISABLED_REASON } from '@canton-network/core-types'
 import { describe, expect, it } from 'vitest'
-import { selectPrimaryAccount, selectUsableAccounts, toParty } from '#src/walletAccount'
+import { testParty } from '#src/testing/party'
+import {
+  namespaceOf,
+  partyTypeOf,
+  selectPrimaryAccount,
+  selectUsableAccounts,
+  toParty,
+  withPartyType,
+} from '#src/walletAccount'
 
 type RawAccount = Parameters<typeof toParty>[0]
 
@@ -91,6 +99,7 @@ describe('toParty', () => {
       networkId: 'canton:local',
       namespace: 'fp',
       signingProviderId: 'test',
+      partyType: 'unknown',
       name: 'alice',
     })
   })
@@ -114,5 +123,44 @@ describe('toParty', () => {
 
     expect(party.namespace).toBe('1220aa')
     expect(party.signingProviderId).toBe('participant')
+  })
+})
+
+describe('namespaceOf', () => {
+  it('returns what follows the separator, for a party or a participant id', () => {
+    expect(namespaceOf('alice::1220ab')).toBe('1220ab')
+    expect(namespaceOf('participant::1220ab')).toBe('1220ab')
+  })
+
+  it('returns undefined for an id with no separator', () => {
+    expect(namespaceOf('participant')).toBe(undefined)
+  })
+})
+
+describe('partyTypeOf', () => {
+  it('is local when the party shares the participant namespace, external otherwise', () => {
+    expect(partyTypeOf('1220ab', '1220ab')).toBe('local')
+    expect(partyTypeOf('1220cd', '1220ab')).toBe('external')
+  })
+
+  it('is unknown until the participant namespace is known', () => {
+    expect(partyTypeOf('1220ab', undefined)).toBe('unknown')
+  })
+})
+
+describe('withPartyType', () => {
+  it('returns the same object when the type does not change', () => {
+    const party = testParty('alice::1220ab')
+
+    expect(withPartyType(party, undefined)).toBe(party)
+  })
+
+  it('returns a retyped copy when it does', () => {
+    const party = testParty('alice::1220ab')
+    const typed = withPartyType(party, '1220ab')
+
+    expect(typed).not.toBe(party)
+    expect(typed.partyType).toBe('local')
+    expect(party.partyType).toBe('unknown')
   })
 })
