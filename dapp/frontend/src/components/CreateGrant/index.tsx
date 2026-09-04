@@ -5,8 +5,8 @@ import {
   isValidPartyId,
   type PartyIdError,
   PartyIdInput,
-  type Token,
   TokenInput,
+  tokenKey,
   useTokenList,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
@@ -149,10 +149,13 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
-  // The pick is display-only: a grant is Canton Coin whatever the field shows.
-  const [picked, setPicked] = useState<Token>()
-  const { tokens } = useTokenList()
-  const token = picked ?? tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
+  // The pick is display-only: a grant is Canton Coin whatever the field shows. Held as a key rather
+  // than as the row itself, so the figures the reads fill in later still reach the field.
+  const [pickedKey, setPickedKey] = useState<string>()
+  const { byKey, tokens } = useTokenList()
+  const token =
+    (pickedKey === undefined ? undefined : byKey.get(pickedKey)) ??
+    tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
   const balance = token?.balance
   const { failed } = useTokenFigures()
   const balanceState = failed ? 'error' : balance === undefined ? 'loading' : undefined
@@ -322,7 +325,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                onTokenSelect={setPicked}
+                onTokenSelect={({ instrumentId }) => setPickedKey(tokenKey(instrumentId))}
                 token={token ?? AMT}
                 usdValue="N/A"
                 value={amount}
