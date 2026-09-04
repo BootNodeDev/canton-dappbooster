@@ -8,12 +8,16 @@ packages:
 # Dependencies allowed to run install/build scripts (pnpm blocks them by default).
 # esbuild: needed by Vite/tsx. puppeteer (via @mermaid-js/mermaid-cli): blocked so
 # it does not download a Chromium; nothing here renders mermaid via the CLI.
+# @bootnodedev/canton-token-forge: a git dependency whose `prepare` compiles
+# registry/src into the registry/dist its bin points at; upstream gitignores that
+# directory, so without this entry the bin exists but resolves to nothing.
 # @bootnodedev/canton-wallet-service: a git dependency, so its `prepare` build is
 # what produces the dist/ the canton-wallet-service binary points at. pnpm matches
 # a git dependency only by its resolved tarball id, so moving the ref in
 # package.json means replacing the commit sha below; `pnpm approve-builds` prints
 # the new key.
 allowBuilds:
+  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/da18cbebd20e093ea77a9374829b3765caae60f1': true
   '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/99e7e69d2d91109e527a74a5c97c566a882de477': true
   esbuild: true
   protobufjs: true
