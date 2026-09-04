@@ -31,7 +31,7 @@ describe('the registry env block bootstrap prints', () => {
   })
 
   it('is the exact block dev-stack.sh parses back out of stdout', () => {
-    // Line count, key order, and no trailing newline are load-bearing for Task 5's parse.
+    // Line count, key order, and no trailing newline are load-bearing for dev-stack.sh's parse.
     const lines = block.split('\n')
     assert.equal(lines.length, 9)
     assert.doesNotMatch(block, /\n$/)

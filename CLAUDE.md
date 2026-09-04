@@ -350,12 +350,12 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
-- `pnpm run bootstrap` creates the vesting operator and its factory, the instrument admin and its
-  `DBT` InstrumentConfig, which the dApp cannot start without. Run it after the DARs are deployed.
-  It writes no file: the dApp reads the operator and factory back off the ledger once a wallet
-  connects, so nothing can go stale between the two, pointing the wallet at another participant is
-  the whole of switching networks, and the admin and instrument print to stdout as the registry env
-  block instead.
+- `pnpm run bootstrap` creates the vesting operator and its factory, which the dApp cannot start
+  without, plus the instrument admin and its `DBT` InstrumentConfig. Run it after both DARs deploy.
+  It writes no file, printing the admin and instrument as a registry env block instead: the dApp
+  reads the operator and factory back off the ledger once a wallet connects, so nothing can go
+  stale between the two, and pointing the wallet at another participant is the whole of switching
+  networks.
 - **One `.env`, at the root.** It is wallet-service's entire configuration, because the service
   loads dotenv from the directory it starts in and `pnpm exec` starts it here; it also holds the
   signing recipe `scripts/mint-token.mjs` reads and the token `scripts/deploy-dar.sh` sends. Both
