@@ -66,6 +66,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
+| Token registry | @bootnodedev/canton-token-forge | Read-only CIP-56 registry service. A git dependency pinned to `v0.2.0` and reached through `pnpm exec canton-token-forge-registry`. Its `prepare` is what compiles `registry/dist`, so `pnpm-workspace.yaml`'s `allowBuilds` must carry the resolved git specifier or the bin resolves to nothing. `scripts/dev-stack.sh` runs it on 3013, configured entirely from the block `scripts/bootstrap-vesting.mjs` prints |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
@@ -90,13 +91,19 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
-Two things the loop needs are not subprojects but dependencies. wallet-service ships from
+Three things the loop needs are not subprojects but dependencies. wallet-service ships from
 [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service),
 arrives as a git dependency pinned to a tag, and `scripts/dev-stack.sh` runs it on
 port 3010 through `pnpm exec canton-wallet-service`. The LocalNet ships from
 [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is a pinned
 devDependency whose config `scripts/dev-stack.sh` scaffolds into the gitignored
 `.canton-localnet/` and drives there over `pnpm exec`.
+
+The token registry ships from
+[BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge), arrives as a
+git dependency pinned to a tag, and `scripts/dev-stack.sh` runs it on port 3013 through
+`pnpm exec canton-token-forge-registry`. That repository also builds both DARs under `vendor/`;
+`vendor/PROVENANCE.md` records which release each came from.
 
 ## Code Style
 
@@ -333,7 +340,13 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`. Docs and `dev-stack.sh` use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>` for the built DAR and both `vendor/` binaries, `bootstrap`, `app:dev`. Docs and `dev-stack.sh` use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- **`bootstrap` and `dev-stack.sh` share one contract: the `KEY=value` block bootstrap prints on
+  stdout.** Nothing is written to disk, so nothing can go stale, and a manual run gets a block it
+  can paste into a `.env`. `scripts/bootstrap-vesting.test.mjs` holds the printed keys and
+  `dev-stack.sh`'s `REGISTRY_ENV_KEYS` together; add a registry variable to one and that test
+  fails until the other follows. `LEDGER_API_TOKEN` is the one variable outside it, because
+  bootstrap never sees the bearer.
 - **The LocalNet is not in this repository, and neither is its config.** It is
   `@bootnodedev/canton-barebones`, a pinned devDependency driven with `start` / `stop` / `reset` in
   the directory holding `canton-barebones.config.json`. `up` scaffolds that directory itself through
@@ -350,10 +363,12 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
 - `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
   folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
-- `pnpm run bootstrap` creates the vesting operator and its factory, which the
-  dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
-  both back off the ledger once a wallet connects, so nothing can go stale between the two, and
-  pointing the wallet at another participant is the whole of switching networks.
+- `pnpm run bootstrap` creates the vesting operator and its factory, which the dApp cannot start
+  without, plus the instrument admin and its `DBT` InstrumentConfig. Run it after both DARs deploy.
+  It writes no file, printing the admin and instrument as a registry env block instead: the dApp
+  reads the operator and factory back off the ledger once a wallet connects, so nothing can go
+  stale between the two, and pointing the wallet at another participant is the whole of switching
+  networks.
 - **One `.env`, at the root.** It is wallet-service's entire configuration, because the service
   loads dotenv from the directory it starts in and `pnpm exec` starts it here; it also holds the
   signing recipe `scripts/mint-token.mjs` reads and the token `scripts/deploy-dar.sh` sends. Both
@@ -385,7 +400,9 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-connect`: `pnpm test` (vitest + jsdom)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
   - root `scripts/`: covered by the root `pnpm test`, which appends
-    `node --test "scripts/*.test.mjs"` to the fan-out because `pnpm -r` skips the root package
+    `node --test "scripts/*.test.mjs"` to the fan-out because `pnpm -r` skips the root package.
+    `bootstrap-vesting.test.mjs` is the one test that reads a second file: it parses
+    `dev-stack.sh` for the key list, which is what makes the two-script contract checkable
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build, which needs `dpm` and a network fetch of the Splice DARs.
 - `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`) and `pnpm run check:anatomy` do not fan out: both read the two library packages directly, and typedoc has one config over both. `pnpm docs:build` writes the reference site to `typedoc/`.
