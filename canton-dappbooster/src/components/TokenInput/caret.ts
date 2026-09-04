@@ -1,7 +1,3 @@
-// Regrouping rewrites everything to the *left* of the edit, so the caret is anchored to the digits
-// after it. Anchoring on the digits before it strands a just-typed decimal separator in front of
-// the caret, and the next digit lands in the integer part.
-
 const DIGIT = /\d/
 
 export const countDigitsAfter = (value: string, start: number): number => {
