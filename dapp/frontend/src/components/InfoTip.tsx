@@ -48,7 +48,14 @@ export const InfoTip = ({
       <Tooltip.Positioner asChild>
         <span>
           <Tooltip.Content asChild aria-hidden={described ? undefined : true}>
-            <span className="z-30 block w-max max-w-56 rounded-lg border border-border bg-surface px-3 py-2 font-sans text-xs font-normal text-fg-muted shadow-[var(--shadow-card)] [-webkit-text-fill-color:currentColor]">
+            <span className="z-30 block w-max max-w-56 rounded-sm border border-border bg-surface px-3 py-2 font-sans text-xs font-normal text-fg-muted shadow-[var(--shadow-card)] [-webkit-text-fill-color:currentColor]">
+              <Tooltip.Arrow asChild>
+                <span className="[--arrow-background:var(--surface)] [--arrow-size:9px]">
+                  <Tooltip.ArrowTip asChild>
+                    <span className="border-border border-l border-t" />
+                  </Tooltip.ArrowTip>
+                </span>
+              </Tooltip.Arrow>
               {label}
             </span>
           </Tooltip.Content>

@@ -12,7 +12,6 @@ import { Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
-import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { DateField } from '@/components/CreateGrant/DateField'
 import { atMidnight, dateOf, inputClass, labelClass } from '@/components/CreateGrant/fields'
 import { LiveScheduleCurve } from '@/components/CreateGrant/LiveScheduleCurve'
@@ -30,7 +29,7 @@ import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
-import { copyToast, toast } from '@/utils/toast'
+import { toast } from '@/utils/toast'
 import { AMT } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
@@ -111,6 +110,17 @@ const STEPS = ['Grant', 'Schedule', 'Preview']
 const LAST_STEP = STEPS.length - 1
 
 const panelClass = 'focus-visible:outline-none'
+
+const stepClass =
+  'flex w-full items-center rounded-[3px] py-1.5 focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
+
+const stepBarClass =
+  'relative h-1.5 w-full rounded-[3px] bg-border ' +
+  'before:absolute before:inset-0 before:origin-left before:scale-x-0 before:rounded-[3px] ' +
+  'before:bg-primary before:transition-[scale,background-color] before:duration-500 ' +
+  'before:ease-out before:content-[""] ' +
+  'data-[complete]:before:scale-x-100 data-[complete]:before:bg-primary/40 ' +
+  'data-[current]:before:scale-x-100'
 
 const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
   'missing-separator': 'Use a full party id (hint::fingerprint).',
@@ -275,16 +285,12 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
         onStepChange={(details) => setStep(details.step)}
         step={step}
       >
-        <Steps.List className="mb-7 flex items-center gap-3">
+        <Steps.List className="mb-3.5 flex gap-2">
           {STEPS.map((name, index) => (
-            <Steps.Item className="flex flex-1 items-center gap-3" index={index} key={name}>
-              <Steps.Trigger className="flex items-center gap-2 text-xs font-bold text-fg-muted data-[current]:text-fg">
-                <Steps.Indicator className="grid size-6 place-items-center rounded-full border border-border text-[0.7rem] data-[complete]:border-primary data-[current]:border-primary data-[current]:bg-primary-soft data-[current]:text-fg">
-                  {index + 1}
-                </Steps.Indicator>
-                {name}
+            <Steps.Item className="flex-1" index={index} key={name}>
+              <Steps.Trigger aria-label={name} className={stepClass}>
+                <Steps.Indicator className={stepBarClass} />
               </Steps.Trigger>
-              {index < LAST_STEP && <Steps.Separator className="h-px flex-1 bg-border" />}
             </Steps.Item>
           ))}
         </Steps.List>
@@ -474,10 +480,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                   <span className="font-mono text-xs text-fg">—</span>
                 ) : (
                   <Identifier
-                    announce={false}
                     className="font-mono text-xs text-fg"
                     label="receiver party id"
-                    onCopy={copyToast('Party id')}
                     value={receiver}
                   />
                 )}
@@ -492,16 +496,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                   </div>
                 )}
               </div>
-
-              {backend === undefined ? (
-                <div className="mt-6">
-                  <ConnectPrompt />
-                </div>
-              ) : (
-                <p className="mt-5 text-xs text-fg-muted">
-                  The receiver must accept the grant to activate it.
-                </p>
-              )}
             </>
           )}
         </Steps.Content>
@@ -521,17 +515,15 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               </Button>
             </Steps.NextTrigger>
           ) : (
-            backend !== undefined && (
-              <Button
-                className="ml-auto"
-                size="sm"
-                disabled={!valid}
-                pending={submitting}
-                onClick={() => void submit()}
-              >
-                Create grant
-              </Button>
-            )
+            <Button
+              className="ml-auto"
+              size="sm"
+              disabled={!valid}
+              pending={submitting}
+              onClick={() => void submit()}
+            >
+              Create grant
+            </Button>
           )}
         </div>
       </Steps.Root>

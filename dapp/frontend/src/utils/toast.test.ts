@@ -16,8 +16,8 @@ describe('toast lifetime', () => {
     expect(toaster.getVisibleToasts()[0].duration).toBe(Number.POSITIVE_INFINITY)
   })
 
-  it('keeps a toast carrying an action, whose link has to be there when it is reached for', () => {
+  it('times out a toast carrying an action, since the page it links to is still reachable after', () => {
     toast.success('Grant created', { action: { label: 'View pending grants', to: '/pending' } })
-    expect(toaster.getVisibleToasts()[0].duration).toBe(Number.POSITIVE_INFINITY)
+    expect(toaster.getVisibleToasts()[0].duration).toBe(3200)
   })
 })

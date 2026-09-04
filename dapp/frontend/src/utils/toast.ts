@@ -20,12 +20,11 @@ export const toaster = createToaster({ placement: PLACEMENT, duration: AUTO_DISM
 export const toastRegion = (): Element | null => document.getElementById(`toast-group:${PLACEMENT}`)
 
 const push = (tone: ToastTone, message: string, meta?: ToastMeta): void => {
-  const persist = tone === 'error' || meta?.action !== undefined
   toaster.create({
     type: tone,
     title: message,
     meta,
-    ...(persist && { duration: Number.POSITIVE_INFINITY }),
+    ...(tone === 'error' && { duration: Number.POSITIVE_INFINITY }),
   })
 }
 
@@ -42,13 +41,3 @@ export const readToast = (
   message: String(toast.title),
   tone: (toast.type ?? 'info') as ToastTone,
 })
-
-export const copyToast =
-  (noun: string) =>
-  (outcome: { ok: boolean }): void => {
-    if (outcome.ok) {
-      toast.success(`${noun} copied`)
-    } else {
-      toast.error(`Could not copy ${noun.toLowerCase()}`)
-    }
-  }

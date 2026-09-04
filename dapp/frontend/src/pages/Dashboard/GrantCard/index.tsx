@@ -77,7 +77,7 @@ export const GrantCard = ({
         <h2>
           <Link
             to={`/grants/${grant.id}`}
-            className="block truncate text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
+            className="inline-block max-w-full truncate align-bottom text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
           >
             {grant.title}
           </Link>
@@ -151,7 +151,7 @@ export const GrantCard = ({
               </div>
               <AmountDisplay value={derived.unvested} className="text-xl font-semibold text-fg" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <Button
                 aria-label="Grant details"
                 size="icon"

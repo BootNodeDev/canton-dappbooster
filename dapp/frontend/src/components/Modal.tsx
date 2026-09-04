@@ -28,6 +28,7 @@ export const Modal = ({
       }
     }}
     persistentElements={[toastRegion]}
+    onFocusOutside={(event) => event.preventDefault()}
   >
     <Portal>
       <Dialog.Backdrop className="fixed inset-0 z-40 bg-[var(--scrim)] backdrop-blur-sm" />
@@ -46,7 +47,7 @@ export const Modal = ({
               {description}
             </Dialog.Description>
           )}
-          <div className="mt-8">{children}</div>
+          <div className="mt-4">{children}</div>
           <Dialog.CloseTrigger
             aria-label="Close"
             className="absolute right-6 top-6 grid size-7 place-items-center text-fg-muted transition-colors hover:text-fg"

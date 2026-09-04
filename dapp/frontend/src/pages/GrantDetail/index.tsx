@@ -23,7 +23,6 @@ import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
 import { deriveGrant, grantBacking, useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
 import { formatDate } from '@/utils/format'
-import { copyToast } from '@/utils/toast'
 
 export const GrantDetail = (): React.JSX.Element => {
   const nowMs = useNow()
@@ -193,8 +192,6 @@ export const GrantDetail = (): React.JSX.Element => {
                   <Identifier
                     value={value}
                     label={`${label.toLowerCase()} party id`}
-                    announce={false}
-                    onCopy={copyToast(`${label} party id`)}
                     className="text-xs"
                   />
                 </dd>

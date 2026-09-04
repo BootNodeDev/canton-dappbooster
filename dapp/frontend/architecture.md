@@ -14,7 +14,7 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
@@ -318,11 +318,11 @@ yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(party)}` again at 
 sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no
 canonical explorer, and the href stays a per-call-site decision the way the kit's own is optional.
 Counterparty ids go through one component:
-[`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix,
-the direction-specific label, and the copy toast, and `GrantCard` and `PendingGrantCard` render it.
-Every `<Identifier>`
-the app renders passes `announce={false}`: the `Toaster` is the app's live region, so the kit's own
-would double-announce. The region stays where it mounts, which takes one arrangement with the
+[`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix
+and the direction-specific label, and `GrantCard` and `PendingGrantCard` render it. A copy raises
+no toast: the icon swapping to a tick is the confirmation, and the kit's own live region announces
+it, which is why no `<Identifier>` here turns `announce` off. The toast region stays where it
+mounts, which takes one arrangement with the
 dialog: Ark's `Dialog` aria-hides everything outside its own content but skips any element carrying
 `aria-live`, and the toast region carries one, so a toast raised over an open dialog — every failed
 submit — is still announced. Clicks are the other half. A modal dialog blocks the pointer outside
@@ -373,6 +373,12 @@ Three things the library leaves to the caller, settled once here:
 - **`InfoTip` opens on tap.** Zag's tooltip ignores touch pointers by design, so the component adds
   a `pointerup` toggle for `pointerType === 'touch'` and turns `closeOnClick` off, or the click that
   follows the tap closes what the tap opened.
+- **`Modal` refuses a focus-outside dismissal.** Ark closes a dismissable layer once focus lands
+  outside it, and a modal dialog only ever gets that by accident: mounting is what opens ours, so
+  no `Dialog.Trigger` is registered for Ark to exclude, and the focus trap handing focus back to
+  the button that opened it reads as an interaction outside. Under React's development remount
+  that happens on the way in, and the dialog shuts the moment it opens. A press outside and Escape
+  still close it.
 
 The toast stack is the one Ark part that needs CSS the app has to supply: Zag places each toast
 absolutely and hands the offsets over as custom properties, so
