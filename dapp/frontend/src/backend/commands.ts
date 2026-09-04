@@ -144,6 +144,21 @@ export const buildSplitCommand = (
     expectedDso: args.dso,
   })
 
+// One fixed amount, so a tap is a button and not a form.
+export const TAP_AMOUNT = '100'
+
+// LocalNet and devnet only: the DSO does not carry this choice on a real network.
+export const buildTapCommand = (
+  templateId: string,
+  amuletRulesCid: string,
+  args: { openMiningRound: string; receiver: string },
+) =>
+  exercise(templateId, amuletRulesCid, 'AmuletRules_DevNet_Tap', {
+    receiver: args.receiver,
+    amount: TAP_AMOUNT,
+    openRound: args.openMiningRound,
+  })
+
 export const buildAcceptCommand = (
   templateId: string,
   pendingCid: string,

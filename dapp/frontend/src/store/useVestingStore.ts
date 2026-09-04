@@ -130,11 +130,7 @@ interface VestingState {
     amount: string,
   ) => Promise<string | undefined>
   clear: () => void
-  createVesting: (
-    backend: VestingBackend,
-    partyId: string,
-    input: CreateVestInput,
-  ) => Promise<{ disclosedBytes: number }>
+  createVesting: (backend: VestingBackend, partyId: string, input: CreateVestInput) => Promise<void>
   refresh: (backend: VestingBackend, partyId: string) => Promise<void>
   withdraw: (
     backend: VestingBackend,
@@ -184,9 +180,8 @@ export const useVestingStore = create<VestingState>((set, get) => ({
   },
 
   createVesting: async (backend, partyId, input) => {
-    const result = await backend.createVesting(input)
+    await backend.createVesting(input)
     await get().refresh(backend, partyId)
-    return result
   },
 
   accept: async (backend, partyId, pendingCid) => {

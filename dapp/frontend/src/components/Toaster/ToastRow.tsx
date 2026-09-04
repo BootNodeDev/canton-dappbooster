@@ -1,6 +1,6 @@
-import { useCopyToClipboard } from '@bootnodedev/canton-dappbooster'
 import { Link } from 'react-router-dom'
-import { CheckIcon, CopyIcon } from '@/icons'
+import { CopyButton } from '@/components/CopyButton'
+import { CheckIcon } from '@/icons'
 import { cn } from '@/utils/cn'
 import { type ToastItem, type ToastTone, useToastStore } from '@/utils/toast'
 
@@ -12,7 +12,6 @@ const toneStyles: Record<ToastTone, string> = {
 
 export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
   const dismiss = useToastStore((s) => s.dismiss)
-  const { copy, state } = useCopyToClipboard()
   // A ledger rejection arrives as a wall of text, so only that tone is worth scrolling and copying.
   const isError = item.tone === 'error'
   return (
@@ -36,20 +35,7 @@ export const ToastRow = ({ item }: { item: ToastItem }): React.JSX.Element => {
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {isError && (
-          <button
-            type="button"
-            aria-label={state === 'copied' ? 'Error copied' : 'Copy error'}
-            onClick={() => void copy(item.message)}
-            className="text-fg-muted transition-colors hover:text-fg"
-          >
-            {state === 'copied' ? (
-              <CheckIcon width={16} height={16} />
-            ) : (
-              <CopyIcon width={16} height={16} />
-            )}
-          </button>
-        )}
+        {isError && <CopyButton className="text-fg-muted" label="Error" value={item.message} />}
         <button
           type="button"
           aria-label="Dismiss"

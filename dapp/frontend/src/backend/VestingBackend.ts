@@ -37,7 +37,8 @@ export interface VestingBackend {
   cancel(args: { creator: string; contractCid: string }): Promise<void>
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
-  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  createVesting(args: CreateVestInput): Promise<void>
+  tap(partyId: string): Promise<void>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }

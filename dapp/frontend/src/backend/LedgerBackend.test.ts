@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { encodeSchedule } from '@/backend/commands'
+import { encodeSchedule, TAP_AMOUNT } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
@@ -264,13 +264,13 @@ describe('LedgerBackend.createVesting', () => {
       },
     })
 
-    await expect(backend.createVesting(grant)).rejects.toThrow(/only 400 CC is free/)
+    await expect(backend.createVesting(grant)).rejects.toThrow(/only 400 AMT is free/)
   })
 
   it('exercises the factory choice with the composed note and schedule, disclosing only it', async () => {
     const { backend, submissions } = harness()
 
-    const result = await backend.createVesting(grant)
+    await backend.createVesting(grant)
 
     expect(submissions[1]?.commands).toEqual([
       {
@@ -299,7 +299,6 @@ describe('LedgerBackend.createVesting', () => {
         synchronizerId: 'sync::1',
       },
     ])
-    expect(result.disclosedBytes).toBe(deployment.factoryBlob.length)
   })
 
   it('omits the synchronizer id when the config carries none', async () => {
@@ -311,10 +310,10 @@ describe('LedgerBackend.createVesting', () => {
     expect(submissions[1]?.disclosedContracts?.[0]).not.toHaveProperty('synchronizerId')
   })
 
-  it('refuses a grant the funder holds no Canton Coin for', async () => {
+  it('refuses a grant the funder holds no Amulet for', async () => {
     const { backend } = harness({ acs: {} })
 
-    await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 CC is free/)
+    await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 AMT is free/)
   })
 
   // A disclosure is an opaque blob, so the split reads the DSO off an Amulet it consumes.
@@ -396,6 +395,25 @@ describe('LedgerBackend submissions', () => {
       ['pkg1:AmuletVesting:AmuletVestingContract', 'AmuletVestingContract_Cancel', 'c1'],
       ['pkg1:AmuletVesting:AmuletVestedClaim', 'AmuletVestedClaim_Withdraw', 'r1'],
     ])
+  })
+
+  it('taps AmuletRules for the connected party, on the same two disclosures', async () => {
+    const { backend, submissions } = harness()
+
+    await backend.tap('funder::1')
+
+    const command = submissions[0]?.commands?.[0]?.ExerciseCommand
+    expect([command?.templateId, command?.choice, command?.contractId]).toEqual([
+      transferContext.rulesTemplateId,
+      'AmuletRules_DevNet_Tap',
+      transferContext.ctx.amuletRules,
+    ])
+    expect(command?.choiceArgument).toEqual({
+      receiver: 'funder::1',
+      amount: TAP_AMOUNT,
+      openRound: transferContext.ctx.openMiningRound,
+    })
+    expect(submissions[0]?.disclosedContracts).toEqual(onSync(transferContext.disclosed))
   })
 
   it('carries the transfer context into every choice argument that takes one', async () => {

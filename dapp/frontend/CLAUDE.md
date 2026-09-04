@@ -32,10 +32,10 @@ One implementation each, so a second one is a bug and not a choice:
   unstyled) and never a hand-rolled bubble. With a string child it dash-underlines the words; with an
   element it does not, so an icon trigger is a legal child. Childless it is a `?` badge.
 - **A figure: `components/AmountDisplay`.** It owns the grouping, the forced two decimals, and the
-  Canton Coin mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
+  Amulet mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
   Where the surrounding text already spells out the unit, reach for `components/CompactAmount`, the
   same figure without the mark: it is what keeps the exact value in a tooltip and in the accessible
-  name once an outsized amount is abbreviated, so a hand-rolled `formatCCCompact` loses it.
+  name once an outsized amount is abbreviated, so a hand-rolled `formatFigureCompact` loses it.
 - **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
   `pending`, which owns the spinner, the wording and the disable together. The one exception is

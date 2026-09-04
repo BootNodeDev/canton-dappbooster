@@ -4,9 +4,11 @@ import {
   buildCancelCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildTapCommand,
   buildWithdrawCommand,
   decodeSchedule,
   encodeSchedule,
+  TAP_AMOUNT,
 } from '@/backend/commands'
 import type { AppTransferContext } from '@/backend/transferContext'
 import type { VestingSchedule } from '@/utils/schedule'
@@ -155,6 +157,22 @@ describe('command builders', () => {
         contractId: 'rcid',
         choice: 'AmuletVestedClaim_Withdraw',
         choiceArgument: { withdrawAmount: '50', ctx },
+      },
+    })
+  })
+
+  it('buildTapCommand exercises AmuletRules itself, for the fixed amount', () => {
+    expect(
+      buildTapCommand('RULESTID', ctx.amuletRules, {
+        openMiningRound: ctx.openMiningRound,
+        receiver: 'P',
+      }),
+    ).toEqual({
+      ExerciseCommand: {
+        templateId: 'RULESTID',
+        contractId: 'rules-cid',
+        choice: 'AmuletRules_DevNet_Tap',
+        choiceArgument: { receiver: 'P', amount: TAP_AMOUNT, openRound: 'round-cid' },
       },
     })
   })

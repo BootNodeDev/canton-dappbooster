@@ -114,7 +114,7 @@ const deferred = <T>(): { promise: Promise<T>; resolve: (value: T) => void } => 
 const raceBackend = (routes: Record<string, Promise<VestingView>>): VestingBackend =>
   ({
     viewAs: (partyId: string) => routes[partyId],
-    createVesting: async () => ({ disclosedBytes: 0 }),
+    createVesting: async () => {},
     accept: async () => {},
     withdraw: async () => {},
     cancel: async () => {},

@@ -1,8 +1,8 @@
-# @canton-dappbooster/frontend — Canton Coin vesting dApp
+# @canton-dappbooster/frontend — Amulet vesting dApp
 
-dApp for **Canton Coin vesting**: propose a grant, the receiver accepts, claim as it
-vests, or cancel into a residual claim. Accepting locks the funder's Canton Coin in an
-Amulet escrow and each claim releases part of it, so the figures on screen are real
+dApp for **Amulet vesting**: propose a grant, the receiver accepts, claim as it
+vests, or cancel into a residual claim. Accepting locks the funder's Amulet in
+escrow and each claim releases part of it, so the figures on screen are real
 holdings; grants render live vested/claimable figures from the pure schedule math in
 [`src/utils/schedule.ts`](src/utils/schedule.ts).
 
@@ -32,6 +32,10 @@ The bootstrap writes nothing. It leaves the operator and the factory on the ledg
 finds both once a wallet connects: the operator through the rights the bootstrap granted, the
 factory through an active-contracts read that returns its explicit-disclosure payload, without
 which a grant cannot be created. Re-running it supersedes the last one, on any ledger.
+
+Funding a grant takes Amulet, and the account menu has a faucet for it: **Tap Amulet** taps
+100 AMT into the connected party. It works on LocalNet and devnet, where the choice exists, and
+refuses until the SV has opened the first mining round, roughly ten minutes after a fresh start.
 
 Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
 the session is restored on reload by the wallet itself. Changing the wallet's primary
