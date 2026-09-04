@@ -48,6 +48,7 @@ declare const darkSheet: string
 /* Tokens */
 
 declare const instrumentId: FixtureInstrumentId
+declare const registryUrl: string
 declare const holdings: readonly {
   amount: string
   instrumentId: FixtureInstrumentId

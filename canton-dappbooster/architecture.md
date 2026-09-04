@@ -159,6 +159,11 @@ The list is the consumer's, and the kit reads no ledger. What that costs and buy
   on the `/connect` sub-path is that read, and `sumHoldings` groups its one-per-contract answer into
   one row per instrument. An absent balance means the read has not reached, not that the party holds
   nothing, so the row shows no figure and sorts below every one that has a figure.
+- **Metadata comes from the registry, over plain HTTP.** `readInstruments` reads a registry's
+  catalogue and stamps its admin party, taken from that registry's own `/info`, onto every id: the
+  instrument list carries bare ids, and an id identifies a token only together with the party that
+  issued it. It serves no logo, so artwork stays the app's or a curated list's. No session, so it
+  sits on the main barrel beside `sumHoldings`.
 - **The read lives here rather than in `canton-connect`**, even though it needs that package's
   session. What it knows is the token standard — an interface id, the shape of a holding view, an
   instrument id — and `canton-connect` is a layer over the wallet SDK, kept thin enough to delete.
