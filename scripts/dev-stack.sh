@@ -21,7 +21,7 @@
 #   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (pnpm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
 #   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DARs, wallet-service, bootstrap, registry, dApp)
-#   ./scripts/dev-stack.sh down [dir]  # stop wallet-service + the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh down [dir]  # stop the dApp dev server, the token registry and wallet-service, stop the LocalNet
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -29,7 +29,7 @@
 #
 # What `up` starts (in order; Docker must already be running):
 #   1. LocalNet containers           (canton-barebones start)
-#   2. Builds and deploys the vesting DAR, then the two vendored DARs
+#   2. Builds and deploys the amulet-vesting DAR, then the two vendored DARs
 #   3. wallet-service                -> http://localhost:3010  (background)
 #   4. Bootstraps the vesting operator, its factory and the DBT instrument
 #   5. Token registry                -> http://localhost:3013  (background)
@@ -320,6 +320,7 @@ up() {
   pnpm run build-dar
   log "Deploying $DAR_PATH to Canton..."
   pnpm run deploy-dar -- "$DAR_PATH"
+  local dar
   for dar in "${VENDOR_DARS[@]}"; do
     log "Deploying $dar to Canton..."
     pnpm run deploy-dar -- "$dar"
@@ -385,7 +386,7 @@ down() {
   # Belt-and-suspenders: kill any stray vite on our port.
   pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
   stop_pidfile "$REGISTRY_PID" "token registry"
-  pkill -f "canton-token-forge-registry" 2>/dev/null || true
+  pkill -f "canton-token-forge/registry/dist" 2>/dev/null || true
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
 
@@ -421,7 +422,7 @@ menu() {
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
     "start LocalNet, deploy DARs, wallet-service, bootstrap, registry, dApp"
-    "stop wallet-service + dApp dev server, stop the LocalNet"
+    "stop dApp dev server, token registry, wallet-service, stop the LocalNet"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice

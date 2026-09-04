@@ -120,7 +120,7 @@ Needs the registry env block `bootstrap` printed above, plus `CANTON_BACKEND_TOK
 
 ```bash
 source .env
-# paste the block bootstrap printed, then:
+# paste the block bootstrap printed, skipping its LEDGER_API_TOKEN placeholder line, then:
 export LEDGER_API_URL ADMIN_PARTY INSTRUMENT_CONFIG_TEMPLATE_ID PREAPPROVAL_TEMPLATE_ID \
   LOCKED_TOKEN_TEMPLATE_ID TRANSFER_INSTRUCTION_TEMPLATE_ID ALLOCATION_TEMPLATE_ID PORT
 LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" pnpm exec canton-token-forge-registry
