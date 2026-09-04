@@ -228,11 +228,31 @@ read_bootstrap_env() { # read_bootstrap_env <key>
   printf '%s' "${value%\'}"
 }
 
+# The port has one definition, in scripts/bootstrap-vesting.mjs, and reaches this
+# script only in the block bootstrap prints. 3013 is the fallback for a `down` that
+# never saw one.
+registry_port() {
+  local port=''
+  if [ -f "$BOOTSTRAP_LOG" ]; then
+    port="$(read_bootstrap_env PORT)"
+  fi
+  printf '%s' "${port:-3013}"
+}
+
+# Scoped to the port on purpose: matching the registry's path alone would also kill
+# one a developer is running on another port, from this checkout or another.
+kill_registry_on_port() { # kill_registry_on_port <port>
+  local port="$1" pid
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+    if ps -p "$pid" -o args= 2>/dev/null | grep -q 'canton-token-forge/registry/dist'; then
+      kill "$pid" 2>/dev/null || true
+    fi
+  done
+}
+
 # The registry ships from BootNodeDev/canton-token-forge as a git dependency and runs
 # on the host. It is read-only and takes the same bearer the DAR upload does, so no
-# new secret is introduced. It also loads dotenv from its cwd, which is the repo root:
-# harmless, because everything below is passed through the environment and dotenv
-# never overrides a variable that is already set.
+# new secret is introduced.
 start_registry() {
   local key value port
   local -a registry_env=()
@@ -248,16 +268,21 @@ start_registry() {
   if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
     log "Port $port in use; restarting the token registry."
     stop_pidfile "$REGISTRY_PID" "token registry"
-    pkill -f "canton-token-forge/registry/dist" 2>/dev/null || true
-    wait_for_port_free 10 "$port" \
-      || die "Port $port is held by something other than the token registry; free it, then run 'up'."
+    kill_registry_on_port "$port"
+    # Comfortably past the registry's own SHUTDOWN_TIMEOUT_MS, which is 8s by
+    # default: a shorter budget reports a draining registry as a foreign process.
+    wait_for_port_free 20 "$port" \
+      || die "Port $port is still held after 20s; free it, then run 'up'. A token registry draining an in-flight request takes up to SHUTDOWN_TIMEOUT_MS (8s by default)."
   fi
 
   log "Starting the token registry -> http://localhost:$port"
   # The bearer goes in the environment rather than through `env`'s argv, where `ps`
   # would show it to every local user for the life of the process.
+  # DOTENV_CONFIG_PATH points the registry's `import 'dotenv/config'` at an empty file:
+  # its cwd is the repo root, so it would otherwise read all of wallet-service's .env
+  # into itself, the CANTON_AUTH_SECRET signing key included, for no purpose.
   LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" \
-    nohup env "${registry_env[@]}" pnpm exec canton-token-forge-registry >"$REGISTRY_LOG" 2>&1 &
+    nohup env DOTENV_CONFIG_PATH=/dev/null "${registry_env[@]}" pnpm exec canton-token-forge-registry >"$REGISTRY_LOG" 2>&1 &
   echo $! >"$REGISTRY_PID"
 
   # /readyz rather than /healthz: it reads the ledger end, so a 2xx proves the
@@ -407,7 +432,7 @@ down() {
   # Belt-and-suspenders: kill any stray vite on our port.
   pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
   stop_pidfile "$REGISTRY_PID" "token registry"
-  pkill -f "canton-token-forge/registry/dist" 2>/dev/null || true
+  kill_registry_on_port "$(registry_port)"
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
 

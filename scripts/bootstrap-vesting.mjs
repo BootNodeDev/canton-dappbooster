@@ -256,6 +256,9 @@ const main = async () => {
   )
 }
 
-if (process.argv[1] === import.meta.filename) {
+// import.meta.main, not a comparison against argv[1]: the loader realpaths
+// import.meta.filename while argv[1] keeps symlinks, so a symlinked path made the
+// guard false and exited 0 having created nothing.
+if (import.meta.main) {
   await main()
 }
