@@ -11,7 +11,7 @@ import {
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
 import { Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { DateField } from '@/components/CreateGrant/DateField'
@@ -156,7 +156,13 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const token =
     (pickedKey === undefined ? undefined : byKey.get(pickedKey)) ??
     tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
-  const { failed } = useTokenFigures()
+  const { failed, refresh } = useTokenFigures()
+  // The figures are read once a session, and a grant created through this form has moved the
+  // funder's coin since. This dialog is the only place they are shown, so it is where they are
+  // worth re-reading.
+  useEffect(() => {
+    refresh()
+  }, [refresh])
   // A read that failed leaves the row carrying the ledger's own unlocked total, which counts coin a
   // pending grant has pledged, so no ceiling is known rather than that one.
   const balance = failed ? undefined : token?.balance

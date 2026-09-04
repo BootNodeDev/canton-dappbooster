@@ -8,7 +8,16 @@ import {
   TokenListProvider,
 } from '@bootnodedev/canton-dappbooster'
 import { useHoldings } from '@bootnodedev/canton-dappbooster/connect'
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { addAmounts, subtractAmounts } from '@/utils/amount'
@@ -56,12 +65,13 @@ const fromVesting = (
 // on it. This is what tells them apart, and what lets a field say so.
 export interface TokenFigures {
   failed: boolean
+  refresh: () => void
 }
 
 const FiguresContext = createContext<TokenFigures | undefined>(undefined)
 
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
-  const { error: holdingsError, holdings } = useHoldings()
+  const { error: holdingsError, holdings, refetch: refetchHoldings } = useHoldings()
   const { backend } = useBackend()
   const { party } = useParty()
   const partyId = party?.partyId
@@ -69,30 +79,44 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
   const [curated, setCurated] = useState<readonly AssetListEntry[]>([])
   const [free, setFree] = useState<string>()
   const [freeFailed, setFreeFailed] = useState(false)
+  // Only the newest read may report. Bumped on unmount too, so a read in flight then lands nowhere.
+  const newest = useRef(0)
 
   // The figure belongs to one party, so it goes when that party does and when the read that owns it
   // fails: kept, it would report the last party's spendable coin as this one's.
-  useEffect(() => {
+  const readFree = useCallback((): void => {
+    newest.current += 1
+    const request = newest.current
     setFree(undefined)
     setFreeFailed(false)
     if (backend === undefined || partyId === undefined) return
-    let live = true
     backend.balanceOf(partyId).then(
       (value) => {
-        if (live) setFree(value)
+        if (request === newest.current) setFree(value)
       },
       () => {
-        if (live) setFreeFailed(true)
+        if (request === newest.current) setFreeFailed(true)
       },
     )
-    return () => {
-      live = false
-    }
   }, [backend, partyId])
 
+  useEffect(() => {
+    readFree()
+    return () => {
+      newest.current += 1
+    }
+  }, [readFree])
+
+  // Its identity moves with the session and not with the figures, so a caller can ask for a read on
+  // mount without a failed one asking again forever.
+  const refresh = useCallback(() => {
+    readFree()
+    refetchHoldings()
+  }, [readFree, refetchHoldings])
+
   const figures = useMemo<TokenFigures>(
-    () => ({ failed: freeFailed || holdingsError !== undefined }),
-    [freeFailed, holdingsError],
+    () => ({ failed: freeFailed || holdingsError !== undefined, refresh }),
+    [freeFailed, holdingsError, refresh],
   )
 
   useEffect(() => {
