@@ -249,7 +249,21 @@ out is fixed by the contract, so `Claim` passes `token={AMT}` and no `onTokenSel
 makes the kit render the symbol as a static mark rather than a button.
 
 The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/Tokens.tsx) reads the
-kit's `useHoldings`, groups it with `sumHoldings`, and hands the result to `TokenListProvider`. So every row is an instrument the connected party actually holds, carrying its
+kit's `useHoldings`, groups it with `sumHoldings`, reads the registry's catalogue with
+`readInstruments`, and hands the merged result to `TokenListProvider`.
+
+Three sources, in that precedence: the raw instrument id, then whatever the registry names it, then
+the app's own entry, which wins because it is the only one carrying artwork. A registry that will
+not answer costs labels and no rows, since the holdings list either way.
+
+**The registry is reached through the dev server, not directly.** LocalNet serves it under the
+validator's authenticated prefix, so a browser gets a 401. `REGISTRY_URL` is therefore the
+same-origin `/registry`, and [`vite.config.ts`](vite.config.ts) proxies that to
+`SPLICE_REGISTRY_API_URL` with the bearer from the root `.env`. The token stays in the dev server
+and never reaches the bundle. It is a constant rather than a `VITE_` variable because every build
+has the same value for it; a deployment pointing at another registry is what would earn the
+variable, and that deployment does not work yet — the proxy is the dev server's, so a deployed build
+reads no metadata at all. So every row is an instrument the connected party actually holds, carrying its
 own admin party, its spendable balance and whatever is locked.
 [`src/utils/tokens.tsx`](src/utils/tokens.tsx) is down to the artwork, the name and the symbol,
 matched by instrument id: a token this deployment does not know is listed under its raw id rather

@@ -8,3 +8,8 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 
 // `/api/rpc` when deployed, because an https page cannot reach plain-http wallet-service.
 export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
+
+// Same-origin, because the registry wants a bearer no browser should hold: `vite.config.ts` proxies
+// this path to `SPLICE_REGISTRY_API_URL` and adds the header. A deployment needing another registry
+// is what turns this into a variable.
+export const REGISTRY_URL = '/registry'

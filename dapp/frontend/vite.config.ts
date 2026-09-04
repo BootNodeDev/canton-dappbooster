@@ -8,9 +8,26 @@ import { parseEnv } from './src/utils/env'
 
 // The empty prefix loads every key in the root `.env`, so only what `parseEnv` returns may be
 // defined back, never the loaded object.
+// LocalNet serves the token registry behind the validator's authenticated prefix, so the browser
+// cannot read it: the bearer stays here, in the dev server, and the page asks its own origin.
+const REGISTRY_PROXY = '/registry'
+const LOCALNET_REGISTRY = 'http://localhost:2000/api/validator/v0/scan-proxy'
+
+const registryTarget = (values: Record<string, string>) => {
+  const upstream = new URL(values.SPLICE_REGISTRY_API_URL ?? LOCALNET_REGISTRY)
+  const token = values.CANTON_BACKEND_TOKEN ?? ''
+  return {
+    changeOrigin: true,
+    headers: token === '' ? {} : { Authorization: `Bearer ${token}` },
+    rewrite: (path: string) => path.replace(REGISTRY_PROXY, upstream.pathname.replace(/\/$/, '')),
+    target: upstream.origin,
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url))
-  const env = parseEnv(loadEnv(mode, envDir, ''))
+  const loaded = loadEnv(mode, envDir, '')
+  const env = parseEnv(loaded)
 
   return {
     define: Object.fromEntries(
@@ -28,6 +45,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: 'localhost',
       port: 3012,
+      proxy: { [REGISTRY_PROXY]: registryTarget(loaded) },
       strictPort: true,
     },
     // jsdom despite no DOM assertions: the wallet SDK touches DOM globals on import.
