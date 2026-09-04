@@ -1,5 +1,6 @@
 import {
   type Instrument,
+  type InstrumentBalance,
   mergeTokens,
   type PartialToken,
   readInstruments,
@@ -46,16 +47,14 @@ const fromApp = (rows: readonly PartialToken[]): readonly PartialToken[] =>
 // balance, and coin a pending grant pledged joins the escrowed coin as locked. The three still sum
 // to everything held, so the row hides nothing.
 const fromVesting = (
-  rows: readonly PartialToken[],
+  held: readonly InstrumentBalance[],
   free: string | undefined,
 ): readonly PartialToken[] =>
   free === undefined
     ? []
-    : rows
-        .filter(
-          ({ balance, instrumentId }) => instrumentId.id === AMULET_ID && balance !== undefined,
-        )
-        .map(({ balance = '0', instrumentId, locked = '0' }) => ({
+    : held
+        .filter(({ instrumentId }) => instrumentId.id === AMULET_ID)
+        .map(({ balance, instrumentId, locked }) => ({
           balance: free,
           instrumentId,
           locked: addAmounts(locked, subtractAmounts(balance, free)),
@@ -153,12 +152,13 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
   }, [registryUrls])
 
   const tokens = useMemo<readonly Token[]>(() => {
-    const sources = [fromCurated(curated), fromRegistries(instruments), sumHoldings(holdings ?? [])]
-    const rows = mergeTokens([
-      ...sources,
-      fromApp(sources.flat()),
-      fromVesting(sumHoldings(holdings ?? []), free),
-    ])
+    const held = sumHoldings(holdings ?? [])
+    const sources: readonly (readonly PartialToken[])[] = [
+      fromCurated(curated),
+      fromRegistries(instruments),
+      held,
+    ]
+    const rows = mergeTokens([...sources, fromApp(sources.flat()), fromVesting(held, free)])
     // The read enumerates every holding, so once it answers, a token missing from it is one the
     // party holds none of rather than one nobody asked about.
     if (holdings === undefined) return rows
