@@ -1,6 +1,7 @@
 import { useSelector } from '@xstate/react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
 import { useConnect } from '#src/hooks/useConnect'
+import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useParty } from '#src/hooks/useParty'
 import { useWalletStatus } from '#src/hooks/useWalletStatus'
 import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
@@ -30,7 +31,8 @@ type Session = {
 export const useSession = (): Session => {
   const { connection } = useCantonConnectContext()
 
-  const { connect, disconnect, error, isPending, reset } = useConnect()
+  const { connect, error, isPending, reset } = useConnect()
+  const { disconnect } = useDisconnect()
   const { party, status } = useParty()
   const { isLocked } = useWalletStatus()
 

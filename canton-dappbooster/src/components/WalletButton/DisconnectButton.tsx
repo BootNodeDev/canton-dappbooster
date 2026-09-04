@@ -1,4 +1,4 @@
-import { useConnect } from '@bootnodedev/canton-connect'
+import { useDisconnect } from '@bootnodedev/canton-connect'
 import type { ButtonHTMLAttributes, ReactElement } from 'react'
 import { disconnectAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
@@ -35,8 +35,8 @@ export const DisconnectButton = ({
   type = 'button',
   ...rest
 }: DisconnectButtonProps): ReactElement => {
-  const session = useConnect()
-  const handleClick = composeAction(onClick, session.disconnect)
+  const { disconnect } = useDisconnect()
+  const handleClick = composeAction(onClick, disconnect)
 
   return (
     <button

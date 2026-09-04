@@ -8,14 +8,12 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
  * Return shape of {@link useConnect}.
  *
  * `connect` resolves once the party lands and rejects a cancel with {@link ConnectCancelledError}.
- *
- * `disconnect` settles within 10 s even unanswered; `reset` forgets only `error`.
+ * `reset` forgets only `error`.
  *
  * @category Hooks
  */
 export interface UseConnectResult {
   connect: () => Promise<void>
-  disconnect: () => Promise<void>
   isPending: boolean
   isConnected: boolean
   error: Error | undefined
@@ -23,9 +21,9 @@ export interface UseConnectResult {
 }
 
 /**
- * Connects and disconnects the wallet, and reports that transition. `connect` takes no argument:
- * the picker chooses the wallet, so there is no mode to pass. Gate a pending face on `isPending`
- * and session-dependent content on `useParty().party`, not on `isConnected`.
+ * Connects the wallet and reports that transition. `connect` takes no argument: the picker chooses
+ * the wallet, so there is no mode to pass. Gate a pending face on `isPending` and
+ * session-dependent content on `useParty().party`, not on `isConnected`.
  *
  * @throws with no {@link CantonConnectProvider} above it, as every hook here does.
  *
@@ -38,7 +36,7 @@ export interface UseConnectResult {
  * @category Hooks
  */
 export const useConnect = (): UseConnectResult => {
-  const { connect, connection, disconnect, resetConnectError } = useCantonConnectContext()
+  const { connect, connection, resetConnectError } = useCantonConnectContext()
 
   const status = useSelector(connection, toConnectionStatus)
   const isPending = useSelector(connection, (snapshot) => snapshot.hasTag('connecting'))
@@ -54,7 +52,6 @@ export const useConnect = (): UseConnectResult => {
 
   return {
     connect,
-    disconnect,
     isPending,
     isConnected: status === 'connected',
     error,

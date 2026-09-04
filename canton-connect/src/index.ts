@@ -13,6 +13,8 @@ export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConne
 export { ConnectCancelledError } from '#src/connectError'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
+export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
+export { useDisconnect } from '#src/hooks/useDisconnect'
 export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecute'
 export { useExecute } from '#src/hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
