@@ -2,7 +2,7 @@
 // popup leaves connect() pending forever. See architecture.md.
 
 import type { DappSDK } from '@canton-network/dapp-sdk'
-import { PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
 
 const POLL_MS = 400
 
@@ -61,6 +61,33 @@ const settleAbandonedConnect = (): void => {
   )
 }
 
+/** Rejects when the caller abandons the connect, closing the picker window on the way out. */
+const abandonOn = (signal: AbortSignal | undefined): Promise<never> =>
+  new Promise<never>((_, reject) => {
+    if (signal === undefined) {
+      return
+    }
+
+    const abandon = () => {
+      if (opened?.closed === false) {
+        opened.close()
+      }
+
+      if (inFlight === 1) {
+        settleAbandonedConnect()
+      }
+
+      reject(new ConnectCancelledError())
+    }
+
+    if (signal.aborted) {
+      abandon()
+      return
+    }
+
+    signal.addEventListener('abort', abandon, { once: true })
+  })
+
 /** Reports the wallet type from the picker's result message; call the return value to stop. */
 const watchForPick = (picked: (walletType: unknown) => void): (() => void) => {
   const listener = (event: MessageEvent): void => {
@@ -84,7 +111,10 @@ const watchForPick = (picked: (walletType: unknown) => void): (() => void) => {
  * const result = await guardedConnect(sdk)
  * if (!result.isConnected) throw new Error(result.reason)
  */
-export const guardedConnect = (sdk: Pick<DappSDK, 'connect'>): ReturnType<DappSDK['connect']> => {
+export const guardedConnect = (
+  sdk: Pick<DappSDK, 'connect'>,
+  signal?: AbortSignal,
+): ReturnType<DappSDK['connect']> => {
   if (typeof window === 'undefined') {
     return sdk.connect()
   }
@@ -121,7 +151,7 @@ export const guardedConnect = (sdk: Pick<DappSDK, 'connect'>): ReturnType<DappSD
   })
 
   // No status() probe before rejecting: a still-live previous session would swallow the cancel.
-  return Promise.race([sdk.connect(), dismissed]).finally(() => {
+  return Promise.race([sdk.connect(), dismissed, abandonOn(signal)]).finally(() => {
     clearInterval(poll)
     unwatchPick()
     inFlight -= 1

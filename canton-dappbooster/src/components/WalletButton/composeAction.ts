@@ -5,11 +5,12 @@ import type { MouseEvent, MouseEventHandler } from 'react'
 export const composeAction =
   (
     onClick: MouseEventHandler<HTMLButtonElement> | undefined,
-    action: () => Promise<void>,
+    action: () => void | Promise<void>,
   ): MouseEventHandler<HTMLButtonElement> =>
   (event: MouseEvent<HTMLButtonElement>): void => {
     onClick?.(event)
     if (event.defaultPrevented) return
 
-    void action().catch(() => undefined)
+    // Wrapped because a cancel is synchronous, and `.catch` on its void return would throw.
+    void Promise.resolve(action()).catch(() => undefined)
   }

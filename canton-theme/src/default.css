@@ -535,18 +535,17 @@
       border-color var(--cnc-duration) ease;
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):hover:not(:disabled, [data-pending]) {
+  :is(.cnc-disconnect-button, .cnc-connect-button):hover:not(:disabled) {
     background: var(--cnc-surface-muted);
     border-color: var(--cnc-border-strong);
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):active:not(:disabled, [data-pending]) {
+  :is(.cnc-disconnect-button, .cnc-connect-button):active:not(:disabled) {
     background: var(--cnc-accent-subtle);
     border-color: var(--cnc-accent);
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):disabled,
-  .cnc-connect-button[data-pending] {
+  :is(.cnc-disconnect-button, .cnc-connect-button):disabled {
     cursor: not-allowed;
     opacity: 0.5;
   }

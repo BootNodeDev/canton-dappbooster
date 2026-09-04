@@ -114,7 +114,7 @@ export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 's
 /**
  * One connection and the actions on it, published once. Every hook selects its slice off
  * `connection`: prefer the narrower hooks and reach for this only when none exposes the slice.
- * The three actions are `useConnect`'s own, documented there.
+ * The four actions are `useConnect`'s own, documented there.
  *
  * @category Types
  */
@@ -122,6 +122,7 @@ export interface CantonConnectContextValue {
   config: CantonConnectConfig
   connection: ConnectionSubscription
   connect: () => Promise<void>
+  cancelConnect: () => void
   disconnect: () => Promise<void>
   resetConnectError: () => void
 }
