@@ -7,14 +7,13 @@ import {
 import { parseAmount } from '#src/utils/tokenAmount'
 import { tokenKey } from '#src/utils/tokenKey'
 
-// Turns a token's balance into a number the sort can compare
+// Turns a token's balance into a number the sort can compare. Taken once per token rather than
+// inside the comparator, which would re-parse both sides of every comparison.
 const held = (token: Token): bigint => parseAmount(token.balance ?? '') ?? -1n
 
-const byBalance = (left: Token, right: Token): number => {
-  const a = held(left)
-  const b = held(right)
-  if (a === b) return 0
-  return a > b ? -1 : 1
+const byBalance = (left: { held: bigint }, right: { held: bigint }): number => {
+  if (left.held === right.held) return 0
+  return left.held > right.held ? -1 : 1
 }
 
 /**
@@ -44,7 +43,10 @@ export interface TokenListProviderProps {
  */
 export const TokenListProvider = ({ children, tokens }: TokenListProviderProps): ReactElement => {
   const value = useMemo<UseTokenListResult>(() => {
-    const sorted = [...tokens].sort(byBalance)
+    const sorted = tokens
+      .map((token) => ({ held: held(token), token }))
+      .sort(byBalance)
+      .map(({ token }) => token)
     return {
       byKey: new Map(sorted.map((token) => [tokenKey(token.instrumentId), token])),
       tokens: sorted,
