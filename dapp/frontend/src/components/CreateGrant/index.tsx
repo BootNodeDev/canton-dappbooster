@@ -5,7 +5,10 @@ import {
   isValidPartyId,
   type PartyIdError,
   PartyIdInput,
+  type Token,
   TokenInput,
+  TokenListProvider,
+  type TokenMeta,
   validateAmount,
 } from '@bootnodedev/canton-dappbooster'
 import { Trash2 } from 'lucide-react'
@@ -148,6 +151,11 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [step, setStep] = useState(0)
   const [balance, setBalance] = useState<string>()
   const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
+  const [token, setToken] = useState<TokenMeta>(AMT)
+
+  // Its own list rather than the app's, so Canton Coin carries the balance already read here. The
+  // pick is display-only: a grant is Canton Coin whatever the field shows.
+  const tokens = useMemo<Token[]>(() => [{ ...AMT, balance }], [balance])
 
   useEffect(() => {
     if (backend === undefined || partyId === '') {
@@ -330,17 +338,20 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               )}
             </div>
             <div>
-              <TokenInput
-                balance={balance}
-                balanceState={balanceState}
-                className="w-full border-0 p-0"
-                id="amount"
-                label="Total amount"
-                onChange={setAmount}
-                token={AMT}
-                usdValue="N/A"
-                value={amount}
-              />
+              <TokenListProvider tokens={tokens}>
+                <TokenInput
+                  balance={balance}
+                  balanceState={balanceState}
+                  className="w-full border-0 p-0"
+                  id="amount"
+                  label="Total amount"
+                  onChange={setAmount}
+                  onTokenSelect={setToken}
+                  token={token}
+                  usdValue="N/A"
+                  value={amount}
+                />
+              </TokenListProvider>
             </div>
           </div>
         </Steps.Content>
