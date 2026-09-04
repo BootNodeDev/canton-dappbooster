@@ -12,7 +12,8 @@ types.
 
 [`@partylayer/react`](https://partylayer.xyz) is the alternative, built over its own wallet
 adapters. This one wraps Digital Asset's official SDK, the dependency these dApps already carry, and
-stays thin enough to delete. How close the result shapes should sit to wagmi's is open in #52.
+stays thin enough to delete. How the hook results relate to wagmi's is in
+[coming-from-wagmi.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/coming-from-wagmi.md).
 
 ## Why a state machine
 
