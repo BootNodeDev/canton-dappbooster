@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { toast, toaster } from '@/utils/toast'
 
-// Ark owns the clock; what is the app's is which tones are allowed to run out on it.
 describe('toast lifetime', () => {
   afterEach(() => {
     toaster.remove()

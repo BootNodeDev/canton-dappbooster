@@ -9,9 +9,6 @@ interface CopyButtonProps extends React.ComponentPropsWithoutRef<'button'> {
   value: string
 }
 
-// The icon swapping to a check is the whole success feedback, so a caller that has to speak on
-// failure passes `onOutcome`: a rejected write leaves the icon unchanged and is otherwise silent.
-// Not `onCopy`, which is the DOM clipboard event a button already carries.
 export const CopyButton = ({
   className,
   label,
@@ -27,8 +24,6 @@ export const CopyButton = ({
     <button
       aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
       className={cn('transition-colors hover:text-fg', className)}
-      // A wrapper's handler runs first and the copy stays the default action, so a menu item that
-      // renders this as its own child adds behaviour instead of silently dropping the copy.
       onClick={(event) => {
         onClick?.(event)
         if (!event.defaultPrevented) {

@@ -19,8 +19,6 @@ const TRUNCATE = { head: 6, hint: 12, tail: 6 }
 
 const FINGERPRINT_TRUNCATE = { head: 10, tail: 10 }
 
-// The hint is displayed above, so the line under it carries the other half of `hint::fingerprint`.
-// An id with no separator has no half to drop and is shown whole, as the kit's `partyHint` does.
 const fingerprintOf = (partyId: string): string =>
   partyId.includes('::') ? partyId.slice(partyId.indexOf('::') + 2) : partyId
 
@@ -36,8 +34,6 @@ interface AccountMenuProps {
 export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   const { backend } = useBackend()
 
-  // No store refresh follows: a tap creates an Amulet, and the store reads only the three
-  // amulet-vesting templates.
   const runTap = (ledger: VestingBackend): void => {
     toast.info(`Tapping ${TAP_AMOUNT} ${AMT.symbol}…`)
     ledger.tap(party.partyId).then(
@@ -66,10 +62,6 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
                   <code className="truncate font-mono">
                     {truncateIdentifier(fingerprintOf(party.partyId), FINGERPRINT_TRUNCATE)}
                   </code>
-                  {/* Copies the whole party id: a fingerprint on its own addresses nobody. An item
-                      rather than a loose button, since a menu moves focus by arrow key and reaches
-                      nothing else; `tabIndex` because a tabbable one would make Tab walk the panel
-                      instead of leaving it. */}
                   <Menu.Item asChild closeOnSelect={false} value="copy-party-id">
                     <CopyButton
                       className="shrink-0"
@@ -88,7 +80,6 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
               </div>
             </Menu.ItemGroup>
             <Menu.Separator className={ruleClass} />
-            {/* The rule below belongs to the item: without it the two would draw an empty band. */}
             {backend !== undefined && (
               <>
                 <Menu.Item
@@ -109,15 +100,12 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
                 <Menu.Separator className={ruleClass} />
               </>
             )}
-            {/* 12px under the rule; the panel's own padding sets the space below. */}
             <div className="-mt-1 flex items-center justify-between gap-2">
               <p className="flex items-center gap-2 text-xs text-fg-muted">
                 <span className="size-1.5 rounded-full bg-success" />
-                {/* The dot is the only sign of the connection, and colour alone carries nothing. */}
                 <span className="sr-only">Connected to </span>
                 {party.networkId}
               </p>
-              {/* Stripped to the icon: the kit's own border and height come from the theme layer. */}
               <Menu.Item asChild value="disconnect">
                 <DisconnectButton
                   aria-label="Disconnect"

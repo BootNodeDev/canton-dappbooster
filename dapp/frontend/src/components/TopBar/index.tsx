@@ -43,9 +43,6 @@ export const TopBar = (): React.JSX.Element => {
         </div>
       </div>
 
-      {/* Centred over the row above from md, where there is room beside the logo and the wallet
-          control; below that it takes a row of its own, since hiding it left Pending reachable
-          only by typing the URL. */}
       <nav
         aria-label="Primary"
         className="flex items-center gap-1 border-t border-border px-5 py-2 sm:px-8 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:border-0 md:p-0"

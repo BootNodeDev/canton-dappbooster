@@ -26,7 +26,6 @@ interface GrantCardProps {
   role: Role
 }
 
-// The relative wording is the readable one, so the exact date rides along in a tooltip.
 const scheduleMeta = (
   grant: Grant,
   derived: GrantDerived,

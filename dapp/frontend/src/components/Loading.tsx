@@ -1,7 +1,5 @@
 import { Spinner } from '@/components/Spinner'
 
-// Only for a first read, where there is nothing on screen yet: a refresh after a write keeps the
-// stale figures rather than replacing the page with this.
 export const Loading = (): React.JSX.Element => (
   <div
     role="status"

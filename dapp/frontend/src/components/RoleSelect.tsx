@@ -10,9 +10,6 @@ const roles: { label: string; value: Role }[] = [
   { value: 'funder', label: 'Created' },
 ]
 
-// The connected party is fixed; this lens chooses whether to view grants where the party is
-// receiver or creator. A menu rather than `components/Select`, because it commands the view rather
-// than holding a value, and its trigger has to read as part of the page title.
 export const RoleSelect = ({
   value,
   onChange,

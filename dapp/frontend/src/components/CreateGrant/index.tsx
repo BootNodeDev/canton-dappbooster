@@ -41,14 +41,11 @@ interface MilestoneInput {
   pct: string
 }
 
-// A demo preset; the actual schedule is re-anchored to submit time (see submit()).
 interface DemoPreset {
   durationMs: number
   kind: CurveKind
 }
 
-// One state for the whole schedule, because no edit touches only one field: every manual one also
-// has to clear `demo`, and a preset rewrites most of the rest.
 interface ScheduleForm {
   cliff: string
   curveKind: CurveKind
@@ -64,7 +61,6 @@ const addMonths = (d: Date, m: number): Date => {
   return copy
 }
 
-// The default months-out schedule, for a fresh form and for undoing a demo preset.
 const defaultSchedule = (
   base: Date,
 ): { cliff: string; start: string; end: string; milestones: MilestoneInput[] } => ({
@@ -78,7 +74,6 @@ const defaultSchedule = (
   ],
 })
 
-// Build a short demo schedule anchored at `anchorMs` (cliff = anchor, vests over duration).
 const buildDemoSchedule = (preset: DemoPreset, anchorMs: number): VestingSchedule => {
   const at = (ms: number): string => new Date(anchorMs + ms).toISOString()
   if (preset.kind === 'linear') {
@@ -115,11 +110,8 @@ const CURVES = [
 const STEPS = ['Grant', 'Schedule', 'Preview']
 const LAST_STEP = STEPS.length - 1
 
-// Ark makes a panel focusable so a keyboard reaches its content; the ring on it reads as a bug.
 const panelClass = 'focus-visible:outline-none'
 
-// The kit ships codes, not copy, so the wording is the app's. Exhaustive by construction: a new
-// code stops this compiling rather than rendering nothing.
 const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
   'missing-separator': 'Use a full party id (hint::fingerprint).',
   'invalid-hint': 'The hint before :: cannot be blank or contain spaces.',
@@ -128,14 +120,11 @@ const RECEIVER_MESSAGE: Record<PartyIdError, string> = {
 
 export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Element => {
   const { party } = useParty()
-  // Not `useVesting`: this mounts over a page that already holds the ACS read, and a second one
-  // would bump the refresh epoch and discard the page's own read mid-flight.
   const { backend } = useBackend()
   const partyId = party?.partyId ?? ''
   const createVesting = useVestingStore((s) => s.createVesting)
 
   const [receiver, setReceiver] = useState('')
-  // What the field is currently flagging: the kit reports it, this page words and places it.
   const [receiverError, setReceiverError] = useState<PartyIdError | undefined>(undefined)
   const [amount, setAmount] = useState('')
   const [scheduleForm, setScheduleForm] = useState<ScheduleForm>(() => ({
@@ -150,8 +139,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [balance, setBalance] = useState<string>()
   const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
 
-  // Read once on mount rather than kept live: nothing this form does moves the funder's coin, and a
-  // ceiling that shifted under a half-typed amount would reject what the user was told to enter.
   useEffect(() => {
     if (backend === undefined || partyId === '') {
       return
@@ -194,9 +181,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   }, [curveKind, cliff, start, end, milestones])
 
   const scheduleValid = validVestingSchedule(schedule)
-  // Recomputed rather than stored from the last keystroke, so it can never outlive the value that
-  // produced it, and so a balance that lands after the amount was typed still applies. Same call
-  // the field makes internally, which is what keeps the Continue button and its border in step.
   const amountError = validateAmount(amount, { max: balance })
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
@@ -213,8 +197,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const titleValid = title.trim() !== ''
   const valid = scheduleValid && amountValid && receiverValid && titleValid && backend !== undefined
 
-  // Any manual schedule edit drops the demo flag so the entered dates are used verbatim, which is
-  // why every one of them goes through here.
   const editSchedule = (patch: Partial<ScheduleForm>): void =>
     setScheduleForm((current) => ({ ...current, ...patch, demo: null }))
   const editMilestones = (update: (list: MilestoneInput[]) => MilestoneInput[]): void =>
@@ -226,9 +208,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const setMilestone = (i: number, patch: Partial<MilestoneInput>): void =>
     editMilestones((list) => list.map((m, idx) => (idx === i ? { ...m, ...patch } : m)))
 
-  // The fields are filled from buildDemoSchedule rather than rebuilt here, or the preview and the
-  // submitted schedule are two copies of the same step maths and drift apart. 'none' restores the
-  // default months-out schedule.
   const applyPreset = (value: string): void => {
     if (value === 'none') {
       setScheduleForm((current) => ({
@@ -260,8 +239,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     if (!valid || party === undefined || backend === undefined) {
       return
     }
-    // Re-anchor a demo preset to now, or its short window is mostly vested before the receiver
-    // accepts.
     const finalSchedule = demo === null ? schedule : buildDemoSchedule(demo, now())
     setSubmitting(true)
     try {
@@ -283,7 +260,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     }
   }
 
-  // One rule, read twice: Ark refuses the move and the Continue button shows that it will.
   const stepIsValid = (index: number): boolean =>
     index === 0 ? titleValid && receiverValid && amountValid : scheduleValid
 
@@ -295,9 +271,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     >
       <Steps.Root
         count={STEPS.length}
-        // Not `linear`: that makes a step trigger inert, leaving three tabs a reader is told to
-        // click and nothing happens. Ark lets a trigger go back freely and asks this before any
-        // move forward, which is the rule the Continue button already shows.
         isStepValid={stepIsValid}
         onStepChange={(details) => setStep(details.step)}
         step={step}
@@ -322,8 +295,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
           </label>
           <input
             id="title"
-            // Ark focuses the first tabbable in the dialog, which is the step list; this is the
-            // field the form actually starts at.
             data-autofocus
             required
             value={title}
@@ -353,9 +324,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               )}
             </div>
             <div>
-              {/* No `onTokenSelect` on purpose: the kit renders the symbol as a static mark
-                  without it, and a picker over a one-entry list is a control that cannot do
-                  anything. Restore it when a second instrument exists — see architecture.md. */}
               <TokenInput
                 balance={balance}
                 balanceState={balanceState}
@@ -371,9 +339,6 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
           </div>
         </Steps.Content>
 
-        {/* Ark hides a panel it is not on rather than unmounting it, so the two the wizard has yet
-            to reach are held back by hand: between them they carry five state machines and a curve
-            that redraws every second. The form state lives here, so nothing is lost either way. */}
         <Steps.Content index={1} className={panelClass}>
           {step >= 1 && (
             <>

@@ -6,8 +6,6 @@ import { cn } from '@/utils/cn'
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
 type Size = 'sm' | 'md' | 'lg' | 'icon'
 
-// `aria-label` is declared here rather than left to the DOM props because the link form takes no
-// DOM props, and an icon-only button has no text to read.
 interface BaseProps {
   'aria-label'?: string
   className?: string
@@ -15,8 +13,6 @@ interface BaseProps {
   variant?: Variant
 }
 
-// `pending` owns the whole in-flight look, because every dialog that had it hand-rolled drifted:
-// two rendered a spinner beside the word and the third rendered the word alone.
 interface ButtonAsButton extends BaseProps, ButtonHTMLAttributes<HTMLButtonElement> {
   asLink?: false
   pending?: boolean
@@ -37,7 +33,6 @@ const sizes: Record<Size, string> = {
   icon: 'size-9',
 }
 
-// Primary carries the Aurora accent: brand gradient + glow on hover.
 const variants: Record<Variant, string> = {
   primary:
     'relative isolate overflow-hidden border border-primary bg-primary text-primary-fg ' +
@@ -51,7 +46,6 @@ const variants: Record<Variant, string> = {
   'danger-ghost': 'border border-transparent text-danger enabled:hover:bg-danger-soft',
 }
 
-// Exported for the kit's own buttons, which cannot render this component but can take its classes.
 export const buttonClass = (variant: Variant, size: Size, className?: string): string =>
   cn(
     'inline-flex items-center justify-center gap-2 rounded-[8px] font-semibold transition-colors',

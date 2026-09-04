@@ -13,9 +13,6 @@ interface ModalProps {
   title: string
 }
 
-// Centered dialog over Ark's `Dialog`, which owns the scrim, the focus trap and its restore, the
-// scroll lock, Escape and the click outside. Mounting is what opens it, so every caller renders it
-// behind its own condition and there is no `open` prop.
 export const Modal = ({
   onClose,
   title,
@@ -30,7 +27,6 @@ export const Modal = ({
         onClose()
       }
     }}
-    // Every failed submit raises a toast, and the region sits outside the dialog.
     persistentElements={[toastRegion]}
   >
     <Portal>

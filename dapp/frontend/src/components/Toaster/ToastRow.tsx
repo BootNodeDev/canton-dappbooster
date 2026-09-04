@@ -14,7 +14,6 @@ const toneStyles: Record<ToastTone, string> = {
 export const ToastRow = ({ toast }: { toast: ToastOptions }): React.JSX.Element => {
   const { dismiss } = useToastContext()
   const { action, message, tone } = readToast(toast)
-  // A ledger rejection arrives as a wall of text, so only that tone is worth scrolling and copying.
   const isError = tone === 'error'
 
   return (

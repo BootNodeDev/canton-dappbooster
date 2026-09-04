@@ -37,8 +37,6 @@ export const GrantDetail = (): React.JSX.Element => {
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  // Undefined until the read lands, which is what the card shows a spinner for. Re-read whenever
-  // the contract id changes, since a claim of ours is exactly what replaces it.
   const [claims, setClaims] = useState<ClaimRecord[] | undefined>(undefined)
 
   const contractId = grant?.id
@@ -68,7 +66,6 @@ export const GrantDetail = (): React.JSX.Element => {
     return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
-  // Without this a direct link reads as a missing grant until the first ACS read lands.
   if (grant === undefined && loading) {
     return <Loading />
   }
@@ -95,8 +92,6 @@ export const GrantDetail = (): React.JSX.Element => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* A real history back, so the dashboard's lens and scroll return with it; a deep link has no
-          entry to go back to, hence the fallback. */}
       <button
         type="button"
         onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
@@ -239,8 +234,6 @@ export const GrantDetail = (): React.JSX.Element => {
           available={derived.claimable}
           backing={grantBacking(grant)}
           onConfirm={async (amount) => {
-            // A partial claim archives this contract and re-creates it, so the URL follows the
-            // successor. A drain leaves none, and staying here would read "Grant not found".
             const next = await withdraw(backend, partyId, grant.id, amount)
             if (next === undefined) {
               navigate('/', { replace: true })
@@ -259,7 +252,6 @@ export const GrantDetail = (): React.JSX.Element => {
           description="Vested-but-unclaimed AMT becomes a residual claim for the receiver; the contract is archived."
           successMessage="Grant cancelled"
           onConfirm={async () => {
-            // Cancel archives the grant for good, so staying here would read "Grant not found".
             await cancel(backend, partyId, grant.id)
             navigate('/', { replace: true })
           }}

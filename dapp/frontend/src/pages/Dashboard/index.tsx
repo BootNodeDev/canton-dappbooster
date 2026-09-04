@@ -37,9 +37,6 @@ interface GrantRow {
   grant: Grant
 }
 
-// One row per filter, so adding one is a single entry rather than an edit to a union, a label list
-// and a branch that had to agree. The two status entries carry their GrantStatus name and the pill's
-// own wording, so a row can never sit under a heading its own badge contradicts.
 const FILTERS = [
   { value: 'all', label: 'All', match: () => true },
   { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
@@ -63,9 +60,6 @@ const FILTERS = [
 
 type Filter = (typeof FILTERS)[number]['value']
 
-// Marks the row a claim just landed on: it moves nothing, so a reader looking elsewhere can still
-// find what changed. The keyframes end on the card's own surface and shadow and the fill mode holds
-// them, so the class needs no timer to take back off.
 const HIGHLIGHT = 'animate-claimed'
 
 interface ClaimTarget {
@@ -106,8 +100,6 @@ export const Dashboard = (): React.JSX.Element => {
     return match === undefined ? rows : rows.filter(match)
   }, [rows, filter])
 
-  // The sum rides with the list it sums, or it re-reduces on every clock tick for a figure only the
-  // receiver lens ever renders.
   const { myClaims, residualClaimable } = useMemo(() => {
     const mine = role === 'receiver' ? claims.filter((c) => c.receiver === partyId) : []
     return {
@@ -128,10 +120,8 @@ export const Dashboard = (): React.JSX.Element => {
     return acc
   }, [rows])
 
-  // A refresh after a write keeps the rows on screen; only a read with nothing to show waits.
   const firstRead = loading && grants.length === 0
 
-  // Above the handlers, so they close over a backend that is known to exist.
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
   }
@@ -140,7 +130,6 @@ export const Dashboard = (): React.JSX.Element => {
     if (claimTarget === null) {
       return
     }
-    // The claim replaces the contract, so the successor's id is what identifies the row to flag.
     const successor =
       claimTarget.kind === 'grant'
         ? await withdraw(backend, partyId, claimTarget.id, amount)
@@ -158,7 +147,6 @@ export const Dashboard = (): React.JSX.Element => {
     })
   }
   const openResidual = (claim: VestedClaim): void => {
-    // A residual claim carries no schedule, so the floor spans the one amount the grant's two do.
     const available = claimAvailable(claim)
     setClaimTarget({ kind: 'claim', id: claim.id, available, backing: available })
   }

@@ -48,7 +48,6 @@ export const Footer = (): React.JSX.Element => (
       <Outbound className="flex items-center gap-2 font-semibold" href={BOOTNODE}>
         Built by
         <BootNodeMark width={19} height={16} />
-        {/* The mark is the only thing naming the destination, and it is aria-hidden. */}
         <span className="sr-only">BootNode</span>
       </Outbound>
       <nav

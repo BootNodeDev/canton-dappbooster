@@ -9,15 +9,11 @@ interface ScheduleBarProps {
 
 const clamp = (f: number): number => Math.max(0, Math.min(1, f))
 
-// Hoisted: every row rebuilds this on each clock tick otherwise.
 const translations = {
   value: ({ percent }: { percent: number }) => `${Math.round(percent)}% vested`,
 }
 const pct = (f: number): string => `${clamp(f) * 100}%`
 
-// Stacked bar over fractions of the grant total in [0, 1]: brand gradient is vested, the solid
-// success sub-segment claimable, the remainder unvested. Ticks mark milestones, also cumulative
-// fractions. The vested share is the value a screen reader is given.
 export const ScheduleBar = ({
   vestedFraction,
   claimedFraction,

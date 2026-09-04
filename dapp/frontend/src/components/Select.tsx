@@ -12,8 +12,6 @@ interface SelectProps<T extends string> {
   value: T
 }
 
-// A dropdown of one value out of many. Not a native `<select>`: this renders inside a dialog, and
-// the browser draws that list at its own size in its own window, which no CSS can reach.
 export const Select = <T extends string>({
   label,
   value,
@@ -28,8 +26,6 @@ export const Select = <T extends string>({
       className={className}
       collection={collection}
       onValueChange={(details) => onChange(details.value[0] as T)}
-      // Fixed and unportalled: the list has to escape the dialog's own scroll box without leaving
-      // the dialog, which a portal to the body would do.
       positioning={{ sameWidth: true, strategy: 'fixed' }}
       value={[value]}
     >

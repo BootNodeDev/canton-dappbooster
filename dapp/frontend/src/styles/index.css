@@ -46,7 +46,6 @@
   --animate-claimed: claimed 5s linear both;
 }
 
-/* Just-claimed row */
 @keyframes claimed {
   0%,
   100% {
@@ -74,8 +73,6 @@
 }
 
 @layer components {
-  /* Toast stack */
-
   [data-scope="toast"][data-part="root"] {
     translate: var(--x) var(--y);
     scale: var(--scale);
@@ -122,8 +119,6 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
-
-/* Text inputs */
 
 .cnc-token-input__field,
 .cnc-party-id-input {

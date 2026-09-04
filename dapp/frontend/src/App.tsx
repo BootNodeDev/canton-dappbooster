@@ -8,10 +8,8 @@ import { TOKENS } from '@/utils/tokens'
 
 const router = createBrowserRouter(routes)
 
-// Out here so the provider's memoized SDK survives every re-render.
 const connectConfig: CantonConnectConfig = { appName: 'Canton Vesting' }
 
-// Lucide's defaults for the whole app, so a call site passes `size` only when it wants another.
 export const App = (): React.JSX.Element => (
   <LucideProvider size={18} strokeWidth={1.8}>
     <ThemeProvider>
