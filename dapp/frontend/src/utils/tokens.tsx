@@ -1,13 +1,20 @@
+import type { InstrumentId } from '@bootnodedev/canton-dappbooster'
 import cantonCoin from '@/assets/canton-coin.png'
 
 // The id the Amulet registry serves. The admin party is the network's own DSO, so it is read off
 // the holdings rather than written down here.
-export const AMULET_ID = 'Amulet'
+const AMULET_ID = 'Amulet'
 
-// The artwork is the Canton Coin mark. The kit's logo slot is 2rem with `overflow: hidden`, so it
-// has to be told to fit.
+export const isAmulet = ({ id }: InstrumentId): boolean => id === AMULET_ID
+
+// The kit's logo slot is 2rem with `overflow: hidden`, so artwork has to be told to fit.
+export const tokenLogo = (src: string): React.JSX.Element => (
+  <img alt="" className="size-full object-contain" src={src} />
+)
+
+// The artwork is the Canton Coin mark.
 export const AMT = {
-  logo: <img alt="" className="size-full object-contain" src={cantonCoin} />,
+  logo: tokenLogo(cantonCoin),
   name: 'Amulet',
   symbol: 'AMT',
 }

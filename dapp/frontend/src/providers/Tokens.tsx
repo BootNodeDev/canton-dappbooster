@@ -24,15 +24,13 @@ import { useBackend } from '@/providers/Backend'
 import { addAmounts, subtractAmounts } from '@/utils/amount'
 import { type AssetListEntry, readAssetList } from '@/utils/assetList'
 import { ASSET_LIST_NETWORK, ASSET_LIST_URL, REGISTRY_URL } from '@/utils/config'
-import { AMT, AMULET_ID } from '@/utils/tokens'
+import { AMT, isAmulet, tokenLogo } from '@/utils/tokens'
 
 const fromCurated = (entries: readonly AssetListEntry[]): readonly PartialToken[] =>
   entries.map(({ instrumentId, logoUrl, symbol }) => ({
     instrumentId,
+    logo: logoUrl === undefined ? undefined : tokenLogo(logoUrl),
     symbol,
-    ...(logoUrl === undefined
-      ? {}
-      : { logo: <img alt="" className="size-full object-contain" src={logoUrl} /> }),
   }))
 
 const fromRegistries = (instruments: readonly Instrument[]): readonly PartialToken[] =>
@@ -40,7 +38,7 @@ const fromRegistries = (instruments: readonly Instrument[]): readonly PartialTok
 
 const fromApp = (rows: readonly PartialToken[]): readonly PartialToken[] =>
   rows
-    .filter(({ instrumentId }) => instrumentId.id === AMULET_ID)
+    .filter(({ instrumentId }) => isAmulet(instrumentId))
     .map(({ instrumentId }) => ({ instrumentId, logo: AMT.logo }))
 
 // The figures this app can act on, which are not the ledger's: what is free to fund a grant is the
@@ -53,7 +51,7 @@ const fromVesting = (
   free === undefined
     ? []
     : held
-        .filter(({ instrumentId }) => instrumentId.id === AMULET_ID)
+        .filter(({ instrumentId }) => isAmulet(instrumentId))
         .map(({ balance, instrumentId, locked }) => ({
           balance: free,
           instrumentId,

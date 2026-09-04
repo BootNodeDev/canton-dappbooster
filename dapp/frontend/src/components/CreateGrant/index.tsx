@@ -33,7 +33,7 @@ import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
-import { AMT, AMULET_ID } from '@/utils/tokens'
+import { AMT, isAmulet } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -155,7 +155,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const { byKey, tokens } = useTokenList()
   const token =
     (pickedKey === undefined ? undefined : byKey.get(pickedKey)) ??
-    tokens.find(({ instrumentId }) => instrumentId.id === AMULET_ID)
+    tokens.find(({ instrumentId }) => isAmulet(instrumentId))
   const { failed, refresh } = useTokenFigures()
   // The figures are read once a session, and a grant created through this form has moved the
   // funder's coin since. This dialog is the only place they are shown, so it is where they are
