@@ -45,7 +45,7 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
     server.middlewares.use(ASSET_LIST_ROUTE, async (_request, response) => {
       const scan = address(values.SPLICE_SCAN_API_URL, LOCALNET_SCAN)
       const [published, dso] = await Promise.all([
-        json(PUBLISHED_LIST).catch(() => ({})),
+        json(PUBLISHED_LIST).catch(() => ({})) as Promise<Record<string, unknown>>,
         json(`${scan}/v0/dso-party-id`)
           .then((body) => (body as { dso_party_id?: string }).dso_party_id)
           .catch(() => undefined),
@@ -58,12 +58,12 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
       // The published DevNet entries land in the LocalNet section too, so a local list is a real
       // catalogue rather than the one token this stack issues. DevNet rather than every network,
       // because the three carry the same instruments under a DSO party each.
-      const devnet = (published as { DevNet?: unknown }).DevNet
+      const devnet = published.DevNet
       const all = Array.isArray(devnet) ? devnet : []
       response.setHeader('content-type', 'application/json')
       response.end(
         JSON.stringify({
-          ...(published as object),
+          ...published,
           LocalNet: [...(dso === undefined ? [] : [amulet]), ...all],
         }),
       )

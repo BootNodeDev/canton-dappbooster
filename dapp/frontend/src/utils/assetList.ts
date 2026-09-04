@@ -19,8 +19,9 @@ const asString = (value: unknown): string | undefined =>
 
 const toEntry = (value: unknown): AssetListEntry | undefined => {
   const fields = asRecord(value)
-  const admin = asString(asRecord(fields?.instrumentId)?.admin)
-  const id = asString(asRecord(fields?.instrumentId)?.id)
+  const instrument = asRecord(fields?.instrumentId)
+  const admin = asString(instrument?.admin)
+  const id = asString(instrument?.id)
   const symbol = asString(fields?.symbol)
   if (admin === undefined || id === undefined || symbol === undefined) {
     return undefined
