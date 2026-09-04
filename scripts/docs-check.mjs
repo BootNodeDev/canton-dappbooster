@@ -35,7 +35,7 @@ const PACKAGES = readJson(path.join(repoRoot, 'typedoc.json')).entryPoints.map((
 const MAX_COLUMNS = 100
 const EXAMPLE_LINE_CAP = 8
 const MAX_EXAMPLES = 2
-const MARKDOWN_DOCS = ['README.md', 'architecture.md']
+const MARKDOWN_DOCS = ['README.md', 'architecture.md', 'coming-from-wagmi.md']
 const FIXTURES = 'doc-fixtures.d.ts'
 const PROBE_DIR = '__doc-probe__'
 

@@ -21,7 +21,7 @@ src/
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the six public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
@@ -85,8 +85,9 @@ SDK's request carries no deadline of its own.
 The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
 through it, so the bridges stay the only senders) and three identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
-itself. `useConnect`, `useParty` and `useWalletStatus` read session state; `useLedger`, `useExecute`
-and `useSignMessage` select a guard plus the sdk and call it directly, never entering the machine.
+itself. `useConnect`, `useDisconnect`, `useParty` and `useWalletStatus` read session state;
+`useLedger`, `useExecute` and `useSignMessage` select a guard plus the sdk and call it directly,
+never entering the machine.
 
 The machine's input is read once, when the actor is created, so a changed `config` prop needs a
 remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out

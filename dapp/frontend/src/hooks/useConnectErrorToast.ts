@@ -8,18 +8,18 @@ export const isReportableConnectError = (error: Error): boolean =>
   !(error instanceof ConnectCancelledError)
 
 export const useConnectErrorToast = (): void => {
-  const { connectError } = useConnect()
+  const { error } = useConnect()
   const reported = useRef<Error | undefined>(undefined)
 
   useEffect(() => {
-    if (connectError === undefined || connectError === reported.current) {
+    if (error === undefined || error === reported.current) {
       return
     }
 
-    reported.current = connectError
+    reported.current = error
 
-    if (isReportableConnectError(connectError)) {
-      toast.error(errorText(connectError))
+    if (isReportableConnectError(error)) {
+      toast.error(errorText(error))
     }
-  }, [connectError])
+  }, [error])
 }
