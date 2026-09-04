@@ -155,10 +155,16 @@ The list is the consumer's, and the kit reads no ledger. What that costs and buy
   Nothing takes one string for a token, so `tokenKey` is what makes a map key, a React key or an
   equality check out of the pair. Compare keys, never symbols.
 - **`balance` sits on the token, beside the metadata.** A party's holdings are private to the
-  participant hosting it, so only the consumer's own read can supply them; a list source merges the
-  two by `instrumentId` and hands over one array. An absent balance means the read has not reached,
-  not that the party holds nothing, so the row shows no figure and sorts below every one that has
-  a figure.
+  participant hosting it, so only a read through the connected wallet can supply them: `useHoldings`
+  on the `/connect` sub-path is that read, and `sumHoldings` groups its one-per-contract answer into
+  one row per instrument. An absent balance means the read has not reached, not that the party holds
+  nothing, so the row shows no figure and sorts below every one that has a figure.
+- **The read lives here rather than in `canton-connect`**, even though it needs that package's
+  session. What it knows is the token standard — an interface id, the shape of a holding view, an
+  instrument id — and `canton-connect` is a layer over the wallet SDK, kept thin enough to delete.
+  Putting it there duplicated `InstrumentId` across two published packages and split one operation
+  in half, because the exact-decimal summing is here and that package cannot import it.
+  `useLedger` is the documented escape hatch for a read like this, and this is what it is for.
 - **`balance` is what the party can spend, and `locked` is the rest.** Not the total, because
   `balance` is also what `<TokenInput>`'s Max fills and what it validates against, so a total would
   have Max offer coin the ledger then refuses. The row shows locked as a second, quieter figure

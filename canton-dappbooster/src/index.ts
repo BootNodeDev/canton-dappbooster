@@ -42,6 +42,7 @@ export type {
 } from '#src/providers/TokenListProvider/context'
 export { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
 export { isValidPartyId, type PartyIdError, validatePartyId } from '#src/utils/partyId'
+export { type Holding, type InstrumentBalance, sumHoldings } from '#src/utils/sumHoldings'
 export {
   DEFAULT_PRECISION,
   formatAmount,

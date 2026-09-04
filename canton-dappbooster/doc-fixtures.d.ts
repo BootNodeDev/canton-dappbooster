@@ -48,6 +48,11 @@ declare const darkSheet: string
 /* Tokens */
 
 declare const instrumentId: FixtureInstrumentId
+declare const holdings: readonly {
+  amount: string
+  instrumentId: FixtureInstrumentId
+  isLocked: boolean
+}[]
 declare const token: FixtureToken
 declare const tokens: readonly FixtureToken[]
 declare const mockTokens: readonly FixtureToken[]
