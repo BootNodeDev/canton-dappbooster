@@ -8,6 +8,7 @@ import type {
   ProviderType,
   WalletInfo,
 } from '@canton-network/dapp-sdk'
+import { PARTICIPANT_ID_RESOURCE } from '#src/walletAccount'
 
 // Derived from ProviderAdapter/dappAPI so this file stays on the one dapp-sdk dependency.
 /** The provider object an adapter hands out, which is what this mock has to satisfy. */
@@ -31,12 +32,14 @@ export interface MockAccount {
   partyId: string
   name?: string
   publicKey?: string
+  signingProviderId?: string
 }
 
 /**
  * Wiring for {@link createMockAdapter}. `id` defaults to `'mock'`, which is the provider id
- * `createAutoPicker('mock')` matches; `accounts` defaults to one generated account and treats the
- * first entry as primary; omitting `networkId` lets `CantonConnectConfig.networkId` apply instead.
+ * `createAutoPicker('mock')` matches; `accounts` defaults to one generated account, first entry
+ * primary; omitting `networkId` lets `CantonConnectConfig.networkId` apply; omitting
+ * `participantId` fails the participant-id read, so every party stays `'unknown'`.
  *
  * @example
  * const options: CreateMockAdapterOptions = { id: 'mock', accounts: [{ partyId }] }
@@ -47,6 +50,7 @@ export interface CreateMockAdapterOptions {
   id?: string
   accounts?: MockAccount[]
   networkId?: string
+  participantId?: string
 }
 
 /**
@@ -88,7 +92,7 @@ const toWallet = (
     publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
     // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
     namespace: account.partyId.split('::')[1] ?? account.partyId,
-    signingProviderId: MOCK_SIGNING_PROVIDER_ID,
+    signingProviderId: account.signingProviderId ?? MOCK_SIGNING_PROVIDER_ID,
     // A mock has no network of its own — omitting this lets toParty's config fallback apply.
     ...(networkId === undefined ? {} : { networkId }),
   }) as Wallet
@@ -103,11 +107,13 @@ class MockProviderAdapter implements ProviderAdapter {
   readonly type: ProviderType = 'browser'
 
   private readonly wallets: Wallet[]
+  private readonly participantId: string | undefined
   private connected = false
   private listenerMap: Record<string, Listener[]> = {}
 
   constructor(options: CreateMockAdapterOptions) {
     this.providerId = options.id ?? DEFAULT_PROVIDER_ID
+    this.participantId = options.participantId
 
     const accounts = options.accounts ?? defaultAccounts(this.providerId)
     this.wallets = accounts.map((account, index) =>
@@ -152,7 +158,23 @@ class MockProviderAdapter implements ProviderAdapter {
     listAccounts: () => this.wallets,
   }
 
+  // The one ledger read the connect flow makes; anything else throws like an unknown method.
+  private participantIdAnswer(params: dappAPI.LedgerApiParams): RequestResult {
+    const isParticipantIdRead =
+      params.requestMethod === 'get' && params.resource === PARTICIPANT_ID_RESOURCE
+
+    if (this.participantId === undefined || !isParticipantIdRead) {
+      throw new Error(`mock adapter does not implement 'ledgerApi' for ${params.resource}`)
+    }
+
+    return { participantId: this.participantId }
+  }
+
   async request(args: RequestArg): Promise<RequestResult> {
+    if (args.method === 'ledgerApi') {
+      return this.participantIdAnswer(args.params)
+    }
+
     const handler = this.handlers[args.method]
 
     if (handler === undefined) {

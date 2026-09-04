@@ -8,6 +8,13 @@ import { DisconnectButton } from '#src/components/WalletButton/DisconnectButton'
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const NETWORK = 'canton:local'
+const party = {
+  partyId: PARTY,
+  networkId: NETWORK,
+  namespace: PARTY.split('::')[1] ?? PARTY,
+  signingProviderId: 'test',
+  partyType: 'unknown' as const,
+}
 
 // The button renders whatever the session says, so the session itself is what a disconnect asserts.
 const Session = (): ReactElement => {
@@ -17,7 +24,7 @@ const Session = (): ReactElement => {
 
 const renderInSession = (ui: ReactElement): ReturnType<typeof render> =>
   render(
-    <FakeSessionProvider party={{ partyId: PARTY, networkId: NETWORK }} status="connected">
+    <FakeSessionProvider party={party} status="connected">
       {ui}
       <Session />
     </FakeSessionProvider>,

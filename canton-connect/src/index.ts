@@ -36,6 +36,7 @@ export type {
   ConnectionStatus,
   ConnectionSubscription,
   Party,
+  PartyType,
   TxStatusSnapshot,
   WalletSdk,
 } from '#src/types'

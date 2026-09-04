@@ -7,12 +7,19 @@ import { connectAnatomy, disconnectAnatomy } from '#src/components/WalletButton/
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const NETWORK = 'canton:local'
+const party = {
+  partyId: PARTY,
+  networkId: NETWORK,
+  namespace: PARTY.split('::')[1] ?? PARTY,
+  signingProviderId: 'test',
+  partyType: 'unknown' as const,
+}
 
 const renderInSession = (ui: ReactElement, isLocked = false): ReturnType<typeof render> =>
   render(
     <FakeSessionProvider
       isLocked={isLocked}
-      party={isLocked ? undefined : { partyId: PARTY, networkId: NETWORK }}
+      party={isLocked ? undefined : party}
       status="connected"
     >
       {ui}

@@ -12,11 +12,12 @@ import type {
   RestoreInput,
 } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 import { startConnection } from '#src/testing/startConnection'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 
 const accounts = accountsMachine.provide({
   actors: {

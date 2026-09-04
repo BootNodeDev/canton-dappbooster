@@ -1,8 +1,9 @@
 // @vitest-environment node
 
+import type { DappSDK } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, type EventObject, fromCallback, fromPromise } from 'xstate'
-import type { AccountsInput } from '#src/machine/accountsActors'
+import { type AccountsInput, readParticipant } from '#src/machine/accountsActors'
 import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
 import type { InitInput, RestoreInput } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
@@ -10,12 +11,13 @@ import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connect
 // DOM.
 import { accountsInput } from '#src/testing/accountsInput'
 import { connectionInput } from '#src/testing/connectionInput'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 const accounts: WalletAccounts = { party }
-const pushedParty = { partyId: 'bob::1220cd', networkId: 'canton:local' }
+const pushedParty = testParty('bob::1220cd')
 
 const sessionWith = (accountsLogic: typeof accountsMachine) =>
   connectionMachine.provide({
@@ -131,5 +133,101 @@ describe('accountsMachine', () => {
     expect(actor.getSnapshot().context.error).toBeUndefined()
 
     actor.stop()
+  })
+
+  it('types the party once the participant namespace lands, after the read did', async () => {
+    let finishParticipant: ((namespace: string | undefined) => void) | undefined
+    const machine = accountsMachine.provide({
+      actors: {
+        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.resolve(accounts)),
+        readParticipant: fromPromise<string | undefined, AccountsInput>(
+          () =>
+            new Promise((resolve) => {
+              finishParticipant = resolve
+            }),
+        ),
+      },
+    })
+    const actor = createActor(machine, { input: accountsInput() })
+
+    actor.start()
+    await pause(0)
+
+    expect(actor.getSnapshot().context.party?.partyType).toBe('unknown')
+
+    finishParticipant?.('1220ab')
+    await pause(0)
+
+    expect(actor.getSnapshot().context.party?.partyType).toBe('local')
+    expect(actor.getSnapshot().matches('ready')).toBe(true)
+
+    actor.stop()
+  })
+
+  it('types a push against a participant namespace already read', async () => {
+    const machine = accountsMachine.provide({
+      actors: {
+        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => new Promise(() => {})),
+        readParticipant: fromPromise<string | undefined, AccountsInput>(() =>
+          Promise.resolve('1220ab'),
+        ),
+      },
+    })
+    const actor = createActor(machine, { input: accountsInput() })
+
+    actor.start()
+    await pause(0)
+
+    actor.send({ type: 'accounts.changed', accounts: { party: pushedParty } })
+
+    expect(actor.getSnapshot().context.party?.partyType).toBe('external')
+
+    actor.stop()
+  })
+
+  it('leaves the party unknown when the participant read yields nothing', async () => {
+    const machine = accountsMachine.provide({
+      actors: {
+        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.resolve(accounts)),
+        readParticipant: fromPromise<string | undefined, AccountsInput>(() =>
+          Promise.resolve(undefined),
+        ),
+      },
+    })
+    const actor = createActor(machine, { input: accountsInput() })
+
+    actor.start()
+    await pause(0)
+
+    expect(actor.getSnapshot().matches('ready')).toBe(true)
+    expect(actor.getSnapshot().context.party).toEqual(party)
+
+    actor.stop()
+  })
+})
+
+describe('readParticipant', () => {
+  const read = async (ledgerApi: DappSDK['ledgerApi']) => {
+    const actor = createActor(readParticipant, { input: accountsInput({ ledgerApi }) })
+
+    actor.start()
+    await pause(0)
+
+    return actor.getSnapshot().output
+  }
+
+  it('resolves the namespace of the participant id the ledger answers', async () => {
+    expect(await read(async () => ({ participantId: 'participant::1220ab' }))).toBe('1220ab')
+  })
+
+  it('resolves undefined, never rejects, when the wallet refuses the read', async () => {
+    vi.spyOn(console, 'debug').mockImplementation(() => {})
+
+    expect(await read(async () => Promise.reject(new Error('no ledgerApi')))).toBe(undefined)
+  })
+
+  it('resolves undefined for an answer that is not a participant id', async () => {
+    expect(await read(async () => ({ version: '3.4' }))).toBe(undefined)
+    expect(await read(async () => ({ participantId: 'malformed' }))).toBe(undefined)
   })
 })
