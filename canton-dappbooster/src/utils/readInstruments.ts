@@ -1,4 +1,5 @@
 import type { InstrumentId } from '#src/providers/TokenListProvider/context'
+import { asRecord } from '#src/utils/json'
 
 const METADATA = 'registry/metadata/v1'
 
@@ -26,9 +27,6 @@ interface Page {
   instruments: readonly unknown[]
   nextPageToken: string | undefined
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined
 
 const get = async (url: string): Promise<unknown> => {
   const response = await fetch(url, { headers: { accept: 'application/json' } })

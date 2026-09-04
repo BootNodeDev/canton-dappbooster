@@ -1,15 +1,10 @@
 import { type LedgerApiParams, useLedger, useParty } from '@bootnodedev/canton-connect'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { valueAt } from '#src/utils/json'
 import type { Holding } from '#src/utils/sumHoldings'
 
 // The v1 interface every standard token implements.`#package-name` form survives a package upgrade
 const HOLDING_INTERFACE = '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined
-
-const valueAt = (value: unknown, ...path: readonly string[]): unknown =>
-  path.reduce<unknown>((at, key) => asRecord(at)?.[key], value)
 
 const holdingFromView = (view: unknown): Holding | undefined => {
   const value = valueAt(view, 'viewValue')
