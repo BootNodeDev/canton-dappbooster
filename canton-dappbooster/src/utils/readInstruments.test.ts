@@ -46,6 +46,34 @@ describe('readInstruments', () => {
     expect(found.map(({ symbol }) => symbol)).toEqual(['AMT', 'OTH'])
   })
 
+  it('stops on a page token it has already followed', async () => {
+    const loop = { instruments: [amulet], nextPageToken: 'loop' }
+    const fetching = serving({
+      '/registry/metadata/v1/info': { adminId: ADMIN, supportedApis: {} },
+      '/registry/metadata/v1/instruments': loop,
+      '/registry/metadata/v1/instruments?pageToken=loop': loop,
+    })
+    vi.stubGlobal('fetch', fetching)
+
+    expect(await readInstruments(REGISTRY)).toHaveLength(2)
+    expect(fetching).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives up on a registry that keeps handing out fresh page tokens', async () => {
+    let page = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL) => {
+        page += 1
+        return String(url).endsWith('/info')
+          ? ok({ adminId: ADMIN, supportedApis: {} })
+          : ok({ instruments: [amulet], nextPageToken: `page-${page}` })
+      }),
+    )
+
+    expect(await readInstruments(REGISTRY)).toHaveLength(101)
+  })
+
   it('takes a trailing slash on the registry url', async () => {
     vi.stubGlobal(
       'fetch',
