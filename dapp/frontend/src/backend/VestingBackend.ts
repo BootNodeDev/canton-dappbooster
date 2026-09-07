@@ -2,8 +2,9 @@
 // transport details. The mappers below turn active-contract rows into those domain types.
 
 import { decodeSchedule } from '@/backend/commands'
+import type { RegistryInstrument } from '@/backend/registry'
 import type { Grant, PartyId, PendingGrant, VestedClaim } from '@/store/types'
-import { isAmount } from '@/utils/amount'
+import { addAmounts, compareAmounts, isAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
 export interface VestingView {
@@ -39,6 +40,7 @@ export interface VestingBackend {
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  tap(args: { amount: string; party: string }): Promise<void>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }
@@ -201,7 +203,7 @@ export const lastUpdateOffset = (updates: unknown): number | undefined => {
   return entries.at(-1)?.update?.Transaction?.value?.offset
 }
 
-export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
+export const updatesToClaims = (updates: unknown, instrument: RegistryInstrument): ClaimRecord[] =>
   (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
     const transaction = entry.update?.Transaction?.value
     const events = transaction?.events ?? []
@@ -219,7 +221,11 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     ) {
       return []
     }
-    const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
+    const row: AcsRow = { contractEntry: { JsActiveContract: { createdEvent: created } } }
+    if (!matchesInstrument(row, instrument)) {
+      return []
+    }
+    const grant = rowToGrant(row)
     return grant === undefined
       ? []
       : [
@@ -232,27 +238,48 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
         ]
   })
 
-type AmuletArg = { amount?: { initialAmount?: string }; dso?: string }
+type TokenArg = { admin?: string; amount?: string; instrumentId?: string }
 
-// What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
-// `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
-// `Amulet_Expire`. Lenient where the mappers above throw: this feeds a balance, and one odd row
-// must not blank the field.
-export const amuletValue = (row: AcsRow): string => {
-  const { amount } = (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ??
-    {}) as AmuletArg
-  return amount?.initialAmount ?? '0'
+const argOf = (row: AcsRow): Record<string, unknown> =>
+  row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ?? {}
+
+// What a holding is worth, which is the field itself: a token-forge Token does not decay, so there
+// is no decayed value to compute. Lenient where the mappers throw, because this feeds a balance and
+// one odd row must not blank the field.
+export const tokenValue = (row: AcsRow): string => {
+  const { amount } = argOf(row) as TokenArg
+  return typeof amount === 'string' ? amount : '0'
 }
 
-// Read off a holding because a disclosure carries an opaque blob and no payload.
-export const amuletDso = (row: AcsRow): string | undefined =>
-  (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso
+// A shared participant can hold another admin's instrument under the same id, so both halves of the
+// pair are compared. `VestingProposal` carries neither field and so is never passed here.
+export const matchesInstrument = (row: AcsRow, instrument: RegistryInstrument): boolean => {
+  const { admin, instrumentId } = argOf(row) as TokenArg
+  return admin === instrument.admin && instrumentId === instrument.instrumentId
+}
 
-// The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
+// The holdings a pending grant has already pledged: its Accept consumes exactly these, so nothing
 // else may spend them while it is outstanding.
-export const pledgedAmulets = (row: AcsRow): string[] => {
-  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.tokenCids
+export const pledgedTokens = (row: AcsRow): string[] => {
+  const cids = argOf(row).tokenCids
   return Array.isArray(cids) ? cids.map(String) : []
+}
+
+// Largest first, so a grant names the fewest inputs: every named holding is a disclosure blob the
+// receiver has to carry to Accept. Undefined rather than a partial set, so the caller can report by
+// how much the funder is short.
+export const selectHoldings = (rows: AcsRow[], total: string): AcsRow[] | undefined => {
+  const ordered = [...rows].sort((a, b) => compareAmounts(tokenValue(b), tokenValue(a)))
+  const picked: AcsRow[] = []
+  let covered = '0'
+  for (const row of ordered) {
+    if (compareAmounts(covered, total) >= 0) {
+      break
+    }
+    picked.push(row)
+    covered = addAmounts(covered, tokenValue(row))
+  }
+  return compareAmounts(covered, total) >= 0 ? picked : undefined
 }
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {

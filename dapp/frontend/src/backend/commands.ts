@@ -99,50 +99,6 @@ export const buildCreateVestingCommand = (
     note: args.note ?? null,
   })
 
-// The funder self-transfers `amount` out of its own holdings, so the grant can name an Amulet
-// nothing else has pledged. sender, provider and receiver are all the funder, which is what makes
-// the funder the only controller and keeps this a one-signature submission. Splice values an input
-// at its full `initialAmount` — the holding fee is charged only by `Amulet_Expire` — so an exact
-// split leaves the eventual Accept exactly covered, with no headroom to guess at.
-export const buildSplitCommand = (
-  templateId: string,
-  amuletRulesCid: string,
-  args: {
-    amount: string
-    amuletCids: string[]
-    dso: string
-    openMiningRound: string
-    owner: string
-  },
-) =>
-  exercise(templateId, amuletRulesCid, 'AmuletRules_Transfer', {
-    transfer: {
-      sender: args.owner,
-      provider: args.owner,
-      inputs: args.amuletCids.map((contractId) => ({ tag: 'InputAmulet', value: contractId })),
-      outputs: [
-        {
-          receiver: args.owner,
-          receiverFeeRatio: '0.0',
-          amount: canonicalAmount(args.amount),
-          lock: null,
-          meta: null,
-        },
-      ],
-      beneficiaries: null,
-    },
-    // Both maps are empty because the only input kind here is an Amulet; rewards and validator
-    // rights are what the other kinds need. `expectedDso` is not optional in practice:
-    // `checkExpectedDso` aborts when it is absent.
-    context: {
-      openMiningRound: args.openMiningRound,
-      issuingMiningRounds: [],
-      validatorRights: [],
-      featuredAppRight: null,
-    },
-    expectedDso: args.dso,
-  })
-
 export const buildAcceptCommand = (templateId: string, pendingCid: string, configCid: string) =>
   exercise(templateId, pendingCid, 'VestingProposal_Accept', { configCid })
 

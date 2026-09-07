@@ -84,10 +84,9 @@ export const fetchInstrument = async (): Promise<RegistryInstrument> => {
   return { admin: info.adminId, instrumentId }
 }
 
-// Per write, not cached, for the reason fetchTransferContext was not: one round trip against a
-// contract that can be archived underneath us. sender === receiver takes the route's `self` branch,
-// whose choice context is the config alone; `transferKind` is not read, because the disclosure is
-// the same on every branch.
+// Per write, not cached: one round trip against a contract that can be archived underneath us.
+// sender === receiver takes the route's `self` branch, whose choice context is the config alone;
+// `transferKind` is not read, because the disclosure is the same on every branch.
 export const fetchInstrumentConfig = async (
   party: string,
   instrument: RegistryInstrument,

@@ -4,7 +4,6 @@ import { parseEnv } from '@/utils/env'
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_REGISTRY_URL: 'http://localhost:3013',
-  VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
 describe('parseEnv', () => {
@@ -23,7 +22,7 @@ describe('parseEnv', () => {
 
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
-  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_RPC_URL'])(
+  it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL'])(
     'names %s and rejects an empty value',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
@@ -42,27 +41,6 @@ describe('parseEnv', () => {
     },
   )
 
-  // The deployed spelling: `fetch` resolves it against the page, so it is same-origin.
-  it('accepts a same-origin path as the rpc url', () => {
-    expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/api/rpc' })).toEqual({
-      ...DEFAULTS,
-      VITE_WALLET_RPC_URL: '/api/rpc',
-    })
-  })
-
-  // Leading-slash spellings the URL parser still resolves to somebody else's origin.
-  it.each([
-    '//evil.example/rpc',
-    '/\\evil.example/rpc',
-    '/\\/evil.example/rpc',
-    '/\t/evil.example/rpc',
-    '/\n/evil.example/rpc',
-    'api/rpc',
-    'javascript:alert(1)',
-  ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
-    expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
-  })
-
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
   })
@@ -79,6 +57,19 @@ describe('VITE_REGISTRY_URL', () => {
 
   it('rejects a value that is neither a url nor a path', () => {
     expect(() => parseEnv({ VITE_REGISTRY_URL: 'registry' })).toThrow(/VITE_REGISTRY_URL/)
+  })
+
+  // Leading-slash spellings the URL parser still resolves to somebody else's origin.
+  it.each([
+    '//evil.example/rpc',
+    '/\\evil.example/rpc',
+    '/\\/evil.example/rpc',
+    '/\t/evil.example/rpc',
+    '/\n/evil.example/rpc',
+    'api/rpc',
+    'javascript:alert(1)',
+  ])('rejects %j as the registry url', (VITE_REGISTRY_URL) => {
+    expect(() => parseEnv({ ...DEFAULTS, VITE_REGISTRY_URL })).toThrow(/VITE_REGISTRY_URL/)
   })
 
   // A base, not an endpoint: every caller appends a path, so a trailing slash would request
