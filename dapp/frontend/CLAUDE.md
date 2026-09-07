@@ -25,7 +25,9 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
   takes an explicit `vercel.json` rewrite carrying the path as a parameter, which is what
   `registry.ts` does. Server-side code: it never imports from `src/`, reads its configuration from
   `process.env`, and any variable it needs is deliberately not a `VITE_` name, since those are
-  inlined into the bundle.
+  inlined into the bundle. Every file here is published, so a test beside one is an endpoint: only a
+  `_` or `.` prefix somewhere in the path is skipped, which is why the suite is `_registry.test.ts`
+  and reaches its subject through the `#api/*` subpath imports rather than a relative specifier.
 
 ## Shared pieces to reach for
 

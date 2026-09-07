@@ -39,13 +39,13 @@ flowchart TD
   dar --> au
 ```
 
-> `dapp/frontend` hosts the Canton Coin vesting dApp. Every ledger read and every submission goes
-> through the wallet over CIP-0103, so the dApp only ever acts as the connected account and each
-> write is signed by the account's own key. One call is not a ledger path: an Amulet-moving choice
-> takes the current `AmuletRules` and open mining round as an argument, and no connected party is a
-> stakeholder of either, so the dApp asks wallet-service's `amulet.tap` — a pure builder that
-> submits nothing — and keeps the two disclosures its answer carries. Deployed, that one call goes
-> through the app's own `/api/rpc` function, which forwards it and refuses every other method.
+> `dapp/frontend` hosts the vesting dApp. Every ledger read and every submission goes through the
+> wallet over CIP-0103, so the dApp only ever acts as the connected account and each write is signed
+> by the account's own key. One call is not a ledger path: every choice that moves a holding takes
+> the instrument's `InstrumentConfig` as an argument, and no connected party is a stakeholder of it,
+> so the dApp asks the token registry's CIP-56 transfer-factory route and keeps the disclosure its
+> answer carries. Deployed, those calls go through the app's own `/api/registry` function, which
+> forwards three read-only routes and refuses the rest.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
