@@ -10,7 +10,12 @@ import {
   buildWithdrawCommand,
 } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
-import { type AppTransferContext, fetchTransferContext } from '@/backend/transferContext'
+import {
+  fetchInstrumentConfig,
+  type InstrumentConfigRef,
+  type RegistryInstrument,
+} from '@/backend/registry'
+import { fetchTransferContext } from '@/backend/transferContext'
 import {
   type AcsRow,
   amuletDso,
@@ -36,7 +41,7 @@ const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[]
 
 // A filter takes the package-name reference; the participant rejects the resolved id a command
 // carries with INVALID_FIELD.
-const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
+const vesting = (entity: string): string => `#vesting:Vesting:${entity}`
 const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
 
 // The JSON Ledger API's party/template filter, shared by the ACS read and the update stream. Built
@@ -94,6 +99,7 @@ const rowToDisclosed = (row: AcsRow): DisclosedContract | undefined => {
 export class LedgerBackend implements VestingBackend {
   private readonly wallet: WalletFns
   private readonly factory: DisclosedContract
+  private readonly instrument: RegistryInstrument
   private readonly synchronizerId: string | undefined
   private readonly pkg: string
 
@@ -101,8 +107,9 @@ export class LedgerBackend implements VestingBackend {
     this.wallet = wallet
     this.synchronizerId = deployment.synchronizerId
     this.pkg = deployment.pkg
+    this.instrument = { admin: deployment.admin, instrumentId: deployment.instrumentId }
     this.factory = {
-      templateId: this.tid('AmuletVestingFactory'),
+      templateId: this.tid('VestingFactory'),
       contractId: deployment.factoryCid,
       createdEventBlob: deployment.factoryBlob,
     }
@@ -110,7 +117,7 @@ export class LedgerBackend implements VestingBackend {
 
   // The resolved-id twin of `vesting()`: a command carries this spelling, a filter the other one.
   private tid(entity: string): string {
-    return `${this.pkg}:AmuletVesting:${entity}`
+    return `${this.pkg}:Vesting:${entity}`
   }
 
   private async ledgerEnd(): Promise<string | number> {
@@ -174,9 +181,9 @@ export class LedgerBackend implements VestingBackend {
     // One ledger-end fetch for all three reads, so they share a consistent snapshot offset.
     const offset = await this.ledgerEnd()
     const [pendingGrantRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, vesting('AmuletVestingProposal'), offset),
-      this.readAcs(partyId, vesting('AmuletVestingContract'), offset),
-      this.readAcs(partyId, vesting('AmuletVestedClaim'), offset),
+      this.readAcs(partyId, vesting('VestingProposal'), offset),
+      this.readAcs(partyId, vesting('VestingContract'), offset),
+      this.readAcs(partyId, vesting('VestedClaim'), offset),
     ])
     return {
       pendingGrants: mapRows(pendingGrantRows, rowToPendingGrant),
@@ -198,7 +205,7 @@ export class LedgerBackend implements VestingBackend {
       receiver: args.receiver,
       totalAmount: args.totalAmount,
       schedule: args.schedule,
-      amuletCids: [escrow.contractId],
+      tokenCids: [escrow.contractId],
       note: composeNote(args.title, args.note),
     })
     await this.submit(args.proposer, command, [this.factory])
@@ -216,21 +223,21 @@ export class LedgerBackend implements VestingBackend {
     const offset = await this.ledgerEnd()
     const [held, pendingRows] = await Promise.all([
       this.readAcs(owner, AMULET, offset),
-      this.readAcs(owner, vesting('AmuletVestingProposal'), offset),
+      this.readAcs(owner, vesting('VestingProposal'), offset),
     ])
     const pledged = new Set(pendingRows.flatMap(pledgedAmulets))
     return { free: held.filter((row) => !pledged.has(cidOf(row))), held }
   }
 
-  // Every Amulet-moving choice takes the same context and the same two disclosures, so the
+  // Every choice that moves a holding takes the same config and the same one disclosure, so the
   // invariant is held here rather than re-spelled per choice; `extra` is what only Accept adds.
-  private async submitWithContext(
+  private async submitWithConfig(
     actAs: string,
-    build: (ctx: AppTransferContext) => LedgerCommand,
+    build: (config: InstrumentConfigRef) => LedgerCommand,
     extra: DisclosedContract[] = [],
   ): Promise<void> {
-    const { ctx, disclosed } = await fetchTransferContext(actAs)
-    await this.submit(actAs, build(ctx), [...disclosed, ...extra])
+    const { disclosed, ...config } = await fetchInstrumentConfig(actAs, this.instrument)
+    await this.submit(actAs, build(config), [...disclosed, ...extra])
   }
 
   // Self-transfers `amount` into an Amulet of the funder's own and returns it, disclosure blob
@@ -298,7 +305,7 @@ export class LedgerBackend implements VestingBackend {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
             eventFormat: {
               verbose: true,
-              ...templateFilter(partyId, vesting('AmuletVestingContract')),
+              ...templateFilter(partyId, vesting('VestingContract')),
             },
           },
         },
@@ -332,7 +339,7 @@ export class LedgerBackend implements VestingBackend {
   // below unable to tell a missing blob from an unrelated one.
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
     const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.receiver, vesting('AmuletVestingProposal'), offset)
+    const rows = await this.readAcs(args.receiver, vesting('VestingProposal'), offset)
     const wanted = new Set(
       rows.filter((row) => cidOf(row) === args.pendingCid).flatMap(pledgedAmulets),
     )
@@ -340,9 +347,10 @@ export class LedgerBackend implements VestingBackend {
     if (wanted.size === 0 || amulets.length !== wanted.size) {
       throw new Error('the funder Amulets this grant locks are not disclosable from this browser')
     }
-    await this.submitWithContext(
+    await this.submitWithConfig(
       args.receiver,
-      (ctx) => buildAcceptCommand(this.tid('AmuletVestingProposal'), args.pendingCid, ctx),
+      ({ configCid }) =>
+        buildAcceptCommand(this.tid('VestingProposal'), args.pendingCid, configCid),
       amulets,
     )
     // The submission archived them, so their blobs can only mislead a later Accept from here on.
@@ -353,20 +361,20 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {
-    await this.submitWithContext(args.receiver, (ctx) =>
-      buildWithdrawCommand(this.tid('AmuletVestingContract'), args.contractCid, args.amount, ctx),
+    await this.submitWithConfig(args.receiver, ({ configCid }) =>
+      buildWithdrawCommand(this.tid('VestingContract'), args.contractCid, args.amount, configCid),
     )
   }
 
   async cancel(args: { creator: string; contractCid: string }): Promise<void> {
-    await this.submitWithContext(args.creator, (ctx) =>
-      buildCancelCommand(this.tid('AmuletVestingContract'), args.contractCid, ctx),
+    await this.submitWithConfig(args.creator, ({ configCid }) =>
+      buildCancelCommand(this.tid('VestingContract'), args.contractCid, configCid),
     )
   }
 
   async claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void> {
-    await this.submitWithContext(args.receiver, (ctx) =>
-      buildClaimResidualCommand(this.tid('AmuletVestedClaim'), args.claimCid, args.amount, ctx),
+    await this.submitWithConfig(args.receiver, ({ configCid }) =>
+      buildClaimResidualCommand(this.tid('VestedClaim'), args.claimCid, args.amount, configCid),
     )
   }
 }
