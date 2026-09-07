@@ -6,6 +6,7 @@ The hook names follow wagmi, so a developer arriving from it knows which one to 
 
 | wagmi | canton-connect | why |
 |---|---|---|
+| none | `useConnect().cancelConnect` | Abandons a connect in flight, rejecting it with `ConnectCancelledError`; wagmi has no cancel. |
 | `useAccount().address` | `useParty().party.partyId` | A Canton identity is a party. |
 | `useAccount().addresses`, `.connector`, `.chain` | none | Not exposed yet. |
 | none | `useWalletStatus().isLocked` | Connected-but-locked is a CIP-0103 state. |

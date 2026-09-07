@@ -1,6 +1,6 @@
 import type { DappSDK, StatusEvent } from '@canton-network/dapp-sdk'
 import { type EventObject, fromCallback, fromPromise } from 'xstate'
-import { InitFailedError, PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, InitFailedError, PickerClosedError } from '#src/connectError'
 import { guardedConnect } from '#src/guardedConnect'
 import type { WalletStatusUpdate } from '#src/machine/connectionMachine'
 
@@ -87,7 +87,7 @@ const standingSession = async (sdk: RestoreInput['sdk']): Promise<WalletStatusUp
 // init + the status check stay inside `connect`, not as machine states
 // the chart would grow just to relocate tested behavior
 /** Resolves once the wallet answers, rejecting with the wallet's own error. */
-export const connect = fromPromise<WalletStatusUpdate, ConnectInput>(async ({ input }) => {
+export const connect = fromPromise<WalletStatusUpdate, ConnectInput>(async ({ input, signal }) => {
   const { sdk, guardPicker } = input
 
   try {
@@ -98,7 +98,7 @@ export const connect = fromPromise<WalletStatusUpdate, ConnectInput>(async ({ in
   }
 
   try {
-    const connection = await (guardPicker ? guardedConnect(sdk) : sdk.connect())
+    const connection = await (guardPicker ? guardedConnect(sdk, signal) : sdk.connect())
     const walletAnswer = { connection }
 
     if (connection.isConnected) {
@@ -109,9 +109,9 @@ export const connect = fromPromise<WalletStatusUpdate, ConnectInput>(async ({ in
 
     return recovered ?? walletAnswer
   } catch (error) {
-    // No recovering here: a closed picker leaves this sdk's connect() running, and a recovered
-    // session would keep a client the stranded connect can still swap (see `retireSdk`).
-    if (error instanceof PickerClosedError) {
+    // No recovering from either: both leave this sdk's connect() running, and a recovered session
+    // would keep a client the abandoned connect can still swap (see `retireSdk`).
+    if (error instanceof PickerClosedError || error instanceof ConnectCancelledError) {
       throw error
     }
 

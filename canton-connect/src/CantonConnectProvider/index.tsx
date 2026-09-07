@@ -103,6 +103,10 @@ export const CantonConnectProvider = ({
     [actorRef],
   )
 
+  // No bridge: the pending `connect()` is what answers a cancel, rejecting on the
+  // `connect.cancelled` the machine lands on.
+  const cancelConnect = useCallback(() => actorRef.send({ type: 'connect.cancel' }), [actorRef])
+
   const connect = useConnectBridge(actorRef)
   const disconnect = useDisconnectBridge(actorRef)
 
@@ -111,10 +115,11 @@ export const CantonConnectProvider = ({
       config,
       connection: actorRef,
       connect,
+      cancelConnect,
       disconnect,
       resetConnectError,
     }),
-    [config, actorRef, connect, disconnect, resetConnectError],
+    [config, actorRef, connect, cancelConnect, disconnect, resetConnectError],
   )
 
   return <CantonConnectContext.Provider value={value}>{children}</CantonConnectContext.Provider>

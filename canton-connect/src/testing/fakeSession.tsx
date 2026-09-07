@@ -146,6 +146,7 @@ export const FakeSessionProvider = ({
       config: CONFIG,
       connection,
       connect,
+      cancelConnect: () => connection.send({ type: 'connect.cancel' }),
       disconnect,
       resetConnectError: () => connection.send({ type: 'connectError.reset' }),
     }),

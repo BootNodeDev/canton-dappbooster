@@ -31,21 +31,21 @@ export const ConnectButton = ({
   type = 'button',
   ...rest
 }: ConnectButtonProps): ReactElement => {
-  const session = useConnect()
-  const pending = session.isPending
-  const handleClick = composeAction(onClick, session.connect)
+  const { cancelConnect, connect, isPending } = useConnect()
+  const handleClick = composeAction(onClick, isPending ? cancelConnect : connect)
+  const ownLabel = isPending && children === undefined
 
   return (
     <button
       {...rest}
-      aria-disabled={pending || undefined}
+      aria-label={ownLabel ? 'Cancel connecting' : undefined}
       className={cx(connectAnatomy.parts.root, className)}
-      onClick={pending ? undefined : handleClick}
+      onClick={handleClick}
       type={type}
-      {...{ [connectAnatomy.states.pending]: pending || undefined }}
+      {...{ [connectAnatomy.states.pending]: isPending || undefined }}
     >
-      {pending && <span aria-hidden="true" className={connectAnatomy.parts.spinner} />}
-      {children ?? (pending ? 'Connecting…' : 'Connect wallet')}
+      {isPending && <span aria-hidden="true" className={connectAnatomy.parts.spinner} />}
+      {children ?? (isPending ? 'Connecting…' : 'Connect wallet')}
     </button>
   )
 }

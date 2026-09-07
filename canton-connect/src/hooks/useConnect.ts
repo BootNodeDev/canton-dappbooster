@@ -7,12 +7,13 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
 /**
  * Return shape of {@link useConnect}.
  *
- * `connect` resolves once the party lands and rejects a cancel with {@link ConnectCancelledError}.
- * `reset` forgets only `error`.
+ * `connect` resolves once the party lands; `cancelConnect` abandons one in flight, rejecting it
+ * with {@link ConnectCancelledError}; `reset` forgets the error.
  *
  * @category Hooks
  */
 export interface UseConnectResult {
+  cancelConnect: () => void
   connect: () => Promise<void>
   isPending: boolean
   isConnected: boolean
@@ -36,7 +37,7 @@ export interface UseConnectResult {
  * @category Hooks
  */
 export const useConnect = (): UseConnectResult => {
-  const { connect, connection, resetConnectError } = useCantonConnectContext()
+  const { cancelConnect, connect, connection, resetConnectError } = useCantonConnectContext()
 
   const status = useSelector(connection, toConnectionStatus)
   const isPending = useSelector(connection, (snapshot) => snapshot.hasTag('connecting'))
@@ -51,6 +52,7 @@ export const useConnect = (): UseConnectResult => {
   )
 
   return {
+    cancelConnect,
     connect,
     isPending,
     isConnected: status === 'connected',
