@@ -99,6 +99,13 @@ permanently unacceptable, and `VestingProposal` has no reject and no withdraw, s
 freezes indefinitely. The affordance is the faucet: `fetchInstrumentConfig` posts only the parties
 and the instrument id, so a funder frozen to zero can still tap.
 
+It also widens what Accept discloses. The receiver is a lock holder and so one of
+`tokenTransferControllers`, and `Registry.daml` records that every controller witnesses the subtree
+beneath the choice, the archives of the sender's inputs and the create of its change included. So
+the receiver learns what the pledged holdings were worth, where the exact pre-split disclosed only
+`totalAmount`. Narrowing that means close-fitting selection, which trades against the
+disclosure-blob count largest-first exists to hold down.
+
 Whatever an outstanding grant already pledged is kept out of the selection, read off the funder's own
 pending-grant rows rather than remembered locally, since that is the failure this exists to prevent.
 
