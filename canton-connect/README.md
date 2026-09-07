@@ -12,7 +12,8 @@ types.
 
 [`@partylayer/react`](https://partylayer.xyz) is the alternative, built over its own wallet
 adapters. This one wraps Digital Asset's official SDK, the dependency these dApps already carry, and
-stays thin enough to delete. How close the result shapes should sit to wagmi's is open in #52.
+stays thin enough to delete. How the hook results relate to wagmi's is in
+[coming-from-wagmi.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/coming-from-wagmi.md).
 
 ## Why a state machine
 
@@ -75,7 +76,7 @@ function App() {
 }
 
 function Dapp() {
-  const { connect, isConnecting, isConnected, connectError } = useConnect()
+  const { connect, isPending, isConnected, error } = useConnect()
   const { party } = useParty()
   const { isLocked } = useWalletStatus()
   const { signMessage } = useSignMessage()
@@ -85,10 +86,10 @@ function Dapp() {
   if (!isConnected) {
     return (
       <div>
-        <button onClick={() => connect().catch(() => undefined)} disabled={isConnecting}>
+        <button onClick={() => connect().catch(() => undefined)} disabled={isPending}>
           Connect
         </button>
-        {connectError !== undefined && <p>{connectError.message}</p>}
+        {error !== undefined && <p>{error.message}</p>}
       </div>
     )
   }
@@ -103,7 +104,7 @@ function Dapp() {
 
 `connect()` opens the SDK's wallet picker, a popup by default. There is no mode argument: the picker
 is what chooses the wallet. Dismissing it rejects with `ConnectCancelledError`, which you filter by
-`instanceof`, never by message. Whether `connectError` records it as well depends on which side saw
+`instanceof`, never by message. Whether `error` records it as well depends on which side saw
 the close, so do not gate on that.
 
 `signMessage`, `execute` and `ledgerApi` refuse with no session, and refuse again while the wallet

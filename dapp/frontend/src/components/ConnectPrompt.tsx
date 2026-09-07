@@ -4,7 +4,7 @@ import { buttonClass } from '@/components/Button'
 import { EmptyState } from '@/components/EmptyState'
 
 export const ConnectPrompt = (): React.JSX.Element => {
-  const { isConnecting } = useConnect()
+  const { isPending } = useConnect()
 
   return (
     <EmptyState
@@ -13,7 +13,7 @@ export const ConnectPrompt = (): React.JSX.Element => {
       action={
         <>
           <ConnectButton className={buttonClass('primary', 'lg')} />
-          {isConnecting && (
+          {isPending && (
             <p aria-hidden="true" className="mt-2 text-xs text-fg-muted">
               (click to cancel)
             </p>

@@ -72,7 +72,7 @@ describe('CantonConnectProvider connect flow', () => {
     expect(result.current.party?.networkId).toBe('canton:devnet')
   })
 
-  it('sets connectError and rejects connect() when the picker throws', async () => {
+  it('sets error and rejects connect() when the picker throws', async () => {
     const { result } = renderSession(() => useSession(), { walletPicker: throwingPicker })
 
     // What the message says is toConnectError's classification, owned by connectError.test.ts;
@@ -80,47 +80,47 @@ describe('CantonConnectProvider connect flow', () => {
     const rejection = await act(() => result.current.connect().catch((error: unknown) => error))
 
     expect(rejection).toBeInstanceOf(Error)
-    expect(result.current.connectError).toBe(rejection)
+    expect(result.current.error).toBe(rejection)
     expect(result.current.status).toBe('disconnected')
   })
 
-  it('clears connectError on disconnect', async () => {
+  it('clears error on disconnect', async () => {
     const { result } = renderSession(() => useSession(), { walletPicker: throwingPicker })
 
     await act(async () => {
       await expect(result.current.connect()).rejects.toThrow('cancel')
     })
 
-    expect(result.current.connectError?.message).toBe('cancel')
+    expect(result.current.error?.message).toBe('cancel')
 
     await act(async () => {
       await result.current.disconnect()
     })
 
-    expect(result.current.connectError).toBeUndefined()
+    expect(result.current.error).toBeUndefined()
   })
 
-  it('reset() forgets connectError without disconnecting', async () => {
+  it('reset() forgets error without disconnecting', async () => {
     const { result } = renderSession(() => useConnect(), { walletPicker: throwingPicker })
 
     await act(async () => {
       await expect(result.current.connect()).rejects.toThrow('cancel')
     })
 
-    expect(result.current.connectError?.message).toBe('cancel')
+    expect(result.current.error?.message).toBe('cancel')
 
     act(() => {
       result.current.reset()
     })
 
-    expect(result.current.connectError).toBeUndefined()
+    expect(result.current.error).toBeUndefined()
 
     // still connectable: reset cleared a message, not the machine
     await act(async () => {
       await expect(result.current.connect()).rejects.toThrow('cancel')
     })
 
-    expect(result.current.connectError?.message).toBe('cancel')
+    expect(result.current.error?.message).toBe('cancel')
   })
 
   // The pair below is the whole observable difference between the two picker configurations: the
@@ -164,7 +164,7 @@ describe('CantonConnectProvider connect flow', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.isConnecting).toBe(true))
+    await waitFor(() => expect(result.current.isPending).toBe(true))
 
     await act(async () => {
       result.current.cancelConnect()
@@ -174,7 +174,7 @@ describe('CantonConnectProvider connect flow', () => {
 
     expect(rejection).toBeInstanceOf(ConnectCancelledError)
     // a cancel is the user walking away, not a failure, so there is nothing to show them
-    expect(result.current.connectError).toBeUndefined()
+    expect(result.current.error).toBeUndefined()
 
     wallet.dispose()
   })

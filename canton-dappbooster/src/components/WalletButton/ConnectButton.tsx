@@ -31,10 +31,9 @@ export const ConnectButton = ({
   type = 'button',
   ...rest
 }: ConnectButtonProps): ReactElement => {
-  const session = useConnect()
-  const pending = session.isConnecting
-  const handleClick = composeAction(onClick, pending ? session.cancelConnect : session.connect)
-  const ownLabel = pending && children === undefined
+  const { cancelConnect, connect, isPending } = useConnect()
+  const handleClick = composeAction(onClick, isPending ? cancelConnect : connect)
+  const ownLabel = isPending && children === undefined
 
   return (
     <button
@@ -43,10 +42,10 @@ export const ConnectButton = ({
       className={cx(connectAnatomy.parts.root, className)}
       onClick={handleClick}
       type={type}
-      {...{ [connectAnatomy.states.pending]: pending || undefined }}
+      {...{ [connectAnatomy.states.pending]: isPending || undefined }}
     >
-      {pending && <span aria-hidden="true" className={connectAnatomy.parts.spinner} />}
-      {children ?? (pending ? 'Connecting…' : 'Connect wallet')}
+      {isPending && <span aria-hidden="true" className={connectAnatomy.parts.spinner} />}
+      {children ?? (isPending ? 'Connecting…' : 'Connect wallet')}
     </button>
   )
 }

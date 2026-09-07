@@ -6,10 +6,10 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
 import type { ConnectionStatus, ConnectionSubscription, WalletSdk } from '#src/types'
 
 /** The resting state, hoisted so a hook that never called keeps one identity across renders. */
-const IDLE = { isBusy: false, error: undefined } as const
+const IDLE = { isPending: false, error: undefined } as const
 
 /** In-flight and last-failure bookkeeping for one wallet call. */
-type WalletCallState = { isBusy: boolean; error: Error | undefined }
+type WalletCallState = { isPending: boolean; error: Error | undefined }
 
 /** What a caller hands `call`: the SDK client, and the id of the party the call acts as. */
 type WalletCallRun<T> = (sdk: WalletSdk, partyId: string) => Promise<T>
@@ -33,12 +33,12 @@ function assertPartyId(partyId: string | undefined): asserts partyId is string {
 }
 
 /**
- * Return shape of {@link useWalletCall}: busy/error state around one call, plus the session
+ * Return shape of {@link useWalletCall}: pending/error state around one call, plus the session
  * pieces the public hooks assemble into their own results.
  */
 export interface UseWalletCallResult {
   call: <T>(run: WalletCallRun<T>) => Promise<T>
-  isBusy: boolean
+  isPending: boolean
   error: Error | undefined
   reset: () => void
   connection: ConnectionSubscription
@@ -48,10 +48,10 @@ export interface UseWalletCallResult {
 }
 
 // The skeleton shared by the SDK-calling hooks: session selectors, the guards, and the
-// busy/error bookkeeping around one call. Internal; the public hooks shape its pieces.
+// pending/error bookkeeping around one call. Internal; the public hooks shape its pieces.
 /**
  * Selects the session and wraps one SDK call with the connect, lock and party guards plus the
- * busy/error bookkeeping `useExecute` and `useSignMessage` share.
+ * pending/error bookkeeping `useExecute` and `useSignMessage` share.
  */
 export const useWalletCall = (): UseWalletCallResult => {
   const { connection } = useCantonConnectContext()
@@ -68,7 +68,7 @@ export const useWalletCall = (): UseWalletCallResult => {
       assertUsable(status, isLocked)
       assertPartyId(partyId)
 
-      setState({ isBusy: true, error: undefined })
+      setState({ isPending: true, error: undefined })
 
       try {
         const result = await run(sdk, partyId)
@@ -76,7 +76,7 @@ export const useWalletCall = (): UseWalletCallResult => {
         return result
       } catch (err) {
         const error = toError(err)
-        setState({ isBusy: false, error })
+        setState({ isPending: false, error })
         throw error
       }
     },
@@ -87,7 +87,7 @@ export const useWalletCall = (): UseWalletCallResult => {
 
   return {
     call,
-    isBusy: state.isBusy,
+    isPending: state.isPending,
     error: state.error,
     reset,
     connection,

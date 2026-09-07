@@ -51,8 +51,8 @@ The tags are the machine's public face; the bridges and hooks read nothing else.
   `ConnectCancelledError`. The wait has no timeout, so a state that answers a connect must carry
   one of the three.
 - `disconnect()` waits for `disconnect.settled` the same way.
-- Hooks select: `isConnecting` is `hasTag('connecting')`, `isLocked` is `hasTag('unauthenticated')`,
-  `status` is `toConnectionStatus`, `connectError` is `context.lastConnectError` through
+- Hooks select: `isPending` is `hasTag('connecting')`, `isLocked` is `hasTag('unauthenticated')`,
+  `status` is `toConnectionStatus`, `error` is `context.lastConnectError` through
   `toConnectError`.
 
 Consequences a caller notices:

@@ -8,59 +8,55 @@ import { toConnectionStatus } from '#src/machine/connectionMachine'
  * Return shape of {@link useConnect}.
  *
  * `connect` resolves once the party lands; `cancelConnect` abandons one in flight, rejecting it
- * with {@link ConnectCancelledError}. `disconnect` settles within 10 s; `reset` forgets the error.
+ * with {@link ConnectCancelledError}; `reset` forgets the error.
  *
  * @category Hooks
  */
 export interface UseConnectResult {
-  connect: () => Promise<void>
   cancelConnect: () => void
-  disconnect: () => Promise<void>
-  isConnecting: boolean
+  connect: () => Promise<void>
+  isPending: boolean
   isConnected: boolean
-  connectError: Error | undefined
+  error: Error | undefined
   reset: () => void
 }
 
 /**
- * Connects and disconnects the wallet, and reports that transition. `connect` takes no argument:
- * the picker chooses the wallet, so there is no mode to pass. Gate a pending face on
- * `isConnecting` and session-dependent content on `useParty().party`, not on `isConnected`.
- * Wagmi: `useConnect` + `useDisconnect`, bundled because one provider owns the session.
+ * Connects the wallet and reports that transition. `connect` takes no argument: the picker chooses
+ * the wallet, so there is no mode to pass. Gate a pending face on `isPending` and
+ * session-dependent content on `useParty().party`, not on `isConnected`.
  *
  * @throws with no {@link CantonConnectProvider} above it, as every hook here does.
  *
  * @example
- * const { connect, isConnecting } = useConnect()
- * <button onClick={() => void connect().catch(() => undefined)} disabled={isConnecting}>
+ * const { connect, isPending } = useConnect()
+ * <button onClick={() => void connect().catch(() => undefined)} disabled={isPending}>
  *   Connect
  * </button>
  *
  * @category Hooks
  */
 export const useConnect = (): UseConnectResult => {
-  const { cancelConnect, connect, connection, disconnect, resetConnectError } =
-    useCantonConnectContext()
+  const { cancelConnect, connect, connection, resetConnectError } = useCantonConnectContext()
 
   const status = useSelector(connection, toConnectionStatus)
-  const isConnecting = useSelector(connection, (snapshot) => snapshot.hasTag('connecting'))
+  const isPending = useSelector(connection, (snapshot) => snapshot.hasTag('connecting'))
   const lastConnectError = useSelector(connection, (snapshot) => snapshot.context.lastConnectError)
 
   // Classified in a memo rather than in the selector, so one failure keeps one identity: mapping it
   // on every snapshot would hand back a new Error each time, and a consumer comparing it across
   // renders would report the same failure twice.
-  const connectError = useMemo(
+  const error = useMemo(
     () => (lastConnectError === undefined ? undefined : toConnectError(lastConnectError)),
     [lastConnectError],
   )
 
   return {
-    connect,
     cancelConnect,
-    disconnect,
-    isConnecting,
+    connect,
+    isPending,
     isConnected: status === 'connected',
-    connectError,
+    error,
     reset: resetConnectError,
   }
 }

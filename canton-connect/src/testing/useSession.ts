@@ -1,6 +1,7 @@
 import { useSelector } from '@xstate/react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
 import { useConnect } from '#src/hooks/useConnect'
+import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useParty } from '#src/hooks/useParty'
 import { useWalletStatus } from '#src/hooks/useWalletStatus'
 import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
@@ -9,10 +10,10 @@ import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
 type Session = {
   cancelConnect: () => void
   connect: () => Promise<void>
-  connectError: Error | undefined
   disconnect: () => Promise<void>
-  isConnecting: boolean
+  error: Error | undefined
   isLocked: boolean
+  isPending: boolean
   party: Party | undefined
   reset: () => void
   sdk: WalletSdk
@@ -31,7 +32,8 @@ type Session = {
 export const useSession = (): Session => {
   const { connection } = useCantonConnectContext()
 
-  const { cancelConnect, connect, connectError, disconnect, isConnecting, reset } = useConnect()
+  const { cancelConnect, connect, error, isPending, reset } = useConnect()
+  const { disconnect } = useDisconnect()
   const { party, status } = useParty()
   const { isLocked } = useWalletStatus()
 
@@ -40,10 +42,10 @@ export const useSession = (): Session => {
   return {
     cancelConnect,
     connect,
-    connectError,
     disconnect,
-    isConnecting,
+    error,
     isLocked,
+    isPending,
     party,
     reset,
     sdk,
