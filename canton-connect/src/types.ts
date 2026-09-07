@@ -52,14 +52,17 @@ export type ConnectionStatus =
   | 'disconnected'
 
 /**
- * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` is the
- * wallet's own, falling back to `CantonConnectConfig.networkId` where the wallet reports none.
+ * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` falls
+ * back to `CantonConnectConfig.networkId` where the wallet reports none. `namespace` and
+ * `signingProviderId` come through as reported; CIP-0103 names no `signingProviderId` values.
  *
  * @category Types
  */
 export interface Party {
   partyId: string
   networkId: string
+  namespace: string
+  signingProviderId: string
   name?: string
   publicKey?: string
 }

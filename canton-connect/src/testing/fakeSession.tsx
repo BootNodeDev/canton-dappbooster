@@ -105,7 +105,7 @@ export interface FakeSessionProviderProps {
  *
  * @example
  * render(
- *   <FakeSessionProvider status="connected" party={{ partyId: PARTY, networkId: 'canton:local' }}>
+ *   <FakeSessionProvider status="connected" party={party}>
  *     <ConnectButton />
  *   </FakeSessionProvider>,
  * )
