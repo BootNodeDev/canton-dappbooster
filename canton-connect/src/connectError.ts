@@ -37,8 +37,8 @@ export class InitFailedError extends Error {
  * A connect the user walked away from: the picker was closed rather than a wallet failing.
  *
  * @example
- * if (connectError !== undefined && !(connectError instanceof ConnectCancelledError)) {
- *   toast.error(connectError.message)
+ * if (error !== undefined && !(error instanceof ConnectCancelledError)) {
+ *   toast.error(error.message)
  * }
  *
  * @category Errors

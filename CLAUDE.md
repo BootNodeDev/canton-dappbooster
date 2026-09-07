@@ -31,7 +31,7 @@ Use one reader per doc type, layered by scope:
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, non-trivial control flow, or named abstractions. |
 | `architecture/<topic>.md` | Human or agent editing one subsystem: how does it behave in full? | Only beside an `architecture.md` that indexes it, when a section outgrows the seam it describes. The index keeps the seam and links the chapter; no chapter without its index entry. |
-| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. |
+| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. `canton-connect/coming-from-wagmi.md`, published through `projectDocuments`, is the one hand-written page in it: an exception for a mapping to another library's API, not a pattern to repeat. |
 
 Current distribution:
 

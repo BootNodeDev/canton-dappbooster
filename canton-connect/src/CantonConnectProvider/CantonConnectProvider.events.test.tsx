@@ -3,6 +3,7 @@
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useConnect } from '#src/hooks/useConnect'
+import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useExecute } from '#src/hooks/useExecute'
 import { useParty } from '#src/hooks/useParty'
 import { clearDiscoveryStorage } from '#src/testing/discoveryStorage'
@@ -118,6 +119,7 @@ describe('CantonConnectProvider wallet pushes', () => {
 
     const { result } = renderSession(() => ({
       connect: useConnect(),
+      disconnect: useDisconnect(),
       party: useParty(),
       execute: useExecute(),
     }))
@@ -135,7 +137,7 @@ describe('CantonConnectProvider wallet pushes', () => {
     await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('pending'))
 
     await act(async () => {
-      await result.current.connect.disconnect()
+      await result.current.disconnect.disconnect()
     })
 
     expect(result.current.party.party).toBe(undefined)

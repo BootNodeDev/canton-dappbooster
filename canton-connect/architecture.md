@@ -16,12 +16,12 @@ src/
     accountsMachine.ts      the account read, invoked inside session.authenticated
     accountsActors.ts       listAccounts reader and accountsChanged listener
   CantonConnectProvider/
-    index.tsx               the context: publishes the actor and three actions
+    index.tsx               the context: publishes the actor and four actions
     useConnectionActor.ts   creates the actor, sends the boot restore
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the six public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
@@ -76,17 +76,19 @@ no live session, an error beside a live session) cannot be built. Three decision
 ### The bridges
 
 `connect()` and `disconnect()` are a send plus a wait on a tag, so the promise over a transition
-lives outside the machine. Neither passes a timeout. The connect wait is #105; the disconnect wait
-the machine bounds itself, giving up on a wallet 10 s silent (`DISCONNECT_TIMEOUT_MS`), since the
-SDK's request carries no deadline of its own.
+lives outside the machine. Neither passes a timeout. The connect wait has no clock on purpose, since
+a wallet login can take as long as it takes; it ends when the wallet answers or the user cancels
+(`connect.cancel`). The disconnect wait the machine bounds itself, giving up on a wallet 10 s silent
+(`DISCONNECT_TIMEOUT_MS`), since nobody is deciding anything in that window.
 
 ### The provider publishes, the hooks select
 
 The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
-through it, so the bridges stay the only senders) and three identity-stable actions. Each hook
+through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
-itself. `useConnect`, `useParty` and `useWalletStatus` read session state; `useLedger`, `useExecute`
-and `useSignMessage` select a guard plus the sdk and call it directly, never entering the machine.
+itself. `useConnect`, `useDisconnect`, `useParty` and `useWalletStatus` read session state;
+`useLedger`, `useExecute` and `useSignMessage` select a guard plus the sdk and call it directly,
+never entering the machine.
 
 The machine's input is read once, when the actor is created, so a changed `config` prop needs a
 remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out
@@ -100,7 +102,8 @@ the machine a `createSdk` closure rather than an instance.
 
 With the SDK popup in use, `guardedConnect` wraps `sdk.connect()` with a watchdog on the popup
 window, because the SDK misses a close (#49). A caught close rejects with `PickerClosedError`, which
-takes the machine to `retiring`, where the `DappSDK` is replaced.
+takes the machine to `retiring`, where the `DappSDK` is replaced. `cancelConnect` lands there too:
+the guard closes the popup itself, off the abort xstate fires when it stops the connect actor.
 
 ### Adapters
 

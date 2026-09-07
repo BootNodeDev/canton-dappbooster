@@ -25,7 +25,7 @@ const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecut
 export interface UseExecuteResult {
   execute: (params: PrepareExecuteParams) => Promise<unknown>
   lastTx: TxStatusSnapshot | undefined
-  isExecuting: boolean
+  isPending: boolean
   error: Error | undefined
   reset: () => void
 }
@@ -34,7 +34,6 @@ export interface UseExecuteResult {
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
  * event. `actAs` defaults to the party `useParty` reports, so a submit acts as the party the UI
  * shows rather than the wallet's own primary.
- * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, `execute` resolving after execution.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
  * connected or no party is reported. A command that fails throws too, and lands in `error`.
@@ -47,7 +46,7 @@ export interface UseExecuteResult {
  * @category Hooks
  */
 export const useExecute = (): UseExecuteResult => {
-  const { call, isBusy, error, reset, connection, sdk } = useWalletCall()
+  const { call, isPending, error, reset, connection, sdk } = useWalletCall()
 
   const lastTx = useTxFeed(sdk, connection)
 
@@ -59,5 +58,5 @@ export const useExecute = (): UseExecuteResult => {
     [call],
   )
 
-  return { execute, lastTx, isExecuting: isBusy, error, reset }
+  return { execute, lastTx, isPending, error, reset }
 }

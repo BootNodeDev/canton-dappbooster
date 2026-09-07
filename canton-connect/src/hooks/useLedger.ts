@@ -21,7 +21,6 @@ export interface UseLedgerResult {
 /**
  * Escape hatch for ledger reads `useExecute` and `useSignMessage` do not cover: the participant's
  * JSON API, passed through untyped.
- * Wagmi: `usePublicClient`.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
  * is connected, which `isReady` is there to check first.
@@ -33,7 +32,7 @@ export interface UseLedgerResult {
  * @category Hooks
  */
 export const useLedger = (): UseLedgerResult => {
-  // Guards without `call`: a stateless query needs no busy/error renders around it.
+  // Guards without `call`: a stateless query needs no pending/error renders around it.
   const { sdk, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(
