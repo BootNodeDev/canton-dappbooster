@@ -24,6 +24,10 @@ const isSameOriginPath = (value: string): boolean =>
 
 const isRpcUrl = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
 
+// The registry value is a base every call appends a path to, and `isRpcUrl` accepts a trailing
+// slash, which would request `//registry/...` and 404 against a path the error then misreports.
+const trimBase = (value: string): string => value.replace(/\/+$/, '')
+
 // Reads one env key and validates it
 const read = (
   values: Record<string, unknown>,
@@ -47,11 +51,8 @@ export const parseEnv = (source: unknown): Env => {
 
   return {
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
-    VITE_REGISTRY_URL: read(
-      values,
-      'VITE_REGISTRY_URL',
-      isRpcUrl,
-      'an http(s) url or a same-origin path',
+    VITE_REGISTRY_URL: trimBase(
+      read(values, 'VITE_REGISTRY_URL', isRpcUrl, 'an http(s) url or a same-origin path'),
     ),
     VITE_WALLET_RPC_URL: read(
       values,

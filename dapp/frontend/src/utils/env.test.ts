@@ -80,4 +80,15 @@ describe('VITE_REGISTRY_URL', () => {
   it('rejects a value that is neither a url nor a path', () => {
     expect(() => parseEnv({ VITE_REGISTRY_URL: 'registry' })).toThrow(/VITE_REGISTRY_URL/)
   })
+
+  // A base, not an endpoint: every caller appends a path, so a trailing slash would request
+  // `//registry/...` and 404 against a path the thrown message would then misreport.
+  it.each([
+    ['http://localhost:3013/', 'http://localhost:3013'],
+    ['http://localhost:3013///', 'http://localhost:3013'],
+    ['/api/registry/', '/api/registry'],
+    ['/', ''],
+  ])('trims the trailing slash off %j', (VITE_REGISTRY_URL, expected) => {
+    expect(parseEnv({ VITE_REGISTRY_URL }).VITE_REGISTRY_URL).toBe(expected)
+  })
 })

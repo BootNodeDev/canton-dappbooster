@@ -6,10 +6,10 @@ import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wall
 
 const deployment: Deployment = {
   admin: 'instrument-admin::1',
+  factoryBlob: 'YmxvYg==',
+  factoryCid: 'factory-cid',
   instrumentId: 'DBT',
   pkg: 'pkg1',
-  factoryCid: 'factory-cid',
-  factoryBlob: 'YmxvYg==',
   synchronizerId: 'sync::1',
 }
 
@@ -19,9 +19,9 @@ const schedule = {
 } as const
 
 const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
-const PENDING = '#amulet-vesting:AmuletVesting:AmuletVestingProposal'
-const CONTRACT = '#amulet-vesting:AmuletVesting:AmuletVestingContract'
-const CLAIM = '#amulet-vesting:AmuletVesting:AmuletVestedClaim'
+const PENDING = '#vesting:Vesting:VestingProposal'
+const CONTRACT = '#vesting:Vesting:VestingContract'
+const CLAIM = '#vesting:Vesting:VestedClaim'
 
 type Submission = {
   actAs?: string[]
@@ -102,6 +102,22 @@ vi.mock('@/backend/transferContext', () => ({
   fetchTransferContext: async () => transferContext,
 }))
 
+const CONFIG = {
+  templateId: '20d54824:Canton.TokenForge.Registry:InstrumentConfig',
+  contractId: '00cfg',
+  createdEventBlob: 'cfg-blob',
+}
+
+// LedgerBackend owes putting whatever comes back into every write, so the fetch is replaced rather
+// than stubbed. What the registry returns is registry.test.ts's rule.
+vi.mock('@/backend/registry', () => ({
+  fetchInstrumentConfig: async () => ({
+    configCid: CONFIG.contractId,
+    configTemplateId: CONFIG.templateId,
+    disclosed: [CONFIG],
+  }),
+}))
+
 // createVesting is two submissions now, so the harness has to behave like the ledger under both:
 // a split archives its inputs and puts the output plus any change in their place, and the factory
 // choice leaves a pending grant behind pledging what it was given. Without that second half every
@@ -117,9 +133,9 @@ const initialAmount = (one: unknown): number =>
 
 const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: number): void => {
   const exercise = submission.commands?.[0]?.ExerciseCommand
-  if (exercise?.choice === 'AmuletVestingFactory_CreateVesting') {
-    const { amuletCids } = exercise.choiceArgument as { amuletCids: string[] }
-    acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${amuletCids[0]}`, { amuletCids })]
+  if (exercise?.choice === 'VestingFactory_CreateVesting') {
+    const { tokenCids } = exercise.choiceArgument as { tokenCids: string[] }
+    acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${tokenCids[0]}`, { tokenCids })]
     return
   }
   if (exercise?.choice !== 'AmuletRules_Transfer') {
@@ -237,7 +253,7 @@ describe('LedgerBackend.createVesting', () => {
         expectedDso: 'dso::1',
       },
     })
-    expect(submissions[1]?.commands?.[0]?.ExerciseCommand.choiceArgument.amuletCids).toEqual([
+    expect(submissions[1]?.commands?.[0]?.ExerciseCommand.choiceArgument.tokenCids).toEqual([
       'split-1',
     ])
   })
@@ -246,7 +262,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend, submissions } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '1000')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
       },
     })
 
@@ -262,7 +278,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '400')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
       },
     })
 
@@ -277,15 +293,15 @@ describe('LedgerBackend.createVesting', () => {
     expect(submissions[1]?.commands).toEqual([
       {
         ExerciseCommand: {
-          templateId: 'pkg1:AmuletVesting:AmuletVestingFactory',
+          templateId: 'pkg1:Vesting:VestingFactory',
           contractId: 'factory-cid',
-          choice: 'AmuletVestingFactory_CreateVesting',
+          choice: 'VestingFactory_CreateVesting',
           choiceArgument: {
             proposer: 'funder::1',
             receiver: 'receiver::1',
             totalAmount: '1000',
             schedule: encodeSchedule(schedule),
-            amuletCids: ['split-1'],
+            tokenCids: ['split-1'],
             note: 'Advisor grant\nlinear',
           },
         },
@@ -295,7 +311,7 @@ describe('LedgerBackend.createVesting', () => {
     // deployment's rather than something read back here.
     expect(submissions[1]?.disclosedContracts).toEqual([
       {
-        templateId: 'pkg1:AmuletVesting:AmuletVestingFactory',
+        templateId: 'pkg1:Vesting:VestingFactory',
         contractId: 'factory-cid',
         createdEventBlob: 'YmxvYg==',
         synchronizerId: 'sync::1',
@@ -366,14 +382,14 @@ describe('LedgerBackend submissions', () => {
     ])
   })
 
-  it('discloses the transfer context, stamped with the synchronizer, on every Amulet-moving write', async () => {
+  it('discloses the instrument config, stamped with the synchronizer, on every write that moves a holding', async () => {
     const { backend, submissions } = harness()
 
     await backend.withdraw({ receiver: 'receiver::1', contractCid: 'c1', amount: '10' })
     await backend.cancel({ creator: 'funder::1', contractCid: 'c1' })
     await backend.claimResidual({ receiver: 'receiver::1', claimCid: 'r1', amount: '10' })
 
-    const stamped = onSync(transferContext.disclosed)
+    const stamped = onSync([CONFIG])
     expect(submissions.map((submission) => submission.disclosedContracts)).toEqual([
       stamped,
       stamped,
@@ -394,20 +410,20 @@ describe('LedgerBackend submissions', () => {
         return [command?.templateId, command?.choice, command?.contractId]
       }),
     ).toEqual([
-      ['pkg1:AmuletVesting:AmuletVestingContract', 'AmuletVestingContract_Withdraw', 'c1'],
-      ['pkg1:AmuletVesting:AmuletVestingContract', 'AmuletVestingContract_Cancel', 'c1'],
-      ['pkg1:AmuletVesting:AmuletVestedClaim', 'AmuletVestedClaim_Withdraw', 'r1'],
+      ['pkg1:Vesting:VestingContract', 'VestingContract_Withdraw', 'c1'],
+      ['pkg1:Vesting:VestingContract', 'VestingContract_Cancel', 'c1'],
+      ['pkg1:Vesting:VestedClaim', 'VestedClaim_Withdraw', 'r1'],
     ])
   })
 
-  it('carries the transfer context into every choice argument that takes one', async () => {
+  it('carries the config into every choice argument that takes one', async () => {
     const { backend, submissions } = harness()
 
     await backend.withdraw({ receiver: 'receiver::1', contractCid: 'c1', amount: '10' })
 
     expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choiceArgument).toEqual({
       withdrawAmount: '10',
-      ctx: transferContext.ctx,
+      configCid: '00cfg',
     })
   })
 })
@@ -432,12 +448,8 @@ describe('LedgerBackend.accept', () => {
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-split-1' })
 
-    expect(submissions[0]?.disclosedContracts).toEqual(
-      onSync([...transferContext.disclosed, disclosedAmulet('split-1')]),
-    )
-    expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe(
-      'AmuletVestingProposal_Accept',
-    )
+    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedAmulet('split-1')]))
+    expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Accept')
   })
 
   it('refuses rather than submitting an Accept the participant would reject', async () => {
@@ -458,9 +470,7 @@ describe('LedgerBackend.accept', () => {
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-split-1' })
 
-    expect(submissions[0]?.disclosedContracts).toEqual(
-      onSync([...transferContext.disclosed, disclosedAmulet('split-1')]),
-    )
+    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedAmulet('split-1')]))
   })
 })
 

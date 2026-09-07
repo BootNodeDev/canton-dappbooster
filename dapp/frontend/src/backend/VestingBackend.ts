@@ -21,9 +21,10 @@ export interface CreateVestInput {
   totalAmount: string
 }
 
-// One `AmuletVestingContract_Withdraw` off the ledger: the amount and ledger time from the transaction, plus the
-// two contract ids it sits between. `replaces` is what the claim consumed and `grant` what it
-// created, so a caller can walk a grant's ancestry rather than match on fields two grants can share.
+// One `VestingContract_Withdraw` off the ledger: the amount and ledger time from the
+// transaction, plus the two contract ids it sits between. `replaces` is what the claim consumed
+// and `grant` what it created, so a caller can walk a grant's ancestry rather than match on
+// fields two grants can share.
 export interface ClaimRecord {
   amount: string
   at: string
@@ -205,7 +206,7 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     const transaction = entry.update?.Transaction?.value
     const events = transaction?.events ?? []
     const claim = events.find(
-      (event) => event.ExercisedEvent?.choice === 'AmuletVestingContract_Withdraw',
+      (event) => event.ExercisedEvent?.choice === 'VestingContract_Withdraw',
     )?.ExercisedEvent
     const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
     const amount = claim?.choiceArgument?.withdrawAmount
@@ -250,7 +251,7 @@ export const amuletDso = (row: AcsRow): string | undefined =>
 // The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
 // else may spend them while it is outstanding.
 export const pledgedAmulets = (row: AcsRow): string[] => {
-  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.amuletCids
+  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.tokenCids
   return Array.isArray(cids) ? cids.map(String) : []
 }
 

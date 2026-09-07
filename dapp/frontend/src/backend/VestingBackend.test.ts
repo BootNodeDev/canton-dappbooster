@@ -170,7 +170,7 @@ const claimUpdate = (
         events: [
           {
             ExercisedEvent: {
-              choice: 'AmuletVestingContract_Withdraw',
+              choice: 'VestingContract_Withdraw',
               choiceArgument: { withdrawAmount: amount },
               contractId: replaces,
             },

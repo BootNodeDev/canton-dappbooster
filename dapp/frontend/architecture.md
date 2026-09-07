@@ -52,7 +52,9 @@ about it is configured. The registry half can: `VITE_REGISTRY_URL` names a separ
 still running against a previous bootstrap's admin party answers `/info` with a party this ledger no
 longer knows. Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id
 there is nothing to query and without the blob there is no factory to disclose. It needs a session
-to read through, so it resolves after connect rather than before.
+to read through, so it resolves after connect rather than before. That error card offers a retry,
+which is the only way back: the registry restarts independently of the session, so a failure against
+it outlives neither the party nor the transport that would otherwise re-trigger the load.
 
 ## What a write has to carry
 
