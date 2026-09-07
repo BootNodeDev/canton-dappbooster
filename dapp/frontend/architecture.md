@@ -12,7 +12,7 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, `registry.ts`, the CIP-56 registry client the instrument and its disclosure come from, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
@@ -39,13 +39,20 @@ than implemented by a class. They come straight from `canton-connect`'s `useExec
 `LedgerBackend`'s unit tests need it constructible without React.
 
 Both halves of the pairing are runtime state. The deployment comes from
-[`config.ts`](src/backend/config.ts), which reads it off the ledger through that same `ledgerApi`:
-the newest `vesting-operator-*` among the connected user's rights, then an active-contracts read as
-that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
-Nothing is configured, so nothing can go stale against the participant the wallet is pointed at.
-Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
-nothing to query and without the blob there is no factory to disclose. It needs a session to read
-through, so it resolves after connect rather than before.
+[`config.ts`](src/backend/config.ts), which assembles it from two sources at once. Off the ledger,
+through that same `ledgerApi`: the newest `vesting-operator-*` among the connected user's rights,
+then an active-contracts read as that operator for the factory, which yields `pkg`, the contract id
+and the `createdEventBlob`. And off the registry, through
+[`registry.ts`](src/backend/registry.ts), for the instrument's `admin` and `instrumentId`; reading
+those off the ledger instead would only work on LocalNet, because the instrument admin is a third
+party and no connected party is a stakeholder of its `InstrumentConfig`.
+
+The ledger half cannot go stale against the participant the wallet is pointed at, since nothing
+about it is configured. The registry half can: `VITE_REGISTRY_URL` names a separate process, and one
+still running against a previous bootstrap's admin party answers `/info` with a party this ledger no
+longer knows. Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id
+there is nothing to query and without the blob there is no factory to disclose. It needs a session
+to read through, so it resolves after connect rather than before.
 
 ## What a write has to carry
 

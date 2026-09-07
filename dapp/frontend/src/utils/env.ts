@@ -1,10 +1,12 @@
 export interface Env {
   VITE_EXPLORER_URL: string
+  VITE_REGISTRY_URL: string
   VITE_WALLET_RPC_URL: string
 }
 
 const DEFAULTS: Env = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_REGISTRY_URL: 'http://localhost:3013',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
@@ -45,6 +47,12 @@ export const parseEnv = (source: unknown): Env => {
 
   return {
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
+    VITE_REGISTRY_URL: read(
+      values,
+      'VITE_REGISTRY_URL',
+      isRpcUrl,
+      'an http(s) url or a same-origin path',
+    ),
     VITE_WALLET_RPC_URL: read(
       values,
       'VITE_WALLET_RPC_URL',

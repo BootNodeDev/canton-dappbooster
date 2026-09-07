@@ -3,10 +3,13 @@
 // shows as an empty dashboard with no error.
 
 import type { LedgerApiParams } from '@bootnodedev/canton-connect'
+import { fetchInstrument } from '@/backend/registry'
 
 export type Deployment = {
+  admin: string
   factoryBlob: string
   factoryCid: string
+  instrumentId: string
   pkg: string
   synchronizerId?: string
 }
@@ -14,7 +17,7 @@ export type Deployment = {
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 
 // A filter takes the package-name reference, never the id it resolves to.
-const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
+const FACTORY = '#vesting:Vesting:VestingFactory'
 const OPERATOR_HINT = 'vesting-operator-'
 
 const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)
@@ -57,7 +60,7 @@ const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
 }
 
 export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deployment> => {
-  const operator = await newestOperator(ledgerApi)
+  const [operator, instrument] = await Promise.all([newestOperator(ledgerApi), fetchInstrument()])
   const { offset } = await call<{ offset?: string | number }>(ledgerApi, {
     requestMethod: 'get',
     resource: '/v2/state/ledger-end',
@@ -100,8 +103,10 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
     throw advice('the factory came back with no package id')
   }
   return {
+    admin: instrument.admin,
     factoryBlob: created.createdEventBlob,
     factoryCid: created.contractId,
+    instrumentId: instrument.instrumentId,
     pkg,
     ...(factory?.synchronizerId === undefined ? {} : { synchronizerId: factory.synchronizerId }),
   }

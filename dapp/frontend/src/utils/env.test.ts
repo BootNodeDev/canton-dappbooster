@@ -3,6 +3,7 @@ import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_REGISTRY_URL: 'http://localhost:3013',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
@@ -64,5 +65,19 @@ describe('parseEnv', () => {
 
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
+  })
+})
+
+describe('VITE_REGISTRY_URL', () => {
+  it('defaults to the local registry port', () => {
+    expect(parseEnv({}).VITE_REGISTRY_URL).toBe('http://localhost:3013')
+  })
+
+  it('accepts a same-origin path, which is what a deployed build sets', () => {
+    expect(parseEnv({ VITE_REGISTRY_URL: '/api/registry' }).VITE_REGISTRY_URL).toBe('/api/registry')
+  })
+
+  it('rejects a value that is neither a url nor a path', () => {
+    expect(() => parseEnv({ VITE_REGISTRY_URL: 'registry' })).toThrow(/VITE_REGISTRY_URL/)
   })
 })

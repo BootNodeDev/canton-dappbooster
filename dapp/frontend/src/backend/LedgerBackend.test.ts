@@ -5,6 +5,8 @@ import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
 
 const deployment: Deployment = {
+  admin: 'instrument-admin::1',
+  instrumentId: 'DBT',
   pkg: 'pkg1',
   factoryCid: 'factory-cid',
   factoryBlob: 'YmxvYg==',
