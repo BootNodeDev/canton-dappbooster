@@ -1,5 +1,14 @@
 import { useExecute, useLedger, useParty } from '@bootnodedev/canton-connect'
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { VestingBackend } from '@/backend/VestingBackend'
@@ -13,6 +22,7 @@ export interface BackendState {
   backend: VestingBackend | undefined
   configError: string | undefined
   configPending: boolean
+  retryConfig: () => void
   sessionPending: boolean
 }
 
@@ -27,6 +37,9 @@ const BackendContext = createContext<BackendState | undefined>(undefined)
 export const Backend = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const [deployment, setDeployment] = useState<Deployment | undefined>(undefined)
   const [configError, setConfigError] = useState<string | undefined>(undefined)
+  // Only the newest load may write: a retry can be asked for while an earlier one is still in
+  // flight, and the effect's own teardown has no way to reach a call the callback started.
+  const generation = useRef(0)
   const { execute } = useExecute()
   const { ledgerApi } = useLedger()
   // A restored-but-locked session reports `connected` with no party, so the party is the gate: it
@@ -42,6 +55,29 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     return () => clearTimeout(timer)
   }, [])
 
+  // A callback rather than effect-body code because the error card offers it again: half the
+  // deployment comes from the registry, a separately restarted process, so a failure here outlives
+  // neither the party nor the ledger transport and nothing else would ever retry it. The error is
+  // cleared on entry, so a retry that succeeds cannot leave the shell reporting the failure it
+  // replaced.
+  const loadConfig = useCallback(() => {
+    const attempt = ++generation.current
+    setConfigError(undefined)
+
+    void loadBackendConfig(ledgerApi).then(
+      (config) => {
+        if (generation.current === attempt) {
+          setDeployment(config)
+        }
+      },
+      (err: unknown) => {
+        if (generation.current === attempt) {
+          setConfigError(errorText(err))
+        }
+      },
+    )
+  }, [ledgerApi])
+
   // The registry half of the deployment needs no session, but it shares this one call with the
   // ledger half, which does, so the gate is the ledger requirement. Until then the deployment is not
   // pending but absent, which is what leaves the pages free to render their own connect card.
@@ -49,25 +85,12 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     if (!hasParty) {
       return
     }
-    let cancelled = false
-
-    void loadBackendConfig(ledgerApi).then(
-      (config) => {
-        if (!cancelled) {
-          setDeployment(config)
-        }
-      },
-      (err: unknown) => {
-        if (!cancelled) {
-          setConfigError(errorText(err))
-        }
-      },
-    )
+    loadConfig()
 
     return () => {
-      cancelled = true
+      generation.current += 1
     }
-  }, [hasParty, ledgerApi])
+  }, [hasParty, loadConfig])
 
   // Its own memo, because the grace timer below flips a purely visual flag: sharing one would mint a
   // new backend identity mid-session and re-run every read that keys off it.
@@ -84,9 +107,10 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       backend,
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
+      retryConfig: loadConfig,
       sessionPending: checkingSession && !hasParty,
     }),
-    [backend, checkingSession, configError, deployment, hasParty],
+    [backend, checkingSession, configError, deployment, hasParty, loadConfig],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>
