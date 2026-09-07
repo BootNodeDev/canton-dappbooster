@@ -89,6 +89,16 @@ describe('fetchInstrument', () => {
     )
   })
 
+  it('names the registry and the url when the fetch itself never answers', async () => {
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch')
+    })
+
+    await expect(fetchInstrument()).rejects.toThrow(
+      /registry is unreachable at http:\/\/localhost:3013\/registry\/metadata\/v1\/info/,
+    )
+  })
+
   it('refuses an /info body with no admin party', async () => {
     stubRegistry({ ...metadata, '/registry/metadata/v1/info': { body: { supportedApis: {} } } })
 

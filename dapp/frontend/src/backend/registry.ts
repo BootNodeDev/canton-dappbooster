@@ -28,7 +28,7 @@ const advice = (reason: string): Error => new Error(`${reason}, run pnpm run boo
 // The registry answers a refusal with a status and a JSON `error`, so read both: a stopped service
 // is fronted by an html error page, which would otherwise surface as a JSON syntax error.
 const call = async <T>(path: string, body?: unknown): Promise<T> => {
-  const response = await fetch(`${REGISTRY_URL}${path}`, {
+  const init = {
     ...(body === undefined
       ? { method: 'GET' }
       : {
@@ -36,7 +36,15 @@ const call = async <T>(path: string, body?: unknown): Promise<T> => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
         }),
-  })
+  }
+  let response: Response
+  try {
+    response = await fetch(`${REGISTRY_URL}${path}`, init)
+  } catch {
+    // A service that is down, a CORS refusal and a mixed-content block all reject alike, as a bare
+    // `Failed to fetch` naming neither the registry nor where it was looked for.
+    throw new Error(`the registry is unreachable at ${REGISTRY_URL}${path}`)
+  }
   const parsed = (await response.json().catch(() => undefined)) as { error?: string } | undefined
   const reason = parsed?.error
   if (reason !== undefined) {
