@@ -15,8 +15,8 @@ importers:
         specifier: 0.3.0
         version: 0.3.0
       '@bootnodedev/canton-token-forge':
-        specifier: github:BootNodeDev/canton-token-forge#v0.2.0
-        version: https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/da18cbebd20e093ea77a9374829b3765caae60f1(@types/json-schema@7.0.15)(supports-color@7.2.0)
+        specifier: github:BootNodeDev/canton-token-forge#v0.3.0
+        version: https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7(@types/json-schema@7.0.15)(supports-color@7.2.0)
       '@bootnodedev/canton-wallet-service':
         specifier: git+ssh://git@github.com/BootNodeDev/canton-wallet-service.git#v0.1.4
         version: https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/99e7e69d2d91109e527a74a5c97c566a882de477(supports-color@7.2.0)
@@ -348,9 +348,9 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/da18cbebd20e093ea77a9374829b3765caae60f1':
-    resolution: {gitHosted: true, integrity: sha512-kscwjARIk3uaaus+vYY4kBMDoV9C4WR3Xnk/ISFB/6cxqzvI1xxG1kSgcYRbQpm+dF0m3dgh2w/qhXqD7IAreQ==, tarball: https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/da18cbebd20e093ea77a9374829b3765caae60f1}
-    version: 0.2.0
+  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7':
+    resolution: {gitHosted: true, integrity: sha512-vnxpItMo7nPZGu9F5y93gYVVLwkepeTY8BRIpPH1wgSyXLC7MS7rrEiCnI/tku0PBStMPVzcGb3adkvO8mZXkw==, tarball: https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7}
+    version: 0.3.0
     engines: {node: '>=20'}
     hasBin: true
 
@@ -4448,8 +4448,9 @@ snapshots:
     dependencies:
       zod: 4.5.4
 
-  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/da18cbebd20e093ea77a9374829b3765caae60f1(@types/json-schema@7.0.15)(supports-color@7.2.0)':
+  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7(@types/json-schema@7.0.15)(supports-color@7.2.0)':
     dependencies:
+      cors: 2.8.6
       dotenv: 16.6.1
       express: 4.22.2(supports-color@7.2.0)
       express-openapi-validator: 5.6.2(@types/json-schema@7.0.15)(express@4.22.2(supports-color@7.2.0))
