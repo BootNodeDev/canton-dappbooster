@@ -20,9 +20,12 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
 - `providers/` names what it provides, not the role the folder already states: `Backend`, not
   `BackendProvider`.
 - `api/` sits beside `src/`, not inside it. Vercel publishes each module there at `/api/<basename>`,
-  so the path is the route and moving one renames the endpoint. Server-side code: it never imports
-  from `src/`, reads its configuration from `process.env`, and any variable it needs is deliberately
-  not a `VITE_` name, since those are inlined into the bundle.
+  so the path is the route and moving one renames the endpoint. A bracketed filename matches exactly
+  one path segment, catch-all spelling included, so forwarding a service's own multi-segment paths
+  takes an explicit `vercel.json` rewrite carrying the path as a parameter, which is what
+  `registry.ts` does. Server-side code: it never imports from `src/`, reads its configuration from
+  `process.env`, and any variable it needs is deliberately not a `VITE_` name, since those are
+  inlined into the bundle.
 
 ## Shared pieces to reach for
 

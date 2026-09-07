@@ -21,7 +21,7 @@ interfaces carry that, and every other decision hangs off them.
 | `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
-| `api/` | Vercel functions, published at `/api/<name>` off the deployed origin. `rpc.ts` is the only one, and it forwards a single wallet-service method. Not part of the bundle and not reachable in `pnpm dev`. |
+| `api/` | Vercel functions, published off the deployed origin. `registry.ts` is the only one, and it forwards three read-only registry routes that `vercel.json` rewrites onto it. Not part of the bundle and not reachable in `pnpm dev`. |
 
 ## The two seams
 
