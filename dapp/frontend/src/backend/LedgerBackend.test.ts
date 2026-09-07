@@ -135,10 +135,7 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: num
   const exercise = submission.commands?.[0]?.ExerciseCommand
   if (exercise?.choice === 'VestingFactory_CreateVesting') {
     const { tokenCids } = exercise.choiceArgument as { tokenCids: string[] }
-    acs[PENDING] = [
-      ...(acs[PENDING] ?? []),
-      row(`pending-for-${tokenCids[0]}`, { amuletCids: tokenCids }),
-    ]
+    acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${tokenCids[0]}`, { tokenCids })]
     return
   }
   if (exercise?.choice !== 'AmuletRules_Transfer') {
@@ -265,7 +262,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend, submissions } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '1000')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
       },
     })
 
@@ -281,7 +278,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '400')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
       },
     })
 

@@ -79,7 +79,7 @@ describe('command builders', () => {
       buildCreateVestingCommand('pkg:Vesting:VestingFactory', 'factory-cid', {
         proposer: 'funder::1',
         receiver: 'receiver::1',
-        totalAmount: '1000',
+        totalAmount: '1000.00',
         schedule: linear,
         tokenCids: ['t1', 't2'],
       }),
@@ -134,7 +134,7 @@ describe('command builders', () => {
   })
 
   it('builds the residual withdraw against the claim template', () => {
-    expect(buildClaimResidualCommand('pkg:Vesting:VestedClaim', 'r1', '2', CONFIG_CID)).toEqual({
+    expect(buildClaimResidualCommand('pkg:Vesting:VestedClaim', 'r1', '2.00', CONFIG_CID)).toEqual({
       ExerciseCommand: {
         templateId: 'pkg:Vesting:VestedClaim',
         contractId: 'r1',
@@ -149,7 +149,7 @@ describe('command builders', () => {
   it('builds the faucet tap against the resolved config template id', () => {
     expect(
       buildTapCommand('20d54824:Canton.TokenForge.Registry:InstrumentConfig', CONFIG_CID, {
-        amount: '1000',
+        amount: '1000.00',
         user: 'funder::1',
       }),
     ).toEqual({
