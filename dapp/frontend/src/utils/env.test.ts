@@ -66,7 +66,7 @@ describe('VITE_REGISTRY_URL', () => {
     '/\\/evil.example/rpc',
     '/\t/evil.example/rpc',
     '/\n/evil.example/rpc',
-    'api/rpc',
+    'api/registry',
     'javascript:alert(1)',
   ])('rejects %j as the registry url', (VITE_REGISTRY_URL) => {
     expect(() => parseEnv({ ...DEFAULTS, VITE_REGISTRY_URL })).toThrow(/VITE_REGISTRY_URL/)
