@@ -2,10 +2,12 @@
 
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ConnectCancelledError } from '#src/connectError'
 import { useConnect } from '#src/hooks/useConnect'
 import { createMockAdapter } from '#src/mock/mockAdapter'
 import { createAutoPicker } from '#src/testing/autoPicker'
 import { clearDiscoveryStorage } from '#src/testing/discoveryStorage'
+import { hangingPicker } from '#src/testing/hangingPicker'
 import { renderSession } from '#src/testing/renderSession'
 import { throwingPicker } from '#src/testing/throwingPicker'
 import { useSession } from '#src/testing/useSession'
@@ -149,5 +151,49 @@ describe('CantonConnectProvider connect flow', () => {
     })
 
     expect(openSpy).toHaveBeenCalled()
+  })
+
+  it('cancels an attempt the wallet never answers', async () => {
+    const wallet = walletA()
+    const { result } = renderSession(() => useSession(), { walletPicker: hangingPicker })
+
+    let rejection: unknown
+    await act(async () => {
+      result.current.connect().catch((error: unknown) => {
+        rejection = error
+      })
+    })
+
+    await waitFor(() => expect(result.current.isConnecting).toBe(true))
+
+    await act(async () => {
+      result.current.cancelConnect()
+    })
+
+    await waitFor(() => expect(result.current.status).toBe('disconnected'))
+
+    expect(rejection).toBeInstanceOf(ConnectCancelledError)
+    // a cancel is the user walking away, not a failure, so there is nothing to show them
+    expect(result.current.connectError).toBeUndefined()
+
+    wallet.dispose()
+  })
+
+  it('retires the sdk a cancelled connect abandoned', async () => {
+    const wallet = walletA()
+    const { result } = renderSession(() => useSession(), { walletPicker: hangingPicker })
+    const abandoned = result.current.sdk
+
+    await act(async () => {
+      result.current.connect().catch(() => undefined)
+    })
+
+    await act(async () => {
+      result.current.cancelConnect()
+    })
+
+    await waitFor(() => expect(result.current.sdk).not.toBe(abandoned))
+
+    wallet.dispose()
   })
 })

@@ -18,7 +18,7 @@ stays thin enough to delete. How close the result shapes should sit to wagmi's i
 
 The connection lifecycle looks like four states (idle, connecting, connected,
 disconnected) and isn't. The hard part isn't holding state, it's canceling work
-when the state that started it is gone: a picker the user walked out of, a lock
+when the state that started it is gone: a picker the user abandoned, a lock
 that races the account read, a connect asked for mid-disconnect, a wallet that
 answers late or never. Handled one at a time these were five separate races
 (#76). A state machine folds them into one model: a state's invoked work is
@@ -36,7 +36,7 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 | dapp-sdk gap | what it costs us | gone when |
 |---|---|---|
-| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state | `connect(signal)` truly aborts |
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state, `retireSdk`'s picker swap | `connect(signal)` truly aborts |
 | `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
 | `disconnect()` has no timeout (#105) | `DISCONNECT_TIMEOUT_MS`, and `retireSdk` when it fires | `disconnect()` times out itself |
 | lock and wallet-side disconnect are one push | `session.unauthenticated`, party-dropped-on-lock | CIP-0103 separates them (spec, not SDK) |

@@ -4,10 +4,11 @@ import {
   assign,
   type DoneActorEvent,
   type ErrorActorEvent,
+  enqueueActions,
   type SnapshotFrom,
   setup,
 } from 'xstate'
-import { InitFailedError, PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, InitFailedError, PickerClosedError } from '#src/connectError'
 import { accountsMachine } from '#src/machine/accountsMachine'
 import {
   connect,
@@ -197,6 +198,13 @@ const askWallet = (retiringTarget: string) =>
     ],
   }) as const
 
+/** A connect attempt and the two exits that keep no session: the picker closing, and a cancel. */
+const connectAttempt = (retiringTarget: string) =>
+  ({
+    invoke: askWallet(retiringTarget),
+    on: { 'connect.cancel': { actions: { type: 'retireSdk' }, target: retiringTarget } },
+  }) as const
+
 /**
  * The lifecycle itself: what a connect, a restore, a lock and a disconnect mean, and the tags the
  * bridges and hooks read off them. `CantonConnectProvider` runs it; reach for it directly only to
@@ -221,10 +229,17 @@ export const connectionMachine = setup({
       ),
     })),
     forgetError: assign({ lastConnectError: undefined }),
-    // The walked-out connect keeps waiting inside the old sdk and nothing can stop it, so a later
-    // attempt on that sdk could have its client swapped mid-connect. Drop the instance, take a new
-    // one.
-    retireSdk: assign(({ context }) => ({ sdk: context.createSdk() })),
+    retireSdk: enqueueActions(({ enqueue }) => {
+      enqueue(({ context }) => {
+        // A cancel can land before the popup exists, while connect() is still in the SDK's
+        // discovery wait. That connect() keeps running and opens the popup by calling
+        // `walletPicker`; a rejecting one ends it first.
+        Object.assign(context.sdk, {
+          walletPicker: () => Promise.reject(new ConnectCancelledError()),
+        })
+      })
+      enqueue.assign({ sdk: ({ context }) => context.createSdk() })
+    }),
   },
   guards: {
     // A guard that throws stops the actor, so an answer missing `connection` reads as not
@@ -247,7 +262,7 @@ export const connectionMachine = setup({
         | 'connect.settled'
         // The connect is answered by the failure riding in `lastConnectError`.
         | 'connect.failed'
-        // The connect was walked out on: it ends with no session and no error recorded.
+        // The connect was abandoned: it ends with no session and no error recorded.
         | 'connect.cancelled'
         // A connect is still in progress to consumers, the account read after the wallet's answer
         // included.
@@ -259,6 +274,7 @@ export const connectionMachine = setup({
         | 'disconnect.settled',
     events: {} as
       | { type: 'connect' }
+      | { type: 'connect.cancel' }
       | { type: 'connectError.reset' }
       | { type: 'disconnect' }
       | { type: 'restore' }
@@ -305,8 +321,8 @@ export const connectionMachine = setup({
       // The variants carry what is at stake: `new` risks no session, `changing` is a
       // wallet change over a standing one, and a closed picker resumes that session.
       states: {
-        new: { invoke: askWallet('#connection.retiring.new') },
-        changing: { invoke: askWallet('#connection.retiring.changing') },
+        new: connectAttempt('#connection.retiring.new'),
+        changing: connectAttempt('#connection.retiring.changing'),
       },
       on: {
         // Leaving the state is not enough: sdk.connect() keeps running past this, so the wallet
@@ -354,7 +370,11 @@ export const connectionMachine = setup({
             ],
           },
           states: {
-            reading: { tags: ['connecting'] },
+            reading: {
+              tags: ['connecting'],
+              // The wallet is connected by now, so ending the attempt means ending the session.
+              on: { 'connect.cancel': { target: '#connection.disconnecting' } },
+            },
             ready: { tags: ['connect.settled'] },
             unavailable: { tags: ['connect.failed'] },
           },

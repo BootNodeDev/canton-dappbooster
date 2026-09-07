@@ -33,14 +33,15 @@ export const ConnectButton = ({
 }: ConnectButtonProps): ReactElement => {
   const session = useConnect()
   const pending = session.isConnecting
-  const handleClick = composeAction(onClick, session.connect)
+  const handleClick = composeAction(onClick, pending ? session.cancelConnect : session.connect)
+  const ownLabel = pending && children === undefined
 
   return (
     <button
       {...rest}
-      aria-disabled={pending || undefined}
+      aria-label={ownLabel ? 'Cancel connecting' : undefined}
       className={cx(connectAnatomy.parts.root, className)}
-      onClick={pending ? undefined : handleClick}
+      onClick={handleClick}
       type={type}
       {...{ [connectAnatomy.states.pending]: pending || undefined }}
     >
