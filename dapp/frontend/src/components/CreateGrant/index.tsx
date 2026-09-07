@@ -28,7 +28,7 @@ import { errorText } from '@/utils/errorText'
 import { randomId } from '@/utils/randomId'
 import { MIN_GRANT_AMOUNT, type VestingSchedule, validVestingSchedule } from '@/utils/schedule'
 import { copyToast, toast } from '@/utils/toast'
-import { CC } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
 type CurveKind = 'linear' | 'milestone'
 
@@ -136,8 +136,9 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [balance, setBalance] = useState<string>()
   const [balanceState, setBalanceState] = useState<'loading' | 'error' | undefined>('loading')
 
-  // Read once on mount rather than kept live: nothing this form does moves the funder's coin, and a
-  // ceiling that shifted under a half-typed amount would reject what the user was told to enter.
+  // Read once on mount rather than kept live: the funder's holdings can move on their own (another
+  // grant pledging some, an accept returning change), and a ceiling that shifted under a half-typed
+  // amount would reject what the user was told to enter.
   useEffect(() => {
     if (backend === undefined || partyId === '') {
       return
@@ -181,8 +182,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
 
   const scheduleValid = validVestingSchedule(schedule)
   // Recomputed rather than stored from the last keystroke, so it can never outlive the value that
-  // produced it. Deliberately no `max`: the balance is what the field offers through Max, not a
-  // ceiling, since the holding fee keeps moving it and the ledger has the last word at Accept.
+  // produced it. Deliberately no `max`: the balance was read once on mount and the funder's
+  // holdings can move underneath it, so `Max` is a hint and the ledger has the last word at Accept.
   const amountError = validateAmount(amount)
   const aboveFloor = amount !== '' && compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
   const amountValid = amountError === undefined && aboveFloor
@@ -326,10 +327,14 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 id="amount"
                 label="Total amount"
                 onChange={setAmount}
-                token={CC}
+                token={DBT}
                 usdValue="N/A"
                 value={amount}
               />
+              <p className="mt-1 text-xs text-fg-muted">
+                An outstanding grant reserves the whole holdings it names; they return as change
+                once the receiver accepts.
+              </p>
             </div>
           </div>
         </>

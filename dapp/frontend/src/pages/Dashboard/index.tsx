@@ -29,7 +29,10 @@ import {
 import { addAmounts, isPositive } from '@/utils/amount'
 import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
-import { CC } from '@/utils/tokens'
+import { errorText } from '@/utils/errorText'
+import { formatToken } from '@/utils/format'
+import { toast } from '@/utils/toast'
+import { DBT } from '@/utils/tokens'
 
 interface GrantRow {
   derived: GrantDerived
@@ -67,6 +70,12 @@ type Filter = (typeof FILTERS)[number]['value']
 // them, so the class needs no timer to take back off.
 const HIGHLIGHT = 'animate-claimed'
 
+// The registry publishes an instrument's id, name, symbol and decimals but never its faucet, and
+// the config is admin-signed with no payload in its disclosure, so the per-tap cap cannot be read
+// from the app. This must stay at or under the `maxPerTap` scripts/bootstrap-vesting.mjs sets; above
+// it, InstrumentConfig_Tap aborts and the message surfaces in the toast below.
+const TAP_AMOUNT = '1000'
+
 interface ClaimTarget {
   available: string
   backing: string
@@ -92,6 +101,7 @@ export const Dashboard = (): React.JSX.Element => {
   const [claimTarget, setClaimTarget] = useState<ClaimTarget | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
   const [justClaimed, setJustClaimed] = useState<string | null>(null)
+  const [tapping, setTapping] = useState(false)
 
   const rows = useMemo<GrantRow[]>(() => {
     const mine = grants.filter((g) =>
@@ -133,6 +143,20 @@ export const Dashboard = (): React.JSX.Element => {
   // Above the handlers, so they close over a backend that is known to exist.
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
+  }
+
+  // The tap creates a holding and touches no grant, so nothing in the store has to be refreshed;
+  // the Create grant modal reads the balance on mount and so already sees it.
+  const onTap = async (): Promise<void> => {
+    setTapping(true)
+    try {
+      await backend.tap({ amount: TAP_AMOUNT, party: partyId })
+      toast.success(`Tapped ${formatToken(TAP_AMOUNT)} ${DBT.symbol}`)
+    } catch (err) {
+      toast.error(errorText(err))
+    } finally {
+      setTapping(false)
+    }
   }
 
   const onConfirmClaim = async (amount: string): Promise<void> => {
@@ -186,7 +210,16 @@ export const Dashboard = (): React.JSX.Element => {
             </button>
           ))}
         </fieldset>
-        <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="ml-auto"
+          pending={tapping}
+          onClick={() => void onTap()}
+        >
+          Get test tokens
+        </Button>
+        <Button size="sm" className="pl-3" onClick={() => setCreating(true)}>
           <PlusIcon />
           Create
         </Button>
@@ -249,7 +282,7 @@ export const Dashboard = (): React.JSX.Element => {
             <span className="font-mono text-xs text-fg-muted">
               {isPositive(residualClaimable) && (
                 <>
-                  <CompactAmount value={residualClaimable} /> {CC.symbol} claimable
+                  <CompactAmount value={residualClaimable} /> {DBT.symbol} claimable
                 </>
               )}
             </span>
@@ -288,7 +321,7 @@ export const Dashboard = (): React.JSX.Element => {
       {claimTarget !== null && (
         <Claim
           onClose={() => setClaimTarget(null)}
-          title={claimTarget.kind === 'grant' ? 'Claim vested CC' : 'Claim residual'}
+          title={claimTarget.kind === 'grant' ? 'Claim vested DBT' : 'Claim residual'}
           available={claimTarget.available}
           backing={claimTarget.backing}
           onConfirm={onConfirmClaim}
@@ -300,7 +333,7 @@ export const Dashboard = (): React.JSX.Element => {
           onClose={() => setCancelTarget(null)}
           grant={cancelTarget}
           nowMs={nowMs}
-          description={`Vested-but-unclaimed CC is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
+          description={`Vested-but-unclaimed DBT is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
           successMessage="Grant cancelled; earned residual set aside for the receiver"
           onConfirm={() => cancel(backend, partyId, cancelTarget.id)}
         />

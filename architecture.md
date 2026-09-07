@@ -8,7 +8,7 @@
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dep fetch, the DAR build and upload, the token mint, the vesting bootstrap |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | token registry (external: [BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge)) | Node + Express + TypeScript | Read-only CIP-56 registry over the `canton-token-forge` package: serves instrument metadata and the transfer-factory choice context. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
-| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
+| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
 | `dapp/daml/` | DAML | `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`. Vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
@@ -29,10 +29,12 @@ flowchart TD
   sv["Splice sv<br/>DSO / synchronizer side"]
   scan["Scan<br/>http://scan.localhost:4000"]
   dar["amulet-vesting DAR"]
+  reg["canton-token-forge registry<br/>http://localhost:3013"]
 
-  fe -->|"AmuletRules + open mining round, off amulet.tap"| ws
   fe <-->|"CIP-0103 provider: reads, writes, session"| wallet
   wallet -->|"onboarding, prepare/execute, JSON API"| ws
+  fe -->|"instrument + InstrumentConfig disclosure"| reg
+  reg -->|"CANTON_BACKEND_TOKEN"| au
   ws -->|"CANTON_BACKEND_TOKEN"| au
   ws -->|"AmuletRules, mining rounds"| scan
   au <--> sv

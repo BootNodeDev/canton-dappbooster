@@ -1,9 +1,9 @@
 import { formatAmount } from '@bootnodedev/canton-dappbooster'
-import cantonCoin from '@/assets/canton-coin.png'
 import { CompactAmount } from '@/components/CompactAmount'
 import { InfoTip } from '@/components/InfoTip'
+import { TokenMark } from '@/icons'
 import { cn } from '@/utils/cn'
-import { CC } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
 interface AmountDisplayProps {
   className?: string
@@ -14,15 +14,16 @@ interface AmountDisplayProps {
 }
 
 // The token mark is the only thing naming the unit, so it carries the name rather than an empty alt.
-const UNIT = `${CC.name} (${CC.symbol})`
+const UNIT = `${DBT.name} (${DBT.symbol})`
 
 // Neither varies, so hoisting them lets React skip the subtree by element identity. The dashboard
 // re-renders every amount once a second off the live clock, and each mark carries a `useId` tooltip.
 // The mark scales with its figure except on a KPI, where the figures differ in size but their marks
-// should not.
+// should not. `InfoTip` gives an element child no accessible name of its own, so the mark carries
+// its own `role="img"` and drops the `aria-hidden` it has by default outside this wrapper.
 const mark = (size: string): React.JSX.Element => (
   <InfoTip label={UNIT}>
-    <img alt={UNIT} className={size} src={cantonCoin} />
+    <TokenMark role="img" aria-label={UNIT} aria-hidden={undefined} className={size} />
   </InfoTip>
 )
 const MARK = mark('size-[0.92em]')

@@ -1,4 +1,4 @@
-# Architecture — Canton Coin vesting dApp
+# Architecture of the vesting dApp
 
 The app's internal seams and the reasoning behind them. What this is and how to run it is in
 [`README.md`](README.md); repo-wide rules live in [`../../CLAUDE.md`](../../CLAUDE.md) and the
@@ -12,13 +12,13 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `registry.ts`, the CIP-56 registry client the instrument and its disclosure come from, and `config.ts`, which loads the deployment. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `registry.ts`, which asks the canton-token-forge registry for the instrument and the `InstrumentConfig` disclosure, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads `REGISTRY_URL` and the other literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. The two state modules whose view lives elsewhere are here too: `toast.ts` and `topLayer.ts`. |
 | `src/components/` | What two or more places render: the shell, the top bar, the dialogs, and the primitives the pages compose. |
-| `src/icons/` | One inline icon per file over a shared `Svg` wrapper, re-exported from `index.ts`. |
+| `src/icons/` | One icon per file, over the shared `Svg` wrapper where the icon is stroke-based, re-exported from `index.ts`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
 | `api/` | Vercel functions, published off the deployed origin. `registry.ts` is the only one, and it forwards three read-only registry routes that `vercel.json` rewrites onto it. Not part of the bundle and not reachable in `pnpm dev`. |
@@ -59,75 +59,81 @@ against it outlives neither the party nor the transport that would otherwise re-
 
 ## What a write has to carry
 
-Every choice that moves a holding takes the instrument's `InstrumentConfig`: its contract id as
-`configCid`, and its `createdEventBlob` as the one disclosure, because the config is admin-signed
-and observer-less, so no connected party is a stakeholder of it. `submitWithConfig` in
-`LedgerBackend` holds that invariant in one place rather than re-spelling it per choice, and
-`extra` is what only Accept adds on top.
+Every choice that moves a holding takes a `configCid`: the `InstrumentConfig` of the instrument the
+grant is denominated in. It is admin-signed and observer-less, so no connected party is a
+stakeholder of it and no ledger read can reach it.
+[`registry.ts`](src/backend/registry.ts) asks the canton-token-forge registry on 3013 for it, over
+the CIP-56 transfer-factory route with the connected party as both sender and receiver. That takes
+the route's `self` branch, whose choice context is the config alone, and the answer carries both
+halves a command needs: `factoryId`, the contract id, and a disclosure whose `templateId` is the
+resolved one, which the package-name filters cannot supply.
 
-The config comes from the registry, through
-[`registry.ts`](src/backend/registry.ts)'s `fetchInstrumentConfig`, which posts the parties and the
-instrument id to the transfer-factory route and reads the id and the blob back off the answer. It is
-fetched per write rather than cached with the deployment: the admin can archive and re-create the
-config, and a stale id fails at the participant.
+Fetched per write rather than cached, for the reason the Amulet context was: one round trip against
+a contract that can be archived underneath us.
 
-Trusting a separately-run HTTP service for `configCid` is safe on the ledger and not merely by
-convention. `InstrumentConfig_Transfer` asserts `expectedAdmin == admin` and `expectedInstrumentId
-== instrumentId`; `VestingContract` and `VestedClaim` carry both as template fields, and
-`VestingProposal_Accept` derives them by fetching the funder's own `Token` rather than trusting the
-caller. A wrong or rogue config aborts the submission rather than moving anything.
+The `(admin, instrumentId)` pair the route is asked about is not on the ledger either. The factory
+is this repo's own operator, but the instrument admin is a third party, so
+[`config.ts`](src/backend/config.ts) learns the pair from the registry's two metadata routes at the
+same time as it reads the factory, and carries both in the `Deployment`. `/registry/metadata/v1/info`
+is CIP-56 registry metadata and reports only the admin; the instruments are their own route. A
+registry administering none, or more than one, is a hard error: this dApp knows exactly one
+instrument, so picking one of several would render a grant under a symbol that is not its own.
+
+Where those calls go is `VITE_REGISTRY_URL`. Locally it is the registry itself; a deployed build
+sets it to `/api/registry`, [the app's own function](api/registry.ts), because an https
+page cannot call a plain-http registry and Node's fetch has no such policy. The function forwards
+three routes and refuses the rest: the registry is read-only, but republishing an unknown route on
+the product's own domain is a decision rather than a default. `vercel.json`'s SPA catch-all is
+scoped away from `/api/` so it cannot answer the route with `index.html`.
 
 ## Creating a grant takes one approval
 
 A pending grant records the contract ids of the holdings its Accept will lock, and that Accept
 consumes exactly those. So two grants may never name the same holding: accepting one archives it and
 leaves the other permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch` before the transfer
-even runs. What the funder does not need is a holding cut to size first. `executeTokenTransfer`
-returns the sender's leftover as `senderChangeCid`, which is not among `createdHoldings`, so
-`VestingProposal_Accept` still matches its single `LockedToken` when the named holdings over-cover
-`totalAmount`. Accept does the splitting, and `createVesting` is one submission and one prompt.
+even runs. Whatever an outstanding grant already pledged is therefore kept out of the next
+selection, read off the funder's own pending-grant rows rather than remembered locally.
 
-So `selectHoldings` names whole holdings, largest first, and never one more than covers the total.
-Largest-first is a resolved tension rather than an oversight: smallest-sufficient would freeze less
-of the funder's balance but name more holdings, and every named holding is a disclosure blob the
+What it does not need is a pre-split. `executeTokenTransfer` returns the sender's leftover input as
+change, so `VestingProposal_Accept` can be handed a set of holdings that over-covers the grant and
+splits them itself. The Amulet version could not: `AmuletRules_Transfer` consumes everything it is
+given, which is why creating a grant used to be two submissions and two wallet prompts.
+
+`createVesting` picks unpledged holdings largest first until they cover the total. Largest rather
+than smallest, so a grant names the fewest inputs: every named holding is a disclosure blob the
 receiver has to carry to Accept.
 
-Pledging whole holdings freezes more than an exact split did, and that is correct rather than merely
-conservative. A 100 DBT grant against one 1000 DBT holding takes the whole 1000 out of `balanceOf`
-until Accept returns the change, where a split left 900 free at once. But the transfer consumes every
-holding it is given, so a second grant spending that holding is exactly what leaves the first
-permanently unacceptable, and `VestingProposal` has no reject and no withdraw, so an unaccepted grant
-freezes indefinitely. The affordance is the faucet: `fetchInstrumentConfig` posts only the parties
-and the instrument id, so a funder frozen to zero can still tap.
+A holding is worth its `amount` field and nothing is computed: a token-forge `Token` does not decay,
+so unlike an Amulet there is no decayed value to reason about and no headroom to guess at.
 
-It also widens what Accept discloses. The receiver is a lock holder and so one of
-`tokenTransferControllers`, and `Registry.daml` records that every controller witnesses the subtree
-beneath the choice, the archives of the sender's inputs and the create of its change included. So
-the receiver learns what the pledged holdings were worth, where the exact pre-split disclosed only
-`totalAmount`. Narrowing that means close-fitting selection, which trades against the
-disclosure-blob count largest-first exists to hold down.
-
-Whatever an outstanding grant already pledged is kept out of the selection, read off the funder's own
-pending-grant rows rather than remembered locally, since that is the failure this exists to prevent.
-
-Accept is the one write disclosing something the config cannot supply: the funder's holdings, which
-the receiver is no stakeholder of. Their blobs are read with `includeCreatedEventBlob` while the
-funder is connected and kept in `localStorage`, written only once the grant is on the ledger — a
-declined prompt must not leave blobs behind for holdings no grant is waiting on. Appended rather than
-replacing, since every outstanding grant's own holdings have to stay disclosable.
+Accept is still the one write disclosing something the connected party cannot read for itself: the
+funder's holdings. `Token` is `signatory admin, owner` with no observers, so the receiver is no
+stakeholder. Their blobs are read with `includeCreatedEventBlob` while the funder is connected and
+kept in `localStorage`, written only once the grant is on the ledger, since a declined prompt must
+not leave blobs behind for holdings no grant is waiting on. Appended rather than replacing, because
+every outstanding grant's own holdings have to stay disclosable.
 
 Which of those blobs a given Accept sends is read off the ledger, not guessed: the receiver is an
 observer of the grant, so `accept` fetches it and discloses exactly the `tokenCids` it names, then
 drops them, since that submission archived them. Sending the whole store instead would re-disclose
 holdings earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
-missing blob from an unrelated one — the difference between a sentence naming the problem and an
-opaque participant rejection. It is a browser-local hand-off between two wallet accounts, which is
-what the demo is; a receiver on another machine has no way to disclose it and `accept` says so
-rather than submitting a rejection.
+missing blob from an unrelated one. It is a browser-local hand-off between two wallet accounts,
+which is what the demo is; a receiver on another machine has no way to disclose it and `accept` says
+so rather than submitting a rejection.
+
+The escrow needs no such hand-off. A `LockedToken` is `signatory admin, owner, holders` and the
+escrow's holders are the provider and the receiver, so both ends of a grant can read it. Only the
+config is disclosed on withdraw, cancel and residual claim.
+
+A grant and a residual claim each carry `admin` and `instrumentId` as template fields, so a row from
+another instrument on a shared participant is dropped before it is mapped. A pending grant carries
+neither: `VestingProposal_Accept` derives both by fetching the first holding it names, which the
+receiver cannot read. So a pending grant in a foreign instrument does render, and fails at Accept.
 
 A filter always names a template by package name (`#vesting:Vesting:…`) and a command always by the
 resolved id the deployment carries. The participant rejects each in the other's position, the filter
-loudly with `INVALID_FIELD`.
+loudly with `INVALID_FIELD`. The one exception is the faucet: `InstrumentConfig_Tap` is exercised on
+the config, whose resolved id comes from the registry's disclosure rather than from the deployment.
 
 ## Data flow
 
@@ -229,9 +235,9 @@ total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
 code added upstream fails the build here.
 
-**Neither field offers the token picker, and that is deliberate.** Both pass `token={CC}` and no
+**Neither field offers the token picker, and that is deliberate.** Both pass `token={DBT}` and no
 `onTokenSelect`, which is what makes the kit render the symbol as a static mark rather than a button.
-[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `CC` and nothing else, because that is the only
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) holds `DBT` and nothing else, because that is the only
 instrument this deployment knows, so a picker over it would open a dialog to choose the value already
 chosen. The claim dialog has a second reason it will keep: what a grant pays out is fixed by the
 contract, so there is nothing there to pick.
@@ -241,11 +247,11 @@ Turning the create field back into a real picker takes three things, none of the
 - **A list to choose from.** `TOKENS` in `src/utils/tokens.tsx` is a hardcoded one-entry array. It
   becomes whatever enumerates the instruments a deployment actually holds, and the kit's
   `TokenListProvider` is what the picker reads it through.
-- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(CC)` and passes
+- **A selection to hold.** The field re-grows its own `useState<TokenMeta>(DBT)` and passes
   `onTokenSelect`. Per-field rather than lifted, unless by then two amounts on one page must agree.
 - **The rest of the app told about it.** Today the pick would be display-only: the re-lock floor's
-  wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say
-  Canton Coin in their own right. Each has to take the chosen token instead, or a pick would relabel
+  wording, the claim toast, `AmountDisplay`'s mark and the grant that gets created all say
+  DBT in their own right. Each has to take the chosen token instead, or a pick would relabel
   one field and silently mean nothing.
 
 Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
@@ -282,7 +288,7 @@ A Canton balance is a set of holding contracts rather than a scalar, so the read
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
 set `selectHoldings` will draw from: a holding already escrowed is a `LockedToken` and so out by
 template, and one an outstanding grant pledged is out because spending it would leave that grant
-unacceptable. The two agreeing is the point — a `Max` that offered more would put an amount in the
+unacceptable. The two agreeing is the point: a `Max` that offered more would put an amount in the
 field that the next step always refuses. The read runs once, on mount: nothing the form does moves
 the funder's holdings.
 
