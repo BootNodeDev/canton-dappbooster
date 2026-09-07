@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Bootstrap the vesting demo: create the backstage operator and pre-create the observer-less
-// AmuletVestingFactory it signs. Funder and receiver are wallet accounts, so no other party is
-// created here.
+// VestingFactory it signs, plus the instrument admin and its DBT InstrumentConfig. Funder and
+// receiver are wallet accounts, so no other party is created here.
 //
 // Nothing is written out. The dApp finds both by reading this operator's rights and its factory
 // back off the ledger, so a run that ends here is a run the dApp can already see.
@@ -9,7 +9,7 @@
 // Run with the local stack up and the DAR deployed.
 
 const RPC_URL = process.env.RPC_URL ?? 'http://localhost:3010/rpc'
-const PACKAGE_NAME = 'amulet-vesting'
+const PACKAGE_NAME = 'vesting'
 const STAMP = Date.now()
 
 const TOKEN_FORGE_PACKAGE = 'canton-token-forge'
@@ -164,7 +164,7 @@ const main = async () => {
   console.log(`operator   ${operator}`)
 
   const pkg = process.env.PKG ?? (await resolvePackage(operator))
-  const factoryTid = `${pkg}:AmuletVesting:AmuletVestingFactory`
+  const factoryTid = `${pkg}:Vesting:VestingFactory`
   console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
 
   await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
@@ -191,7 +191,7 @@ const main = async () => {
                 // the CreateCommand above carries.
                 TemplateFilter: {
                   value: {
-                    templateId: `#${PACKAGE_NAME}:AmuletVesting:AmuletVestingFactory`,
+                    templateId: `#${PACKAGE_NAME}:Vesting:VestingFactory`,
                     includeCreatedEventBlob: true,
                   },
                 },

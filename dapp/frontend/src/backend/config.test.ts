@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type LedgerApi, loadBackendConfig } from '@/backend/config'
 
 const OPERATOR = 'vesting-operator-1700000000001::ns'
@@ -16,7 +16,7 @@ const factoryRow = (
 const created = {
   contractId: '00cid',
   createdEventBlob: 'YmxvYg==',
-  templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
+  templateId: 'abc123:Vesting:VestingFactory',
 }
 
 // The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
@@ -50,15 +50,44 @@ const ledger = (
   return { ledgerApi, filteredParty: () => filteredParty }
 }
 
+const ADMIN = 'instrument-admin-1700000000000::ns'
+
+// loadBackendConfig now reads the instrument off the registry as well as the factory off the
+// ledger, so every case needs the happy registry unless it is about the registry failing.
+beforeEach(() => {
+  vi.stubGlobal('fetch', async (url: string) => ({
+    ok: true,
+    status: 200,
+    json: async () =>
+      String(url).endsWith('/instruments')
+        ? { instruments: [{ id: 'DBT' }] }
+        : { adminId: ADMIN, supportedApis: {} },
+  }))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('loadBackendConfig', () => {
   it('returns the deployment it reads back, synchronizer id included', async () => {
     const { ledgerApi } = ledger()
     await expect(loadBackendConfig(ledgerApi)).resolves.toEqual({
+      admin: ADMIN,
       factoryBlob: 'YmxvYg==',
       factoryCid: '00cid',
+      instrumentId: 'DBT',
       pkg: 'abc123',
       synchronizerId: 'sync::1',
     })
+  })
+
+  // The pair comes from the registry because nothing on the ledger carries it: the factory is this
+  // repo's own operator, the instrument admin is a third party.
+  it('carries the registry’s instrument into the deployment', async () => {
+    const { ledgerApi } = ledger()
+    const deployment = await loadBackendConfig(ledgerApi)
+    expect([deployment.admin, deployment.instrumentId]).toEqual([ADMIN, 'DBT'])
   })
 
   it('omits the synchronizer id when the row carries none', async () => {

@@ -42,9 +42,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     return () => clearTimeout(timer)
   }, [])
 
-  // The deployment is read off the ledger, so it cannot resolve before there is a session to read
-  // through. Until then it is not pending but absent, which is what leaves the pages free to render
-  // their own connect card.
+  // The registry half of the deployment needs no session, but it shares this one call with the
+  // ledger half, which does, so the gate is the ledger requirement. Until then the deployment is not
+  // pending but absent, which is what leaves the pages free to render their own connect card.
   useEffect(() => {
     if (!hasParty) {
       return

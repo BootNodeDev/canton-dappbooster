@@ -8,3 +8,6 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 
 // `/api/rpc` when deployed, because an https page cannot reach plain-http wallet-service.
 export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
+
+// `/api/registry` when deployed, because an https page cannot reach the plain-http registry.
+export const REGISTRY_URL: string = import.meta.env.VITE_REGISTRY_URL
