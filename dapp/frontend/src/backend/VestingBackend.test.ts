@@ -359,4 +359,10 @@ describe('selectHoldings', () => {
   it('returns undefined when there is nothing to select from', () => {
     expect(selectHoldings([], '1')).toBeUndefined()
   })
+
+  it('returns undefined for a non-positive total rather than an empty set', () => {
+    const rows = [tokenRow('a', '600')]
+    expect(selectHoldings(rows, '0')).toBeUndefined()
+    expect(selectHoldings(rows, '-1')).toBeUndefined()
+  })
 })

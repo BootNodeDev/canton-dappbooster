@@ -269,6 +269,11 @@ export const pledgedTokens = (row: AcsRow): string[] => {
 // receiver has to carry to Accept. Undefined rather than a partial set, so the caller can report by
 // how much the funder is short.
 export const selectHoldings = (rows: AcsRow[], total: string): AcsRow[] | undefined => {
+  // The empty set covers a non-positive total, and a grant submitted with no inputs aborts at
+  // Accept while `VestingProposal` offers the receiver no way to clear it.
+  if (compareAmounts(total, '0') <= 0) {
+    return undefined
+  }
   const ordered = [...rows].sort((a, b) => compareAmounts(tokenValue(b), tokenValue(a)))
   const picked: AcsRow[] = []
   let covered = '0'
