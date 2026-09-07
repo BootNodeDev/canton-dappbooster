@@ -6,8 +6,5 @@ import type { ExplorerConfig } from '@bootnodedev/canton-dappbooster'
 /** @public */
 export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER_URL }
 
-// `/api/rpc` when deployed, because an https page cannot reach plain-http wallet-service.
-export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
-
 // Direct in dev; #169 fronts it same-origin: an https page cannot reach a plain-http registry.
 export const REGISTRY_URL: string = import.meta.env.VITE_REGISTRY_URL

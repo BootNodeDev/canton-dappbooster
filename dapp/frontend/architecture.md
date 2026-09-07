@@ -12,7 +12,7 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, `registry.ts`, the CIP-56 registry client the instrument and its disclosure come from, and `config.ts`, which loads the deployment. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `registry.ts`, the CIP-56 registry client the instrument and its disclosure come from, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
@@ -27,7 +27,7 @@ interfaces carry that, and every other decision hangs off them.
 
 **`VestingBackend`** ([`src/backend/VestingBackend.ts`](src/backend/VestingBackend.ts)) is what the
 UI depends on. It speaks grants, pending grants, and claims — never DAML templates, contract payloads,
-or transport. `LedgerBackend` satisfies it against the `amulet-vesting` DAML package; it is named
+or transport. `LedgerBackend` satisfies it against the `vesting` DAML package; it is named
 for the thing it reaches rather than for that package, so re-pointing it at another model is not a
 rename. Because the mappers that turn active-contract rows into domain types live behind this
 interface, no component knows the ledger exists.
@@ -58,81 +58,75 @@ it outlives neither the party nor the transport that would otherwise re-trigger 
 
 ## What a write has to carry
 
-Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the
-newest open mining round — and both are DSO-signed, so no connected party is a stakeholder of
-either. [`transferContext.ts`](src/backend/transferContext.ts) asks wallet-service for one
-`amulet.tap`, whose `disclosedContracts` carry both, and returns the record and the two disclosures
-together, because a write needs both and sending one without the other fails at the participant
-rather than in the model. The record is flat: nesting the round under a `context` key fails
-preprocessing on a missing `openMiningRound`.
+Every choice that moves a holding takes the instrument's `InstrumentConfig`: its contract id as
+`configCid`, and its `createdEventBlob` as the one disclosure, because the config is admin-signed
+and observer-less, so no connected party is a stakeholder of it. `submitWithConfig` in
+`LedgerBackend` holds that invariant in one place rather than re-spelling it per choice, and
+`extra` is what only Accept adds on top.
 
-That call is a build-and-discard: `amulet.tap` returns the command it composed and submits nothing,
-so no coin is minted and the answer is only read for its disclosures. It replaced a pair of reads
-against Scan's unauthenticated API, which a browser cannot reach on devnet at all — the SV endpoints
-refuse the origin on the preflight and the validator's scan-proxy wants a bearer. Picking the round
-went with it: tap resolves the active one itself, and a LocalNet whose SV has not opened the first
-round yet fails the call, which is a wait rather than a bug.
+The config comes from the registry, through
+[`registry.ts`](src/backend/registry.ts)'s `fetchInstrumentConfig`, which posts the parties and the
+instrument id to the transfer-factory route and reads the id and the blob back off the answer. It is
+fetched per write rather than cached with the deployment: the admin can archive and re-create the
+config, and a stale id fails at the participant.
 
-Where that call goes is `VITE_WALLET_RPC_URL`. Locally it is wallet-service itself; a deployed build
-sets it to `/api/rpc`, [the app's own function](api/rpc.ts), because an https page cannot call a
-plain-http wallet-service and Node's fetch has no such policy. The function forwards `amulet.tap`
-and nothing else, rebuilding the request rather than relaying it: the dispatcher behind it also
-serves `ledgerApi` and `executePrepared` unauthenticated, and republishing those on the product's
-own domain is the whole reason this is a function and not a blanket rewrite. `vercel.json`'s
-SPA catch-all is scoped away from `/api/` so it cannot answer the route with `index.html`.
+Trusting a separately-run HTTP service for `configCid` is safe on the ledger and not merely by
+convention. `InstrumentConfig_Transfer` asserts `expectedAdmin == admin` and `expectedInstrumentId
+== instrumentId`; `VestingContract` and `VestedClaim` carry both as template fields, and
+`VestingProposal_Accept` derives them by fetching the funder's own `Token` rather than trusting the
+caller. A wrong or rogue config aborts the submission rather than moving anything.
 
-The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
-opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
-consume. Every Amulet is DSO-signed, so it is the same party by construction.
+## Creating a grant takes one approval
 
-## Creating a grant takes two approvals
-
-A pending grant records the contract ids of the Amulets its Accept will lock, and that Accept
-consumes exactly those. So two grants may never name the same Amulet: accepting one archives it and
+A pending grant records the contract ids of the holdings its Accept will lock, and that Accept
+consumes exactly those. So two grants may never name the same holding: accepting one archives it and
 leaves the other permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch` before the transfer
-even runs. Which means each grant needs an Amulet of its own, and `createVesting` makes one — the
-funder self-transfers `totalAmount` through `AmuletRules_Transfer`, and the grant names only what
-that produced.
+even runs. What the funder does not need is a holding cut to size first. `executeTokenTransfer`
+returns the sender's leftover as `senderChangeCid`, which is not among `createdHoldings`, so
+`VestingProposal_Accept` still matches its single `LockedToken` when the named holdings over-cover
+`totalAmount`. Accept does the splitting, and `createVesting` is one submission and one prompt.
 
-That is two submissions and so two wallet prompts, and it cannot be one. Commands in a single Daml
-transaction carry fixed arguments, so the second cannot name a contract the first will create;
-composing an output into the next input is what a *choice* is for, and adding one is a change to the
-DAML rather than to this app.
+So `selectHoldings` names whole holdings, largest first, and never one more than covers the total.
+Largest-first is a resolved tension rather than an oversight: smallest-sufficient would freeze less
+of the funder's balance but name more holdings, and every named holding is a disclosure blob the
+receiver has to carry to Accept.
 
-The split is exact because Splice values an Amulet input at its full `initialAmount` —
-`summarizeAndConsumeInput` sums that field, and the holding fee is charged only by `Amulet_Expire`.
-An Amulet therefore does not decay out from under a grant while it waits, so no headroom has to be
-guessed at, and `amuletValue` is a field read rather than a calculation. `sender`, `provider` and the
-one output's `receiver` are all the funder, which is what makes the funder the whole of
-`transferControllers` and keeps this a one-signature submission needing nothing from the operator.
-`AmuletRules_Transfer` also refuses a submission that does not name the DSO it expects, so
-`fetchTransferContext` returns the DSO party and the resolved rules template id alongside the
-context.
+Pledging whole holdings freezes more than an exact split did, and that is correct rather than merely
+conservative. A 100 DBT grant against one 1000 DBT holding takes the whole 1000 out of `balanceOf`
+until Accept returns the change, where a split left 900 free at once. But the transfer consumes every
+holding it is given, so a second grant spending that holding is exactly what leaves the first
+permanently unacceptable, and `VestingProposal` has no reject and no withdraw, so an unaccepted grant
+freezes indefinitely. The affordance is the faucet: `fetchInstrumentConfig` posts only the parties
+and the instrument id, so a funder frozen to zero can still tap.
 
-Whatever an outstanding grant already pledged is kept out of the split's inputs, read off the
-funder's own pending-grant rows rather than remembered locally: a transfer consumes everything it is
-given, and consuming one of those is exactly the failure this exists to prevent. The Amulet the
-split created is then found by re-reading the ACS, because the wallet's own answer to a submission
-is an update id and nothing about what it created.
+It also widens what Accept discloses. The receiver is a lock holder and so one of
+`tokenTransferControllers`, and `Registry.daml` records that every controller witnesses the subtree
+beneath the choice, the archives of the sender's inputs and the create of its change included. So
+the receiver learns what the pledged holdings were worth, where the exact pre-split disclosed only
+`totalAmount`. Narrowing that means close-fitting selection, which trades against the
+disclosure-blob count largest-first exists to hold down.
 
-Accept is the one write disclosing something the transfer context cannot supply: the funder's Amulet, which the
-receiver is no stakeholder of. Its blob is read with `includeCreatedEventBlob` while the funder is
-connected and kept in `localStorage`, written only once the grant is on the ledger — a declined
-prompt must not leave a blob behind for an Amulet no grant is waiting on. Appended rather than
-replacing, since every outstanding grant's own Amulet has to stay disclosable.
+Whatever an outstanding grant already pledged is kept out of the selection, read off the funder's own
+pending-grant rows rather than remembered locally, since that is the failure this exists to prevent.
+
+Accept is the one write disclosing something the config cannot supply: the funder's holdings, which
+the receiver is no stakeholder of. Their blobs are read with `includeCreatedEventBlob` while the
+funder is connected and kept in `localStorage`, written only once the grant is on the ledger — a
+declined prompt must not leave blobs behind for holdings no grant is waiting on. Appended rather than
+replacing, since every outstanding grant's own holdings have to stay disclosable.
 
 Which of those blobs a given Accept sends is read off the ledger, not guessed: the receiver is an
-observer of the grant, so `accept` fetches it and discloses exactly the `amuletCids` it names, then
+observer of the grant, so `accept` fetches it and discloses exactly the `tokenCids` it names, then
 drops them, since that submission archived them. Sending the whole store instead would re-disclose
-Amulets earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
+holdings earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
 missing blob from an unrelated one — the difference between a sentence naming the problem and an
 opaque participant rejection. It is a browser-local hand-off between two wallet accounts, which is
 what the demo is; a receiver on another machine has no way to disclose it and `accept` says so
 rather than submitting a rejection.
 
-A filter always names a template by package name (`#amulet-vesting:AmuletVesting:…`) and a command
-always by the resolved id the deployment carries. The participant rejects each in the other's
-position, the filter loudly with `INVALID_FIELD`.
+A filter always names a template by package name (`#vesting:Vesting:…`) and a command always by the
+resolved id the deployment carries. The participant rejects each in the other's position, the filter
+loudly with `INVALID_FIELD`.
 
 ## Data flow
 
@@ -170,7 +164,7 @@ write is only real once the ledger has it and the read is the only thing that kn
 every row when the party goes, because the rows were that party's.
 
 A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
-`AmuletVestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
+`VestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
 raised, so a claim changes the id of the grant it acted on. `grantLineage` is that identity —
 everything the choice preserves — and it is what the withdraw history keys on and what `withdraw`
 uses to hand the grant-detail page its successor's id, so a URL survives a claim rather than
@@ -178,7 +172,7 @@ becoming "Grant not found".
 
 A withdraw that drains the escrow is the exception: it creates no successor, because the contract's
 `ensure alreadyWithdrawn < totalAmount` is strict and a zero-backing successor would hold a
-zero-amount `LockedAmulet`. So the grant is archived, exactly as `AmuletVestingContract_Cancel`
+zero-amount `LockedToken`. So the grant is archived, exactly as `VestingContract_Cancel`
 archives it, and the page navigates away for both rather than sitting on an id the next read will
 not return. That is why there is no drained-grant state anywhere in the UI: a fully claimed grant
 cannot be in the ACS, so nothing can render it. Showing one would mean reconstructing it from the
@@ -279,17 +273,17 @@ are the same amount and `Claim`'s `backing` prop defaults to `available`.
 Only the claim dialog has a ceiling, and it is the grant's own `claimable`. The create form has a
 balance without one: `VestingBackend.balanceOf` reads what the funder holds and the field offers it
 through `Max`, but `validateAmount` is called with no `max`, so a larger amount is neither flagged
-nor blocked and the split refuses it instead, naming what is actually free. That is also why the
+nor blocked and the selection refuses it instead, naming what is actually free. That is also why the
 field's `aria-invalid` is passed in rather than left to the kit, which would flag an amount above
 the `balance` it was given.
 
 A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
-set `splitOff` will draw from: coin already escrowed is a `LockedAmulet` and so out by template, and
-coin an outstanding grant pledged is out because spending it would leave that grant unacceptable.
-The two agreeing is the point — a `Max` that offered more would put an amount in the field that the
-next step always refuses. The read runs once, on mount: nothing the form does moves the funder's
-coin.
+set `selectHoldings` will draw from: a holding already escrowed is a `LockedToken` and so out by
+template, and one an outstanding grant pledged is out because spending it would leave that grant
+unacceptable. The two agreeing is the point — a `Max` that offered more would put an amount in the
+field that the next step always refuses. The read runs once, on mount: nothing the form does moves
+the funder's holdings.
 
 The amount field shows no validation message at all for now, which is why nothing words
 `MIN_GRANT_AMOUNT` or a bad decimal to the user; both still gate `Continue`. `AMOUNT_ERROR_TEXT`
