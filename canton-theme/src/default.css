@@ -457,6 +457,28 @@
     font-size: 0.8125em;
   }
 
+  .cnc-token-select-dialog__row-figures {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    text-align: end;
+  }
+
+  .cnc-token-select-dialog__row-balance {
+    font-size: 0.9375em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cnc-token-select-dialog__row-locked {
+    align-items: center;
+    color: var(--cnc-text-muted);
+    display: inline-flex;
+    font-size: 0.8125em;
+    font-variant-numeric: tabular-nums;
+    gap: var(--cnc-space-xs);
+  }
+
   /* Token logo */
   .cnc-token-logo {
     align-items: center;

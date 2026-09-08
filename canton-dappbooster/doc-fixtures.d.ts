@@ -6,7 +6,14 @@
 
 type FixtureNode = import('react').ReactNode
 type FixtureElement = import('react').ReactElement
-type FixtureToken = { id: string; logo?: FixtureNode; name: string; symbol: string }
+type FixtureInstrumentId = { admin: string; id: string }
+type FixtureToken = {
+  balance?: string
+  instrumentId: FixtureInstrumentId
+  logo?: FixtureNode
+  name: string
+  symbol: string
+}
 
 /* Identifiers and amounts */
 
@@ -40,6 +47,13 @@ declare const darkSheet: string
 
 /* Tokens */
 
+declare const instrumentId: FixtureInstrumentId
+declare const registryUrl: string
+declare const holdings: readonly {
+  amount: string
+  instrumentId: FixtureInstrumentId
+  isLocked: boolean
+}[]
 declare const token: FixtureToken
 declare const tokens: readonly FixtureToken[]
 declare const mockTokens: readonly FixtureToken[]

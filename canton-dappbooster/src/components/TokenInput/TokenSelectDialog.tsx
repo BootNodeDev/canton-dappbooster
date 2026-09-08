@@ -6,11 +6,11 @@ import { TokenFavorites } from '#src/components/TokenInput/TokenFavorites'
 import { TokenList } from '#src/components/TokenInput/TokenList'
 import { TokenSearch } from '#src/components/TokenInput/TokenSearch'
 import { CloseIcon } from '#src/icons'
-import type { Token } from '#src/providers/TokenListProvider/context'
+import type { InstrumentId, Token } from '#src/providers/TokenListProvider/context'
 
 interface TokenSelectDialogProps {
   contentId: string
-  favoriteIds?: readonly string[]
+  favoriteIds?: readonly InstrumentId[]
   onClose: () => void
   onSelect: (token: Token) => void
   open: boolean
@@ -32,8 +32,8 @@ const TokenSelect = ({
     ids: { content: contentId },
     initialFocusEl: () => searchRef.current,
     onEscapeKeyDown: (event) => {
-      // `input[type="search"]` clears on Escape, and the dialog dismisses on the same keydown, so
-      // the field takes it first rather than a keypress meant to clear the query losing the dialog.
+      // `input[type="search"]` clears on Escape and the dialog dismisses on the same keydown
+      // this makes the field take it first and avoids closing the dialog
       if (query === '' || document.activeElement !== searchRef.current) return
       event.preventDefault()
       setQuery('')
