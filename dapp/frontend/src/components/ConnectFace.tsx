@@ -12,7 +12,7 @@ export const ConnectFace = ({
   className?: string
 }): React.JSX.Element => {
   const { isPending } = useConnect()
-  const box = useRef<HTMLSpanElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
   const previous = useRef(isPending)
 
   // The swap unmounts the focused button and focus falls to <body>, so the keyboard loses its
@@ -23,17 +23,13 @@ export const ConnectFace = ({
     previous.current = isPending
 
     if (swapped && document.activeElement === document.body) {
-      box.current?.querySelector('button')?.focus()
+      button.current?.focus()
     }
   }, [isPending])
 
-  return (
-    <span className="inline-flex" ref={box}>
-      {isPending ? (
-        <CancelButton className={cancelClassName} />
-      ) : (
-        <ConnectButton className={className} />
-      )}
-    </span>
+  return isPending ? (
+    <CancelButton className={cancelClassName} ref={button} />
+  ) : (
+    <ConnectButton className={className} ref={button} />
   )
 }
