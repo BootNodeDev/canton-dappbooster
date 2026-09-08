@@ -78,8 +78,13 @@ describe('VITE_REGISTRY_URL', () => {
     ['http://localhost:3013/', 'http://localhost:3013'],
     ['http://localhost:3013///', 'http://localhost:3013'],
     ['/api/registry/', '/api/registry'],
-    ['/', ''],
   ])('trims the trailing slash off %j', (VITE_REGISTRY_URL, expected) => {
     expect(parseEnv({ VITE_REGISTRY_URL }).VITE_REGISTRY_URL).toBe(expected)
+  })
+
+  // Accepted by `isUrlOrPath` but nothing once trimmed, which would resolve every call against the
+  // app's own origin and hand `response.json()` the SPA catch-all's `index.html`.
+  it.each(['/', '///'])('rejects %j, which trims away to no base at all', (VITE_REGISTRY_URL) => {
+    expect(() => parseEnv({ VITE_REGISTRY_URL })).toThrow(/VITE_REGISTRY_URL/)
   })
 })

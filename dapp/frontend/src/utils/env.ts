@@ -26,14 +26,17 @@ const isUrlOrPath = (value: string): boolean => isSameOriginPath(value) || isHtt
 // slash, which would request `//registry/...` and 404 against a path the error then misreports.
 const trimBase = (value: string): string => value.replace(/\/+$/, '')
 
-// Reads one env key and validates it
+// Reads one env key, normalizing before the check so the value validated is the value returned: a
+// base of `/` trims to nothing, and unchecked it would resolve every call against the app's origin.
 const read = (
   values: Record<string, unknown>,
   key: keyof Env,
   accepts: (value: string) => boolean,
   expected: string,
+  normalize: (value: string) => string = (value) => value,
 ): string => {
-  const value = values[key] ?? DEFAULTS[key]
+  const raw = values[key] ?? DEFAULTS[key]
+  const value = typeof raw === 'string' ? normalize(raw) : raw
   if (typeof value !== 'string' || !accepts(value)) {
     throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
   }
@@ -49,8 +52,12 @@ export const parseEnv = (source: unknown): Env => {
 
   return {
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
-    VITE_REGISTRY_URL: trimBase(
-      read(values, 'VITE_REGISTRY_URL', isUrlOrPath, 'an http(s) url or a same-origin path'),
+    VITE_REGISTRY_URL: read(
+      values,
+      'VITE_REGISTRY_URL',
+      isUrlOrPath,
+      'an http(s) url or a same-origin path',
+      trimBase,
     ),
   }
 }

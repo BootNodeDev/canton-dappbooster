@@ -420,6 +420,20 @@ describe('LedgerBackend.accept', () => {
     ).rejects.toThrow(/not disclosable/)
   })
 
+  // Two grants name the same holding whenever the second selection reads the ACS before the first
+  // grant is indexed, and the funder is left unable to accept either if that is counted as an error.
+  it('accepts a grant whose holding was stored by two of them', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    await harness({ acs }).backend.createVesting(grant('First grant'))
+    const unindexed = harness({ acs: { [TOKEN]: [tokenRow('t1', '1500')] } })
+    await unindexed.backend.createVesting(grant('Second grant'))
+    const { backend, submissions } = harness({ acs })
+
+    await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
+
+    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedToken('t1')]))
+  })
+
   it('keeps the blobs of a live grant when a later one is declined in the wallet', async () => {
     const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '2500')] }
     const first = harness({ acs })

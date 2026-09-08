@@ -76,10 +76,18 @@ const CLAIM_HISTORY_PAGES = 20
 // because the two parties are two wallet accounts and switching between them reloads the app.
 const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
 
+// Deduplicated here rather than on write, so a store already holding a holding twice recovers: two
+// grants pledge the same one whenever the second ACS read lands before the first grant is indexed,
+// and a duplicate would fail `accept`'s count guard for a grant whose blobs are all present.
 const storedTokens = (): DisclosedContract[] => {
   try {
     const stored = JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? '[]')
-    return Array.isArray(stored) ? stored : []
+    const tokens: DisclosedContract[] = Array.isArray(stored) ? stored : []
+    return [
+      ...new Map<string, DisclosedContract>(
+        tokens.map((token) => [token.contractId, token]),
+      ).values(),
+    ]
   } catch {
     return []
   }
