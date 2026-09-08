@@ -10,6 +10,11 @@ describe('formatFigureFull', () => {
     // The bug a double would introduce: this value cannot round-trip past six integer digits.
     expect(formatFigureFull('8421337.1234567891')).toBe('8,421,337.1234567891')
   })
+
+  it('says N/A for an amount it cannot read', () => {
+    expect(formatFigureFull('')).toBe('N/A')
+    expect(formatFigureFull('abc')).toBe('N/A')
+  })
 })
 
 describe('formatFigureCompact', () => {

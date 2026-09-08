@@ -1,7 +1,7 @@
 // Display formatting: amount grouping and relative dates. Identifier truncation lives in
 // the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
 
-import { formatAmount, formatFigure } from '@bootnodedev/canton-dappbooster'
+import { formatAmount, formatFigure, parseAmount } from '@bootnodedev/canton-dappbooster'
 import { roundAmount } from '@/utils/amount'
 
 const NOT_AVAILABLE = 'N/A'
@@ -11,7 +11,8 @@ const NOT_AVAILABLE = 'N/A'
 // text instead, which is exact where a float would round-trip through IEEE 754 first.
 
 // Full ledger precision, grouped, no trailing zeros.
-export const formatFigureFull = (amount: string): string => formatAmount(roundAmount(amount, 10))
+export const formatFigureFull = (amount: string): string =>
+  parseAmount(amount) === undefined ? NOT_AVAILABLE : formatAmount(roundAmount(amount, 10))
 
 const COMPACT_FROM = 1e4
 
