@@ -1,5 +1,5 @@
 import { useConnect } from '@bootnodedev/canton-connect'
-import { type ButtonHTMLAttributes, type ReactElement, useEffect, useState } from 'react'
+import { type ComponentPropsWithRef, type ReactElement, useEffect, useState } from 'react'
 import { cancelAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
 import { resolveInert } from '#src/components/WalletButton/inert'
@@ -11,7 +11,7 @@ import { SR_ONLY } from '#src/utils/srOnly'
  *
  * @category Components
  */
-export type CancelButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
+export type CancelButtonProps = ComponentPropsWithRef<'button'>
 
 /**
  * Abandons the connect attempt {@link ConnectButton} started, and is inert while there is none.

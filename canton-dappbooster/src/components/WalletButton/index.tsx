@@ -1,18 +1,31 @@
-import { useWalletStatus } from '@bootnodedev/canton-connect'
-import type { ButtonHTMLAttributes, ReactElement } from 'react'
+import { useConnect, useWalletStatus } from '@bootnodedev/canton-connect'
+import { type ButtonHTMLAttributes, type ReactElement, useEffect, useRef } from 'react'
+import { CancelButton } from '#src/components/WalletButton/CancelButton'
 import { ConnectButton } from '#src/components/WalletButton/ConnectButton'
 import { DisconnectButton } from '#src/components/WalletButton/DisconnectButton'
 
 /**
- * Props for {@link WalletButton}.
+ * Props for {@link WalletButton}. No `ref`: which element it lands on would depend on the session,
+ * so reach for the face you want instead.
  *
  * @category Components
  */
 export type WalletButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
 
+type Face = 'cancel' | 'connect' | 'disconnect'
+
+const faceFor = (isPending: boolean, isConnected: boolean): Face => {
+  if (isPending) return 'cancel'
+  if (isConnected) return 'disconnect'
+  return 'connect'
+}
+
 /**
- * Follows the session: {@link ConnectButton} without one, {@link DisconnectButton} with one. It
- * holds no cancel, so compose the buttons yourself where {@link CancelButton} is needed.
+ * Follows the session, one button at a time: {@link CancelButton} while a connect is in flight,
+ * {@link DisconnectButton} once a session stands, {@link ConnectButton} otherwise. Each face is
+ * inert outside its own state, so whatever is on screen only ever does the thing it says.
+ *
+ * Swapping a face unmounts the focused button, so it hands focus to the one that took over.
  *
  * @example
  * import { WalletButton } from '@bootnodedev/canton-dappbooster/connect'
@@ -25,6 +38,23 @@ export type WalletButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
  */
 export const WalletButton = (props: WalletButtonProps): ReactElement => {
   const { isConnected } = useWalletStatus()
+  const { isPending } = useConnect()
+  const face = faceFor(isPending, isConnected)
+  const button = useRef<HTMLButtonElement>(null)
+  const previous = useRef(face)
 
-  return isConnected ? <DisconnectButton {...props} /> : <ConnectButton {...props} />
+  // A swapped-out button takes focus with it and focus falls to <body>, so the keyboard loses its
+  // place. Only after a real swap: a focus move nobody asked for on first paint would be worse.
+  useEffect(() => {
+    const swapped = previous.current !== face
+    previous.current = face
+
+    if (swapped && document.activeElement === document.body) {
+      button.current?.focus()
+    }
+  }, [face])
+
+  if (face === 'cancel') return <CancelButton {...props} ref={button} />
+  if (face === 'disconnect') return <DisconnectButton {...props} ref={button} />
+  return <ConnectButton {...props} ref={button} />
 }

@@ -170,11 +170,11 @@ kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `useP
 ([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
 standing the party hint in as a display name for the wallets that report none. Nothing else reaches
 for a `canton-connect` hook except `ConnectFace` and the error toast, both of which need `isPending`
-off `useConnect`. The top bar picks between the two faces itself rather
-than reaching for the kit's `WalletButton`, because the connected side is a dropdown of its own:
-`TopBar/AccountMenu` holds the copyable party id, the network the session is on, and the disconnect.
-It runs the same swap the prompt does, so an attempt started from the top bar can be abandoned
-there rather than only from the prompt further down the page.
+off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
+`WalletButton`, whose disconnect face is a plain button: the connected side here is a dropdown,
+`TopBar/AccountMenu`, holding the copyable party id, the network the session is on, and the
+disconnect. Everything short of that is `ConnectFace`, so an attempt started from the top bar can be
+abandoned there rather than only from the prompt further down the page.
 It picks on the party alone, never on `isConnected`: a standing session reports no party while the
 account read is in flight, again after it fails, and again once a lock clears it, and the connect
 face is the right answer to all three. It renders its own pending copy for the first and retries the

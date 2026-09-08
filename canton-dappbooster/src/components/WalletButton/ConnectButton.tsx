@@ -1,5 +1,5 @@
 import { useConnect } from '@bootnodedev/canton-connect'
-import type { ButtonHTMLAttributes, ReactElement } from 'react'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import { connectAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
 import { resolveInert } from '#src/components/WalletButton/inert'
@@ -10,11 +10,12 @@ import { cx } from '#src/utils/cx'
  *
  * @category Components
  */
-export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
+export type ConnectButtonProps = ComponentPropsWithRef<'button'>
 
 /**
  * Connect button. Can be customized. Inert while an attempt is in flight, so a click only ever
- * connects; render {@link CancelButton} beside it to let the user abandon one.
+ * connects; pair it with {@link CancelButton}, or take {@link WalletButton}, to let the user
+ * abandon one.
  *
  * @example
  * import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'

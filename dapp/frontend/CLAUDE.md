@@ -46,7 +46,7 @@ One implementation each, so a second one is a bug and not a choice:
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
   `pending`, which owns the spinner, the wording and the disable together. The one exception is
   `TopBar/AccountMenu`'s trigger, which transcribes the kit's `.cnc-connect-button` instead so the
-  header keeps one look across the two faces the session swaps between; `cn` is a plain join and
+  header keeps one look across every face the session swaps between; `cn` is a plain join and
   cannot override a `buttonClass` variant, so there is no way to have both.
 - **A choice out of a short, always-visible set: `components/Pills`.** One Ark toggle group behind
   two looks — `outline` for the dashboard's filters, `segmented` for the create form's curve switch.
