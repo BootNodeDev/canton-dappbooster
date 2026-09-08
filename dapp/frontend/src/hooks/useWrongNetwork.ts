@@ -2,7 +2,7 @@
 // reaches the app through nothing at all — CIP-0103 defines no network-change event and the SDK
 // pushes only accounts — so the two ids are re-read rather than waited for.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LedgerApi } from '@/backend/config'
 import { walletSynchronizers } from '@/backend/synchronizer'
 import { fetchTransferContext } from '@/backend/transferContext'
@@ -11,24 +11,37 @@ import { wrongNetwork } from '@/utils/network'
 // Backstop for a switch made in a window the user never comes back from.
 const RECHECK_MS = 30_000
 
+// Carries the party it was read for, so the previous one's answer is not shown against the new
+// one's network while the first read for that party is still out.
+type Verdict = { party: string; wrong: boolean }
+
 export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefined): boolean => {
-  const [mismatch, setMismatch] = useState(false)
+  const [verdict, setVerdict] = useState<Verdict | undefined>(undefined)
+  // wallet-service answers for the one network its `NETWORK` variable names, for as long as it is
+  // up, so the app's side is read once and the poll re-reads only the wallet's.
+  const appNetwork = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     if (partyId === undefined) {
-      setMismatch(false)
       return
     }
     let cancelled = false
+    // Two checks can be in flight at once — a focus landing mid-interval — and they can answer out
+    // of order, so only the last one started is allowed to write.
+    let started = 0
 
     const check = (): void => {
-      void Promise.all([
-        walletSynchronizers(ledgerApi, partyId),
-        fetchTransferContext(partyId),
-      ]).then(
-        ([wallet, { synchronizerId }]) => {
-          if (!cancelled) {
-            setMismatch(wrongNetwork(wallet, synchronizerId))
+      const seq = ++started
+      const app =
+        appNetwork.current === undefined
+          ? fetchTransferContext(partyId).then(({ synchronizerId }) => synchronizerId)
+          : Promise.resolve(appNetwork.current)
+
+      void Promise.all([walletSynchronizers(ledgerApi, partyId), app]).then(
+        ([wallet, network]) => {
+          appNetwork.current = network
+          if (!cancelled && seq === started) {
+            setVerdict({ party: partyId, wrong: wrongNetwork(wallet, network) })
           }
         },
         // Either read failing says nothing about the network: a wallet-service that is down, or a
@@ -51,5 +64,5 @@ export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefine
     }
   }, [ledgerApi, partyId])
 
-  return mismatch
+  return verdict !== undefined && verdict.party === partyId && verdict.wrong
 }

@@ -12,7 +12,7 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError, sessionPending } = useBackend()
+  const { backend, configPending, configError, sessionPending, wrongNetwork } = useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
   // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
@@ -46,10 +46,18 @@ export const AppShell = (): React.JSX.Element => {
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
         >
+          {/* On the wrong network the read fails for want of the operator, so `configError` names a
+              missing deployment and tells the reader to run a script. The network is the cause. */}
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-              <h1 className="text-base font-bold text-danger">No deployment</h1>
-              <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
+              <h1 className="text-base font-bold text-danger">
+                {wrongNetwork ? 'Wrong network' : 'No deployment'}
+              </h1>
+              <p className="max-w-lg text-sm text-fg-muted">
+                {wrongNetwork
+                  ? 'This app found nothing on the network the wallet is connected to. Switch networks in the wallet to load it.'
+                  : configError}
+              </p>
             </Card>
           )}
           {configPending && <Loading />}

@@ -10,9 +10,12 @@ export const walletSynchronizers = async (
   ledgerApi: LedgerApi,
   party: string,
 ): Promise<string[]> => {
+  // The party goes in `query`, never spelled into `resource`: a wallet is free to allowlist the
+  // resource against the ledger API's own route list, which a path carrying a query string misses.
   const { connectedSynchronizers } = (await ledgerApi({
     requestMethod: 'get',
-    resource: `/v2/state/connected-synchronizers?party=${encodeURIComponent(party)}`,
+    resource: '/v2/state/connected-synchronizers',
+    query: { party },
   })) as ConnectedSynchronizers
   return (connectedSynchronizers ?? [])
     .map((one) => one.synchronizerId)

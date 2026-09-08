@@ -130,8 +130,24 @@ switching networks means using the wallet and the wallet takes focus; `visibilit
 because an extension popup draws over the tab rather than hiding it. The interval is the backstop for
 a switch made in a window the user never comes back from. A failed read is silent and leaves the last
 answer standing, because a wallet-service that is down, or a wallet that has just locked, is not a
-wrong network. [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above
-the header, and nothing dismisses it, because only the wallet can put it right.
+wrong network.
+
+Only the wallet's side is on that poll. wallet-service answers for the one network its `NETWORK`
+variable names, so the app's side is read once and kept, and every later check is a single read of
+the wallet's participant rather than another `amulet.tap` through
+[`api/rpc.ts`](api/rpc.ts). Two of those checks can still be in flight at once — a focus landing
+mid-interval — so each carries a sequence number and only the last one started may write. The
+verdict carries the party it was read for too, or the previous party's answer would be shown against
+the new one's network for as long as the first read for that party takes.
+[`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,
+and nothing dismisses it, because only the wallet can put it right.
+
+The verdict also decides what the page itself says. On the wrong network `config.ts` finds no
+operator on the ledger the wallet reaches, so it throws its `run pnpm run bootstrap` advice and
+[`AppShell`](src/components/AppShell.tsx) would fill the page with it. That message names a symptom:
+the deployment is there, the wallet is not looking at it. So where the verdict stands, the card
+carries the network instead and the advice is held back for the case it was written for, a ledger
+that really has no deployment.
 
 ## Creating a grant takes two approvals
 
