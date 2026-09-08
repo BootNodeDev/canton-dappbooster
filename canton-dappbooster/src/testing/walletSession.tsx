@@ -9,7 +9,6 @@ export const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1c
 // Reached through the config rather than the SDK: this package must not import dapp-sdk.
 type Picker = NonNullable<CantonConnectConfig['walletPicker']>
 
-/** For the wallet that takes a connect and never answers. */
 export const hangingPicker: Picker = () => new Promise(() => {})
 
 export const renderDisconnected = (ui: ReactElement): ReturnType<typeof render> =>

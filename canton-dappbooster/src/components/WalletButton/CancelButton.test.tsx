@@ -7,7 +7,6 @@ import { CancelButton } from '#src/components/WalletButton/CancelButton'
 import { ConnectButton } from '#src/components/WalletButton/ConnectButton'
 import { hangingPicker, renderDisconnected, renderWithWallet } from '#src/testing/walletSession'
 
-// The connect button is what puts an attempt in flight for the cancel to act on.
 const renderBesideConnect = (ui: ReactElement): ReturnType<typeof render> =>
   renderWithWallet(
     <>
@@ -78,8 +77,6 @@ describe('CancelButton', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Connecting…'))
   })
 
-  // The swap a consumer makes mounts this button mid-attempt, where the region has to fill after
-  // the paint: a live region that arrives already filled is never read out.
   it('announces the wait when it mounts mid-attempt', async () => {
     render(
       <FakeSessionProvider status="connecting">

@@ -42,9 +42,8 @@ export const CancelButton = ({
   const { cancelConnect, isPending } = useConnect()
   const [painted, setPainted] = useState(false)
 
-  // The region has to be on the page before the text it announces: a screen reader reads a live
-  // region's changes, and one that arrives already filled is silent. This button mounts mid-attempt
-  // wherever a consumer swaps it in for the connect button, which is exactly that case.
+  // A live region that arrives already filled is never read out, and a consumer swapping this
+  // button in mounts it mid-attempt, so the text has to land a paint later.
   useEffect(() => setPainted(true), [])
 
   return (

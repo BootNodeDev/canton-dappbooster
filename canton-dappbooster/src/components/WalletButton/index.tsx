@@ -43,8 +43,7 @@ export const WalletButton = (props: WalletButtonProps): ReactElement => {
   const button = useRef<HTMLButtonElement>(null)
   const previous = useRef(face)
 
-  // A swapped-out button takes focus with it and focus falls to <body>, so the keyboard loses its
-  // place. Only after a real swap: a focus move nobody asked for on first paint would be worse.
+  // Only after a real swap: focusing on first paint would move focus nobody asked to move.
   useEffect(() => {
     const swapped = previous.current !== face
     previous.current = face

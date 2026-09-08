@@ -72,7 +72,6 @@ describe('WalletButton', () => {
     expect(cancel).not.toHaveAttribute('aria-disabled')
   })
 
-  // The swapped-out button takes focus with it, so nothing would be focused at all.
   it('hands focus to the face that took over', async () => {
     renderWithWallet(<WalletButton />, { walletPicker: hangingPicker })
     const connect = screen.getByRole('button', { name: 'Connect wallet' })

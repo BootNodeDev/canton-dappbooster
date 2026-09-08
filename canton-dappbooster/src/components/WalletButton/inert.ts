@@ -5,15 +5,8 @@ type InertProps = {
   onClick: MouseEventHandler<HTMLButtonElement>
 }
 
-/**
- * Resolves a button's inert state into the `aria-disabled` it carries and the click it takes.
- * Paired so neither can be written without the other: `aria-disabled` keeps the button focusable
- * and announced, unlike the native attribute, but leaves the click live, so an inert button that
- * kept its handler would still run a caller's `type="submit"`.
- *
- * @example
- * <button {...resolveInert(isPending, handleClick)} />
- */
+// Paired because `aria-disabled` keeps the button focusable but leaves the click live, so an inert
+// button that kept its handler would still submit a caller's form.
 export const resolveInert = (
   inert: boolean,
   armed: MouseEventHandler<HTMLButtonElement>,
