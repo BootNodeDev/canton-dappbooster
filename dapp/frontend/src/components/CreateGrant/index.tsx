@@ -320,6 +320,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
               {/* The field carries no message for now, so its flag is the app's own error and not
                   the kit's, which would also flag an amount above the balance. */}
               <TokenInput
+                aria-describedby="amount-reservation"
                 aria-invalid={amountError !== undefined}
                 balance={balance}
                 balanceState={balanceState}
@@ -331,7 +332,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 usdValue="N/A"
                 value={amount}
               />
-              <p className="mt-1 text-xs text-fg-muted">
+              <p className="mt-1 text-xs text-fg-muted" id="amount-reservation">
                 An outstanding grant reserves the whole holdings it names; they return as change
                 once the receiver accepts.
               </p>

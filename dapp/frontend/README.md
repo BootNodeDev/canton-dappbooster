@@ -43,9 +43,9 @@ link to and the registry it fetches the instrument config from, default to
 the local stack and are set in the repo root's `.env`; see the root
 [`.env.example`](../../.env.example).
 
-The deployed demo is inert until its Vercel project sets both env vars to a registry reachable from
-the internet, and no such registry is hosted today, so `loadBackendConfig` hard-fails and every page
-shows "No deployment".
+The deployed demo is inert until its Vercel project points the registry knob at a registry reachable
+from the internet, and no such registry is hosted today, so `loadBackendConfig` hard-fails and every
+page shows "No deployment" once a wallet connects.
 
 ## How it fits together
 

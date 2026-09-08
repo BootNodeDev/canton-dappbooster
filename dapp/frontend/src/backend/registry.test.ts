@@ -179,6 +179,21 @@ describe('fetchInstrumentConfig', () => {
     )
   })
 
+  it('refuses a factoryId the disclosure does not vouch for', async () => {
+    stubRegistry({
+      '/registry/transfer-instruction/v1/transfer-factory': {
+        body: {
+          factoryId: '00other',
+          choiceContext: { disclosedContracts: [CONFIG] },
+        },
+      },
+    })
+
+    await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).rejects.toThrow(
+      /disclosed no InstrumentConfig/,
+    )
+  })
+
   it('surfaces the registry’s own error message', async () => {
     stubRegistry({
       '/registry/transfer-instruction/v1/transfer-factory': {
