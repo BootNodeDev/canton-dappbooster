@@ -149,17 +149,32 @@ only place the two seams above meet. Its backend is `undefined` until both a dep
 restored-but-locked session reports itself connected while reporting no party, and the party is what
 every read filters on and every submit acts as. The shell holds the pages until the deployment has
 resolved either way, so inside a page a missing backend can only mean a missing party — which is
-what makes `ConnectPrompt`'s copy, and the kit `ConnectButton` inside it, correct wherever it
+what makes `ConnectPrompt`'s copy, and the kit connect button inside it, correct wherever it
 renders — that face never flips to the disconnect one, which is why the prompt takes it rather than
-the kit's `WalletButton`.
+the kit's `WalletButton`. Once an attempt is in flight the connect button is swapped for
+`CancelButton`, so one button is on screen at a time and each does one thing only: that button
+carries the spinner for the wait and the word for the action. A double-click therefore lands its second click on the cancel and
+ends the attempt it just started, which the split makes honest rather than hidden: the button the
+user hits says Cancel.
+
+The swap itself is [`ConnectFace`](src/components/ConnectFace.tsx), which the prompt and the top bar
+both render, so a third site cannot forget half of it. It is a leaf on purpose: it holds the only
+`useConnect` subscription of the two, so an attempt re-renders one button rather than the header or
+the empty state around it. It also owns the repair a swap needs — the focused button is the one
+being unmounted, so focus falls to `<body>` and the keyboard loses its place. It hands focus to
+whichever button took over, and only then: a focus move nobody asked for on first paint would be
+worse than the problem.
 
 The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
-kit's `ConnectButton` and `DisconnectButton` drive it, and `useParty`
+kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `useParty`
 ([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none, so nothing else in
-the app reaches for a `canton-connect` hook. The top bar picks between the two faces itself rather
+standing the party hint in as a display name for the wallets that report none. Nothing else reaches
+for a `canton-connect` hook except `ConnectFace` and the error toast, both of which need `isPending`
+off `useConnect`. The top bar picks between the two faces itself rather
 than reaching for the kit's `WalletButton`, because the connected side is a dropdown of its own:
 `TopBar/AccountMenu` holds the copyable party id, the network the session is on, and the disconnect.
+It runs the same swap the prompt does, so an attempt started from the top bar can be abandoned
+there rather than only from the prompt further down the page.
 It picks on the party alone, never on `isConnected`: a standing session reports no party while the
 account read is in flight, again after it fails, and again once a lock clears it, and the connect
 face is the right answer to all three. It renders its own pending copy for the first and retries the
