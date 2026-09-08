@@ -7,7 +7,6 @@ Local Canton development stack.
 - Node 24 (>=24.15.0)
 - pnpm 11.22.0
 - Docker
-- dpm (DAML SDK 3.4.11)
 
 ## Initial setup
 
@@ -81,19 +80,17 @@ pnpm exec canton-barebones start
 - The first run pulls ~10 GB. If `start` exits 1 during splice migrations, run it again.
 - Splice can take a few minutes to start.
 
-### DAR build and deploy
+### DAR deploy
 
 `deploy-dar` requires LocalNet up and running.
 
 ```bash
-pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
 pnpm run deploy-dar -- vendor/canton-token-forge.dar
 pnpm run deploy-dar -- vendor/vesting.dar
 ```
 
-**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
-The two `vendor/` DARs are committed binaries and need no build; `canton-token-forge` goes
+**Note:** The step is only needed the first time, or after a LocalNet reset. Both DARs are
+committed binaries and need no build, so no DAML SDK is involved; `canton-token-forge` goes
 first, because `vesting` data-depends on it. See `vendor/PROVENANCE.md`.
 
 ### Wallet service
@@ -112,7 +109,7 @@ Needs both LocalNet and wallet-service up and running.
 pnpm run bootstrap
 ```
 
-**Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
+**Note:** The step is only needed the first time, or after a LocalNet reset.
 
 ### Token registry
 
