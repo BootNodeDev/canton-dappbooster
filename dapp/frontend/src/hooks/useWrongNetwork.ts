@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LedgerApi } from '@/backend/config'
 import { walletSynchronizers } from '@/backend/synchronizer'
-import { fetchTransferContext } from '@/backend/transferContext'
+import { fetchAppNetwork } from '@/backend/transferContext'
 import { wrongNetwork } from '@/utils/network'
 
 // Backstop for a switch made in a window the user never comes back from.
@@ -18,8 +18,9 @@ type Verdict = { party: string; wrong: boolean }
 export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefined): boolean => {
   const [verdict, setVerdict] = useState<Verdict | undefined>(undefined)
   // wallet-service answers for the one network its `NETWORK` variable names, for as long as it is
-  // up, so the app's side is read once and the poll re-reads only the wallet's.
-  const appNetwork = useRef<string | undefined>(undefined)
+  // up, so the app's side is read once and the poll re-reads only the wallet's. Boxed so that an
+  // answer carrying no id counts as read; the bare id would re-tap on every check.
+  const appNetwork = useRef<{ id: string | undefined } | undefined>(undefined)
 
   useEffect(() => {
     if (partyId === undefined) {
@@ -32,16 +33,13 @@ export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefine
 
     const check = (): void => {
       const seq = ++started
-      const app =
-        appNetwork.current === undefined
-          ? fetchTransferContext(partyId).then(({ synchronizerId }) => synchronizerId)
-          : Promise.resolve(appNetwork.current)
+      const app = appNetwork.current ?? fetchAppNetwork(partyId).then((id) => ({ id }))
 
       void Promise.all([walletSynchronizers(ledgerApi, partyId), app]).then(
         ([wallet, network]) => {
           appNetwork.current = network
           if (!cancelled && seq === started) {
-            setVerdict({ party: partyId, wrong: wrongNetwork(wallet, network) })
+            setVerdict({ party: partyId, wrong: wrongNetwork(wallet, network.id) })
           }
         },
         // Either read failing says nothing about the network: a wallet-service that is down, or a

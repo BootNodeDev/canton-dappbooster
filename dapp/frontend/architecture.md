@@ -89,9 +89,12 @@ consume. Every Amulet is DSO-signed, so it is the same party by construction.
 A write fails at the participant when the wallet submits to a network the app's contracts do not
 live on, because the `AmuletRules` and mining round ids do not exist on the ledger the wallet
 reaches. Both sides of that are read.
-[`transferContext.ts`](src/backend/transferContext.ts) returns one thing no write uses, the
-`synchronizerId` wallet-service stamped on the disclosures, which is the network the app's contracts
-are on. [`synchronizer.ts`](src/backend/synchronizer.ts) reads the other side, the synchronizers the
+[`transferContext.ts`](src/backend/transferContext.ts) carries `fetchAppNetwork`, which taps and
+returns only the `synchronizerId` wallet-service stamped on the disclosures, the network the app's
+contracts are on. Its own export rather than a field on the transfer context: that builder waits for
+an `AmuletRules` and an open mining round both, and the SV opens the first round minutes after a
+LocalNet start, while the id sits on the rules alone.
+[`synchronizer.ts`](src/backend/synchronizer.ts) reads the other side, the synchronizers the
 wallet's own participant is connected to. That is a read of its own rather than
 [`config.ts`](src/backend/config.ts)'s `synchronizerId` off the factory row, which the deployment
 already carries: that one is three round trips and its answer rebuilds the backend, so repeating it

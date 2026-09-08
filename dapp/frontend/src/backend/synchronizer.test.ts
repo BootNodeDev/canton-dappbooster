@@ -1,10 +1,9 @@
 import type { LedgerApiParams } from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
+import type { LedgerApi } from '@/backend/config'
 import { walletSynchronizers } from '@/backend/synchronizer'
 
-const stubLedger = (
-  answer: unknown,
-): { calls: LedgerApiParams[]; ledgerApi: (params: LedgerApiParams) => Promise<unknown> } => {
+const stubLedger = (answer: unknown): { calls: LedgerApiParams[]; ledgerApi: LedgerApi } => {
   const calls: LedgerApiParams[] = []
   return {
     calls,
@@ -30,8 +29,6 @@ describe('walletSynchronizers', () => {
     ])
   })
 
-  // A wallet may allowlist the resource against the ledger API's own route list, which a path
-  // carrying a query string misses, so the party has to travel in `query`.
   it('asks the route by name and passes the party as a query parameter', async () => {
     const { calls, ledgerApi } = stubLedger({ connectedSynchronizers: [] })
 

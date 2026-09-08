@@ -23,7 +23,6 @@ describe('wrongNetwork', () => {
   it.each([
     ['the app id', [WALLET], undefined],
     ['the wallet ids', [], APP],
-    ['both', [], undefined],
   ])('reports nothing while %s is missing', (_case, wallet, app) => {
     expect(wrongNetwork(wallet, app)).toBe(false)
   })

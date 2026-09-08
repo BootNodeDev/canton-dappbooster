@@ -19,8 +19,6 @@ export const WrongNetwork = (): React.JSX.Element | null => {
           aria-hidden="true"
           className="mr-2 inline-block size-[5px] rounded-full bg-warning align-middle"
         />
-        {/* The wallet's own label is the only name worth showing: the app's network has none a
-            reader could act on, so the sentence points at the wallet instead of naming a target. */}
         <strong className="font-bold">Wrong network:</strong> wallet is connected to{' '}
         <strong className="font-bold">{networkLabel(party.networkId)}</strong>, switch networks to
         proceed.

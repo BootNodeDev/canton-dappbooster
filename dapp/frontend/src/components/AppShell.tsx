@@ -46,8 +46,8 @@ export const AppShell = (): React.JSX.Element => {
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
         >
-          {/* On the wrong network the read fails for want of the operator, so `configError` names a
-              missing deployment and tells the reader to run a script. The network is the cause. */}
+          {/* On the wrong network `configError` names a missing deployment, but the network is the
+              cause, so the script it advises would not help. */}
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <h1 className="text-base font-bold text-danger">
