@@ -1,9 +1,5 @@
 import type { InstrumentId } from '@bootnodedev/canton-dappbooster'
 
-// A top-level key of the file. The published one carries `MainNet`, `TestNet` and `DevNet`; a
-// stack it does not cover is served a file of its own, under whatever key that file uses.
-export type AssetListNetwork = string
-
 export interface AssetListEntry {
   instrumentId: InstrumentId
   logoUrl: string | undefined
@@ -40,7 +36,7 @@ const toEntry = (value: unknown): AssetListEntry | undefined => {
  */
 export const readAssetList = async (
   url: string,
-  network: AssetListNetwork,
+  network: string,
 ): Promise<readonly AssetListEntry[]> => {
   const response = await fetch(url, { headers: { accept: 'application/json' } })
   if (!response.ok) {

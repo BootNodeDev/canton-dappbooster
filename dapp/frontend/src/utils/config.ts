@@ -1,5 +1,4 @@
 import type { ExplorerConfig } from '@bootnodedev/canton-dappbooster'
-import type { AssetListNetwork } from '@/utils/assetList'
 
 // Unused while #113 is open, which is why knip is told this export is deliberate.
 /** @public */
@@ -12,4 +11,6 @@ export const REGISTRY_URL = '/registry'
 // The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.
 export const ASSET_LIST_URL = '/assets.json'
 
-export const ASSET_LIST_NETWORK: AssetListNetwork | undefined = 'LocalNet'
+// A top-level key of the asset list. The published one carries `MainNet`, `TestNet` and `DevNet`; a
+// stack it does not cover is served a file of its own, under whatever key that file uses.
+export const ASSET_LIST_NETWORK: string | undefined = 'LocalNet'
