@@ -333,8 +333,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
                 value={amount}
               />
               <p className="mt-1 text-xs text-fg-muted" id="amount-reservation">
-                An outstanding grant reserves the whole holdings it names; they return as change
-                once the receiver accepts.
+                An outstanding grant reserves exactly this amount; the rest of your balance stays
+                spendable until the receiver accepts.
               </p>
             </div>
           </div>

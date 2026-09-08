@@ -77,6 +77,7 @@ describe('command builders', () => {
   it('builds the factory choice with the canonical amount, encoded schedule and token ids', () => {
     expect(
       buildCreateVestingCommand('pkg:Vesting:VestingFactory', 'factory-cid', {
+        configCid: CONFIG_CID,
         proposer: 'funder::1',
         receiver: 'receiver::1',
         totalAmount: '1000.00',
@@ -94,6 +95,7 @@ describe('command builders', () => {
           totalAmount: '1000',
           schedule: encodeSchedule(linear),
           tokenCids: ['t1', 't2'],
+          configCid: CONFIG_CID,
           note: null,
         },
       },

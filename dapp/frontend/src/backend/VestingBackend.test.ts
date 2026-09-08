@@ -6,7 +6,7 @@ import {
   composeNote,
   lastUpdateOffset,
   matchesInstrument,
-  pledgedTokens,
+  reservedToken,
   rowToClaim,
   rowToGrant,
   rowToPendingGrant,
@@ -314,29 +314,29 @@ describe('matchesInstrument', () => {
   })
 })
 
-describe('pledgedTokens', () => {
-  it('reads the holdings a pending grant’s Accept will consume', () => {
+describe('reservedToken', () => {
+  it('reads the holding a pending grant’s Accept will consume', () => {
     const pending = {
       contractEntry: {
         JsActiveContract: {
           createdEvent: {
             contractId: 'p1',
-            createArgument: { tokenCids: ['t1', 't2'] },
+            createArgument: { tokenCid: 't1' },
           },
         },
       },
     } as AcsRow
-    expect(pledgedTokens(pending)).toEqual(['t1', 't2'])
+    expect(reservedToken(pending)).toBe('t1')
   })
 
-  it('reads a row naming none as an empty list', () => {
-    expect(pledgedTokens({} as AcsRow)).toEqual([])
+  it('reads a row naming none as undefined', () => {
+    expect(reservedToken({} as AcsRow)).toBeUndefined()
   })
 })
 
 describe('selectHoldings', () => {
-  // Largest first, so a grant names the fewest inputs: every named holding is a disclosure blob the
-  // receiver has to carry to Accept.
+  // Largest first, so the factory splits the fewest inputs: the receiver carries one disclosure
+  // whatever is picked, since the split leaves a single holding behind.
   it('takes the largest holdings first and stops once they cover the total', () => {
     const rows = [tokenRow('small', '100'), tokenRow('big', '900'), tokenRow('mid', '400')]
     expect(selectHoldings(rows, '1000')?.map((row) => tokenValue(row))).toEqual(['900', '400'])

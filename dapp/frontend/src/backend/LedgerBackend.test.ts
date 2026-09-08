@@ -3,6 +3,7 @@ import { encodeSchedule } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
+import { addAmounts, isZero, subtractAmounts } from '@/utils/amount'
 
 const deployment: Deployment = {
   admin: 'instrument-admin::1',
@@ -32,7 +33,11 @@ type Submission = {
 // As much of the ACS query LedgerBackend builds as these tests read back, named once so the two
 // accessors below share it rather than each casting the body to its own shape.
 type PartyFilter = {
-  cumulative?: { identifierFilter?: { TemplateFilter?: { value?: { templateId?: string } } } }[]
+  cumulative?: {
+    identifierFilter?: {
+      TemplateFilter?: { value?: { includeCreatedEventBlob?: boolean; templateId?: string } }
+    }
+  }[]
 }
 
 type AcsQuery = {
@@ -40,7 +45,11 @@ type AcsQuery = {
   filter?: { filtersByParty?: Record<string, PartyFilter> }
 }
 
-type Read = { requestMethod: string; resource: string; body?: AcsQuery }
+type Read = {
+  requestMethod: string
+  resource: string
+  body?: AcsQuery & { updateId?: string }
+}
 
 const byParty = (read: Read): Record<string, PartyFilter> => read.body?.filter?.filtersByParty ?? {}
 
@@ -50,6 +59,10 @@ const filteredTemplate = (read: Read): string | undefined =>
     ?.templateId
 
 const filteredParty = (read: Read): string | undefined => Object.keys(byParty(read))[0]
+
+const readsBlobs = (read: Read): boolean =>
+  byParty(read)[filteredParty(read) ?? '']?.cumulative?.[0]?.identifierFilter?.TemplateFilter?.value
+    ?.includeCreatedEventBlob === true
 
 const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
@@ -90,16 +103,59 @@ vi.mock('@/backend/registry', () => ({
   }),
 }))
 
-// The harness behaves like the ledger for the one submission a grant now takes: the factory choice
-// leaves a pending grant behind pledging exactly the holdings it was given. Without that, a later
-// selection would happily spend a holding an outstanding grant is waiting on.
+type Created = {
+  contractId?: string
+  createArgument?: { amount?: string }
+  createdEventBlob?: string
+  templateId?: string
+}
+
+const createdEvent = (contract: unknown): Created =>
+  (contract as { contractEntry?: { JsActiveContract?: { createdEvent?: Created } } }).contractEntry
+    ?.JsActiveContract?.createdEvent ?? {}
+
+const cidOf = (contract: unknown): string => createdEvent(contract).contractId ?? ''
+
+// The harness behaves like the ledger for the one submission a grant takes: the factory splits the
+// holdings it is given, so those are consumed and replaced by one holding of exactly the grant plus
+// the funder's change, and the pending grant names the first of the two. Without that, a later
+// selection would happily spend the holding an outstanding grant is waiting on, and no holding
+// would exist for the funder to disclose to the receiver.
 const settle = (acs: Record<string, unknown[]>, submission: Submission): void => {
   const exercise = submission.commands?.[0]?.ExerciseCommand
   if (exercise?.choice !== 'VestingFactory_CreateVesting') {
     return
   }
-  const { tokenCids } = exercise.choiceArgument as { tokenCids: string[] }
-  acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${tokenCids[0]}`, { tokenCids })]
+  const { note, receiver, tokenCids, totalAmount } = exercise.choiceArgument as {
+    note: string | null
+    receiver: string
+    tokenCids: string[]
+    totalAmount: string
+  }
+  const held = acs[TOKEN] ?? []
+  const spent = held.filter((contract) => tokenCids.includes(cidOf(contract)))
+  const change = subtractAmounts(
+    addAmounts(...spent.map((contract) => createdEvent(contract).createArgument?.amount ?? '0')),
+    totalAmount,
+  )
+  const funding = tokenRow(`funding-${tokenCids[0]}`, totalAmount)
+  const returned = isZero(change) ? [] : [tokenRow(`change-${tokenCids[0]}`, change)]
+  const pending = row(`pending-for-${tokenCids[0]}`, {
+    admin: 'instrument-admin::1',
+    instrumentId: 'DBT',
+    provider: 'operator::1',
+    proposer: submission.actAs?.[0],
+    receiver,
+    totalAmount,
+    tokenCid: cidOf(funding),
+    note,
+  })
+  acs[TOKEN] = [
+    ...held.filter((contract) => !tokenCids.includes(cidOf(contract))),
+    funding,
+    ...returned,
+  ]
+  acs[PENDING] = [...(acs[PENDING] ?? []), pending]
 }
 
 // The submission carries the synchronizer, so everything disclosed on one arrives stamped with it.
@@ -112,6 +168,7 @@ const harness = (
     declines?: boolean
     deployment?: Deployment
     ledgerEnd?: unknown
+    readsFailAfterSubmit?: boolean
   } = {},
 ): { backend: LedgerBackend; submissions: Submission[]; reads: Read[] } => {
   const {
@@ -119,6 +176,7 @@ const harness = (
     declines = false,
     ledgerEnd = { offset: 42 },
     deployment: config = deployment,
+    readsFailAfterSubmit = false,
   } = options
   const submissions: Submission[] = []
   const reads: Read[] = []
@@ -130,11 +188,16 @@ const harness = (
       const submission = params as Submission
       submissions.push(submission)
       settle(acs, submission)
-      return {}
+      // The wallet answers with the transaction's own ids, none of which name a contract it
+      // created.
+      return { tx: { payload: { updateId: `update-${submissions.length}` } } }
     },
     ledgerApi: async (params) => {
       const read = params as Read
       reads.push(read)
+      if (readsFailAfterSubmit && submissions.length > 0) {
+        throw new Error('the participant is not answering')
+      }
       if (read.resource === '/v2/state/ledger-end') {
         return ledgerEnd
       }
@@ -158,8 +221,8 @@ describe('LedgerBackend.createVesting', () => {
     note: 'linear',
   }
 
-  // One submission, not two: the token-forge transfer returns the funder's leftover input as
-  // change, so Accept splits and the funder never has to pre-split.
+  // One submission, not two: the factory splits the funder's inputs itself, so the funder never has
+  // to pre-split and the change comes back in the same transaction.
   it('funds the grant in a single submission', async () => {
     const { backend, submissions } = harness({
       acs: { [TOKEN]: [tokenRow('t1', '600'), tokenRow('t2', '900')] },
@@ -186,11 +249,11 @@ describe('LedgerBackend.createVesting', () => {
     ])
   })
 
-  it('leaves out a holding an outstanding grant has already pledged', async () => {
+  it('leaves out the holding an outstanding grant has already reserved', async () => {
     const { backend, submissions } = harness({
       acs: {
         [TOKEN]: [tokenRow('pledged', '1000'), tokenRow('free', '1000')],
-        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCid: 'pledged' })],
       },
     })
 
@@ -201,11 +264,11 @@ describe('LedgerBackend.createVesting', () => {
     ])
   })
 
-  it('refuses when what is left unpledged cannot cover the grant', async () => {
+  it('refuses when what is left unreserved cannot cover the grant', async () => {
     const { backend } = harness({
       acs: {
         [TOKEN]: [tokenRow('pledged', '1000'), tokenRow('free', '400')],
-        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCid: 'pledged' })],
       },
     })
 
@@ -228,7 +291,7 @@ describe('LedgerBackend.createVesting', () => {
     await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 DBT is free/)
   })
 
-  it('exercises the factory choice with the composed note and schedule, disclosing only it', async () => {
+  it('exercises the factory choice with the composed note, schedule and config', async () => {
     const { backend, submissions } = harness({ acs: { [TOKEN]: [tokenRow('t1', '1000')] } })
 
     const result = await backend.createVesting(grant)
@@ -245,22 +308,28 @@ describe('LedgerBackend.createVesting', () => {
             totalAmount: '1000',
             schedule: encodeSchedule(schedule),
             tokenCids: ['t1'],
+            configCid: '00cfg',
             note: 'Advisor grant\nlinear',
           },
         },
       },
     ])
-    // The funder is not a stakeholder of the observer-less factory, so its disclosure is the
-    // deployment's rather than something read back here.
-    expect(submissions[0]?.disclosedContracts).toEqual([
-      {
-        templateId: 'pkg1:Vesting:VestingFactory',
-        contractId: 'factory-cid',
-        createdEventBlob: 'YmxvYg==',
-        synchronizerId: 'sync::1',
-      },
-    ])
-    expect(result.disclosedBytes).toBe(deployment.factoryBlob.length)
+    // The config because the split runs against it, the factory because the funder is not a
+    // stakeholder of the observer-less factory and so cannot read it. The inputs are the funder's
+    // own, so they need no disclosure.
+    expect(submissions[0]?.disclosedContracts).toEqual(
+      onSync([
+        CONFIG,
+        {
+          templateId: 'pkg1:Vesting:VestingFactory',
+          contractId: 'factory-cid',
+          createdEventBlob: 'YmxvYg==',
+        },
+      ]),
+    )
+    expect(result.disclosedBytes).toBe(
+      CONFIG.createdEventBlob.length + deployment.factoryBlob.length,
+    )
   })
 
   it('omits the synchronizer id when the config carries none', async () => {
@@ -271,19 +340,56 @@ describe('LedgerBackend.createVesting', () => {
 
     expect(submissions[0]?.disclosedContracts?.[0]).not.toHaveProperty('synchronizerId')
   })
+
+  // The acceptance criterion this issue exists for: the funder keeps everything the grant did not
+  // take, rather than the whole holding it was funded from.
+  it('leaves the funder everything the grant did not reserve', async () => {
+    const { backend } = harness({ acs: { [TOKEN]: [tokenRow('t1', '1500')] } })
+
+    await backend.createVesting(grant)
+
+    await expect(backend.balanceOf('funder::1')).resolves.toBe('500')
+  })
+
+  // The holding the receiver will have to disclose is created by this very submission, so the read
+  // that carries its blob runs after the write and not with the selection before it.
+  it('reads the split holding back only once the grant is on the ledger', async () => {
+    const { backend, reads } = harness({ acs: { [TOKEN]: [tokenRow('t1', '1500')] } })
+
+    await backend.createVesting(grant)
+
+    const withBlobs = reads.filter(
+      (read) =>
+        read.body?.filter !== undefined && readsBlobs(read) && filteredTemplate(read) === TOKEN,
+    )
+    expect(withBlobs).toHaveLength(1)
+  })
+
+  // The grant is on the ledger by then, so reporting a failure would invite the funder to make a
+  // second one; the Accept is what says the blob is missing.
+  it('reports a grant whose funding holding could not be read back as created', async () => {
+    const { backend } = harness({
+      acs: { [TOKEN]: [tokenRow('t1', '1500')] },
+      readsFailAfterSubmit: true,
+    })
+
+    await expect(backend.createVesting(grant)).resolves.toEqual({
+      disclosedBytes: CONFIG.createdEventBlob.length + deployment.factoryBlob.length,
+    })
+  })
 })
 
 describe('LedgerBackend.balanceOf', () => {
-  it('sums the unpledged holdings of this deployment’s instrument', async () => {
+  it('sums the unreserved holdings of this deployment’s instrument', async () => {
     const { backend } = harness({
       acs: {
         [TOKEN]: [
           tokenRow('a', '600'),
           tokenRow('b', '400'),
-          tokenRow('pledged', '900'),
+          tokenRow('reserved', '900'),
           tokenRow('foreign', '5000', { instrumentId: 'OTHER' }),
         ],
-        [PENDING]: [row('p1', { tokenCids: ['pledged'] })],
+        [PENDING]: [row('p1', { tokenCid: 'reserved' })],
       },
     })
 
@@ -408,7 +514,11 @@ describe('LedgerBackend.accept', () => {
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
 
-    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedToken('t1')]))
+    // The split output, never the input it came out of: that one is archived, and re-disclosing it
+    // would only fail the transfer's own fetch.
+    expect(submissions[0]?.disclosedContracts).toEqual(
+      onSync([CONFIG, disclosedToken('funding-t1')]),
+    )
     expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Accept')
   })
 
@@ -420,21 +530,26 @@ describe('LedgerBackend.accept', () => {
     ).rejects.toThrow(/not disclosable/)
   })
 
-  // Two grants name the same holding whenever the second selection reads the ACS before the first
-  // grant is indexed, and the funder is left unable to accept either if that is counted as an error.
-  it('accepts a grant whose holding was stored by two of them', async () => {
-    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
-    await harness({ acs }).backend.createVesting(grant('First grant'))
-    const unindexed = harness({ acs: { [TOKEN]: [tokenRow('t1', '1500')] } })
-    await unindexed.backend.createVesting(grant('Second grant'))
+  // Why every outstanding grant is reconciled and not only the one just made: a read that failed
+  // once would otherwise leave a grant nobody can ever accept.
+  it('picks up a blob a failed read left behind when the next grant is created', async () => {
+    const acs: Record<string, unknown[]> = {
+      [TOKEN]: [tokenRow('t1', '1500'), tokenRow('t2', '1500')],
+    }
+    const flaky = harness({ acs, readsFailAfterSubmit: true })
+    await flaky.backend.createVesting(grant('First grant'))
+    const funder = harness({ acs })
+    await funder.backend.createVesting(grant('Second grant'))
     const { backend, submissions } = harness({ acs })
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
 
-    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedToken('t1')]))
+    expect(submissions[0]?.disclosedContracts).toEqual(
+      onSync([CONFIG, disclosedToken('funding-t1')]),
+    )
   })
 
-  it('keeps the blobs of a live grant when a later one is declined in the wallet', async () => {
+  it('keeps the blob of a live grant when a later one is declined in the wallet', async () => {
     const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '2500')] }
     const first = harness({ acs })
     await first.backend.createVesting(grant('First grant'))
@@ -444,7 +559,9 @@ describe('LedgerBackend.accept', () => {
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
 
-    expect(submissions[0]?.disclosedContracts).toEqual(onSync([CONFIG, disclosedToken('t1')]))
+    expect(submissions[0]?.disclosedContracts).toEqual(
+      onSync([CONFIG, disclosedToken('funding-t1')]),
+    )
   })
 })
 
@@ -492,6 +609,30 @@ describe('LedgerBackend.viewAs', () => {
   it('throws rather than querying at an undefined offset', async () => {
     const { backend } = harness({ ledgerEnd: {} })
     await expect(backend.viewAs('receiver::1')).rejects.toThrow(/did not return an offset/)
+  })
+
+  // The proposal now stores the admin and the instrument it is denominated in, so a pending grant
+  // is filtered like the other two rather than taken on trust.
+  it('drops pending grants of another instrument', async () => {
+    const pending = (contractId: string, admin: string): unknown =>
+      row(contractId, {
+        admin,
+        instrumentId: 'DBT',
+        provider: 'operator::1',
+        proposer: 'funder::1',
+        receiver: 'receiver::1',
+        totalAmount: '1000',
+        tokenCid: 'funding',
+        schedule: encodeSchedule(schedule),
+        note: 'Advisor grant',
+      })
+    const { backend } = harness({
+      acs: { [PENDING]: [pending('mine', 'instrument-admin::1'), pending('theirs', 'other::1')] },
+    })
+
+    const view = await backend.viewAs('receiver::1')
+
+    expect(view.pendingGrants.map((one) => one.id)).toEqual(['mine'])
   })
 
   // A shared participant can carry another admin's grants under the same package, and rendering one

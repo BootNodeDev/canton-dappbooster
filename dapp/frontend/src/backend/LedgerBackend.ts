@@ -23,7 +23,7 @@ import {
   composeNote,
   lastUpdateOffset,
   matchesInstrument,
-  pledgedTokens,
+  reservedToken,
   rowToClaim,
   rowToGrant,
   rowToPendingGrant,
@@ -71,23 +71,15 @@ const STREAM_IDLE_MS = 1000
 // Bounded so an offset that fails to advance cannot spin.
 const CLAIM_HISTORY_PAGES = 20
 
-// Accept locks the funder's holdings, which the receiver is no stakeholder of and so cannot read the
-// disclosure blobs for. They are kept here as the funder submits the pending grant. Persisted,
+// Accept locks the holding a grant reserves, which the receiver is no stakeholder of and so cannot
+// read the disclosure blob for. It is kept here as the funder submits the pending grant. Persisted,
 // because the two parties are two wallet accounts and switching between them reloads the app.
 const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
 
-// Deduplicated here rather than on write, so a store already holding a holding twice recovers: two
-// grants pledge the same one whenever the second ACS read lands before the first grant is indexed,
-// and a duplicate would fail `accept`'s count guard for a grant whose blobs are all present.
 const storedTokens = (): DisclosedContract[] => {
   try {
     const stored = JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? '[]')
-    const tokens: DisclosedContract[] = Array.isArray(stored) ? stored : []
-    return [
-      ...new Map<string, DisclosedContract>(
-        tokens.map((token) => [token.contractId, token]),
-      ).values(),
-    ]
+    return Array.isArray(stored) ? (stored as DisclosedContract[]) : []
   } catch {
     return []
   }
@@ -176,8 +168,8 @@ export class LedgerBackend implements VestingBackend {
     })
   }
 
-  // What is free to fund a grant, and not simply what the party holds: a holding already escrowed
-  // is a LockedToken and so out by template, and a holding an outstanding grant pledged is out
+  // What is free to fund a grant, and not simply what the party holds: a holding already escrowed is
+  // a LockedToken and so out by template, and the holding an outstanding grant reserves is out
   // because spending it would leave that grant unacceptable. Offering more than this would put an
   // amount in the field that the next step always refuses.
   async balanceOf(partyId: string): Promise<string> {
@@ -194,47 +186,72 @@ export class LedgerBackend implements VestingBackend {
       this.readAcs(partyId, vesting('VestedClaim'), offset),
     ])
     return {
-      pendingGrants: mapRows(pendingGrantRows, rowToPendingGrant),
+      pendingGrants: mapRows(this.ofInstrument(pendingGrantRows), rowToPendingGrant),
       grants: mapRows(this.ofInstrument(contractRows), rowToGrant),
       claims: mapRows(this.ofInstrument(claimRows), rowToClaim),
     }
   }
 
-  // One submission, so one wallet approval. `executeTokenTransfer` returns the sender's leftover
-  // input as change, so Accept splits the named holdings itself and the funder never pre-splits the
-  // way the Amulet version had to. The factory is the operator's and observer-less, so the funder
-  // cannot read it and its disclosure comes from the deployment; the blob size is what lets the UI
+  // One submission, so one wallet approval: the factory splits the funder's inputs down to the grant
+  // and hands the change back in the same transaction, so the funder never pre-splits the way the
+  // Amulet version had to. The factory is the operator's and observer-less, so the funder cannot
+  // read it and its disclosure comes from the deployment; the disclosed size is what lets the UI
   // surface that mechanic.
   async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
-    const free = await this.freeTokens(args.proposer, true)
+    const free = await this.freeTokens(args.proposer)
     const picked = selectHoldings(free, args.totalAmount)
     if (picked === undefined) {
       throw new Error(
         `only ${addAmounts(...free.map(tokenValue))} ${this.instrument.instrumentId} is free to fund this grant`,
       )
     }
-    const disclosures: DisclosedContract[] = []
-    for (const row of picked) {
-      const disclosure = rowToDisclosed(row)
-      if (disclosure === undefined) {
-        throw new Error('a holding funding this grant came back without its disclosure blob')
-      }
-      disclosures.push(disclosure)
+    const disclosed = await this.submitWithConfig(
+      args.proposer,
+      ({ configCid }) =>
+        buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
+          configCid,
+          proposer: args.proposer,
+          receiver: args.receiver,
+          totalAmount: args.totalAmount,
+          schedule: args.schedule,
+          tokenCids: picked.map(cidOf),
+          note: composeNote(args.title, args.note),
+        }),
+      [this.factory],
+    )
+    // The grant is on the ledger by now, so a failure to record the blob must not report one: it
+    // would invite the funder to make a second grant, and `accept` is where a missing blob is felt
+    // and said.
+    await this.storeFunding(args.proposer).catch(() => undefined)
+    return {
+      disclosedBytes: disclosed.reduce((total, one) => total + one.createdEventBlob.length, 0),
     }
-    const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
-      proposer: args.proposer,
-      receiver: args.receiver,
-      totalAmount: args.totalAmount,
-      schedule: args.schedule,
-      tokenCids: picked.map(cidOf),
-      note: composeNote(args.title, args.note),
-    })
-    await this.submit(args.proposer, command, [this.factory])
-    // After the submit, not before: a grant the wallet declined must not leave blobs behind for
-    // holdings no grant is waiting on. Appended rather than replacing, because every outstanding
-    // grant's own holdings have to stay disclosable.
-    localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...storedTokens(), ...disclosures]))
-    return { disclosedBytes: this.factory.createdEventBlob.length }
+  }
+
+  // The receiver has to disclose the holding a grant reserves, and only the funder can read it: a
+  // `Token` has no observers. Read after the submit, never before, because the factory creates that
+  // holding in this very submission and a grant the wallet declined must leave no blob behind.
+  // Every outstanding grant of this funder is reconciled rather than just the one just made, so a
+  // read that failed once is picked up by the next grant instead of leaving a grant nobody can
+  // accept.
+  private async storeFunding(party: string): Promise<void> {
+    const offset = await this.ledgerEnd()
+    const [pendingRows, held] = await Promise.all([
+      this.readAcs(party, vesting('VestingProposal'), offset),
+      this.readAcs(party, TOKEN, offset, true),
+    ])
+    const reserved = new Set(pendingRows.map(reservedToken))
+    const stored = storedTokens()
+    const known = new Set(stored.map((one) => one.contractId))
+    const missing = held
+      .filter((row) => reserved.has(cidOf(row)) && !known.has(cidOf(row)))
+      .flatMap((row) => {
+        const disclosure = rowToDisclosed(row)
+        return disclosure === undefined ? [] : [disclosure]
+      })
+    if (missing.length > 0) {
+      localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...stored, ...missing]))
+    }
   }
 
   async tap(args: { amount: string; party: string }): Promise<void> {
@@ -243,34 +260,36 @@ export class LedgerBackend implements VestingBackend {
     )
   }
 
-  // A transfer consumes every holding it is given, so one an outstanding grant pledged has to stay
-  // out: consuming it is exactly what leaves that grant unacceptable. Blobs are read only where a
-  // caller will disclose them, since each is several hundred bytes the balance read has no use for.
-  private async freeTokens(owner: string, includeBlobs = false): Promise<AcsRow[]> {
+  // A transfer consumes every holding it is given, so the one an outstanding grant reserves has to
+  // stay out: consuming it is exactly what leaves that grant unacceptable.
+  private async freeTokens(owner: string): Promise<AcsRow[]> {
     const offset = await this.ledgerEnd()
     const [held, pendingRows] = await Promise.all([
-      this.readAcs(owner, TOKEN, offset, includeBlobs),
+      this.readAcs(owner, TOKEN, offset),
       this.readAcs(owner, vesting('VestingProposal'), offset),
     ])
-    const pledged = new Set(pendingRows.flatMap(pledgedTokens))
-    return held.filter((row) => matchesInstrument(row, this.instrument) && !pledged.has(cidOf(row)))
+    const reserved = new Set(pendingRows.map(reservedToken))
+    return held.filter(
+      (row) => matchesInstrument(row, this.instrument) && !reserved.has(cidOf(row)),
+    )
   }
 
-  // A pending grant is deliberately not filtered: VestingProposal carries no admin or instrumentId,
-  // deriving both at Accept from a holding the receiver cannot read.
   private ofInstrument(rows: AcsRow[]): AcsRow[] {
     return rows.filter((row) => matchesInstrument(row, this.instrument))
   }
 
   // Every choice that moves a holding takes the same config and the same one disclosure, so the
-  // invariant is held here rather than re-spelled per choice; `extra` is what only Accept adds.
+  // invariant is held here rather than re-spelled per choice; `extra` is what only create and
+  // Accept add. It answers with what it disclosed, which only create has a use for.
   private async submitWithConfig(
     actAs: string,
     build: (config: InstrumentConfigRef) => LedgerCommand,
     extra: DisclosedContract[] = [],
-  ): Promise<void> {
+  ): Promise<DisclosedContract[]> {
     const { disclosed, ...config } = await fetchInstrumentConfig(actAs, this.instrument)
-    await this.submit(actAs, build(config), [...disclosed, ...extra])
+    const sent = [...disclosed, ...extra]
+    await this.submit(actAs, build(config), sent)
+    return sent
   }
 
   // `TRANSACTION_SHAPE_LEDGER_EFFECTS` is what carries the exercise; the default ACS-delta shape
@@ -320,30 +339,29 @@ export class LedgerBackend implements VestingBackend {
     return claimChain(records, contractCid)
   }
 
-  // The grant names the holdings its Accept locks, and the receiver is an observer of the grant, so
-  // which blobs to send is read off the ledger rather than guessed at. Sending the whole store
-  // instead would re-disclose holdings earlier accepts already consumed, and would leave the guard
-  // below unable to tell a missing blob from an unrelated one.
+  // The grant names the holding its Accept locks, and the receiver is an observer of the grant, so
+  // which blob to send is read off the ledger rather than guessed at. Sending the whole store
+  // instead would re-disclose holdings earlier accepts already consumed, which the participant
+  // rejects.
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
     const offset = await this.ledgerEnd()
     const rows = await this.readAcs(args.receiver, vesting('VestingProposal'), offset)
-    const wanted = new Set(
-      rows.filter((row) => cidOf(row) === args.pendingCid).flatMap(pledgedTokens),
-    )
-    const tokens = storedTokens().filter((token) => wanted.has(token.contractId))
-    if (wanted.size === 0 || tokens.length !== wanted.size) {
-      throw new Error('the funder holdings this grant locks are not disclosable from this browser')
+    const proposal = rows.find((row) => cidOf(row) === args.pendingCid)
+    const wanted = proposal === undefined ? undefined : reservedToken(proposal)
+    const token = storedTokens().find((one) => one.contractId === wanted)
+    if (wanted === undefined || token === undefined) {
+      throw new Error('the funder holding this grant locks is not disclosable from this browser')
     }
     await this.submitWithConfig(
       args.receiver,
       ({ configCid }) =>
         buildAcceptCommand(this.tid('VestingProposal'), args.pendingCid, configCid),
-      tokens,
+      [token],
     )
-    // The submission archived them, so their blobs can only mislead a later Accept from here on.
+    // The submission archived it, so its blob can only mislead a later Accept from here on.
     localStorage.setItem(
       TOKEN_STORE_KEY,
-      JSON.stringify(storedTokens().filter((token) => !wanted.has(token.contractId))),
+      JSON.stringify(storedTokens().filter((one) => one.contractId !== wanted)),
     )
   }
 
