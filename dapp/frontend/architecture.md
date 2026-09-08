@@ -226,7 +226,7 @@ downstream.
 Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
 holds no truncation or copy-to-clipboard logic of its own.
 
-Entry is the other half. [`CreateGrant`](src/components/CreateGrant/index.tsx)'s receiver field is
+Entry is the other half. [`CreateGrant`](src/components/CreateGrant/Details.tsx)'s receiver field is
 the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
 the two can never disagree about what a party id is. Party ids are exact strings here: nothing
 trims, so a stray space is invalid rather than silently stripped on the way to the ledger.
@@ -238,7 +238,7 @@ rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rathe
 `canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
 [`src/styles/index.css`](src/styles/index.css)).
 
-Amounts run that same split twice more. [`CreateGrant`](src/components/CreateGrant/index.tsx)'s
+Amounts run that same split twice more. [`CreateGrant`](src/components/CreateGrant/Details.tsx)'s
 total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
 `<TokenInput>`: the field sets `aria-invalid` and reports an error *code*, and this app words it
 in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
