@@ -169,6 +169,7 @@ const harness = (
     deployment?: Deployment
     ledgerEnd?: unknown
     readsFailAfterSubmit?: boolean
+    readsFailOnBlobs?: boolean
   } = {},
 ): { backend: LedgerBackend; submissions: Submission[]; reads: Read[] } => {
   const {
@@ -177,6 +178,7 @@ const harness = (
     ledgerEnd = { offset: 42 },
     deployment: config = deployment,
     readsFailAfterSubmit = false,
+    readsFailOnBlobs = false,
   } = options
   const submissions: Submission[] = []
   const reads: Read[] = []
@@ -196,6 +198,9 @@ const harness = (
       const read = params as Read
       reads.push(read)
       if (readsFailAfterSubmit && submissions.length > 0) {
+        throw new Error('the participant is not answering')
+      }
+      if (readsFailOnBlobs && read.body?.filter !== undefined && readsBlobs(read)) {
         throw new Error('the participant is not answering')
       }
       if (read.resource === '/v2/state/ledger-end') {
@@ -522,12 +527,29 @@ describe('LedgerBackend.accept', () => {
     expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Accept')
   })
 
-  it('refuses rather than submitting an Accept the participant would reject', async () => {
-    const { backend } = harness()
+  // A blob the funder never handed over and a grant that is simply gone are two different things,
+  // and telling a stale dashboard about the blob store sends the receiver looking in the wrong
+  // place entirely.
+  it('refuses an Accept whose blob this browser never kept', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting(grant('First grant'))
+    localStorage.clear()
+    const { backend, submissions } = harness({ acs })
 
     await expect(
       backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' }),
     ).rejects.toThrow(/not disclosable/)
+    expect(submissions).toHaveLength(0)
+  })
+
+  it('refuses an Accept for a grant no longer in the receiver’s view', async () => {
+    const { backend, submissions } = harness()
+
+    await expect(
+      backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' }),
+    ).rejects.toThrow(/no longer outstanding/)
+    expect(submissions).toHaveLength(0)
   })
 
   // Why every outstanding grant is reconciled and not only the one just made: a read that failed
@@ -540,6 +562,23 @@ describe('LedgerBackend.accept', () => {
     await flaky.backend.createVesting(grant('First grant'))
     const funder = harness({ acs })
     await funder.backend.createVesting(grant('Second grant'))
+    const { backend, submissions } = harness({ acs })
+
+    await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
+
+    expect(submissions[0]?.disclosedContracts).toEqual(
+      onSync([CONFIG, disclosedToken('funding-t1')]),
+    )
+  })
+
+  // The funder may never create a second grant, so the next grant cannot be the only repair: their
+  // own dashboard is where an unacceptable grant would otherwise sit unnoticed forever.
+  it('picks up a blob a failed read left behind on the funder’s next view', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const flaky = harness({ acs, readsFailAfterSubmit: true })
+    await flaky.backend.createVesting(grant('First grant'))
+    const funder = harness({ acs })
+    await funder.backend.viewAs('funder::1')
     const { backend, submissions } = harness({ acs })
 
     await backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
@@ -609,6 +648,48 @@ describe('LedgerBackend.viewAs', () => {
   it('throws rather than querying at an undefined offset', async () => {
     const { backend } = harness({ ledgerEnd: {} })
     await expect(backend.viewAs('receiver::1')).rejects.toThrow(/did not return an offset/)
+  })
+
+  // The reconcile is the funder's alone: only they can read the holding a grant reserves, so
+  // reading the holdings on a receiver's every poll would buy nothing.
+  it('leaves the holdings unread for a party whose pending grants are all incoming', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting({
+      proposer: 'funder::1',
+      receiver: 'receiver::1',
+      totalAmount: '1000',
+      schedule,
+      title: 'Advisor grant',
+    })
+    // Cleared, so the blob being absent is not what keeps the read away: the receiver could never
+    // supply it, and it is whose grant this is that decides.
+    localStorage.clear()
+    const { backend, reads } = harness({ acs })
+
+    await backend.viewAs('receiver::1')
+
+    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toEqual([])
+  })
+
+  // A dashboard that goes blank because a background repair failed would be a worse bug than the
+  // one the repair is there for.
+  it('returns the view even when the holdings cannot be read back', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting({
+      proposer: 'funder::1',
+      receiver: 'receiver::1',
+      totalAmount: '1000',
+      schedule,
+      title: 'Advisor grant',
+    })
+    localStorage.clear()
+    const { backend } = harness({ acs, readsFailOnBlobs: true })
+
+    const view = await backend.viewAs('funder::1')
+
+    expect(view.pendingGrants.map((one) => one.title)).toEqual(['Advisor grant'])
   })
 
   // The proposal now stores the admin and the instrument it is denominated in, so a pending grant

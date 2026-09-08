@@ -265,6 +265,11 @@ export const reservedToken = (row: AcsRow): string | undefined => {
   return typeof cid === 'string' ? cid : undefined
 }
 
+// Whether a pending grant is one this party funded. A `Token` has no observers, so only the funder
+// can read the holding their own grant reserves, and the grants they received are nobody's to
+// reconcile from here.
+export const fundedBy = (row: AcsRow, party: string): boolean => argOf(row).proposer === party
+
 // Largest first, so the factory splits the fewest inputs. Not for the receiver's sake any more: the
 // split leaves one holding whatever is picked. Undefined rather than a partial set, so the caller
 // can report by how much the funder is short.

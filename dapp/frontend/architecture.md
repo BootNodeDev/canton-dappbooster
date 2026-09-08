@@ -116,10 +116,17 @@ no stakeholder. That holding is created by the funder's own create submission, s
 read before it exists: `createVesting` re-reads the funder's holdings with `includeCreatedEventBlob`
 once the grant is on the ledger, and keeps in `localStorage` the blob of every holding an
 outstanding grant of theirs reserves. Reconciling the whole set rather than only the grant just made
-is what lets a read that failed once be picked up by the next grant, instead of leaving a grant
-nobody can accept; and reading after the write rather than before is what keeps a declined prompt
-from leaving a blob behind for a holding no grant is waiting on. A failure there leaves the grant
-alone, since it is already on the ledger and reporting one would invite a second.
+is what lets a read that failed once be repaired later, instead of leaving a grant nobody can
+accept; and reading after the write rather than before is what keeps a declined prompt from leaving
+a blob behind for a holding no grant is waiting on. A failure there leaves the grant alone, since it
+is already on the ledger and reporting one would invite a second, so it is logged and left to the
+next reconcile.
+
+`viewAs` runs that same reconcile, which is what makes the repair reachable: a funder who creates
+one grant and stops never triggers a second create, and their own dashboard is the only other place
+the grant is seen. It costs nothing on the settled path, since the holdings are read only once a
+grant of this party's is found to be missing its blob, and it is skipped outright for the grants a
+party received rather than funded, whose holdings they could not read anyway.
 
 Which blob a given Accept sends is read off the ledger, not guessed: the receiver is an observer of
 the grant, so `accept` fetches it and discloses exactly the `tokenCid` it names, then drops it, since
@@ -127,7 +134,9 @@ that submission archived it. Sending the whole store instead would re-disclose h
 accepts already consumed, which the participant rejects, and grow without bound. It is a
 browser-local hand-off between two wallet accounts, which is what the demo
 is; a receiver on another machine has no way to disclose it and `accept` says so rather than
-submitting a rejection.
+submitting a rejection. A grant that has left the receiver's view says something else, because a
+stale dashboard and a missing blob are different problems and pointing the first at the blob store
+sends the reader to a browser that was never involved.
 
 The escrow needs no such hand-off. A `LockedToken` is `signatory admin, owner, holders` and the
 escrow's holders are the provider and the receiver, so both ends of a grant can read it. Only the
