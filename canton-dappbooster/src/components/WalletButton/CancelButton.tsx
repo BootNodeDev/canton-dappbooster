@@ -2,7 +2,6 @@ import { useConnect } from '@bootnodedev/canton-connect'
 import { type ComponentPropsWithRef, type ReactElement, useEffect, useState } from 'react'
 import { cancelAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
-import { resolveInert } from '#src/components/WalletButton/inert'
 import { cx } from '#src/utils/cx'
 import { SR_ONLY } from '#src/utils/srOnly'
 
@@ -50,8 +49,13 @@ export const CancelButton = ({
     <>
       <button
         {...rest}
-        {...resolveInert(!isPending, composeAction(onClick, cancelConnect))}
+        aria-disabled={!isPending || undefined}
         className={cx(cancelAnatomy.parts.root, className)}
+        // `aria-disabled` keeps the button focusable but leaves the click live, so an inert one
+        // that kept its handler would still submit a caller's form.
+        onClick={
+          isPending ? composeAction(onClick, cancelConnect) : (event) => event.preventDefault()
+        }
         type={type}
         {...{ [cancelAnatomy.states.pending]: isPending || undefined }}
       >

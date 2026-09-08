@@ -2,7 +2,6 @@ import { useConnect } from '@bootnodedev/canton-connect'
 import type { ComponentPropsWithRef, ReactElement } from 'react'
 import { connectAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
-import { resolveInert } from '#src/components/WalletButton/inert'
 import { cx } from '#src/utils/cx'
 
 /**
@@ -39,8 +38,11 @@ export const ConnectButton = ({
   return (
     <button
       {...rest}
-      {...resolveInert(isPending, composeAction(onClick, connect))}
+      aria-disabled={isPending || undefined}
       className={cx(connectAnatomy.parts.root, className)}
+      // `aria-disabled` keeps the button focusable but leaves the click live, so an inert one that
+      // kept its handler would still submit a caller's form.
+      onClick={isPending ? (event) => event.preventDefault() : composeAction(onClick, connect)}
       type={type}
       {...{ [connectAnatomy.states.pending]: isPending || undefined }}
     >
