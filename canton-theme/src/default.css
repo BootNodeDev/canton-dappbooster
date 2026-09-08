@@ -18,6 +18,7 @@
   :is(
     .cnc-disconnect-button,
     .cnc-connect-button,
+    .cnc-cancel-button,
     .cnc-identifier__copy,
     .cnc-explorer-link,
     .cnc-token-input__max,
@@ -539,7 +540,8 @@
 
   /* Wallet buttons */
   .cnc-disconnect-button,
-  .cnc-connect-button {
+  .cnc-connect-button,
+  .cnc-cancel-button {
     align-items: center;
     background: var(--cnc-surface);
     border-radius: var(--cnc-radius);
@@ -557,22 +559,32 @@
       border-color var(--cnc-duration) ease;
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):hover:not(:disabled) {
+  :is(.cnc-disconnect-button, .cnc-connect-button, .cnc-cancel-button):hover:not(
+    :disabled,
+    [aria-disabled="true"]
+  ) {
     background: var(--cnc-surface-muted);
     border-color: var(--cnc-border-strong);
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):active:not(:disabled) {
+  :is(.cnc-disconnect-button, .cnc-connect-button, .cnc-cancel-button):active:not(
+    :disabled,
+    [aria-disabled="true"]
+  ) {
     background: var(--cnc-accent-subtle);
     border-color: var(--cnc-accent);
   }
 
-  :is(.cnc-disconnect-button, .cnc-connect-button):disabled {
+  :is(.cnc-disconnect-button, .cnc-connect-button, .cnc-cancel-button):is(
+    :disabled,
+    [aria-disabled="true"]
+  ) {
     cursor: not-allowed;
     opacity: 0.5;
   }
 
-  .cnc-connect-button__spinner {
+  .cnc-connect-button__spinner,
+  .cnc-cancel-button__spinner {
     animation: cnc-spin calc(var(--cnc-duration-xl) * 1.5) linear infinite;
     border-radius: 50%;
     border: 2px solid color-mix(in oklab, currentColor 25%, transparent);
@@ -589,7 +601,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .cnc-connect-button__spinner {
+    .cnc-connect-button__spinner,
+    .cnc-cancel-button__spinner {
       animation: none;
     }
   }

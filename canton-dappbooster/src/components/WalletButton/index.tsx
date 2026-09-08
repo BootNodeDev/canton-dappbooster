@@ -11,7 +11,8 @@ import { DisconnectButton } from '#src/components/WalletButton/DisconnectButton'
 export type WalletButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
 
 /**
- * Follows the session: {@link ConnectButton} without one, {@link DisconnectButton} with one.
+ * Follows the session: {@link ConnectButton} without one, {@link DisconnectButton} with one. It
+ * holds no cancel, so compose the buttons yourself where {@link CancelButton} is needed.
  *
  * @example
  * import { WalletButton } from '@bootnodedev/canton-dappbooster/connect'

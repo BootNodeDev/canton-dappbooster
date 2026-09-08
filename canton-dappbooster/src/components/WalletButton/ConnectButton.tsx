@@ -2,6 +2,7 @@ import { useConnect } from '@bootnodedev/canton-connect'
 import type { ButtonHTMLAttributes, ReactElement } from 'react'
 import { connectAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
+import { resolveInert } from '#src/components/WalletButton/inert'
 import { cx } from '#src/utils/cx'
 
 /**
@@ -12,7 +13,8 @@ import { cx } from '#src/utils/cx'
 export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
 
 /**
- * Connect button. Can be customized.
+ * Connect button. Can be customized. Inert while an attempt is in flight, so a click only ever
+ * connects; render {@link CancelButton} beside it to let the user abandon one.
  *
  * @example
  * import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
@@ -31,16 +33,13 @@ export const ConnectButton = ({
   type = 'button',
   ...rest
 }: ConnectButtonProps): ReactElement => {
-  const { cancelConnect, connect, isPending } = useConnect()
-  const handleClick = composeAction(onClick, isPending ? cancelConnect : connect)
-  const ownLabel = isPending && children === undefined
+  const { connect, isPending } = useConnect()
 
   return (
     <button
       {...rest}
-      aria-label={ownLabel ? 'Cancel connecting' : undefined}
+      {...resolveInert(isPending, composeAction(onClick, connect))}
       className={cx(connectAnatomy.parts.root, className)}
-      onClick={handleClick}
       type={type}
       {...{ [connectAnatomy.states.pending]: isPending || undefined }}
     >
