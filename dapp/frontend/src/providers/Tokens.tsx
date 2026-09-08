@@ -58,6 +58,16 @@ const fromVesting = (
           locked: addAmounts(locked, subtractAmounts(balance, free)),
         }))
 
+// A registry on another origin sends no CORS headers, so the browser blocks the read and the
+// curated entry keeps the symbol and logo it already carries.
+const sameOrigin = (url: string): boolean => {
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 // A row carries a figure or it does not, so a read that failed and one still running look the same
 // on it. This is what tells them apart, and what lets a field say so.
 export interface TokenFigures {
@@ -135,6 +145,7 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
     const published = curated
       .map(({ registryUrls }) => registryUrls[0])
       .filter((url) => url !== undefined)
+      .filter(sameOrigin)
     return [...new Set([REGISTRY_URL, ...published])]
   }, [curated])
 
