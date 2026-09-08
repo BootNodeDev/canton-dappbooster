@@ -2,7 +2,6 @@ packages:
   - canton-connect
   - canton-dappbooster
   - canton-theme
-  - dapp/daml
   - dapp/frontend
 
 # Dependencies allowed to run install/build scripts (pnpm blocks them by default).

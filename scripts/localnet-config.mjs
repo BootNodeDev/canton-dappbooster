@@ -30,17 +30,6 @@ const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'))
 
 const templatePath = () => require.resolve(`@bootnodedev/canton-barebones/templates/${CONFIG_NAME}`)
 
-// The Splice release the pinned canton-barebones scaffolds, which is also the one
-// scripts/fetch-daml-deps.mjs builds the DAR against: those two drifting apart is the whole
-// failure this is exported to prevent.
-export const spliceTag = () => {
-  const tag = readJson(templatePath()).splice?.tag
-  if (typeof tag !== 'string' || tag === '') {
-    throw new Error(`no splice.tag in ${templatePath()}`)
-  }
-  return tag
-}
-
 /**
  * Decides whether the scaffolded config has to be replaced rather than kept. Absent
  * or off the template's config version or Splice tag, it is replaced; anything else
