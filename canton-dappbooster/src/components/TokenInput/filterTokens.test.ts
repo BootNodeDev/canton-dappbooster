@@ -2,8 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { filterTokens } from '#src/components/TokenInput/filterTokens'
 import type { Token } from '#src/providers/TokenListProvider/context'
 
-const cc: Token = { id: '0xaaa1', name: 'Canton Coin', symbol: 'CC' }
-const weth: Token = { id: '0xbbb2', name: 'Wrapped Ether', symbol: 'WETH' }
+const cc: Token = {
+  instrumentId: { admin: 'dso::1220ab', id: 'Amulet' },
+  name: 'Canton Coin',
+  symbol: 'CC',
+}
+const weth: Token = {
+  instrumentId: { admin: 'bridge::1220cd', id: 'WrappedEther' },
+  name: 'Wrapped Ether',
+  symbol: 'WETH',
+}
 const tokens: readonly Token[] = [cc, weth]
 
 describe('filterTokens', () => {
@@ -19,16 +27,24 @@ describe('filterTokens', () => {
     expect(filterTokens(tokens, 'CC')).toEqual([cc])
   })
 
-  it('matches on id', () => {
-    expect(filterTokens(tokens, '0xbbb2')).toEqual([weth])
+  it('matches on the instrument id', () => {
+    expect(filterTokens(tokens, 'WrappedEther')).toEqual([weth])
   })
 
-  it('leaves an id the query only appears inside alone', () => {
-    expect(filterTokens(tokens, 'bbb')).toEqual([])
+  it('matches on the admin party', () => {
+    expect(filterTokens(tokens, 'bridge')).toEqual([weth])
   })
 
-  it('ranks what the caller can read ahead of an id prefix', () => {
-    const decoy: Token = { id: 'cc99', name: 'Decoy', symbol: 'DEC' }
+  it('leaves an instrument the query only appears inside alone', () => {
+    expect(filterTokens(tokens, 'rappedether')).toEqual([])
+  })
+
+  it('ranks what the caller can read ahead of an instrument id prefix', () => {
+    const decoy: Token = {
+      instrumentId: { admin: 'decoy::1220ef', id: 'cc99' },
+      name: 'Decoy',
+      symbol: 'DEC',
+    }
     expect(filterTokens([decoy, cc], 'cc')).toEqual([cc, decoy])
   })
 
