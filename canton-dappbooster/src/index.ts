@@ -15,6 +15,10 @@ export {
 export { PartyIdInput, type PartyIdInputProps } from '#src/components/PartyIdInput'
 export { TokenInput, type TokenInputProps, type TokenMeta } from '#src/components/TokenInput'
 export {
+  type FormatFigureOptions,
+  formatFigure,
+} from '#src/components/TokenInput/formatFigure'
+export {
   type CopyOutcome,
   type CopyState,
   type UseCopyToClipboardOptions,
