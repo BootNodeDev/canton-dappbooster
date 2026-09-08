@@ -278,8 +278,14 @@ field turns that into the kit's `balanceState="error"`, which is the `Balance: N
 
 Which registries to ask comes from the same curated list: the first URL each entry publishes, plus
 `REGISTRY_URL`, which is the fallback and the only address a LocalNet has. Every one of them is read,
-not only the ones behind a holding, because a catalogue is the point. A CNS lookup would be the
-authoritative way to resolve those URLs and is not worth it while one file answers.
+not only the ones behind a holding, because a catalogue is the point.
+
+The token standard's v1 APIs publish no way to find a registry, so every app keeps that mapping
+itself. [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) is the
+proposal to replace it: ask any SV's scan for the CNS entry at `/v0/ans-entries/by-party/<admin>`
+and read the registry URL out of the JSON its description carries. It takes an admin party, so it
+would answer where to ask about a token already listed and never which tokens exist, and no
+LocalNet registers those entries. The curated list stays the source of both.
 
 The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
 in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here
