@@ -48,7 +48,7 @@ type AcsQuery = {
 type Read = {
   requestMethod: string
   resource: string
-  body?: AcsQuery & { updateId?: string }
+  body?: AcsQuery
 }
 
 const byParty = (read: Read): Record<string, PartyFilter> => read.body?.filter?.filtersByParty ?? {}
@@ -87,6 +87,11 @@ const disclosedToken = (contractId: string): DisclosedContract => ({
   createdEventBlob: `blob-${contractId}`,
 })
 
+// What the funder kept for the receiver, read the way the backend keys it: `accept` picks one blob
+// out of this, so only a direct look says whether the store itself is growing.
+const storedTokens = (): DisclosedContract[] =>
+  JSON.parse(localStorage.getItem('vesting.tokenDisclosures') ?? '[]')
+
 const CONFIG = {
   templateId: '20d54824:Canton.TokenForge.Registry:InstrumentConfig',
   contractId: '00cfg',
@@ -105,9 +110,7 @@ vi.mock('@/backend/registry', () => ({
 
 type Created = {
   contractId?: string
-  createArgument?: { amount?: string }
-  createdEventBlob?: string
-  templateId?: string
+  createArgument?: { admin?: string; amount?: string; instrumentId?: string }
 }
 
 const createdEvent = (contract: unknown): Created =>
@@ -138,11 +141,14 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission): void =>
     addAmounts(...spent.map((contract) => createdEvent(contract).createArgument?.amount ?? '0')),
     totalAmount,
   )
-  const funding = tokenRow(`funding-${tokenCids[0]}`, totalAmount)
-  const returned = isZero(change) ? [] : [tokenRow(`change-${tokenCids[0]}`, change)]
+  // The choice takes no instrument of its own: what comes out is the instrument of what went in, so
+  // a test that funds from another admin's holdings gets a proposal of that admin here too.
+  const { admin, instrumentId } = createdEvent(spent[0]).createArgument ?? {}
+  const instrument = { admin, instrumentId }
+  const funding = tokenRow(`funding-${tokenCids[0]}`, totalAmount, instrument)
+  const returned = isZero(change) ? [] : [tokenRow(`change-${tokenCids[0]}`, change, instrument)]
   const pending = row(`pending-for-${tokenCids[0]}`, {
-    admin: 'instrument-admin::1',
-    instrumentId: 'DBT',
+    ...instrument,
     provider: 'operator::1',
     proposer: submission.actAs?.[0],
     receiver,
@@ -692,6 +698,56 @@ describe('LedgerBackend.viewAs', () => {
     expect(view.pendingGrants.map((one) => one.title)).toEqual(['Advisor grant'])
   })
 
+  // Nothing on-ledger stops a funder spending the reserved holding through their wallet, which
+  // leaves a grant nobody can accept. The read that would find it carries a blob per holding, so it
+  // is given up on rather than paid for on every view from then on.
+  it('stops reading the holdings for a reservation that never turns up', async () => {
+    const { backend, reads } = harness({
+      acs: {
+        [PENDING]: [
+          row('p1', {
+            admin: 'instrument-admin::1',
+            instrumentId: 'DBT',
+            provider: 'operator::1',
+            proposer: 'funder::1',
+            receiver: 'receiver::1',
+            totalAmount: '1000',
+            tokenCid: 'archived-elsewhere',
+            schedule: encodeSchedule(schedule),
+            note: 'Advisor grant',
+          }),
+        ],
+      },
+    })
+
+    for (let view = 0; view < 5; view++) {
+      await backend.viewAs('funder::1')
+    }
+
+    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(3)
+  })
+
+  // Two reconciles can be in flight at once, a dashboard refresh alongside a fresh grant, and each
+  // decides what it is missing before either has written. Appending what it found would store the
+  // same blob twice, and nothing else bounds the store.
+  it('keeps one blob per holding when two reconciles overlap', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting({
+      proposer: 'funder::1',
+      receiver: 'receiver::1',
+      totalAmount: '1000',
+      schedule,
+      title: 'Advisor grant',
+    })
+    localStorage.clear()
+    const { backend } = harness({ acs })
+
+    await Promise.all([backend.viewAs('funder::1'), backend.viewAs('funder::1')])
+
+    expect(storedTokens().map((one) => one.contractId)).toEqual(['funding-t1'])
+  })
+
   // The proposal now stores the admin and the instrument it is denominated in, so a pending grant
   // is filtered like the other two rather than taken on trust.
   it('drops pending grants of another instrument', async () => {
@@ -714,6 +770,27 @@ describe('LedgerBackend.viewAs', () => {
     const view = await backend.viewAs('receiver::1')
 
     expect(view.pendingGrants.map((one) => one.id)).toEqual(['mine'])
+  })
+
+  // The instrument a grant is denominated in comes from the holdings it was funded from, so a
+  // deployment pointed at another one sees its own grants and not an empty dashboard.
+  it('keeps a grant funded under the deployment’s own instrument', async () => {
+    const instrument = { admin: 'other::1', instrumentId: 'XYZ' }
+    const { backend } = harness({
+      acs: { [TOKEN]: [tokenRow('t1', '1500', instrument)] },
+      deployment: { ...deployment, ...instrument },
+    })
+    await backend.createVesting({
+      proposer: 'funder::1',
+      receiver: 'receiver::1',
+      totalAmount: '1000',
+      schedule,
+      title: 'Advisor grant',
+    })
+
+    const view = await backend.viewAs('funder::1')
+
+    expect(view.pendingGrants.map((one) => one.title)).toEqual(['Advisor grant'])
   })
 
   // A shared participant can carry another admin's grants under the same package, and rendering one

@@ -76,6 +76,13 @@ const CLAIM_HISTORY_PAGES = 20
 // read the disclosure blob for. It is kept here as the funder submits the pending grant. Persisted,
 // because the two parties are two wallet accounts and switching between them reloads the app.
 const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
+// How often a reservation this browser cannot find is looked for again, counted across reloads. The
+// read that answers it carries a blob per holding and runs on the funder's dashboard, so a holding
+// archived outside this dApp would otherwise cost that read on every view forever, for a grant
+// nobody can accept any more. Counted rather than given up on the first miss, because a read that
+// fails soft answers with no rows and must not stand as proof the holding is gone.
+const MISS_STORE_KEY = 'vesting.tokenReadMisses'
+const MISS_LIMIT = 3
 
 const storedTokens = (): DisclosedContract[] => {
   try {
@@ -83,6 +90,17 @@ const storedTokens = (): DisclosedContract[] => {
     return Array.isArray(stored) ? (stored as DisclosedContract[]) : []
   } catch {
     return []
+  }
+}
+
+const readMisses = (): Record<string, number> => {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(MISS_STORE_KEY) ?? '{}')
+    return typeof stored === 'object' && stored !== null && !Array.isArray(stored)
+      ? (stored as Record<string, number>)
+      : {}
+  } catch {
+    return {}
   }
 }
 
@@ -97,25 +115,57 @@ const rowToDisclosed = (row: AcsRow): DisclosedContract | undefined => {
     : { templateId, contractId, createdEventBlob }
 }
 
-// The holdings this party's own outstanding grants reserve and this browser has no blob for. Empty
-// is the common answer, which is what lets the caller skip reading the holdings at all.
+// The holdings this party's own outstanding grants reserve that this browser has neither a blob for
+// nor given up on. Empty is the common answer, which is what lets the caller skip reading the
+// holdings at all.
 const unstoredReservations = (party: string, pendingRows: AcsRow[]): Set<string> => {
   const known = new Set(storedTokens().map((one) => one.contractId))
+  const misses = readMisses()
   const reserved = mapRows(
     pendingRows.filter((row) => fundedBy(row, party)),
     reservedToken,
   )
-  return new Set(reserved.filter((contractId) => !known.has(contractId)))
+  return new Set(
+    reserved.filter(
+      (contractId) => !known.has(contractId) && (misses[contractId] ?? 0) < MISS_LIMIT,
+    ),
+  )
 }
 
+// Merged by contract id rather than appended, because two reconciles can overlap, a dashboard
+// refresh racing a fresh grant, and each computes what it is missing from a store snapshot taken
+// before its own read.
 const storeTokens = (held: AcsRow[], wanted: Set<string>): void => {
   const missing = mapRows(
     held.filter((row) => wanted.has(cidOf(row))),
     rowToDisclosed,
   )
-  if (missing.length > 0) {
-    localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...storedTokens(), ...missing]))
+  if (missing.length === 0) {
+    return
   }
+  const merged = new Map(storedTokens().map((one) => [one.contractId, one]))
+  for (const one of missing) {
+    merged.set(one.contractId, one)
+  }
+  localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...merged.values()]))
+}
+
+const recordMisses = (held: AcsRow[], wanted: Set<string>): void => {
+  const found = new Set(held.map(cidOf))
+  const missed = [...wanted].filter((contractId) => !found.has(contractId))
+  if (missed.length === 0) {
+    return
+  }
+  const misses = readMisses()
+  const bumped = Object.fromEntries(missed.map((one) => [one, (misses[one] ?? 0) + 1]))
+  const abandoned = Object.entries(bumped).filter(([, count]) => count === MISS_LIMIT)
+  if (abandoned.length > 0) {
+    console.warn(
+      'giving up on the holdings these grants reserve: they cannot be accepted from this browser',
+      abandoned.map(([contractId]) => contractId),
+    )
+  }
+  localStorage.setItem(MISS_STORE_KEY, JSON.stringify({ ...misses, ...bumped }))
 }
 
 export class LedgerBackend implements VestingBackend {
@@ -263,7 +313,8 @@ export class LedgerBackend implements VestingBackend {
   // `Token` has no observers. Every outstanding grant of this funder is reconciled rather than just
   // the one just made, so a read that failed once is repaired by their next grant or their next
   // dashboard load instead of leaving a grant nobody can accept. The holdings are read only when
-  // something is actually missing, since this runs on every view.
+  // something is actually missing, since this runs on every view, and a reservation the read keeps
+  // not answering is given up on so that this cannot become a read on every view for good.
   private async storeFunding(
     party: string,
     offset: string | number,
@@ -273,7 +324,9 @@ export class LedgerBackend implements VestingBackend {
     if (wanted.size === 0) {
       return
     }
-    storeTokens(await this.readAcs(party, TOKEN, offset, true), wanted)
+    const held = await this.readAcs(party, TOKEN, offset, true)
+    storeTokens(held, wanted)
+    recordMisses(held, wanted)
   }
 
   // Reconciles against a snapshot of its own, for a caller that has read no rows to hand over.
