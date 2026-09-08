@@ -52,14 +52,25 @@ export type ConnectionStatus =
   | 'disconnected'
 
 /**
- * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` is the
- * wallet's own, falling back to `CantonConnectConfig.networkId` where the wallet reports none.
+ * Canton's terms: a local party lives under the hosting participant's namespace and the participant
+ * signs for it; an external party lives under its own key's and signs for itself.
+ *
+ * @category Types
+ */
+export type PartyType = 'local' | 'external'
+
+/**
+ * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` falls
+ * back to `CantonConnectConfig.networkId` where the wallet reports none. `namespace` and
+ * `signingProviderId` come through as reported; CIP-0103 names no `signingProviderId` values.
  *
  * @category Types
  */
 export interface Party {
   partyId: string
   networkId: string
+  namespace: string
+  signingProviderId: string
   name?: string
   publicKey?: string
 }
