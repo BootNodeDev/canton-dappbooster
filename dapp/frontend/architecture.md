@@ -103,6 +103,25 @@ decides whether a write lands. A missing side is not a mismatch, or the strip wo
 that has not come back yet. `party.networkId` is not what is compared: CIP-0103 only recommends a
 CAIP-2 label, so two wallets may spell one network differently.
 
+The rule reports a verdict and not the ids behind it, because **the strip names the wallet's network
+and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
+defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
+the spec says what a *wallet* answers, so nothing in it names the app's side. wallet-service does
+expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and reaching it would take
+allowing a second method in [`api/rpc.ts`](api/rpc.ts). It was not worth it: that value and the
+wallet's are both typed by hand, by different people, so they read the same for two networks as
+easily as differently for one, and a strip saying "switch to canton:localnet" while already claiming
+to be on it is worse than one naming no target. Nothing checks either label against the id it claims
+to name, and no single source knows both sides — the wallet only knows the network it is on, and
+wallet-service only its own.
+
+One thing to know about the label that is shown: `CantonConnectProvider` defaults `networkId` to
+`canton:local` where the wallet reports none, and nothing downstream can tell that default from a
+real answer, so a wallet quiet about its network reads as local wherever it actually is. Only a
+non-compliant wallet gets there — the spec makes `networkId` required on an account entry, and
+canton-connect's own comment says the fallback exists for `createMockAdapter`. It can mislabel the
+sentence but never decides whether the strip appears, which is what keeps it acceptable.
+
 [`useWrongNetwork`](src/hooks/useWrongNetwork.ts) is what keeps it current, and it polls because a
 wallet-side switch reaches the app through nothing at all: CIP-0103 defines no network-change event
 and the SDK pushes accounts only. So it re-reads on three triggers — the party changing, the page
@@ -111,8 +130,8 @@ switching networks means using the wallet and the wallet takes focus; `visibilit
 because an extension popup draws over the tab rather than hiding it. The interval is the backstop for
 a switch made in a window the user never comes back from. A failed read is silent and leaves the last
 answer standing, because a wallet-service that is down, or a wallet that has just locked, is not a
-wrong network. [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the result as a strip above
-the header naming both networks, and nothing dismisses it, because only the wallet can put it right.
+wrong network. [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above
+the header, and nothing dismisses it, because only the wallet can put it right.
 
 ## Creating a grant takes two approvals
 

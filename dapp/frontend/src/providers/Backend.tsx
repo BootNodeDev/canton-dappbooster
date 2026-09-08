@@ -5,7 +5,6 @@ import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { VestingBackend } from '@/backend/VestingBackend'
 import { useWrongNetwork } from '@/hooks/useWrongNetwork'
 import { errorText } from '@/utils/errorText'
-import type { WrongNetwork } from '@/utils/network'
 
 // `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
 // needed to reach the ledger, so pages render a connect placeholder rather than empty data. The
@@ -16,7 +15,7 @@ export interface BackendState {
   configError: string | undefined
   configPending: boolean
   sessionPending: boolean
-  wrongNetwork: WrongNetwork | undefined
+  wrongNetwork: boolean
 }
 
 // canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both

@@ -6,20 +6,17 @@ import { useEffect, useState } from 'react'
 import type { LedgerApi } from '@/backend/config'
 import { walletSynchronizers } from '@/backend/synchronizer'
 import { fetchTransferContext } from '@/backend/transferContext'
-import { type WrongNetwork, wrongNetwork } from '@/utils/network'
+import { wrongNetwork } from '@/utils/network'
 
 // Backstop for a switch made in a window the user never comes back from.
 const RECHECK_MS = 30_000
 
-export const useWrongNetwork = (
-  ledgerApi: LedgerApi,
-  partyId: string | undefined,
-): WrongNetwork | undefined => {
-  const [mismatch, setMismatch] = useState<WrongNetwork | undefined>(undefined)
+export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefined): boolean => {
+  const [mismatch, setMismatch] = useState(false)
 
   useEffect(() => {
     if (partyId === undefined) {
-      setMismatch(undefined)
+      setMismatch(false)
       return
     }
     let cancelled = false
