@@ -160,6 +160,40 @@ describe('fetchInstrumentConfig', () => {
     )
   })
 
+  it('refuses a disclosure whose templateId names something other than InstrumentConfig', async () => {
+    stubRegistry({
+      '/registry/transfer-instruction/v1/transfer-factory': {
+        body: {
+          factoryId: '00cfg',
+          choiceContext: {
+            disclosedContracts: [
+              { ...CONFIG, templateId: '20d54824:Canton.TokenForge.Registry:Token' },
+            ],
+          },
+        },
+      },
+    })
+
+    await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).rejects.toThrow(
+      /disclosed no InstrumentConfig/,
+    )
+  })
+
+  it('refuses a factoryId the disclosure does not vouch for', async () => {
+    stubRegistry({
+      '/registry/transfer-instruction/v1/transfer-factory': {
+        body: {
+          factoryId: '00other',
+          choiceContext: { disclosedContracts: [CONFIG] },
+        },
+      },
+    })
+
+    await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).rejects.toThrow(
+      /disclosed no InstrumentConfig/,
+    )
+  })
+
   it('surfaces the registry’s own error message', async () => {
     stubRegistry({
       '/registry/transfer-instruction/v1/transfer-factory': {

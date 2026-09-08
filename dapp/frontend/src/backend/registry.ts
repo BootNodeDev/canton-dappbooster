@@ -104,18 +104,24 @@ export const fetchInstrumentConfig = async (
     },
   })
   const config = (result.choiceContext?.disclosedContracts ?? []).at(0)
+  // Defence in depth: the four vesting choices re-derive `expectedAdmin`/`expectedInstrumentId` in
+  // Daml regardless, but `tap` exercises directly on the templateId and contract id below, so a
+  // pair the disclosure does not vouch for is refused here rather than handed to the wallet.
   if (
     result.factoryId === undefined ||
     config?.contractId === undefined ||
+    config.contractId !== result.factoryId ||
     config.createdEventBlob === undefined ||
-    config.templateId === undefined
+    config.templateId === undefined ||
+    !config.templateId.endsWith(':Canton.TokenForge.Registry:InstrumentConfig')
   ) {
     throw new Error('the registry disclosed no InstrumentConfig for this instrument')
   }
   return {
     configCid: result.factoryId,
     configTemplateId: config.templateId,
-    // Rebuilt field by field to drop the wire object's `synchronizerId`, which `submit` stamps.
+    // Rebuilt field by field to drop the wire object's `synchronizerId`, which `submit` stamps from
+    // the factory's own deployment instead, assuming the two share one synchronizer.
     disclosed: [
       {
         templateId: config.templateId,

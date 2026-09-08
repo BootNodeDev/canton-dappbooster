@@ -1,14 +1,14 @@
 import type { Token } from '@bootnodedev/canton-dappbooster'
-import cantonCoin from '@/assets/canton-coin.png'
+import { TokenMark } from '@/icons'
 
-// Canton Coin, `Amulet` on the ledger. The kit's logo slot is 2rem with `overflow: hidden`, so the
-// artwork has to be told to fit it.
-export const CC: Token = {
-  id: 'canton-coin',
-  logo: <img alt="" className="size-full object-contain" src={cantonCoin} />,
-  name: 'Canton Coin',
-  symbol: 'CC',
+// The canton-token-forge instrument this deployment vests. `id` is the kit's UI key for its token
+// list and is unrelated to the on-ledger `instrumentId`, which is `DBT`.
+export const DBT: Token = {
+  id: 'dbt',
+  logo: <TokenMark className="size-full" />,
+  name: 'dAppBooster Token',
+  symbol: 'DBT',
 }
 
 // The only instrument this deployment knows.
-export const TOKENS: Token[] = [CC]
+export const TOKENS: Token[] = [DBT]
