@@ -18,7 +18,7 @@
       "entry": ["src/**/*.test.{ts,tsx}"]
     },
     "dapp/frontend": {
-      "entry": ["api/*.ts"]
+      "entry": ["api/**/*.ts"]
     }
   }
 }

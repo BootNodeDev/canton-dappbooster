@@ -1,7 +1,6 @@
 // JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
 // unit-tested directly in commands.test.ts.
 
-import type { AppTransferContext } from '@/backend/transferContext'
 import { canonicalAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
@@ -69,11 +68,11 @@ export const decodeSchedule = (raw: unknown): VestingSchedule => {
 // ── Command builders ────────────────────────────────────────────────────────
 
 type CreateVestingArgs = {
-  amuletCids: string[]
   note?: string
   proposer: string
   receiver: string
   schedule: VestingSchedule
+  tokenCids: string[]
   totalAmount: string
 }
 
@@ -84,97 +83,59 @@ const exercise = (
   choiceArgument: Record<string, unknown>,
 ) => ({ ExerciseCommand: { templateId, contractId, choice, choiceArgument } })
 
-// The only choice taking no transfer context: it moves no Amulet, it only records which of the
-// funder's holdings the eventual Accept will lock.
+// The only choice taking no config: it moves no token, it only records which of the funder's
+// holdings the eventual Accept will lock.
 export const buildCreateVestingCommand = (
   templateId: string,
   factoryCid: string,
   args: CreateVestingArgs,
 ) =>
-  exercise(templateId, factoryCid, 'AmuletVestingFactory_CreateVesting', {
+  exercise(templateId, factoryCid, 'VestingFactory_CreateVesting', {
     proposer: args.proposer,
     receiver: args.receiver,
     totalAmount: canonicalAmount(args.totalAmount),
     schedule: encodeSchedule(args.schedule),
-    amuletCids: args.amuletCids,
+    tokenCids: args.tokenCids,
     note: args.note ?? null,
   })
 
-// The funder self-transfers `amount` out of its own holdings, so the grant can name an Amulet
-// nothing else has pledged. sender, provider and receiver are all the funder, which is what makes
-// the funder the only controller and keeps this a one-signature submission. Splice values an input
-// at its full `initialAmount` — the holding fee is charged only by `Amulet_Expire` — so an exact
-// split leaves the eventual Accept exactly covered, with no headroom to guess at.
-export const buildSplitCommand = (
-  templateId: string,
-  amuletRulesCid: string,
-  args: {
-    amount: string
-    amuletCids: string[]
-    dso: string
-    openMiningRound: string
-    owner: string
-  },
-) =>
-  exercise(templateId, amuletRulesCid, 'AmuletRules_Transfer', {
-    transfer: {
-      sender: args.owner,
-      provider: args.owner,
-      inputs: args.amuletCids.map((contractId) => ({ tag: 'InputAmulet', value: contractId })),
-      outputs: [
-        {
-          receiver: args.owner,
-          receiverFeeRatio: '0.0',
-          amount: canonicalAmount(args.amount),
-          lock: null,
-          meta: null,
-        },
-      ],
-      beneficiaries: null,
-    },
-    // Both maps are empty because the only input kind here is an Amulet; rewards and validator
-    // rights are what the other kinds need. `expectedDso` is not optional in practice:
-    // `checkExpectedDso` aborts when it is absent.
-    context: {
-      openMiningRound: args.openMiningRound,
-      issuingMiningRounds: [],
-      validatorRights: [],
-      featuredAppRight: null,
-    },
-    expectedDso: args.dso,
-  })
-
-export const buildAcceptCommand = (
-  templateId: string,
-  pendingCid: string,
-  ctx: AppTransferContext,
-) => exercise(templateId, pendingCid, 'AmuletVestingProposal_Accept', { ctx })
+export const buildAcceptCommand = (templateId: string, pendingCid: string, configCid: string) =>
+  exercise(templateId, pendingCid, 'VestingProposal_Accept', { configCid })
 
 // No nowMicros: the choice reads on-ledger getTime.
 export const buildWithdrawCommand = (
   templateId: string,
   contractCid: string,
   withdrawAmount: string,
-  ctx: AppTransferContext,
+  configCid: string,
 ) =>
-  exercise(templateId, contractCid, 'AmuletVestingContract_Withdraw', {
+  exercise(templateId, contractCid, 'VestingContract_Withdraw', {
     withdrawAmount: canonicalAmount(withdrawAmount),
-    ctx,
+    configCid,
   })
 
-export const buildCancelCommand = (
-  templateId: string,
-  contractCid: string,
-  ctx: AppTransferContext,
-) => exercise(templateId, contractCid, 'AmuletVestingContract_Cancel', { ctx })
+export const buildCancelCommand = (templateId: string, contractCid: string, configCid: string) =>
+  exercise(templateId, contractCid, 'VestingContract_Cancel', { configCid })
 
 export const buildClaimResidualCommand = (
   templateId: string,
   claimCid: string,
   withdrawAmount: string,
-  ctx: AppTransferContext,
+  configCid: string,
 ) =>
-  exercise(templateId, claimCid, 'AmuletVestedClaim_Withdraw', {
+  exercise(templateId, claimCid, 'VestedClaim_Withdraw', {
     withdrawAmount: canonicalAmount(withdrawAmount),
-    ctx,
+    configCid,
+  })
+
+// Nonconsuming on the admin-signed config, so a connected wallet taps with nothing disclosed but
+// the config itself.
+export const buildTapCommand = (
+  templateId: string,
+  configCid: string,
+  args: { amount: string; user: string },
+) =>
+  exercise(templateId, configCid, 'InstrumentConfig_Tap', {
+    user: args.user,
+    amount: canonicalAmount(args.amount),
   })

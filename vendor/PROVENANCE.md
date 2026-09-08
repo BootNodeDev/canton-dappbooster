@@ -10,7 +10,7 @@ compared rather than trusted.
 | | |
 |---|---|
 | Source | https://github.com/BootNodeDev/canton-token-forge |
-| Release | `v0.2.0` |
+| Release | `v0.3.0` |
 | Asset | `canton-token-forge-0.0.1.dar` |
 | Size | 725807 bytes |
 | sha256 | `147835e775e523f78c784996c43500c57e1ed97bcab97c97df6515b65f9332da` |
@@ -19,9 +19,9 @@ compared rather than trusted.
 | Daml SDK | 3.4.11 |
 | LF target | 2.1 |
 
-The asset is byte-identical to the one on `v0.1.0`. It is taken from `v0.2.0`
-because that is also the tag `package.json` pins the registry service to, so one
-tag governs both halves of the dependency.
+The asset is byte-identical to the ones on `v0.1.0` and `v0.2.0`. It is taken
+from `v0.3.0` because that is also the tag `package.json` pins the registry
+service to, so one tag governs both halves of the dependency.
 
 It bundles all six `splice-api-token-*` interface packages it links against, at
 the package-ids it was compiled with, so this repository vendors no Splice of

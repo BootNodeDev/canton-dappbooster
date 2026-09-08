@@ -39,7 +39,7 @@ export const meetsRelockFloor = (backing: string, amount: string): boolean => {
   return isZero(remainder) || compareAmounts(remainder, MIN_GRANT_AMOUNT) >= 0
 }
 
-// The same floor on the other side of a cancel: `AmuletVestingContract_Cancel` hands the receiver
+// The same floor on the other side of a cancel: `VestingContract_Cancel` hands the receiver
 // the earned residual as a new claim, and rejects one that is neither zero nor above the floor.
 export const residualMeetsFloor = (residual: string): boolean =>
   isZero(residual) || compareAmounts(residual, MIN_GRANT_AMOUNT) >= 0
