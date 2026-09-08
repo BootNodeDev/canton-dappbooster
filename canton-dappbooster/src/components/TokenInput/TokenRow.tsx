@@ -31,7 +31,7 @@ export const TokenRow = ({
   tabbable,
   token,
 }: TokenRowProps): ReactElement => {
-  const balance = token.balance === undefined ? undefined : formatFigure(token.balance)
+  const balance = formatFigure(token.balance)
   const locked = getLockedFigure(token)
 
   return (

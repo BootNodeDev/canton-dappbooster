@@ -3,7 +3,6 @@ import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { dialogAnatomy as anatomy } from '#src/components/TokenInput/anatomy'
 import { ROW_HEIGHT_REM } from '#src/components/TokenInput/constants'
-import { formatFigure } from '#src/components/TokenInput/formatFigure'
 import { TokenList } from '#src/components/TokenInput/TokenList'
 import { TokenListProvider } from '#src/providers/TokenListProvider'
 import type { Token } from '#src/providers/TokenListProvider/context'
@@ -98,12 +97,11 @@ describe('TokenList', () => {
   })
 
   it('shows the balance and carries it into the row name', () => {
-    const balance = formatFigure('1234.5')
     const { container } = one({ balance: '1234.5' })
 
-    expect(container.querySelector(`.${anatomy.parts.rowBalance}`)).toHaveTextContent(balance)
+    expect(container.querySelector(`.${anatomy.parts.rowBalance}`)).toHaveTextContent('1,234.50')
     expect(
-      screen.getByRole('button', { name: `Token 0 TK0, balance ${balance}` }),
+      screen.getByRole('button', { name: 'Token 0 TK0, balance 1,234.50' }),
     ).toBeInTheDocument()
   })
 

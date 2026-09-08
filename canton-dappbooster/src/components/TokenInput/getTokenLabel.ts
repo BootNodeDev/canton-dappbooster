@@ -4,11 +4,12 @@ import type { Token } from '#src/providers/TokenListProvider/context'
 
 // The accessible name a token is announced by
 export const getTokenLabel = (token: Token): string => {
+  const balance = formatFigure(token.balance)
   const locked = getLockedFigure(token)
   const parts = [`${token.name} ${token.symbol}`]
 
-  if (token.balance !== undefined) {
-    parts.push(`balance ${formatFigure(token.balance)}`)
+  if (balance !== undefined) {
+    parts.push(`balance ${balance}`)
   }
 
   if (locked !== undefined) {
