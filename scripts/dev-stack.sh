@@ -29,7 +29,7 @@
 #
 # What `up` starts (in order; Docker must already be running):
 #   1. LocalNet containers           (canton-barebones start)
-#   2. Builds and deploys the amulet-vesting DAR, then the two vendored DARs
+#   2. Deploys the two vendored DARs
 #   3. wallet-service                -> http://localhost:3010  (background)
 #   4. Bootstraps the vesting operator, its factory and the DBT instrument
 #   5. Token registry                -> http://localhost:3013  (background)
@@ -71,11 +71,6 @@ REGISTRY_ENV_KEYS=(
 # Resolved in up(), once ./.env has been read.
 JSON_API_URL=""
 
-# Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="dapp/daml"
-DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
-DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
-
 # Vendored binaries, not built here. canton-token-forge goes first: vesting
 # data-depends on it. See vendor/PROVENANCE.md.
 VENDOR_DARS=(vendor/canton-token-forge.dar vendor/vesting.dar)
@@ -83,11 +78,6 @@ VENDOR_DARS=(vendor/canton-token-forge.dar vendor/vesting.dar)
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
-
-# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
-case "$DAR_NAME" in
-  -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
-esac
 
 ACTION="${1:-menu}"
 LOCALNET_ARG="${2:-}"
@@ -303,11 +293,6 @@ up() {
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
 
-  # The DAR build needs dpm; check here so a missing SDK fails before the
-  # containers come up rather than after.
-  command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH. Install the DAML SDK (3.4.11), then run 'up'."
-
   # ./.env is wallet-service's whole configuration, the mint recipe and the DAR
   # upload token. Minting is offline, so this needs nothing running.
   [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
@@ -358,12 +343,7 @@ up() {
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
-  # 2. Build + deploy the DAR, which needs the participant but not wallet-service. The build
-  # fetches the Splice DARs amulet-vesting data-depends on the first time, and after a Splice bump.
-  log "Building the $DAR_NAME DAR..."
-  pnpm run build-dar
-  log "Deploying $DAR_PATH to Canton..."
-  pnpm run deploy-dar -- "$DAR_PATH"
+  # 2. Deploy the vendored DARs, which need the participant but not wallet-service.
   local dar
   for dar in "${VENDOR_DARS[@]}"; do
     log "Deploying $dar to Canton..."
