@@ -21,6 +21,8 @@ export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
 export { useLedger } from '#src/hooks/useLedger'
 export type { UsePartyResult } from '#src/hooks/useParty'
 export { useParty } from '#src/hooks/useParty'
+export type { UsePartyTypeResult } from '#src/hooks/usePartyType'
+export { usePartyType } from '#src/hooks/usePartyType'
 export type { UseSignMessageResult } from '#src/hooks/useSignMessage'
 export { useSignMessage } from '#src/hooks/useSignMessage'
 export type { UseWalletStatusResult } from '#src/hooks/useWalletStatus'
@@ -36,6 +38,7 @@ export type {
   ConnectionStatus,
   ConnectionSubscription,
   Party,
+  PartyType,
   TxStatusSnapshot,
   WalletSdk,
 } from '#src/types'

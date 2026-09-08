@@ -87,8 +87,8 @@ The context value is the config, the actor as `ConnectionSubscription` (`send` i
 through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
 itself. `useConnect`, `useDisconnect`, `useParty` and `useWalletStatus` read session state;
-`useLedger`, `useExecute` and `useSignMessage` select a guard plus the sdk and call it directly,
-never entering the machine.
+`useLedger`, `useExecute`, `useSignMessage` and `usePartyType` select a guard plus the sdk and
+call it directly, never entering the machine.
 
 The machine's input is read once, when the actor is created, so a changed `config` prop needs a
 remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out
@@ -112,6 +112,16 @@ a `WalletConnectAdapter` when `walletConnectProjectId` is set, plus `config.addi
 init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3030` dev gateway.
 `networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
 `Party.networkId` for a wallet that reports none.
+
+### The party type
+
+A party under the hosting participant's namespace is local, any other is external. A dApp cares
+because the reference gateway refuses `signMessage` for a local party. CIP-0103 has no field for
+it, so `usePartyType().readPartyType` derives it when the consumer asks, never in the machine: one
+`ledgerApi` read of the participant id (`GET /v2/parties/participant-id`, open to a `CanActAs`
+token), its namespace compared with `Party.namespace`, which arrives from the wallet unchanged, as
+`signingProviderId` does. A failed read rejects; what follows is the consumer's call. `isLocal` on
+the parties endpoint means hosted here, external parties included, so it is not the signal.
 
 ### Testing doubles
 

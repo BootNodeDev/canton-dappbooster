@@ -5,9 +5,10 @@ import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { type LedgerApiParams, useLedger } from '#src/hooks/useLedger'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
+import { testParty } from '#src/testing/party'
 import type { WalletSdk } from '#src/types'
 
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties' }
 
 describe('useLedger', () => {

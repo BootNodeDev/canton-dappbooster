@@ -30,8 +30,9 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   selects its own slice. Never add a field a hook could select.
 - **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
   narrows `DappSDK` to the methods this package calls.
-- **React owns two things:** `lastTx` (`useExecute`) and the `toConnectError` memo (`useConnect`).
-  Anything else that looks like state belongs in the machine.
+- **The machine owns the session; a hook owns what it asked for.** `sdk`, `party`, status and the
+  last connect error are machine context, never React state. A call's result or in-flight flag
+  (`lastTx`, a signature) is React state: the session does not depend on it.
 - **Import the SDK's types.** A `param as Parameters<…>` cast is a duplicated type: import the real
   one from `dapp-sdk` or `core-types`.
 - **The picker is `CantonConnectConfig.walletPicker`.** No picker UI in this package; that lives in
