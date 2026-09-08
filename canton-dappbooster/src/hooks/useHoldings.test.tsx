@@ -6,7 +6,12 @@ import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useHoldings } from '#src/hooks/useHoldings'
 
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = {
+  namespace: '1220ab',
+  networkId: 'canton:local',
+  partyId: 'alice::1220ab',
+  signingProviderId: '',
+}
 const amulet = { admin: 'DSO::1220ab', id: 'Amulet' }
 
 // Derived from the double rather than from the SDK, which this package does not depend on.
