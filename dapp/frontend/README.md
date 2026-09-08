@@ -11,9 +11,9 @@ the wallet's primary account and each write raises a real approval prompt. There
 mock mode: without a deployment config and a wallet session the pages show a connect
 placeholder. See the root [README](../../README.md) for the wider stack.
 
-> The frontend was imported from `cn-dappbooster@feat/vesting-lite` — see
-> [`PROVENANCE.md`](PROVENANCE.md). The DAML package it speaks to lives in
-> [`../daml`](../daml).
+> The frontend was imported from `cn-dappbooster@feat/vesting-lite`, see
+> [`PROVENANCE.md`](PROVENANCE.md). The Daml packages it speaks to are the committed
+> binaries in [`../../vendor`](../../vendor).
 
 ## Run
 

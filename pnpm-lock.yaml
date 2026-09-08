@@ -169,8 +169,6 @@ importers:
 
   canton-theme: {}
 
-  dapp/daml: {}
-
   dapp/frontend:
     dependencies:
       '@bootnodedev/canton-connect':
