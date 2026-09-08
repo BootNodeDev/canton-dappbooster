@@ -2,8 +2,10 @@ import { useExecute, useLedger, useParty } from '@bootnodedev/canton-connect'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
+import { fetchTransferContext } from '@/backend/transferContext'
 import type { VestingBackend } from '@/backend/VestingBackend'
 import { errorText } from '@/utils/errorText'
+import { type WrongNetwork, wrongNetwork } from '@/utils/network'
 
 // `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
 // needed to reach the ledger, so pages render a connect placeholder rather than empty data. The
@@ -14,6 +16,7 @@ export interface BackendState {
   configError: string | undefined
   configPending: boolean
   sessionPending: boolean
+  wrongNetwork: WrongNetwork | undefined
 }
 
 // canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both
@@ -35,6 +38,8 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   // re-read the ACS whenever the wallet re-pushes the same account.
   const { party } = useParty()
   const hasParty = party !== undefined
+  const partyId = party?.partyId
+  const [appNetwork, setAppNetwork] = useState<string | undefined>(undefined)
   const [checkingSession, setCheckingSession] = useState(true)
 
   useEffect(() => {
@@ -69,6 +74,30 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     }
   }, [hasParty, ledgerApi])
 
+  // wallet-service stamps the network it answers for on every disclosure, and only a write would
+  // otherwise read one, which is too late to warn about. tap builds a command and submits nothing,
+  // so asking on connect costs a read. A failure is left silent: the write that needs a context
+  // reports its own, and a wallet-service that is merely down is not a wrong network.
+  useEffect(() => {
+    if (partyId === undefined) {
+      return
+    }
+    let cancelled = false
+
+    void fetchTransferContext(partyId).then(
+      ({ synchronizerId }) => {
+        if (!cancelled) {
+          setAppNetwork(synchronizerId)
+        }
+      },
+      () => undefined,
+    )
+
+    return () => {
+      cancelled = true
+    }
+  }, [partyId])
+
   // Its own memo, because the grace timer below flips a purely visual flag: sharing one would mint a
   // new backend identity mid-session and re-run every read that keys off it.
   const backend = useMemo(
@@ -85,8 +114,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
       sessionPending: checkingSession && !hasParty,
+      wrongNetwork: wrongNetwork(deployment?.synchronizerId, appNetwork),
     }),
-    [backend, checkingSession, configError, deployment, hasParty],
+    [appNetwork, backend, checkingSession, configError, deployment, hasParty],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>

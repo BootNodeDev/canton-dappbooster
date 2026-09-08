@@ -48,6 +48,7 @@ export const fetchTransferContext = async (
   ctx: AppTransferContext
   disclosed: DisclosedContract[]
   rulesTemplateId: string
+  synchronizerId?: string
 }> => {
   const result = (await rpc('amulet.tap', { receiver: party })) as TapResult
   const disclosures = result.disclosedContracts ?? []
@@ -73,5 +74,10 @@ export const fetchTransferContext = async (
     })),
     // The split exercises AmuletRules directly, so it needs the resolved id the filters skip.
     rulesTemplateId: amuletRules.templateId,
+    // Returned beside the disclosures rather than left on them: this is the network wallet-service
+    // answered for, which is the only thing that can be compared against the wallet's own.
+    ...(amuletRules.synchronizerId === undefined
+      ? {}
+      : { synchronizerId: amuletRules.synchronizerId }),
   }
 }

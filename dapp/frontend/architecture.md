@@ -13,10 +13,10 @@ interfaces carry that, and every other decision hangs off them.
 | Path | Role |
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
-| `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and nothing else. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
+| `src/providers/` | `Backend`: builds the backend from the deployment plus the wallet session, and reads the two synchronizer ids the network check compares. The theme and token-list providers come from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, and `tokens.tsx`, the one instrument this deployment knows. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
@@ -56,6 +56,19 @@ either. [`transferContext.ts`](src/backend/transferContext.ts) asks wallet-servi
 together, because a write needs both and sending one without the other fails at the participant
 rather than in the model. The record is flat: nesting the round under a `context` key fails
 preprocessing on a missing `openMiningRound`.
+
+It returns one more thing no write reads: the `synchronizerId` wallet-service stamped on those
+disclosures. That is the network the app's own contracts live on, and
+[`config.ts`](src/backend/config.ts)'s `synchronizerId` is the network the connected wallet submits
+to. When the two differ every write fails at the participant, because the `AmuletRules` and mining
+round ids do not exist on the ledger the wallet reaches, so
+[`WrongNetwork`](src/components/WrongNetwork.tsx) says so in a strip above the header and names both.
+[`Backend`](src/providers/Backend.tsx) asks for a context once on connect for that comparison alone:
+a write would read one too late to warn about, and tap submits nothing, so the answer costs a read.
+A failed read stays silent — a wallet-service that is down is not a wrong network — and the rule in
+[`src/utils/network.ts`](src/utils/network.ts) treats a missing id the same way, or a slow read would
+warn about nothing. `party.networkId` is not what is compared: CIP-0103 only recommends a CAIP-2
+label, so two wallets may spell one network differently.
 
 That call is a build-and-discard: `amulet.tap` returns the command it composed and submits nothing,
 so no coin is minted and the answer is only read for its disclosures. It replaced a pair of reads

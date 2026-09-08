@@ -63,6 +63,24 @@ describe('fetchTransferContext', () => {
     expect(rulesTemplateId).toBe('rulespkg:Splice.AmuletRules:AmuletRules')
   })
 
+  it('returns the network wallet-service stamped on the disclosures', async () => {
+    stubTap([RULES, ROUND])
+
+    await expect(fetchTransferContext('funder::1')).resolves.toHaveProperty(
+      'synchronizerId',
+      'global-domain::1220',
+    )
+  })
+
+  // Nothing in a write needs it, so an answer without one is not an error; it only leaves the
+  // network comparison with nothing to compare.
+  it('omits the network when the disclosures carry none', async () => {
+    const { synchronizerId: _dropped, ...bare } = RULES
+    stubTap([bare, ROUND])
+
+    await expect(fetchTransferContext('funder::1')).resolves.not.toHaveProperty('synchronizerId')
+  })
+
   // The url is the build's, so only the request is asserted on here.
   it('asks for a tap to the connected party', async () => {
     const { calls } = stubTap([RULES, ROUND])

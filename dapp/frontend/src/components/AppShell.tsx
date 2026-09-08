@@ -6,6 +6,7 @@ import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
+import { WrongNetwork } from '@/components/WrongNetwork'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
@@ -38,6 +39,7 @@ export const AppShell = (): React.JSX.Element => {
         >
           Skip to main content
         </a>
+        <WrongNetwork />
         <TopBar />
         <main
           id="main"
