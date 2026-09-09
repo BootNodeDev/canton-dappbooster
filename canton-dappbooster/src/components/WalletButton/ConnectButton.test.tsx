@@ -1,18 +1,16 @@
-import type { CantonConnectConfig } from '@bootnodedev/canton-connect'
-import { CantonConnectProvider, createMockAdapter, useParty } from '@bootnodedev/canton-connect'
-import { createAutoPicker, FakeSessionProvider } from '@bootnodedev/canton-connect/testing'
+import { useParty } from '@bootnodedev/canton-connect'
+import { FakeSessionProvider } from '@bootnodedev/canton-connect/testing'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ReactElement } from 'react'
+import type { FormEvent, ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { connectAnatomy } from '#src/components/WalletButton/anatomy'
 import { ConnectButton } from '#src/components/WalletButton/ConnectButton'
-
-const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
-
-// Reached through the config rather than the SDK: this package must not import dapp-sdk.
-type Picker = NonNullable<CantonConnectConfig['walletPicker']>
-
-const hangingPicker: Picker = () => new Promise(() => {})
+import {
+  hangingPicker,
+  PARTY,
+  renderDisconnected,
+  renderWithWallet,
+} from '#src/testing/walletSession'
 
 // The button keeps its own face through a connect, so the session itself is what a connect asserts.
 const Session = (): ReactElement => {
@@ -20,27 +18,12 @@ const Session = (): ReactElement => {
   return <span data-testid="session">{party?.partyId ?? 'none'}</span>
 }
 
-const renderDisconnected = (ui: ReactElement): ReturnType<typeof render> =>
-  render(<FakeSessionProvider>{ui}</FakeSessionProvider>)
-
-// The connect flow is the SDK's, so the tests that drive it drive the real provider.
-const renderWithWallet = (
-  ui: ReactElement,
-  config: { walletPicker?: Picker } = {},
-): ReturnType<typeof render> =>
-  render(
-    <CantonConnectProvider
-      config={{
-        additionalAdapters: [createMockAdapter({ accounts: [{ partyId: PARTY }] })],
-        appName: 'test',
-        walletPicker: createAutoPicker('mock'),
-        ...config,
-      }}
-    >
-      {ui}
-      <Session />
-    </CantonConnectProvider>,
-  )
+const withSession = (ui: ReactElement): ReactElement => (
+  <>
+    {ui}
+    <Session />
+  </>
+)
 
 describe('ConnectButton', () => {
   it('renders with the root part', () => {
@@ -62,43 +45,44 @@ describe('ConnectButton', () => {
     expect(screen.getByRole('button', { name: 'Connect wallet' })).toBeInTheDocument()
   })
 
-  it('names the cancel while pending, leaving the visible hint to a consumer', async () => {
-    renderWithWallet(<ConnectButton />)
-    fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
-    const button = await screen.findByRole('button', { name: 'Cancel connecting' })
+  it('goes inert while pending, saying so in its own words', async () => {
+    renderWithWallet(<ConnectButton />, { walletPicker: hangingPicker })
+    const button = screen.getByRole('button', { name: 'Connect wallet' })
+    fireEvent.click(button)
 
-    expect(button).toHaveAttribute(connectAnatomy.states.pending, 'true')
-    expect(button).toBeEnabled()
-    expect(button).not.toHaveAttribute('aria-disabled')
+    await waitFor(() => expect(button).toHaveAttribute(connectAnatomy.states.pending, 'true'))
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(button).toHaveTextContent('Connecting…')
   })
 
-  it('cancels the attempt it is pending on', async () => {
-    renderWithWallet(<ConnectButton />, { walletPicker: hangingPicker })
-    fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
-
-    const pendingButton = await screen.findByRole('button', {
-      name: 'Cancel connecting',
-    })
-    fireEvent.click(pendingButton)
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Connect wallet' })).toBeInTheDocument(),
-    )
-    expect(screen.getByTestId('session')).toHaveTextContent('none')
-  })
-
-  it('runs a consumer handler on the cancel too', async () => {
+  it('ignores every click past the first', async () => {
     const onClick = vi.fn()
     renderWithWallet(<ConnectButton onClick={onClick} />, { walletPicker: hangingPicker })
-    fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
+    const button = screen.getByRole('button', { name: 'Connect wallet' })
+    fireEvent.click(button)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancel connecting' }))
+    await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
+    fireEvent.click(button)
 
-    expect(onClick).toHaveBeenCalledTimes(2)
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Connect wallet' })).toBeInTheDocument(),
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses to submit the form it sits in while pending', async () => {
+    const onSubmit = vi.fn((event: FormEvent) => event.preventDefault())
+    renderWithWallet(
+      <form onSubmit={onSubmit}>
+        <ConnectButton type="submit" />
+      </form>,
+      { walletPicker: hangingPicker },
     )
+    const button = screen.getByRole('button', { name: 'Connect wallet' })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
+    onSubmit.mockClear()
+    fireEvent.click(button)
+
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('keeps a caller-supplied label while pending, that caller owning what it says', async () => {
@@ -112,7 +96,7 @@ describe('ConnectButton', () => {
 
   it('runs a consumer handler and still connects', async () => {
     const onClick = vi.fn()
-    renderWithWallet(<ConnectButton onClick={onClick} />)
+    renderWithWallet(withSession(<ConnectButton onClick={onClick} />))
     fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
@@ -120,7 +104,7 @@ describe('ConnectButton', () => {
   })
 
   it('lets a consumer handler bring its own connect by preventing the default', async () => {
-    renderWithWallet(<ConnectButton onClick={(event) => event.preventDefault()} />)
+    renderWithWallet(withSession(<ConnectButton onClick={(event) => event.preventDefault()} />))
     fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
 
     await waitFor(() => expect(screen.getByTestId('session')).toHaveTextContent('none'))

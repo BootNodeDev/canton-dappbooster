@@ -1,11 +1,15 @@
 import { FakeSessionProvider } from '@bootnodedev/canton-connect/testing'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { WalletButton } from '#src/components/WalletButton'
-import { connectAnatomy, disconnectAnatomy } from '#src/components/WalletButton/anatomy'
+import {
+  cancelAnatomy,
+  connectAnatomy,
+  disconnectAnatomy,
+} from '#src/components/WalletButton/anatomy'
+import { hangingPicker, PARTY, renderWithWallet } from '#src/testing/walletSession'
 
-const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const NETWORK = 'canton:local'
 const party = {
   partyId: PARTY,
@@ -56,6 +60,37 @@ describe('WalletButton', () => {
     renderInSession(<WalletButton>Account</WalletButton>)
     expect(screen.getByRole('button', { name: 'Account' })).toHaveClass(
       disconnectAnatomy.parts.root,
+    )
+  })
+
+  it('shows the cancel face while a connect is in flight', async () => {
+    renderWithWallet(<WalletButton />, { walletPicker: hangingPicker })
+    fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
+
+    const cancel = await screen.findByRole('button', { name: 'Cancel' })
+    expect(cancel).toHaveClass(cancelAnatomy.parts.root)
+    expect(cancel).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('hands focus to the face that took over', async () => {
+    renderWithWallet(<WalletButton />, { walletPicker: hangingPicker })
+    const connect = screen.getByRole('button', { name: 'Connect wallet' })
+    connect.focus()
+    fireEvent.click(connect)
+
+    const cancel = await screen.findByRole('button', { name: 'Cancel' })
+    await waitFor(() => expect(cancel).toHaveFocus())
+  })
+
+  it('goes back to the connect face when the attempt is cancelled', async () => {
+    renderWithWallet(<WalletButton />, { walletPicker: hangingPicker })
+    fireEvent.click(screen.getByRole('button', { name: 'Connect wallet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Connect wallet' })).toHaveClass(
+        connectAnatomy.parts.root,
+      ),
     )
   })
 })

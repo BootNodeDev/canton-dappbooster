@@ -9,6 +9,10 @@
  */
 
 export { WalletButton, type WalletButtonProps } from '#src/components/WalletButton'
+export {
+  CancelButton,
+  type CancelButtonProps,
+} from '#src/components/WalletButton/CancelButton'
 export { ConnectButton, type ConnectButtonProps } from '#src/components/WalletButton/ConnectButton'
 export {
   DisconnectButton,
