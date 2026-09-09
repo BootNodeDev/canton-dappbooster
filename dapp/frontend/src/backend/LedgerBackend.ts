@@ -80,7 +80,7 @@ const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
 // read that answers it carries a blob per holding and runs on the funder's dashboard, so a holding
 // archived outside this dApp would otherwise cost that read on every view forever, for a grant
 // nobody can accept any more. Counted rather than given up on the first miss, because a read that
-// fails soft answers with no rows and must not stand as proof the holding is gone.
+// answers short is indistinguishable from one that answers in full.
 const MISS_STORE_KEY = 'vesting.tokenReadMisses'
 const MISS_LIMIT = 3
 
@@ -134,25 +134,28 @@ const unstoredReservations = (party: string, pendingRows: AcsRow[]): Set<string>
 
 // Merged by contract id rather than appended, because two reconciles can overlap, a dashboard
 // refresh racing a fresh grant, and each computes what it is missing from a store snapshot taken
-// before its own read.
-const storeTokens = (held: AcsRow[], wanted: Set<string>): void => {
+// before its own read. Answers with what it stored, which is what a miss is counted against.
+const storeTokens = (held: AcsRow[], wanted: Set<string>): Set<string> => {
   const missing = mapRows(
     held.filter((row) => wanted.has(cidOf(row))),
     rowToDisclosed,
   )
   if (missing.length === 0) {
-    return
+    return new Set()
   }
   const merged = new Map(storedTokens().map((one) => [one.contractId, one]))
   for (const one of missing) {
     merged.set(one.contractId, one)
   }
   localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...merged.values()]))
+  return new Set(missing.map((one) => one.contractId))
 }
 
-const recordMisses = (held: AcsRow[], wanted: Set<string>): void => {
-  const found = new Set(held.map(cidOf))
-  const missed = [...wanted].filter((contractId) => !found.has(contractId))
+// Counted against what was stored rather than against what came back, because a holding that
+// arrives without its blob is as unusable as one that never arrived: calling it found would leave
+// it wanted with no miss ever recorded, and so no bound on the read it costs.
+const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
+  const missed = [...wanted].filter((contractId) => !stored.has(contractId))
   if (missed.length === 0) {
     return
   }
@@ -325,8 +328,12 @@ export class LedgerBackend implements VestingBackend {
       return
     }
     const held = await this.readAcs(party, TOKEN, offset, true)
-    storeTokens(held, wanted)
-    recordMisses(held, wanted)
+    // A read that fails soft answers with no rows, so an empty one says nothing about whether the
+    // reservation is still there and must not spend the budget that gives up on it.
+    if (held.length === 0) {
+      return
+    }
+    recordMisses(wanted, storeTokens(held, wanted))
   }
 
   // Reconciles against a snapshot of its own, for a caller that has read no rows to hand over.

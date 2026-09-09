@@ -87,6 +87,20 @@ const disclosedToken = (contractId: string): DisclosedContract => ({
   createdEventBlob: `blob-${contractId}`,
 })
 
+// An outstanding grant of this deployment's instrument, reserving the named holding.
+const reserving = (tokenCid: string): unknown =>
+  row(`pending-${tokenCid}`, {
+    admin: 'instrument-admin::1',
+    instrumentId: 'DBT',
+    provider: 'operator::1',
+    proposer: 'funder::1',
+    receiver: 'receiver::1',
+    totalAmount: '1000',
+    tokenCid,
+    schedule: encodeSchedule(schedule),
+    note: 'Advisor grant',
+  })
+
 // What the funder kept for the receiver, read the way the backend keys it: `accept` picks one blob
 // out of this, so only a direct look says whether the store itself is growing.
 const storedTokens = (): DisclosedContract[] =>
@@ -703,21 +717,46 @@ describe('LedgerBackend.viewAs', () => {
   // is given up on rather than paid for on every view from then on.
   it('stops reading the holdings for a reservation that never turns up', async () => {
     const { backend, reads } = harness({
-      acs: {
-        [PENDING]: [
-          row('p1', {
-            admin: 'instrument-admin::1',
-            instrumentId: 'DBT',
-            provider: 'operator::1',
-            proposer: 'funder::1',
-            receiver: 'receiver::1',
-            totalAmount: '1000',
-            tokenCid: 'archived-elsewhere',
-            schedule: encodeSchedule(schedule),
-            note: 'Advisor grant',
-          }),
-        ],
+      acs: { [TOKEN]: [tokenRow('t1', '500')], [PENDING]: [reserving('archived-elsewhere')] },
+    })
+
+    for (let view = 0; view < 5; view++) {
+      await backend.viewAs('funder::1')
+    }
+
+    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(3)
+  })
+
+  // `readAcs` answers an unparseable response with no rows, so an empty read is indistinguishable
+  // from a funder who holds nothing. Spending the budget on it would let one participant hiccup
+  // abandon every outstanding grant in the browser, with nothing short of wiping site data to undo
+  // it.
+  it('spends no part of that budget on a read that came back empty', async () => {
+    const { backend, reads } = harness({ acs: { [PENDING]: [reserving('archived-elsewhere')] } })
+
+    for (let view = 0; view < 5; view++) {
+      await backend.viewAs('funder::1')
+    }
+
+    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(5)
+  })
+
+  // A holding whose blob the read did not carry is as unusable as one that never came back: nothing
+  // can be stored for it, so treating it as found would leave it wanted for good and never reach
+  // the limit that stops the read.
+  it('counts a holding that comes back without its blob as a miss', async () => {
+    const blobless = {
+      contractEntry: {
+        JsActiveContract: {
+          createdEvent: {
+            contractId: 'reserved',
+            createArgument: { admin: 'instrument-admin::1', instrumentId: 'DBT', amount: '1000' },
+          },
+        },
       },
+    }
+    const { backend, reads } = harness({
+      acs: { [TOKEN]: [blobless], [PENDING]: [reserving('reserved')] },
     })
 
     for (let view = 0; view < 5; view++) {
