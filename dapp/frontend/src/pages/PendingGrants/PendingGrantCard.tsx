@@ -11,9 +11,11 @@ import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
-// funder.
+// funder. `ending` is a cancel or decline of this grant already in flight, which the card owner
+// knows about and the dismissed dialog no longer does.
 interface PendingGrantCardProps {
   direction: 'incoming' | 'outgoing'
+  ending: boolean
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void
   onEnd: (pendingGrant: PendingGrant) => void
@@ -23,6 +25,7 @@ interface PendingGrantCardProps {
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
+  ending,
   nowMs,
   onAccept,
   onEnd,
@@ -79,6 +82,7 @@ export const PendingGrantCard = ({
               variant="danger-ghost"
               className="flex-1 md:flex-none"
               onClick={() => onEnd(pendingGrant)}
+              pending={ending}
               aria-label={`Decline ${pendingGrant.title}`}
             >
               Decline
@@ -87,6 +91,7 @@ export const PendingGrantCard = ({
               size="sm"
               className="flex-1 md:flex-none"
               onClick={() => onAccept(pendingGrant)}
+              disabled={ending}
               aria-label={`Accept ${pendingGrant.title}`}
             >
               Accept
@@ -97,6 +102,7 @@ export const PendingGrantCard = ({
             size="sm"
             variant="danger-ghost"
             onClick={() => onEnd(pendingGrant)}
+            pending={ending}
             aria-label={`Cancel ${pendingGrant.title}`}
           >
             Cancel

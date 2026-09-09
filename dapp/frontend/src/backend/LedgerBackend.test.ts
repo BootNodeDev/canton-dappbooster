@@ -697,6 +697,18 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
     expect(submissions[0]?.disclosedContracts).toEqual([])
   })
 
+  // Blobs are stored only for grants this browser funded, so the read the cancel needs to prune one
+  // buys the receiver nothing - and readAcs answers [] on a soft failure, which would have read as
+  // gone and blocked a decline of a grant that is perfectly live.
+  it('declines without reading the proposal first', async () => {
+    const { backend, submissions, reads } = harness()
+
+    await backend.rejectProposal({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
+
+    expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Reject')
+    expect(reads.some((read) => read.resource === '/v2/state/active-contracts')).toBe(false)
+  })
+
   it('drops the blob of the grant it ended and keeps every other one', async () => {
     const acs: Record<string, unknown[]> = {
       [TOKEN]: [tokenRow('t1', '1500'), tokenRow('t2', '1500')],

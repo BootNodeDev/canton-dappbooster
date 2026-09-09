@@ -490,29 +490,33 @@ export class LedgerBackend implements VestingBackend {
 
   // Neither exit moves anything, so neither takes the config or discloses a contract: the proposal
   // is archived on its controller's own authority and the holding it reserved is already an
-  // ordinary Token of the funder's, back in their balance as soon as nothing names it. The proposal
-  // is read first for the holding it names, since reading it after the archive would be too late.
-  private async endProposal(
+  // ordinary Token of the funder's, back in their balance as soon as nothing names it.
+  private endProposal(
     party: string,
     pendingCid: string,
     build: (templateId: string, pendingCid: string) => LedgerCommand,
-  ): Promise<void> {
+  ): Promise<unknown> {
+    return this.submit(party, build(this.tid('VestingProposal'), pendingCid), [])
+  }
+
+  // Read before the archive for the holding the proposal names, since reading it after would be too
+  // late.
+  async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
     const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(party, vesting('VestingProposal'), offset)
-    const proposal = rows.find((row) => cidOf(row) === pendingCid)
+    const rows = await this.readAcs(args.proposer, vesting('VestingProposal'), offset)
+    const proposal = rows.find((row) => cidOf(row) === args.pendingCid)
     if (proposal === undefined) {
       throw new Error(PROPOSAL_GONE_MESSAGE)
     }
-    await this.submit(party, build(this.tid('VestingProposal'), pendingCid), [])
+    await this.endProposal(args.proposer, args.pendingCid, buildCancelProposalCommand)
     // Only once the submission has landed: a prompt the wallet declines leaves a grant that is
     // still outstanding and still acceptable.
     forgetFunding(reservedToken(proposal))
   }
 
-  async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
-    await this.endProposal(args.proposer, args.pendingCid, buildCancelProposalCommand)
-  }
-
+  // No read of its own, unlike the cancel above: blobs are stored only for grants this browser
+  // funded, so the receiver has nothing to forget, and readAcs answering short would have blocked a
+  // live decline for a prune that was never going to run.
   async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
     await this.endProposal(args.receiver, args.pendingCid, buildRejectProposalCommand)
   }

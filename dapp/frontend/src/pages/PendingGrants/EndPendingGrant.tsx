@@ -28,12 +28,14 @@ export const EndPendingGrant = ({
   // dismissed over the wallet prompt. Closing then would close whichever dialog has since taken its
   // place; the toast still fires, because the choice did land.
   const onScreen = useRef(true)
-  useEffect(
-    () => () => {
+  // Set on mount and not only cleared on unmount, because StrictMode runs setup, cleanup, setup: a
+  // ref the cleanup alone touches reads false from the first render onwards.
+  useEffect(() => {
+    onScreen.current = true
+    return () => {
       onScreen.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   const submit = async (): Promise<void> => {
     setSubmitting(true)

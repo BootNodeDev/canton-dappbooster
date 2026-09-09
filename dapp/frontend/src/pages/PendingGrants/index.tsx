@@ -16,6 +16,12 @@ import { useNow } from '@/utils/clock'
 import { errorText } from '@/utils/errorText'
 import { toast } from '@/utils/toast'
 
+interface Ending {
+  partyId: string
+  pendingGrant: PendingGrant
+  role: Role
+}
+
 export const PendingGrants = (): React.JSX.Element => {
   useDocumentTitle('Pending Grants')
   const nowMs = useNow()
@@ -28,9 +34,11 @@ export const PendingGrants = (): React.JSX.Element => {
   // Captured at open, not read live: the role comes from a URL search param and the party from the
   // wallet session, so either can flip under an open dialog (browser Back/Forward, an account
   // change). This is what keeps the dialog's title and its write pinned to the grant it opened on.
-  const [ending, setEnding] = useState<
-    { pendingGrant: PendingGrant; role: Role; partyId: string } | undefined
-  >(undefined)
+  const [ending, setEnding] = useState<Ending | undefined>(undefined)
+  // The dialog can be dismissed over the wallet prompt, which unmounts it with its submission still
+  // in flight and nothing yet refreshed, so what is already being ended is tracked by the page the
+  // card belongs to rather than by the dialog that may be gone.
+  const [endingCids, setEndingCids] = useState<ReadonlySet<string>>(new Set())
   const cancelProposal = useVestingStore((s) => s.cancelProposal)
   const rejectProposal = useVestingStore((s) => s.rejectProposal)
 
@@ -63,6 +71,22 @@ export const PendingGrants = (): React.JSX.Element => {
     }
   }
 
+  const endGrant = async (target: Ending): Promise<void> => {
+    const pendingCid = target.pendingGrant.id
+    setEndingCids((current) => new Set(current).add(pendingCid))
+    try {
+      await (target.role === 'funder'
+        ? cancelProposal(backend, target.partyId, pendingCid)
+        : rejectProposal(backend, target.partyId, pendingCid))
+    } finally {
+      setEndingCids((current) => {
+        const next = new Set(current)
+        next.delete(pendingCid)
+        return next
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-7">
       <PageTitle title="Pending Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
@@ -90,6 +114,7 @@ export const PendingGrants = (): React.JSX.Element => {
               nowMs={nowMs}
               onAccept={(p) => void onAccept(p)}
               onEnd={(p) => setEnding({ pendingGrant: p, role, partyId })}
+              ending={endingCids.has(pendingGrant.id)}
             />
           ))}
         </div>
@@ -100,11 +125,7 @@ export const PendingGrants = (): React.JSX.Element => {
           onClose={() => setEnding(undefined)}
           pendingGrant={ending.pendingGrant}
           role={ending.role}
-          onConfirm={() =>
-            ending.role === 'funder'
-              ? cancelProposal(backend, ending.partyId, ending.pendingGrant.id)
-              : rejectProposal(backend, ending.partyId, ending.pendingGrant.id)
-          }
+          onConfirm={() => endGrant(ending)}
         />
       )}
     </div>
