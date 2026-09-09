@@ -141,6 +141,22 @@ package on [npm](https://www.npmjs.com/package/@canton-network/wallet-gateway-re
 The full seam, including the popup flow and the party read, is in
 [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md).
 
+### Connecting through WalletConnect
+
+```tsx
+const config = {
+  appName: 'My dApp',
+  networkId: 'canton:localnet',
+  walletConnectProjectId: 'YOUR_REOWN_PROJECT_ID',
+}
+```
+
+`networkId` must match what the wallet advertises or it rejects the session; our LocalNet
+wallet-service advertises `canton:localnet`. A wallet lock never crosses the relay, so
+`useWalletStatus().isLocked` never turns true on one, and restore after a reload is silent: the
+sign client persists the session and picks it up at init. Pair by scanning the QR code or copying
+the `wc:` URI the SDK popup shows.
+
 ## Reference
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call

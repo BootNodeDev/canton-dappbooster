@@ -144,6 +144,27 @@ Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.jso
 participant's JSON API with matching `self_signed` `auth` / `adminAuth`. Point the dApp's adapter
 at `rpcUrl: 'http://localhost:3030/api/v0/dapp'`.
 
+### WalletConnect
+
+Extensions need no configuration; `walletConnectProjectId` is what makes `buildAdditionalAdapters` build
+the SDK's `WalletConnectAdapter` (Adapters above), whose `networkId` is the CAIP-2 chain the wallet must
+serve. It has to equal what the wallet advertises, or the wallet rejects the session: our LocalNet
+wallet-service advertises `canton:localnet`, so a dApp against it sets `networkId: 'canton:localnet'`.
+
+The SDK picker lists `WalletConnect`; picking it shows a QR code and a copyable `wc:` URI in the SDK
+popup, the wallet pairs and approves the session, and the popup closes itself about a second after
+the connected status arrives. The party follows `isConnected` shortly after, read over the relay. The
+popup-close guard passes here too: three closes with nothing chosen re-enable the button, and closing
+the popup after picking WalletConnect fails the connect as a cancel, with no error surfaced.
+
+Restore after a reload is silent: the session is persisted by the sign client and picked up at init. A
+lock never crosses the relay either way, so `useWalletStatus().isLocked` stays false until the wallet
+answers a request again. Disconnect from the dApp does work: it clears the discovery session key and
+ends the session on the wallet's side too.
+
+`useExecute` travels as one relay request (`canton_prepareSignExecute`); approval happens on the wallet,
+and the result comes back `executed`, with an update id, in under five seconds.
+
 ### The party type
 
 A party under the hosting participant's namespace is local, any other is external. A dApp cares
