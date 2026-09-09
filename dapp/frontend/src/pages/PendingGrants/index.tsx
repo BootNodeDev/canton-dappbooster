@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
@@ -8,6 +8,7 @@ import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
+import { EndPendingGrant } from '@/pages/PendingGrants/EndPendingGrant'
 import { PendingGrantCard } from '@/pages/PendingGrants/PendingGrantCard'
 import type { PendingGrant } from '@/store/types'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -24,6 +25,9 @@ export const PendingGrants = (): React.JSX.Element => {
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
+  const [ending, setEnding] = useState<PendingGrant | undefined>(undefined)
+  const cancelProposal = useVestingStore((s) => s.cancelProposal)
+  const rejectProposal = useVestingStore((s) => s.rejectProposal)
 
   const direction = role === 'receiver' ? 'incoming' : 'outgoing'
   const visible = useMemo<PendingGrant[]>(
@@ -74,9 +78,23 @@ export const PendingGrants = (): React.JSX.Element => {
               direction={direction}
               nowMs={nowMs}
               onAccept={(p) => void onAccept(p)}
+              onEnd={(p) => setEnding(p)}
             />
           ))}
         </div>
+      )}
+
+      {ending !== undefined && (
+        <EndPendingGrant
+          onClose={() => setEnding(undefined)}
+          pendingGrant={ending}
+          role={role}
+          onConfirm={() =>
+            role === 'funder'
+              ? cancelProposal(backend, partyId, ending.id)
+              : rejectProposal(backend, partyId, ending.id)
+          }
+        />
       )}
     </div>
   )

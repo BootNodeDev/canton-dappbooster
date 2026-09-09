@@ -16,6 +16,7 @@ interface PendingGrantCardProps {
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void
+  onEnd: (pendingGrant: PendingGrant) => void
   pendingGrant: PendingGrant
 }
 
@@ -24,6 +25,7 @@ export const PendingGrantCard = ({
   direction,
   nowMs,
   onAccept,
+  onEnd,
 }: PendingGrantCardProps): React.JSX.Element => {
   const curve = pendingGrant.schedule.curve
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
@@ -71,11 +73,18 @@ export const PendingGrantCard = ({
           />
         </div>
         {direction === 'incoming' ? (
-          <Button size="sm" onClick={() => onAccept(pendingGrant)}>
-            Accept
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="danger-ghost" onClick={() => onEnd(pendingGrant)}>
+              Decline
+            </Button>
+            <Button size="sm" onClick={() => onAccept(pendingGrant)}>
+              Accept
+            </Button>
+          </div>
         ) : (
-          <span className="font-mono text-xs text-fg-muted">awaiting acceptance</span>
+          <Button size="sm" variant="danger-ghost" onClick={() => onEnd(pendingGrant)}>
+            Cancel
+          </Button>
         )}
       </div>
     </Card>
