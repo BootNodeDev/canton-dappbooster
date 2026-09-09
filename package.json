@@ -13,6 +13,7 @@
     "build-dar": "pnpm -C dapp/daml run build",
     "build": "pnpm -r run --if-present build",
     "check:anatomy": "node scripts/check-anatomy.mjs",
+    "check:versions": "node scripts/check-versions.mjs",
     "deploy-dar": "bash scripts/deploy-dar.sh",
     "docs:build": "typedoc",
     "docs:check": "typedoc --emit none && node scripts/docs-check.mjs",
@@ -22,9 +23,10 @@
     "mint-token": "node scripts/mint-token.mjs ledger-api-user",
     "prepare": "husky",
     "release": "pnpm -r --filter './canton-*' publish --no-git-checks",
-    "test": "pnpm -r run --if-present test && node --test \"scripts/*.test.mjs\"",
+    "release:dry": "pnpm -r --filter './canton-*' publish --dry-run --no-git-checks",
+    "release:version": "node scripts/release-version.mjs",
+    "test": "pnpm -r run --if-present test && node --test \"scripts/*.test.mjs\" && node scripts/check-versions.mjs",
     "typecheck": "pnpm -r run --if-present typecheck"
-
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
