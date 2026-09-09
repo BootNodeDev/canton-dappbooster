@@ -123,6 +123,7 @@ interface VestingState {
 
   accept: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
+  cancelProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
     partyId: string,
@@ -136,6 +137,7 @@ interface VestingState {
     input: CreateVestInput,
   ) => Promise<{ disclosedBytes: number }>
   refresh: (backend: VestingBackend, partyId: string) => Promise<void>
+  rejectProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   withdraw: (
     backend: VestingBackend,
     partyId: string,
@@ -191,6 +193,16 @@ export const useVestingStore = create<VestingState>((set, get) => ({
 
   accept: async (backend, partyId, pendingCid) => {
     await backend.accept({ receiver: partyId, pendingCid })
+    await get().refresh(backend, partyId)
+  },
+
+  cancelProposal: async (backend, partyId, pendingCid) => {
+    await backend.cancelProposal({ proposer: partyId, pendingCid })
+    await get().refresh(backend, partyId)
+  },
+
+  rejectProposal: async (backend, partyId, pendingCid) => {
+    await backend.rejectProposal({ receiver: partyId, pendingCid })
     await get().refresh(backend, partyId)
   },
 

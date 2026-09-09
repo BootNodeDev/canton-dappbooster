@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
@@ -33,13 +33,27 @@ export const CancelGrant = ({
   // Recomputed each tick with `nowMs`, so a residual growing past the floor re-enables the button
   // on its own rather than sending a submission the contract will assert on.
   const floorOk = residualMeetsFloor(derived.claimable)
+  // Only the confirm button is disabled while a submission is in flight, so the dialog can still be
+  // dismissed over the wallet prompt. Closing then would close whichever dialog has since taken its
+  // place; the toast still fires, because the cancel did land.
+  const onScreen = useRef(true)
+  // Set on mount and not only cleared on unmount, because StrictMode runs setup, cleanup, setup: a
+  // ref the cleanup alone touches reads false from the first render onwards.
+  useEffect(() => {
+    onScreen.current = true
+    return () => {
+      onScreen.current = false
+    }
+  }, [])
 
   const submit = async (): Promise<void> => {
     setSubmitting(true)
     try {
       await onConfirm()
       toast.success(successMessage)
-      onClose()
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {

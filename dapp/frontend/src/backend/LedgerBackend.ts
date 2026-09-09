@@ -4,8 +4,10 @@
 import {
   buildAcceptCommand,
   buildCancelCommand,
+  buildCancelProposalCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildRejectProposalCommand,
   buildTapCommand,
   buildWithdrawCommand,
 } from '@/backend/commands'
@@ -83,6 +85,9 @@ const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
 // answers short is indistinguishable from one that answers in full.
 const MISS_STORE_KEY = 'vesting.tokenReadMisses'
 const MISS_LIMIT = 3
+
+// Shared by every exit that finds its proposal already gone, so the wording cannot drift between them.
+const PROPOSAL_GONE_MESSAGE = 'this grant is no longer outstanding: reload to see where it went'
 
 const storedTokens = (): DisclosedContract[] => {
   try {
@@ -171,6 +176,28 @@ const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
   localStorage.setItem(MISS_STORE_KEY, JSON.stringify({ ...misses, ...bumped }))
 }
 
+// What a grant leaves in this browser once it can no longer be accepted: the blob its Accept would
+// have disclosed, and the count of reads spent looking for that holding. Both are keyed by the
+// holding, so both go whichever way the grant ended. Every caller runs after its submission has
+// landed, so a browser refusing to write must not turn a committed exit into a reported failure:
+// what is left behind names a proposal that no longer exists and can only mislead a later Accept,
+// which already says so on its own.
+const forgetFunding = (tokenCid: string | undefined): void => {
+  if (tokenCid === undefined) {
+    return
+  }
+  try {
+    localStorage.setItem(
+      TOKEN_STORE_KEY,
+      JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
+    )
+    const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
+    localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+  } catch (cause: unknown) {
+    console.warn('could not forget what this browser kept for a grant that has ended', cause)
+  }
+}
+
 export class LedgerBackend implements VestingBackend {
   private readonly wallet: WalletFns
   private readonly factory: DisclosedContract
@@ -226,8 +253,9 @@ export class LedgerBackend implements VestingBackend {
 
   // actAs is explicit rather than left to the wallet's primary account, so a submission that would
   // be signed by the wrong key is rejected by the participant instead of silently reassigned. The
-  // synchronizer is a property of the submission, so it is stamped here and nowhere the disclosures
-  // are built.
+  // synchronizer is stamped here and nowhere the disclosures are built, and on the submission as
+  // well as on each disclosure: a write that discloses nothing would otherwise reach a wallet on
+  // more than one synchronizer with none named, and land on its default.
   private submit(
     actAs: string,
     command: LedgerCommand,
@@ -238,6 +266,7 @@ export class LedgerBackend implements VestingBackend {
       actAs: [actAs],
       readAs: [actAs],
       commands: [command],
+      ...(sync === undefined ? {} : { synchronizerId: sync }),
       disclosedContracts:
         sync === undefined ? disclosed : disclosed.map((one) => ({ ...one, synchronizerId: sync })),
     })
@@ -441,7 +470,7 @@ export class LedgerBackend implements VestingBackend {
     // Two different failures, and pointing a stale view at the blob store would send the receiver
     // hunting for a browser that never had anything to do with it.
     if (proposal === undefined) {
-      throw new Error('this grant is no longer outstanding: reload to see where it went')
+      throw new Error(PROPOSAL_GONE_MESSAGE)
     }
     const wanted = reservedToken(proposal)
     const token = storedTokens().find((one) => one.contractId === wanted)
@@ -454,11 +483,42 @@ export class LedgerBackend implements VestingBackend {
         buildAcceptCommand(this.tid('VestingProposal'), args.pendingCid, configCid),
       [token],
     )
-    // The submission archived it, so its blob can only mislead a later Accept from here on.
-    localStorage.setItem(
-      TOKEN_STORE_KEY,
-      JSON.stringify(storedTokens().filter((one) => one.contractId !== wanted)),
-    )
+    // The submission archived the proposal, so nothing this browser kept for it can do anything but
+    // mislead a later Accept.
+    forgetFunding(wanted)
+  }
+
+  // Neither exit moves anything, so neither takes the config or discloses a contract: the proposal
+  // is archived on its controller's own authority and the holding it reserved is already an
+  // ordinary Token of the funder's, back in their balance as soon as nothing names it.
+  private endProposal(
+    party: string,
+    pendingCid: string,
+    build: (templateId: string, pendingCid: string) => LedgerCommand,
+  ): Promise<unknown> {
+    return this.submit(party, build(this.tid('VestingProposal'), pendingCid), [])
+  }
+
+  // Read before the archive for the holding the proposal names, since reading it after would be too
+  // late.
+  async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
+    const offset = await this.ledgerEnd()
+    const rows = await this.readAcs(args.proposer, vesting('VestingProposal'), offset)
+    const proposal = rows.find((row) => cidOf(row) === args.pendingCid)
+    if (proposal === undefined) {
+      throw new Error(PROPOSAL_GONE_MESSAGE)
+    }
+    await this.endProposal(args.proposer, args.pendingCid, buildCancelProposalCommand)
+    // Only once the submission has landed: a prompt the wallet declines leaves a grant that is
+    // still outstanding and still acceptable.
+    forgetFunding(reservedToken(proposal))
+  }
+
+  // No read of its own, unlike the cancel above: blobs are stored only for grants this browser
+  // funded, so the receiver has nothing to forget, and readAcs answering short would have blocked a
+  // live decline for a prune that was never going to run.
+  async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
+    await this.endProposal(args.receiver, args.pendingCid, buildRejectProposalCommand)
   }
 
   async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {

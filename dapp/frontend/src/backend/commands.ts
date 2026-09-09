@@ -104,6 +104,14 @@ export const buildCreateVestingCommand = (
 export const buildAcceptCommand = (templateId: string, pendingCid: string, configCid: string) =>
   exercise(templateId, pendingCid, 'VestingProposal_Accept', { configCid })
 
+// Neither exit takes the config: both choices are bodyless and move no holding, so a proposal is
+// archived on its controller's authority alone.
+export const buildCancelProposalCommand = (templateId: string, pendingCid: string) =>
+  exercise(templateId, pendingCid, 'VestingProposal_Cancel', {})
+
+export const buildRejectProposalCommand = (templateId: string, pendingCid: string) =>
+  exercise(templateId, pendingCid, 'VestingProposal_Reject', {})
+
 // No nowMicros: the choice reads on-ledger getTime.
 export const buildWithdrawCommand = (
   templateId: string,

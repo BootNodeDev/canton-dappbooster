@@ -138,6 +138,17 @@ submitting a rejection. A grant that has left the receiver's view says something
 stale dashboard and a missing blob are different problems and pointing the first at the blob store
 sends the reader to a browser that was never involved.
 
+Accept is no longer the only exit. `VestingProposal_Cancel` and `VestingProposal_Reject` are
+bodyless and move no holding, so the funder's cancel and the receiver's decline take neither the
+config nor a disclosure: a consuming choice archives on its controller's own authority. Nothing has
+to hand the reserved holding back either, since it is an ordinary unlocked `Token` throughout and
+`freeTokens` subtracts only what an outstanding proposal names. Both go through one `endProposal`,
+which reads the proposal before the write because the blob this browser kept is keyed by the holding
+that proposal names, and forgets that blob and its read-miss count after the write, never before: a
+prompt the wallet declines leaves a grant that is still acceptable. A grant ended from another
+browser still leaves its blob behind, since a stored blob records no owner and one party's view
+cannot safely prune another's.
+
 The escrow needs no such hand-off. A `LockedToken` is `signatory admin, owner, holders` and the
 escrow's holders are the provider and the receiver, so both ends of a grant can read it. Only the
 config is disclosed on withdraw, cancel and residual claim.

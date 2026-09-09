@@ -37,9 +37,11 @@ export interface VestingBackend {
   accept(args: { receiver: string; pendingCid: string }): Promise<void>
   balanceOf(partyId: string): Promise<string>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
+  cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void>
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void>
   tap(args: { amount: string; party: string }): Promise<void>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
@@ -275,7 +277,7 @@ export const fundedBy = (row: AcsRow, party: string): boolean => argOf(row).prop
 // can report by how much the funder is short.
 export const selectHoldings = (rows: AcsRow[], total: string): AcsRow[] | undefined => {
   // The empty set covers a non-positive total, and a grant submitted with no inputs aborts at
-  // Accept while `VestingProposal` offers the receiver no way to clear it.
+  // Accept, leaving the receiver to decline it for nothing.
   if (compareAmounts(total, '0') <= 0) {
     return undefined
   }

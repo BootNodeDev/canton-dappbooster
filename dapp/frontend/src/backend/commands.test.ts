@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAcceptCommand,
   buildCancelCommand,
+  buildCancelProposalCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildRejectProposalCommand,
   buildTapCommand,
   buildWithdrawCommand,
   decodeSchedule,
@@ -109,6 +111,28 @@ describe('command builders', () => {
         contractId: 'p1',
         choice: 'VestingProposal_Accept',
         choiceArgument: { configCid: CONFIG_CID },
+      },
+    })
+  })
+
+  it("builds the funder's proposal cancel with no argument at all", () => {
+    expect(buildCancelProposalCommand('pkg:Vesting:VestingProposal', 'p1')).toEqual({
+      ExerciseCommand: {
+        templateId: 'pkg:Vesting:VestingProposal',
+        contractId: 'p1',
+        choice: 'VestingProposal_Cancel',
+        choiceArgument: {},
+      },
+    })
+  })
+
+  it("builds the receiver's proposal reject with no argument at all", () => {
+    expect(buildRejectProposalCommand('pkg:Vesting:VestingProposal', 'p1')).toEqual({
+      ExerciseCommand: {
+        templateId: 'pkg:Vesting:VestingProposal',
+        contractId: 'p1',
+        choice: 'VestingProposal_Reject',
+        choiceArgument: {},
       },
     })
   })

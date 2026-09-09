@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VestingBackend, VestingView } from '@/backend/VestingBackend'
-import type { Grant } from '@/store/types'
+import type { Grant, PendingGrant } from '@/store/types'
 import { deriveGrant, grantBacking, grantLineage, useVestingStore } from '@/store/useVestingStore'
 import { toNumber } from '@/utils/amount'
 
@@ -231,5 +231,52 @@ describe('useVestingStore.withdraw', () => {
     const next = await useVestingStore.getState().withdraw(backend, 'r::1', 'g1', '250')
 
     expect(next).toBe('g2')
+  })
+})
+
+describe('useVestingStore.cancelProposal and rejectProposal', () => {
+  const pending = (): PendingGrant => ({
+    id: 'p1',
+    title: 'Advisor grant',
+    provider: 'p::1',
+    proposer: 'c::1',
+    receiver: 'r::1',
+    totalAmount: '1000',
+    schedule: {
+      cliff: '2025-06-01T00:00:00Z',
+      curve: { kind: 'linear', start: '2025-01-01T00:00:00Z', end: '2026-01-01T00:00:00Z' },
+    },
+  })
+
+  // The ledger archived the proposal, so the view read after the write no longer carries it.
+  const endedBackend = (calls: string[]): VestingBackend =>
+    ({
+      viewAs: async () => ({ grants: [], pendingGrants: [], claims: [] }),
+      cancelProposal: async (args: { proposer: string; pendingCid: string }) => {
+        calls.push(`cancel ${args.proposer} ${args.pendingCid}`)
+      },
+      rejectProposal: async (args: { receiver: string; pendingCid: string }) => {
+        calls.push(`reject ${args.receiver} ${args.pendingCid}`)
+      },
+    }) as unknown as VestingBackend
+
+  it('cancels as the funder and re-reads the view', async () => {
+    const calls: string[] = []
+    useVestingStore.setState({ pendingGrants: [pending()] })
+
+    await useVestingStore.getState().cancelProposal(endedBackend(calls), 'c::1', 'p1')
+
+    expect(calls).toEqual(['cancel c::1 p1'])
+    expect(useVestingStore.getState().pendingGrants).toEqual([])
+  })
+
+  it('rejects as the receiver and re-reads the view', async () => {
+    const calls: string[] = []
+    useVestingStore.setState({ pendingGrants: [pending()] })
+
+    await useVestingStore.getState().rejectProposal(endedBackend(calls), 'r::1', 'p1')
+
+    expect(calls).toEqual(['reject r::1 p1'])
+    expect(useVestingStore.getState().pendingGrants).toEqual([])
   })
 })

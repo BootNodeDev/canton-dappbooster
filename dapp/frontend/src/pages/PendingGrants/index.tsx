@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
@@ -8,12 +8,19 @@ import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
+import { EndPendingGrant } from '@/pages/PendingGrants/EndPendingGrant'
 import { PendingGrantCard } from '@/pages/PendingGrants/PendingGrantCard'
-import type { PendingGrant } from '@/store/types'
+import type { PendingGrant, Role } from '@/store/types'
 import { useVesting, useVestingStore } from '@/store/useVestingStore'
 import { useNow } from '@/utils/clock'
 import { errorText } from '@/utils/errorText'
 import { toast } from '@/utils/toast'
+
+interface Ending {
+  partyId: string
+  pendingGrant: PendingGrant
+  role: Role
+}
 
 export const PendingGrants = (): React.JSX.Element => {
   useDocumentTitle('Pending Grants')
@@ -24,6 +31,22 @@ export const PendingGrants = (): React.JSX.Element => {
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
+  // Captured at open, not read live: the role comes from a URL search param and the party from the
+  // wallet session, so either can flip under an open dialog (browser Back/Forward, an account
+  // change). This is what keeps the dialog's title and its write pinned to the grant it opened on.
+  const [ending, setEnding] = useState<Ending | undefined>(undefined)
+  // The dialog can be dismissed over the wallet prompt, which unmounts it with its submission still
+  // in flight and nothing yet refreshed, so what is already being ended is tracked by the page the
+  // card belongs to rather than by the dialog that may be gone.
+  const [endingCids, setEndingCids] = useState<ReadonlySet<string>>(new Set())
+  const cancelProposal = useVestingStore((s) => s.cancelProposal)
+  const rejectProposal = useVestingStore((s) => s.rejectProposal)
+
+  // Pinning the party is only half of it: the grant belongs to the account that opened the dialog,
+  // so an account switch under it would submit as a party the wallet no longer holds. Close it.
+  useEffect(() => {
+    setEnding((current) => (current?.partyId === partyId ? current : undefined))
+  }, [partyId])
 
   const direction = role === 'receiver' ? 'incoming' : 'outgoing'
   const visible = useMemo<PendingGrant[]>(
@@ -45,6 +68,22 @@ export const PendingGrants = (): React.JSX.Element => {
       toast.success('Grant accepted and active')
     } catch (err) {
       toast.error(errorText(err))
+    }
+  }
+
+  const endGrant = async (target: Ending): Promise<void> => {
+    const pendingCid = target.pendingGrant.id
+    setEndingCids((current) => new Set(current).add(pendingCid))
+    try {
+      await (target.role === 'funder'
+        ? cancelProposal(backend, target.partyId, pendingCid)
+        : rejectProposal(backend, target.partyId, pendingCid))
+    } finally {
+      setEndingCids((current) => {
+        const next = new Set(current)
+        next.delete(pendingCid)
+        return next
+      })
     }
   }
 
@@ -74,9 +113,20 @@ export const PendingGrants = (): React.JSX.Element => {
               direction={direction}
               nowMs={nowMs}
               onAccept={(p) => void onAccept(p)}
+              onEnd={(p) => setEnding({ pendingGrant: p, role, partyId })}
+              ending={endingCids.has(pendingGrant.id)}
             />
           ))}
         </div>
+      )}
+
+      {ending !== undefined && (
+        <EndPendingGrant
+          onClose={() => setEnding(undefined)}
+          pendingGrant={ending.pendingGrant}
+          role={ending.role}
+          onConfirm={() => endGrant(ending)}
+        />
       )}
     </div>
   )
