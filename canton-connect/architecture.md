@@ -113,6 +113,37 @@ init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3
 `networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
 `Party.networkId` for a wallet that reports none.
 
+### Remote gateway
+
+Configured like any adapter: `additionalAdapters: [new RemoteAdapter({ name, rpcUrl })]` in
+`CantonConnectConfig`, `RemoteAdapter` imported from `dapp-sdk`. Connect, restore, disconnect and
+execute all reach a gateway with no change to this package.
+
+The SDK picker lists it by `name`; picking it opens the gateway's login page in the SDK popup,
+where a self-signed IDP takes a client id and secret, the gateway pushes the connected status over
+SSE, and the party arrives. `useExecute` opens the gateway's review page the same way; approval
+there signs and executes (an admin-workflow `Ping` create came back `executed`, with an update id,
+in about half a second). The popup-close guard behaves the same on a gateway as on an extension.
+
+Restore after a reload is silent only for a gateway registered through `additionalAdapters` at
+init: `RemoteAdapter.restore()` requires the stored discovery URL to match a registered adapter's
+`rpcUrl`, so a gateway URL typed into the picker has nothing to match at the next init and its
+session does not come back.
+
+A gateway has no lock: its UI offers only Logout, which ends the gateway page's own session, not
+the dApp's, so `useWalletStatus().isLocked` never turns true on one. Disconnect from the dApp does
+work: status goes to not connected and the SDK clears its session and discovery keys, keeping the
+picker's cache.
+
+The gateway checks every `ledgerApi` resource against the Canton JSON API route list exactly (the
+templated route with values in `path`, never a concrete URL); extensions accept either.
+
+Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`, with
+`kernel.clientType: "remote"`, a `server.port` / `dappPath`, one `self_signed` entry in
+`bootstrap.idps`, and one `bootstrap.networks` entry pointing `ledgerApi.baseUrl` at the
+participant's JSON API with matching `self_signed` `auth` / `adminAuth`. Point the dApp's adapter
+at `rpcUrl: 'http://localhost:3030/api/v0/dapp'`.
+
 ### The party type
 
 A party under the hosting participant's namespace is local, any other is external. A dApp cares
@@ -131,8 +162,6 @@ announce, detect and connect path. `createAutoPicker` answers the picker headles
 
 ## Deferred
 
-- Remote / Wallet Gateway (OIDC) path: a configurable `RemoteAdapter` through `additionalAdapters`
-  and `CantonConnectConfig` (#2).
 - Themed in-page picker (#50): its PR (#63) was closed unmerged, so the SDK popup is still the only
   picker; a new attempt starts from the `walletPicker` seam.
 

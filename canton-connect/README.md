@@ -116,6 +116,31 @@ and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
+### Connecting through a Wallet Gateway
+
+```tsx
+import { RemoteAdapter } from '@canton-network/dapp-sdk'
+
+const config = {
+  appName: 'My dApp',
+  additionalAdapters: [
+    new RemoteAdapter({ name: 'Gateway', rpcUrl: 'http://localhost:3030/api/v0/dapp' }),
+  ],
+}
+```
+
+Restore after a reload is silent only for a gateway configured here; a URL typed into the picker
+at connect time has nothing to match at the next init and does not come back. A gateway has no
+lock, so `useWalletStatus().isLocked` never turns true on one. `ledgerApi` reads must use the
+templated Canton route with values in `path`; a concrete URL is refused.
+
+Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`. The config
+needs a `self_signed` IDP and `ledgerApi.baseUrl` pointed at the participant's JSON API; see the
+package on [npm](https://www.npmjs.com/package/@canton-network/wallet-gateway-remote).
+
+The full seam, including the popup flow and the party read, is in
+[architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md).
+
 ## Reference
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call

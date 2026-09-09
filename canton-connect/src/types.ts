@@ -84,6 +84,17 @@ export interface Party {
  * @example
  * const config: CantonConnectConfig = { appName: 'Vesting', networkId: 'canton:devnet' }
  *
+ * @example
+ * import type { CantonConnectConfig } from '#src/types'
+ * import { RemoteAdapter } from '@canton-network/dapp-sdk'
+ *
+ * const config: CantonConnectConfig = {
+ *   appName: 'Vesting',
+ *   additionalAdapters: [
+ *     new RemoteAdapter({ name: 'Gateway', rpcUrl: 'https://gateway.example.com/dapp' }),
+ *   ],
+ * }
+ *
  * @category Configuration
  */
 export interface CantonConnectConfig {
