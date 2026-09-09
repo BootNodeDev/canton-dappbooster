@@ -123,6 +123,7 @@ interface VestingState {
 
   accept: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
+  cancelProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
     partyId: string,
@@ -136,6 +137,7 @@ interface VestingState {
     input: CreateVestInput,
   ) => Promise<{ disclosedBytes: number }>
   refresh: (backend: VestingBackend, partyId: string) => Promise<void>
+  rejectProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   withdraw: (
     backend: VestingBackend,
     partyId: string,
@@ -194,6 +196,11 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
+  cancelProposal: async (backend, partyId, pendingCid) => {
+    await backend.cancelProposal({ proposer: partyId, pendingCid })
+    await get().refresh(backend, partyId)
+  },
+
   // Returns the successor's contract id, since the claim replaced the one the caller passed.
   withdraw: async (backend, partyId, contractCid, amount) => {
     const successor = trackSuccessor(get().grants, contractCid, grantLineage)
@@ -214,6 +221,11 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await backend.claimResidual({ receiver: partyId, claimCid, amount })
     await get().refresh(backend, partyId)
     return successor(get().claims)
+  },
+
+  rejectProposal: async (backend, partyId, pendingCid) => {
+    await backend.rejectProposal({ receiver: partyId, pendingCid })
+    await get().refresh(backend, partyId)
   },
 }))
 
