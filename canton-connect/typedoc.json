@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "extends": ["../typedoc.shared.json"],
+  "extends": ["../kit/typedoc.shared.json"],
   "entryPoints": ["src/index.ts", "src/testing/index.ts"],
   "projectDocuments": ["coming-from-wagmi.md"],
   "intentionallyNotExported": ["ConnectionActorRef"],

@@ -11,5 +11,5 @@ export default {
     () => 'pnpm docs:check',
   // Either side of the L2/L3 contract moving on its own is what this catches.
   '{canton-dappbooster/src/{components,providers}/**/anatomy.ts,canton-theme/src/**/*.css}': () =>
-    'node scripts/check-anatomy.mjs',
+    'pnpm run check:anatomy',
 }

@@ -10,13 +10,13 @@
 // because a live region carries its own inline sr-only. What is never legitimate is a component the
 // theme ignores entirely, so each anatomy object has to be reached by at least one selector.
 //
-// Usage: node scripts/check-anatomy.mjs
+// Usage: node kit/check-anatomy.mjs
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import postcss from 'postcss'
 import ts from 'typescript'
-import { createGate, repoRoot } from './lib/gate.mjs'
+import { createGate, repoRoot } from '../scripts/lib/gate.mjs'
 
 // A provider is here because ThemeProvider writes `data-theme` to <html>: it renders no markup, but
 // it does place a selector the theme keys on, so it owes an anatomy like any component.

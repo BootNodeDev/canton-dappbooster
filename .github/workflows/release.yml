@@ -28,7 +28,7 @@ jobs:
       - name: Verify the tag matches the manifests
         env:
           TAG: ${{ github.event.release.tag_name }}
-        run: node scripts/check-versions.mjs "${TAG#v}"
+        run: node kit/check-versions.mjs "${TAG#v}"
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

@@ -4,7 +4,7 @@
 // pushes and opens a *draft* GitHub release. Publishing that draft is the one irreversible step and
 // stays a human click: .github/workflows/release.yml runs on `release: published`.
 //
-// Usage: node scripts/release-version.mjs 0.4.0
+// Usage: node kit/release-version.mjs 0.4.0
 //
 // Spell the version as a plain argument. `pnpm run release:version -- 0.4.0` forwards the separator
 // into argv, so the version arrives as `--` (the deploy-dar note in CLAUDE.md); that is rejected
@@ -12,8 +12,8 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { repoRoot } from './lib/gate.mjs'
-import { DEPENDENCY_FIELDS, libraryNames, ROOT_MANIFEST, readManifests } from './lib/manifests.mjs'
+import { repoRoot } from '../scripts/lib/gate.mjs'
+import { DEPENDENCY_FIELDS, libraryNames, ROOT_MANIFEST, readManifests } from './manifests.mjs'
 
 // semver.org's own regex, minus the named groups: a build-metadata or prerelease version has to
 // survive this, and a `v` prefix, a range or a `--` must not.
@@ -23,7 +23,7 @@ const SEMVER =
 export const parseVersion = (argument) => {
   if (typeof argument !== 'string' || !SEMVER.test(argument)) {
     throw new Error(
-      `not a version: ${argument ?? '(none)'}. Usage: node scripts/release-version.mjs 0.4.0`,
+      `not a version: ${argument ?? '(none)'}. Usage: node kit/release-version.mjs 0.4.0`,
     )
   }
   return argument
@@ -138,9 +138,9 @@ const main = () => {
   process.stdout.write(`release-version: ${tag} is a draft release. Publish it to release.\n`)
 }
 
-// `import.meta.filename`, not a `file://` template around argv[1]: the two disagree the moment the
-// repo path holds a space, and then the whole bump silently no-ops.
-if (import.meta.filename === process.argv[1]) {
+// `import.meta.main`, not a comparison against argv[1]: node resolves symlinks on one side and not
+// the other, and a path with a space breaks a `file://` template, either of which no-ops the bump.
+if (import.meta.main) {
   try {
     main()
   } catch (error) {
