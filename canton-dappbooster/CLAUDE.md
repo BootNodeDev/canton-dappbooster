@@ -84,7 +84,12 @@ prints the two it will not edit for you, 3 and 5. It decides nothing below; it o
   every state the component has — `ConnectButton` renders them while pending too, and supplies its
   own two strings only when a caller passes none; `WalletButton` hands them to the face it picks.
   State stays the component's: the spinner and `data-pending` are rendered independently of the
-  words.
+  words. `CancelButton`'s live region is the exception a caller cannot override, because a spinner
+  is `aria-hidden` and its accessible name has to stay on the action rather than the wait.
+- The three wallet buttons publish `ref` (`ComponentPropsWithRef<'button'>`) where the rest of the
+  kit does not, because `WalletButton` swaps one face for another and has to hand focus to the one
+  that took over. `WalletButton` itself takes none: which element it landed on would depend on the
+  session.
 - Components import no CSS. `sideEffects: false` depends on it.
 - `tsconfig.json`'s `customConditions: ["development"]` is load-bearing: without it
   `@bootnodedev/canton-connect` resolves through its `types` entry into `dist/`, which is

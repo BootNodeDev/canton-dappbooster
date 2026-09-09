@@ -1,5 +1,5 @@
 import { useConnect } from '@bootnodedev/canton-connect'
-import type { ButtonHTMLAttributes, ReactElement } from 'react'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import { connectAnatomy } from '#src/components/WalletButton/anatomy'
 import { composeAction } from '#src/components/WalletButton/composeAction'
 import { cx } from '#src/utils/cx'
@@ -9,10 +9,12 @@ import { cx } from '#src/utils/cx'
  *
  * @category Components
  */
-export type ConnectButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
+export type ConnectButtonProps = ComponentPropsWithRef<'button'>
 
 /**
- * Connect button. Can be customized.
+ * Connect button. Can be customized. Inert while an attempt is in flight, so a click only ever
+ * connects; pair it with {@link CancelButton}, or take {@link WalletButton}, to let the user
+ * abandon one.
  *
  * @example
  * import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
@@ -31,16 +33,16 @@ export const ConnectButton = ({
   type = 'button',
   ...rest
 }: ConnectButtonProps): ReactElement => {
-  const { cancelConnect, connect, isPending } = useConnect()
-  const handleClick = composeAction(onClick, isPending ? cancelConnect : connect)
-  const ownLabel = isPending && children === undefined
+  const { connect, isPending } = useConnect()
 
   return (
     <button
       {...rest}
-      aria-label={ownLabel ? 'Cancel connecting' : undefined}
+      aria-disabled={isPending || undefined}
       className={cx(connectAnatomy.parts.root, className)}
-      onClick={handleClick}
+      // `aria-disabled` keeps the button focusable but leaves the click live, so an inert one that
+      // kept its handler would still submit a caller's form.
+      onClick={isPending ? (event) => event.preventDefault() : composeAction(onClick, connect)}
       type={type}
       {...{ [connectAnatomy.states.pending]: isPending || undefined }}
     >
