@@ -4,13 +4,14 @@
   "description": "wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets",
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check",
-    "lint:fix": "biome check --write",
+    "coverage": "vitest run --coverage",
     "format": "biome format --write",
-    "coverage": "vitest run --coverage"
+    "lint:fix": "biome check --write",
+    "lint": "biome check",
+    "prepack": "tsdown",
+    "test:watch": "vitest",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "type": "module",
   "private": false,

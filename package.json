@@ -8,21 +8,23 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "mint-token": "node scripts/mint-token.mjs ledger-api-user",
-    "build-dar": "pnpm -C dapp/daml run build",
-    "deploy-dar": "bash scripts/deploy-dar.sh",
-    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting.mjs",
     "app:dev": "pnpm -C dapp/frontend run dev -- --host localhost --port 3012 --strictPort",
-    "lint": "biome check --error-on-warnings",
-    "lint:fix": "biome check --write",
-    "typecheck": "pnpm -r run --if-present typecheck",
+    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting.mjs",
+    "build-dar": "pnpm -C dapp/daml run build",
     "build": "pnpm -r run --if-present build",
-    "test": "pnpm -r run --if-present test && node --test \"scripts/*.test.mjs\"",
-    "knip": "knip",
-    "docs:check": "typedoc --emit none && node scripts/docs-check.mjs",
-    "docs:build": "typedoc",
     "check:anatomy": "node scripts/check-anatomy.mjs",
-    "prepare": "husky"
+    "deploy-dar": "bash scripts/deploy-dar.sh",
+    "docs:build": "typedoc",
+    "docs:check": "typedoc --emit none && node scripts/docs-check.mjs",
+    "knip": "knip",
+    "lint:fix": "biome check --write",
+    "lint": "biome check --error-on-warnings",
+    "mint-token": "node scripts/mint-token.mjs ledger-api-user",
+    "prepare": "husky",
+    "release": "pnpm -r --filter './canton-*' publish --no-git-checks",
+    "test": "pnpm -r run --if-present test && node --test \"scripts/*.test.mjs\"",
+    "typecheck": "pnpm -r run --if-present typecheck"
+
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
