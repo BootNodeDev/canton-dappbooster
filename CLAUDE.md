@@ -376,6 +376,54 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium). `@bootnodedev/canton-wallet-service` is listed there too, because pnpm refuses to run a git dependency's `prepare` otherwise, and that key is the resolved tarball id — moving the ref means replacing the commit sha in it.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
+## Packaging And Publishing
+
+The three libraries — `canton-connect`, `canton-dappbooster`, `canton-theme` — are published to npm
+under `@bootnodedev/`. All three are `private: false` with `publishConfig.access: "public"`, since
+the scope is private by default on npm.
+
+**Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
+`linkWorkspacePackages: true`, so pnpm links the local folder whenever that folder's own `version`
+satisfies the range, and downloads from npm when it does not. `dapp/frontend` and
+`canton-dappbooster` both ask for `^0.3.0`, and the three folders are all on `0.3.0`, so every one
+of them links today. That is what lets a single `package.json` serve two readers:
+
+- In this repo the three folders exist and are in range, so an edit in `canton-connect/src` shows up
+  in the dApp with no build and no republish.
+- In a project scaffolded out of this repo the folders are absent, so pnpm installs the published
+  versions. Nothing in the file changes between the two.
+
+That is the whole difference between working here and consuming the kit. A `workspace:*` range would
+break the second case: it is not a range npm can resolve.
+
+**Bumping a library past its declared range silently unlinks it.** Set `canton-connect` to `0.4.0`
+and leave the `^0.3.0` in `canton-dappbooster` and `dapp/frontend`, and the next install stops
+linking the folder and pulls `0.3.x` off npm instead. Local edits then have no visible effect and
+nothing reports it — no check, no warning. A version bump therefore has to update every range that
+points at that package in the same commit. Verify by looking for the symlink:
+`ls -l dapp/frontend/node_modules/@bootnodedev/`.
+
+**A library's top-level `exports` is for us; `publishConfig.exports` is for consumers.** Top-level
+carries the `development` condition that points at `src`, which is what the dev loop compiles
+through and what `canton-dappbooster`'s `customConditions` depends on. `files` ships only `dist`, so
+that condition would be a dead path in a consumer's `node_modules`. `publishConfig.exports` mirrors
+the top-level map with the `development` entries removed, and npm swaps it in at publish time, so
+what a consumer resolves points only at `dist`. Add a sub-path to one map and add it to the other:
+they are two hand-maintained copies of the same list, and nothing compares them. `canton-theme`
+ships `src` and has no such condition, so it needs no override.
+
+`prepack: tsdown` in both TypeScript libraries rebuilds `dist` on every `pnpm pack` and
+`pnpm publish`, so a stale or missing build cannot ship. It replaced a `prepublishOnly` that failed
+every publish on purpose, back when the `development` condition had no override to strip it.
+
+`pnpm run release` from the root is
+`pnpm -r --filter './canton-*' publish --no-git-checks`. `pnpm -r` walks the workspace in dependency
+order, so `canton-connect` publishes before `canton-dappbooster`, which depends on it.
+
+**Versioning and tagging are manual.** No release workflow exists: bump the versions, commit, tag,
+and run `pnpm run release` yourself. `--no-git-checks` means pnpm will not stop you publishing from
+a dirty tree or an unpushed branch.
+
 ## Architecture
 
 See [`architecture.md`](architecture.md) for the system shape, subproject layout, data flow between components, and the port allocation table.

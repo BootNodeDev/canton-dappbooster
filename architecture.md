@@ -126,3 +126,26 @@ template moves past the local copy, so the config drifts from the installed vers
 from a committed file. The Splice checkout and the runtime env land in its `.generated/`.
 
 For the bring-up sequence, follow [`README.md`](README.md).
+
+## Packaging
+
+`canton-connect`, `canton-dappbooster` and `canton-theme` are three npm packages that also happen to
+sit in this repo. Which copy a consumer gets is decided per install, by version:
+
+| Where | What resolves | Why |
+| --- | --- | --- |
+| this repo | the local folder, symlinked into `node_modules` | `linkWorkspacePackages: true` in `pnpm-workspace.yaml`, and the folder's `version` satisfies the declared range |
+| a project scaffolded from it | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
+
+Both cases read the same `package.json`. Nothing in `dapp/frontend` or `canton-dappbooster` names a
+workspace, only a range (`^0.3.0`), which is why the same file works in a repo that has the folders
+and in one that does not.
+
+What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a
+`development` condition pointing at `src`, so the dApp's Vite and `tsc` compile library source
+directly. The published copy has no such condition — `publishConfig.exports` overrides the map at
+publish time — so a consumer resolves `dist`, built by `prepack`.
+
+`pnpm run release` publishes the three in dependency order. Versioning and tagging are manual; no
+workflow does it. The version ranges are the link, so a bump that outruns them turns a local folder
+into a download without saying so; the packaging rules in [`CLAUDE.md`](CLAUDE.md) cover that.
