@@ -16,12 +16,12 @@ src/
     accountsMachine.ts      the account read, invoked inside session.authenticated
     accountsActors.ts       listAccounts reader and accountsChanged listener
   CantonConnectProvider/
-    index.tsx               the context: publishes the actor and three actions
+    index.tsx               the context: publishes the actor and four actions
     useConnectionActor.ts   creates the actor, sends the boot restore
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the six public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
@@ -62,8 +62,8 @@ flowchart LR
 
 ### The lifecycle: `machine/`
 
-One model of connecting, session, lock and disconnect, so the impossible combinations (a status
-with no party, an error beside a live session) cannot be built. Three decisions carry the weight:
+One model of connecting, session, lock and disconnect, so the impossible combinations (a party with
+no live session, an error beside a live session) cannot be built. Three decisions carry the weight:
 
 - `idle` is not `disconnected`. `idle` means the boot restore has not answered; `disconnected` means
   it has, and there is nothing.
@@ -76,17 +76,19 @@ with no party, an error beside a live session) cannot be built. Three decisions 
 ### The bridges
 
 `connect()` and `disconnect()` are a send plus a wait on a tag, so the promise over a transition
-lives outside the machine. Neither passes a timeout. The connect wait is #105; the disconnect wait
-the machine bounds itself, giving up on a wallet 10 s silent (`DISCONNECT_TIMEOUT_MS`), since the
-SDK's request carries no deadline of its own.
+lives outside the machine. Neither passes a timeout. The connect wait has no clock on purpose, since
+a wallet login can take as long as it takes; it ends when the wallet answers or the user cancels
+(`connect.cancel`). The disconnect wait the machine bounds itself, giving up on a wallet 10 s silent
+(`DISCONNECT_TIMEOUT_MS`), since nobody is deciding anything in that window.
 
 ### The provider publishes, the hooks select
 
 The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
-through it, so the bridges stay the only senders) and three identity-stable actions. Each hook
+through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
-itself. `useConnect`, `useParty` and `useWalletStatus` read session state; `useLedger`, `useExecute`
-and `useSignMessage` select a guard plus the sdk and call it directly, never entering the machine.
+itself. `useConnect`, `useDisconnect`, `useParty` and `useWalletStatus` read session state;
+`useLedger`, `useExecute`, `useSignMessage` and `usePartyType` select a guard plus the sdk and
+call it directly, never entering the machine.
 
 The machine's input is read once, when the actor is created, so a changed `config` prop needs a
 remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out
@@ -100,7 +102,8 @@ the machine a `createSdk` closure rather than an instance.
 
 With the SDK popup in use, `guardedConnect` wraps `sdk.connect()` with a watchdog on the popup
 window, because the SDK misses a close (#49). A caught close rejects with `PickerClosedError`, which
-takes the machine to `retiring`, where the `DappSDK` is replaced.
+takes the machine to `retiring`, where the `DappSDK` is replaced. `cancelConnect` lands there too:
+the guard closes the popup itself, off the abort xstate fires when it stops the connect actor.
 
 ### Adapters
 
@@ -109,6 +112,16 @@ a `WalletConnectAdapter` when `walletConnectProjectId` is set, plus `config.addi
 init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3030` dev gateway.
 `networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
 `Party.networkId` for a wallet that reports none.
+
+### The party type
+
+A party under the hosting participant's namespace is local, any other is external. A dApp cares
+because the reference gateway refuses `signMessage` for a local party. CIP-0103 has no field for
+it, so `usePartyType().readPartyType` derives it when the consumer asks, never in the machine: one
+`ledgerApi` read of the participant id (`GET /v2/parties/participant-id`, open to a `CanActAs`
+token), its namespace compared with `Party.namespace`, which arrives from the wallet unchanged, as
+`signingProviderId` does. A failed read rejects; what follows is the consumer's call. `isLocal` on
+the parties endpoint means hosted here, external parties included, so it is not the signal.
 
 ### Testing doubles
 

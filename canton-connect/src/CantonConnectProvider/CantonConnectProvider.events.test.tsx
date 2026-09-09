@@ -3,6 +3,7 @@
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useConnect } from '#src/hooks/useConnect'
+import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useExecute } from '#src/hooks/useExecute'
 import { useParty } from '#src/hooks/useParty'
 import { clearDiscoveryStorage } from '#src/testing/discoveryStorage'
@@ -45,6 +46,41 @@ describe('CantonConnectProvider wallet pushes', () => {
     wallet.dispose()
   })
 
+  it('keeps execute stable when a push changes the party object but not its id', async () => {
+    const wallet = walletA()
+
+    const { result } = renderSession(() => ({
+      connect: useConnect(),
+      party: useParty(),
+      execute: useExecute(),
+    }))
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+
+    const before = result.current.execute.execute
+
+    act(() => {
+      wallet.push('accountsChanged', [
+        {
+          partyId: 'alice::1220ab',
+          primary: true,
+          hint: 'alice renamed',
+          publicKey: 'pub-alice',
+          networkId: 'canton:local',
+        },
+      ])
+    })
+
+    await waitFor(() => expect(result.current.party.party?.name).toBe('alice renamed'))
+    expect(result.current.execute.execute).toBe(before)
+
+    wallet.dispose()
+  })
+
   it('advances useExecute().lastTx through a pending then executed txChanged push', async () => {
     const wallet = walletA()
 
@@ -83,6 +119,7 @@ describe('CantonConnectProvider wallet pushes', () => {
 
     const { result } = renderSession(() => ({
       connect: useConnect(),
+      disconnect: useDisconnect(),
       party: useParty(),
       execute: useExecute(),
     }))
@@ -100,7 +137,7 @@ describe('CantonConnectProvider wallet pushes', () => {
     await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('pending'))
 
     await act(async () => {
-      await result.current.connect.disconnect()
+      await result.current.disconnect.disconnect()
     })
 
     expect(result.current.party.party).toBe(undefined)

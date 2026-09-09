@@ -1,4 +1,6 @@
 // @vitest-environment node
+
+import type { WalletPickerFn } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import {
   createActor,
@@ -8,7 +10,7 @@ import {
   SimulatedClock,
   waitFor,
 } from 'xstate'
-import { PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
 import type { AccountsInput } from '#src/machine/accountsActors'
 import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
 import {
@@ -29,10 +31,11 @@ import {
 // Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a
 // DOM.
 import { connectionInput } from '#src/testing/connectionInput'
+import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = { partyId: 'alice::1220ab', networkId: 'canton:local' }
+const party = testParty('alice::1220ab')
 
 // Provided wherever a recorded sequence walks through a session: the real read reaches an sdk
 // double that never answers, which would park those sequences in `reading`.
@@ -1169,7 +1172,7 @@ describe('connectionMachine', () => {
       actor.start()
       actor.send({ type: 'restore' })
       await pause(0)
-      const stranded = actor.getSnapshot().context.sdk
+      const abandoned = actor.getSnapshot().context.sdk
 
       actor.send({ type: 'disconnect' })
       clock.increment(DISCONNECT_TIMEOUT_MS - 1)
@@ -1178,7 +1181,7 @@ describe('connectionMachine', () => {
       clock.increment(1)
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
-      expect(actor.getSnapshot().context.sdk).not.toBe(stranded)
+      expect(actor.getSnapshot().context.sdk).not.toBe(abandoned)
 
       actor.stop()
     })
@@ -1312,16 +1315,16 @@ describe('connectionMachine', () => {
     })
   })
 
-  // A picker the user walked out on leaves sdk.connect() running inside the instance, so that
+  // A picker the user abandoned leaves sdk.connect() running inside the instance, so that
   // instance is abandoned and the session re-derived on a fresh one.
-  describe('retiring the stranded sdk', () => {
+  describe('retiring the abandoned sdk', () => {
     const closedPicker = fromPromise<WalletStatusUpdate, ConnectInput>(() =>
       Promise.reject(new PickerClosedError()),
     )
 
     // One name per instance, so which of them the machine inits after the swap is visible.
     const namedSdks = () => {
-      const names = ['stranded', 'replacement']
+      const names = ['abandoned', 'replacement']
       const inited: string[] = []
 
       const createSdk = () => {
@@ -1338,12 +1341,12 @@ describe('connectionMachine', () => {
       return { createSdk, inited }
     }
 
-    it('answers the walked-out connect as a cancel, on a replaced sdk', async () => {
+    it('answers the abandoned connect as a cancel, on a replaced sdk', async () => {
       const machine = connectionMachine.provide({ actors: { accounts, connect: closedPicker } })
       const actor = createActor(machine, { input: connectionInput() })
 
       actor.start()
-      const stranded = actor.getSnapshot().context.sdk
+      const abandoned = actor.getSnapshot().context.sdk
 
       actor.send({ type: 'connect' })
 
@@ -1354,7 +1357,7 @@ describe('connectionMachine', () => {
       expect(settled.hasTag('connect.failed')).toBe(false)
       // nothing failed, so nothing is left for a consumer to read
       expect(settled.context.lastConnectError).toBeUndefined()
-      expect(settled.context.sdk).not.toBe(stranded)
+      expect(settled.context.sdk).not.toBe(abandoned)
 
       actor.stop()
     })
@@ -1477,7 +1480,7 @@ describe('connectionMachine', () => {
 
     // A status of disconnected or idle in between would unmount a status-gated app while its
     // session survives, so every step of the resume must read as the attempt still running.
-    it('resumes the standing session when a wallet change is walked out on', async () => {
+    it('resumes the standing session when a wallet change is abandoned', async () => {
       const machine = connectionMachine.provide({
         actors: { accounts, init, restore, connect: closedPicker },
       })
@@ -1588,6 +1591,135 @@ describe('connectionMachine', () => {
       // the cancel `retiring` cleared is replaced by the boot failure, not left empty
       expect(actor.getSnapshot().context.lastConnectError).toBe(bootFailed)
       expect(actor.getSnapshot().hasTag('connect.failed')).toBe(true)
+
+      actor.stop()
+    })
+  })
+
+  describe('cancelling a connect', () => {
+    // The wallet that took the request and answered nothing: no session, no error, no close to
+    // watch for, so only the user can end the wait.
+    const neverAnswers = fromPromise<WalletStatusUpdate, ConnectInput>(
+      () => new Promise<WalletStatusUpdate>(() => {}),
+    )
+    const nothingToRestore = fromPromise<WalletStatusUpdate, RestoreInput>(() =>
+      Promise.reject(new Error('no session')),
+    )
+
+    it('answers a wallet that never replies as a cancel, on a replaced sdk', () => {
+      const machine = connectionMachine.provide({ actors: { accounts, connect: neverAnswers } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      const abandoned = actor.getSnapshot().context.sdk
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+
+      const settled = actor.getSnapshot()
+
+      expect(settled.matches('retiring')).toBe(true)
+      expect(settled.hasTag('connect.cancelled')).toBe(true)
+      expect(settled.hasTag('connect.failed')).toBe(false)
+      // nothing failed, so nothing is left for a consumer to read
+      expect(settled.context.lastConnectError).toBeUndefined()
+      // the abandoned connect() still holds this instance's client
+      expect(settled.context.sdk).not.toBe(abandoned)
+
+      actor.stop()
+    })
+
+    it('lands disconnected once the replacement has booted', async () => {
+      const machine = connectionMachine.provide({
+        actors: { accounts, init, connect: neverAnswers, restore: nothingToRestore },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().context.lastConnectError).toBeUndefined()
+
+      actor.stop()
+    })
+
+    // A status of disconnected or idle in between would unmount a status-gated app while its
+    // session survives, so every step of the resume must read as the attempt still running.
+    it('resumes the standing session when a wallet change is cancelled', async () => {
+      const machine = connectionMachine.provide({
+        actors: { accounts, init, restore, connect: neverAnswers },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'restore' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
+
+      const reported: string[] = []
+      const subscription = actor.subscribe((snapshot) => {
+        reported.push(toConnectionStatus(snapshot))
+      })
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
+      expect(reported).not.toContain('disconnected')
+      expect(reported).not.toContain('idle')
+      expect(reported.at(-1)).toBe('connected')
+
+      subscription.unsubscribe()
+      actor.stop()
+    })
+
+    it('refuses the pick the abandoned connect still owes', async () => {
+      const machine = connectionMachine.provide({ actors: { accounts, connect: neverAnswers } })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      const abandoned = actor.getSnapshot().context.sdk as unknown as {
+        walletPicker: WalletPickerFn
+      }
+
+      actor.send({ type: 'connect' })
+      actor.send({ type: 'connect.cancel' })
+
+      await expect(abandoned.walletPicker([])).rejects.toBeInstanceOf(ConnectCancelledError)
+
+      actor.stop()
+    })
+
+    it('ends the session when cancelled during the party ready', async () => {
+      const machine = connectionMachine.provide({
+        actors: {
+          connect,
+          disconnect,
+          accounts: accountsMachine.provide({
+            actors: {
+              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => new Promise(() => {})),
+            },
+          }),
+        },
+      })
+      const actor = createActor(machine, { input: connectionInput() })
+
+      actor.start()
+      actor.send({ type: 'connect' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches({ session: { authenticated: 'reading' } })).toBe(true)
+
+      actor.send({ type: 'connect.cancel' })
+      await pause(0)
+
+      expect(actor.getSnapshot().matches('disconnected')).toBe(true)
+      expect(actor.getSnapshot().hasTag('connect.cancelled')).toBe(true)
 
       actor.stop()
     })

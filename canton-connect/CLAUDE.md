@@ -19,19 +19,20 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   lifecycle; remount the provider (`key`) to change it.
 - **A state carries a tag for what it means to the outside.** The tags union in
   `machine/connectionMachine.ts` is the authority, and no other module names a state. A state that
-  answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here
-  (#105).
+  answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here,
+  and no clock will rescue it.
 - **A state's `exit` clears what that state alone justified.** `party` is cleared on leaving
   `session.authenticated`, because a wallet that stops serving requests has none to offer, and a
   lock cannot be told from a wallet-side disconnect. `sdk` has no exit; nothing outlives it.
 - **Listeners register only inside a state's `invoke`.** `sdk.onX` binds to the current client and
   `sdk.connect()` swaps it.
-- **The provider selects nothing.** It publishes the config, the actor and three actions; each hook
+- **The provider selects nothing.** It publishes the config, the actor and four actions; each hook
   selects its own slice. Never add a field a hook could select.
 - **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
   narrows `DappSDK` to the methods this package calls.
-- **React owns two things:** `lastTx` (`useExecute`) and the `toConnectError` memo (`useConnect`).
-  Anything else that looks like state belongs in the machine.
+- **The machine owns the session; a hook owns what it asked for.** `sdk`, `party`, status and the
+  last connect error are machine context, never React state. A call's result or in-flight flag
+  (`lastTx`, a signature) is React state: the session does not depend on it.
 - **Import the SDK's types.** A `param as Parameters<…>` cast is a duplicated type: import the real
   one from `dapp-sdk` or `core-types`.
 - **The picker is `CantonConnectConfig.walletPicker`.** No picker UI in this package; that lives in
@@ -46,10 +47,14 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
 
 ## Bumping `dapp-sdk`
 
-`guardedConnect` rests on two SDK internals no test can pin: that the picker window comes from
-`window.open`, and the shape of the `SPLICE_WALLET_PICKER_RESULT` message it reads and posts. Why:
-[`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve `dapp/frontend` and
-walk all four:
+`guardedConnect` and `retireSdk` rest on three SDK internals no test can pin:
+
+- the picker popup is opened through `window.open`
+- the shape of the `SPLICE_WALLET_PICKER_RESULT` message
+- `connect()` calls `this.walletPicker` only when it reaches the picker, so a swapped one is honored
+
+Why: [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve `dapp/frontend`
+and walk all five:
 
 1. Close the picker without choosing, three times over: the button re-enables each time, and the
    next real connect raises exactly one approval prompt.
@@ -60,6 +65,9 @@ walk all four:
 4. Check that `new DappSDK()` still only initializes fields (true on 1.5.1). The machine constructs
    one inside a plain `assign`; if construction turns effectful, move the ritual into the provider's
    `createSdk` and dispose the abandoned instance on the same transition, never from an effect.
+5. Click Connect, then the Cancel that replaces it, fast enough to beat the popup: the button reads
+   Connect again and no picker window appears. One appearing means `connect()` no longer reads
+   `walletPicker` off the instance at pick time.
 
 ## Layout
 

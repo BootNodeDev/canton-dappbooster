@@ -1,4 +1,5 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
+import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
@@ -11,11 +12,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
+import { Pills } from '@/components/Pills'
 import { RoleSelect } from '@/components/RoleSelect'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
-import { PlusIcon } from '@/icons'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
@@ -29,9 +30,6 @@ import {
 import { addAmounts, isPositive } from '@/utils/amount'
 import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
-import { errorText } from '@/utils/errorText'
-import { formatToken } from '@/utils/format'
-import { toast } from '@/utils/toast'
 import { DBT } from '@/utils/tokens'
 
 interface GrantRow {
@@ -39,9 +37,6 @@ interface GrantRow {
   grant: Grant
 }
 
-// One row per filter, so adding one is a single entry rather than an edit to a union, a label list
-// and a branch that had to agree. The two status entries carry their GrantStatus name and the pill's
-// own wording, so a row can never sit under a heading its own badge contradicts.
 const FILTERS = [
   { value: 'all', label: 'All', match: () => true },
   { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
@@ -65,16 +60,7 @@ const FILTERS = [
 
 type Filter = (typeof FILTERS)[number]['value']
 
-// Marks the row a claim just landed on: it moves nothing, so a reader looking elsewhere can still
-// find what changed. The keyframes end on the card's own surface and shadow and the fill mode holds
-// them, so the class needs no timer to take back off.
 const HIGHLIGHT = 'animate-claimed'
-
-// The registry publishes an instrument's id, name, symbol and decimals but never its faucet, and
-// the config is admin-signed with no payload in its disclosure, so the per-tap cap cannot be read
-// from the app. This must stay at or under the `maxPerTap` scripts/bootstrap-vesting.mjs sets; above
-// it, InstrumentConfig_Tap aborts and the message surfaces in the toast below.
-const TAP_AMOUNT = '1000'
 
 interface ClaimTarget {
   available: string
@@ -101,7 +87,6 @@ export const Dashboard = (): React.JSX.Element => {
   const [claimTarget, setClaimTarget] = useState<ClaimTarget | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
   const [justClaimed, setJustClaimed] = useState<string | null>(null)
-  const [tapping, setTapping] = useState(false)
 
   const rows = useMemo<GrantRow[]>(() => {
     const mine = grants.filter((g) =>
@@ -115,8 +100,6 @@ export const Dashboard = (): React.JSX.Element => {
     return match === undefined ? rows : rows.filter(match)
   }, [rows, filter])
 
-  // The sum rides with the list it sums, or it re-reduces on every clock tick for a figure only the
-  // receiver lens ever renders.
   const { myClaims, residualClaimable } = useMemo(() => {
     const mine = role === 'receiver' ? claims.filter((c) => c.receiver === partyId) : []
     return {
@@ -137,33 +120,16 @@ export const Dashboard = (): React.JSX.Element => {
     return acc
   }, [rows])
 
-  // A refresh after a write keeps the rows on screen; only a read with nothing to show waits.
   const firstRead = loading && grants.length === 0
 
-  // Above the handlers, so they close over a backend that is known to exist.
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
-  }
-
-  // The tap creates a holding and touches no grant, so nothing in the store has to be refreshed;
-  // the Create grant modal reads the balance on mount and so already sees it.
-  const onTap = async (): Promise<void> => {
-    setTapping(true)
-    try {
-      await backend.tap({ amount: TAP_AMOUNT, party: partyId })
-      toast.success(`Tapped ${formatToken(TAP_AMOUNT)} ${DBT.symbol}`)
-    } catch (err) {
-      toast.error(errorText(err))
-    } finally {
-      setTapping(false)
-    }
   }
 
   const onConfirmClaim = async (amount: string): Promise<void> => {
     if (claimTarget === null) {
       return
     }
-    // The claim replaces the contract, so the successor's id is what identifies the row to flag.
     const successor =
       claimTarget.kind === 'grant'
         ? await withdraw(backend, partyId, claimTarget.id, amount)
@@ -181,7 +147,6 @@ export const Dashboard = (): React.JSX.Element => {
     })
   }
   const openResidual = (claim: VestedClaim): void => {
-    // A residual claim carries no schedule, so the floor spans the one amount the grant's two do.
     const available = claimAvailable(claim)
     setClaimTarget({ kind: 'claim', id: claim.id, available, backing: available })
   }
@@ -191,36 +156,9 @@ export const Dashboard = (): React.JSX.Element => {
       <PageTitle title="Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <fieldset className="flex flex-wrap items-center gap-2">
-          <legend className="sr-only">Filter grants</legend>
-          {FILTERS.map((entry) => (
-            <button
-              key={entry.value}
-              type="button"
-              aria-pressed={filter === entry.value}
-              onClick={() => setFilter(entry.value)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
-                filter === entry.value
-                  ? 'border-primary bg-primary-soft text-fg'
-                  : 'border-border text-fg-muted hover:text-fg',
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </fieldset>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="ml-auto"
-          pending={tapping}
-          onClick={() => void onTap()}
-        >
-          Get test tokens
-        </Button>
-        <Button size="sm" className="pl-3" onClick={() => setCreating(true)}>
-          <PlusIcon />
+        <Pills label="Filter grants" onChange={setFilter} options={FILTERS} value={filter} />
+        <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
+          <Plus />
           Create
         </Button>
       </div>

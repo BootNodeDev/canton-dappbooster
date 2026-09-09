@@ -22,7 +22,7 @@ const OPERATOR_HINT = 'vesting-operator-'
 
 const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)
 
-const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Promise<T> =>
+export const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Promise<T> =>
   (await ledgerApi(params)) as T
 
 type ActiveContract = {

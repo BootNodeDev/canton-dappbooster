@@ -138,6 +138,13 @@ export const buildClaimResidualCommand = (
     configCid,
   })
 
+// One fixed amount, so a tap is a menu item and not a form. The registry publishes an instrument's
+// id, name, symbol and decimals but never its faucet, and the config is admin-signed with no
+// payload in its disclosure, so the per-tap cap cannot be read from the app. This must stay at or
+// under the `maxPerTap` scripts/bootstrap-vesting.mjs sets; above it, InstrumentConfig_Tap aborts
+// and the message surfaces in the caller's toast.
+export const TAP_AMOUNT = '1000'
+
 // Nonconsuming on the admin-signed config, so a connected wallet taps with nothing disclosed but
 // the config itself.
 export const buildTapCommand = (

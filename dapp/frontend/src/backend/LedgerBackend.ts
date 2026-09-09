@@ -305,9 +305,8 @@ export class LedgerBackend implements VestingBackend {
   // One submission, so one wallet approval: the factory splits the funder's inputs down to the grant
   // and hands the change back in the same transaction, so the funder never pre-splits the way the
   // Amulet version had to. The factory is the operator's and observer-less, so the funder cannot
-  // read it and its disclosure comes from the deployment; the disclosed size is what lets the UI
-  // surface that mechanic.
-  async createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }> {
+  // read it and its disclosure comes from the deployment.
+  async createVesting(args: CreateVestInput): Promise<void> {
     const free = await this.freeTokens(args.proposer)
     const picked = selectHoldings(free, args.totalAmount)
     if (picked === undefined) {
@@ -315,7 +314,7 @@ export class LedgerBackend implements VestingBackend {
         `only ${addAmounts(...free.map(tokenValue))} ${this.instrument.instrumentId} is free to fund this grant`,
       )
     }
-    const disclosed = await this.submitWithConfig(
+    await this.submitWithConfig(
       args.proposer,
       ({ configCid }) =>
         buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
@@ -336,9 +335,6 @@ export class LedgerBackend implements VestingBackend {
     await this.reconcileFunding(args.proposer).catch((cause: unknown) => {
       console.warn('could not read back the holding this grant reserves', cause)
     })
-    return {
-      disclosedBytes: disclosed.reduce((total, one) => total + one.createdEventBlob.length, 0),
-    }
   }
 
   // The receiver has to disclose the holding a grant reserves, and only the funder can read it: a

@@ -3,25 +3,24 @@ import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
- * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected, and
- * `reset` clears the last signature and error without touching the session.
+ * Return shape of {@link useSignMessage}. `signMessage` throws when nothing is connected or no
+ * party is reported, and `reset` clears the last signature and error without touching the session.
  *
  * @category Hooks
  */
 export interface UseSignMessageResult {
   signMessage: (message: string) => Promise<string>
   signature: string | undefined
-  isSigning: boolean
+  isPending: boolean
   error: Error | undefined
   reset: () => void
 }
 
 /**
  * Signs an arbitrary message with the connected wallet; the SDK owns the encoding.
- * Wagmi: `useSignMessage`, same name and job.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
- * connected or the wallet rejects, the rejection also landing in `error`.
+ * connected or no party is reported. A wallet refusal throws too, and lands in `error`.
  *
  * @example
  * const { signMessage } = useSignMessage()
@@ -30,7 +29,7 @@ export interface UseSignMessageResult {
  * @category Hooks
  */
 export const useSignMessage = (): UseSignMessageResult => {
-  const { call, isBusy, error, reset: resetCall } = useWalletCall()
+  const { call, isPending, error, reset: resetCall } = useWalletCall()
 
   const [signature, setSignature] = useState<string | undefined>(undefined)
 
@@ -51,5 +50,5 @@ export const useSignMessage = (): UseSignMessageResult => {
     resetCall()
   }, [resetCall])
 
-  return { signMessage, signature, isSigning: isBusy, error, reset }
+  return { signMessage, signature, isPending, error, reset }
 }

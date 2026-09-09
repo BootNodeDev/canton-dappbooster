@@ -33,17 +33,37 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
 
 One implementation each, so a second one is a bug and not a choice:
 
+- **Every interactive control is [Ark UI](https://ark-ui.com/react/docs/overview/introduction).**
+  Menus, the dialog, tooltips, the select, toasts, the wizard's steps, the number input and the
+  toggle groups are all Ark's, so nothing here re-derives dismissal, focus trapping or roving focus.
+  What the app writes is the markup's classes and its wording. The rules the library leaves open are
+  in [`architecture.md`](architecture.md).
 - **Hover explanation: `components/InfoTip`.** Never a native `title` (a one-second delay, no touch,
   unstyled) and never a hand-rolled bubble. With a string child it dash-underlines the words; with an
-  element it does not, so an icon trigger is a legal child. Childless it is a `?` badge.
+  element it does not, so an icon trigger is a legal child. Childless it is a `?` badge. It adds the
+  tap-to-open Ark leaves out.
 - **A figure: `components/AmountDisplay`.** It owns the grouping, the forced two decimals, and the
   instrument mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
   Where the surrounding text already spells out the unit, reach for `components/CompactAmount`, the
   same figure without the mark: it is what keeps the exact value in a tooltip and in the accessible
-  name once an outsized amount is abbreviated, so a hand-rolled `formatTokenCompact` loses it.
+  name once an outsized amount is abbreviated, so a hand-rolled `formatFigureCompact` loses it.
 - **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
-  `pending`, which owns the spinner, the wording and the disable together.
+  `pending`, which owns the spinner, the wording and the disable together. The one exception is
+  `TopBar/AccountMenu`'s trigger, which transcribes the kit's `.cnc-connect-button` instead so the
+  header keeps one look across every face the session swaps between; `cn` is a plain join and
+  cannot override a `buttonClass` variant, so there is no way to have both.
+- **A choice out of a short, always-visible set: `components/Pills`.** One Ark toggle group behind
+  two looks — `outline` for the dashboard's filters, `segmented` for the create form's curve switch.
+  It reports the choice as a radio group, so the picked pill is a checked radio rather than a class
+  name. A value picked from a dropdown is `components/Select`; a *view* picked from one is
+  `components/RoleSelect`, which is a menu rather than a listbox because it commands the page
+  instead of holding a value. All three panels take their surface from `utils/popover`.
+- **A generic icon comes from `lucide-react`; `src/icons/` holds only the brand and house marks,**
+  each named `*Mark`. `App.tsx` sets lucide's size and stroke width once through `LucideProvider`,
+  so a call site passes `size` only where it wants something other than the shared default. The one
+  wrapper is `components/Spinner`, which owns `animate-spin`: lucide ships no animation, and a
+  second call site spelling that class out is how one of them ends up frozen.
 - **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
   be offered, `components/GrantLock`. Each owns its own wording, tone and base classes, so a caller
   passes alignment at most and never re-spells the mapping. There is no drained-grant badge: a
@@ -56,6 +76,14 @@ One implementation each, so a second one is a bug and not a choice:
   are fill and graphic values, and each falls below 4.5:1 as small text in one theme or the other.
   Text takes `text-primary-strong`, `text-accent-strong` or `bg-pink-strong`, defined per theme to
   clear AA; the plain tokens stay for fills, borders and gradients.
+
+## Ledger reads
+
+- **A read goes through `call` in [`backend/config.ts`](src/backend/config.ts),** which is the one
+  place the untyped `ledgerApi` answer is cast. A second inline `as` is a duplicated type.
+- **A filter travels in `query`, never spelled into `resource` as a query string.** A wallet is free
+  to allowlist the resource against the ledger API's own route list, which a path carrying `?…`
+  misses. A route's own path segments still interpolate (`/v2/users/${id}/rights`).
 
 ## Naming
 

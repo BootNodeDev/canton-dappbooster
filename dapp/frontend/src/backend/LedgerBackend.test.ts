@@ -325,7 +325,7 @@ describe('LedgerBackend.createVesting', () => {
   it('exercises the factory choice with the composed note, schedule and config', async () => {
     const { backend, submissions } = harness({ acs: { [TOKEN]: [tokenRow('t1', '1000')] } })
 
-    const result = await backend.createVesting(grant)
+    await backend.createVesting(grant)
 
     expect(submissions[0]?.commands).toEqual([
       {
@@ -357,9 +357,6 @@ describe('LedgerBackend.createVesting', () => {
           createdEventBlob: 'YmxvYg==',
         },
       ]),
-    )
-    expect(result.disclosedBytes).toBe(
-      CONFIG.createdEventBlob.length + deployment.factoryBlob.length,
     )
   })
 
@@ -405,9 +402,7 @@ describe('LedgerBackend.createVesting', () => {
       readsFailAfterSubmit: true,
     })
 
-    await expect(backend.createVesting(grant)).resolves.toEqual({
-      disclosedBytes: CONFIG.createdEventBlob.length + deployment.factoryBlob.length,
-    })
+    await expect(backend.createVesting(grant)).resolves.toBeUndefined()
   })
 })
 

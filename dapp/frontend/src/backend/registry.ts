@@ -20,6 +20,7 @@ export type InstrumentConfigRef = {
 type WireDisclosure = {
   contractId?: string
   createdEventBlob?: string
+  synchronizerId?: string
   templateId?: string
 }
 
@@ -90,7 +91,9 @@ export const fetchInstrument = async (): Promise<RegistryInstrument> => {
 export const fetchInstrumentConfig = async (
   party: string,
   instrument: RegistryInstrument,
-): Promise<InstrumentConfigRef & { disclosed: DisclosedContract[] }> => {
+): Promise<
+  InstrumentConfigRef & { disclosed: DisclosedContract[]; synchronizerId: string | undefined }
+> => {
   const result = await call<{
     choiceContext?: { disclosedContracts?: WireDisclosure[] }
     factoryId?: string
@@ -121,7 +124,8 @@ export const fetchInstrumentConfig = async (
     configCid: result.factoryId,
     configTemplateId: config.templateId,
     // Rebuilt field by field to drop the wire object's `synchronizerId`, which `submit` stamps from
-    // the factory's own deployment instead, assuming the two share one synchronizer.
+    // the factory's own deployment instead, assuming the two share one synchronizer. Returned
+    // alongside because that same assumption is what makes it the app's network.
     disclosed: [
       {
         templateId: config.templateId,
@@ -129,5 +133,14 @@ export const fetchInstrumentConfig = async (
         createdEventBlob: config.createdEventBlob,
       },
     ],
+    synchronizerId: config.synchronizerId,
   }
+}
+
+// The app's side of the wrong-network check. Read from the registry rather than off the deployment
+// the wallet reads back: a wallet on another network returns no factory at all, so the deployment's
+// own synchronizer can only ever agree with it, and the strip would never fire on a first load.
+export const fetchAppNetwork = async (party: string): Promise<string | undefined> => {
+  const { synchronizerId } = await fetchInstrumentConfig(party, await fetchInstrument())
+  return synchronizerId
 }

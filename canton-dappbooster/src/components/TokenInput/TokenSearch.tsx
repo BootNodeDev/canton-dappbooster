@@ -24,7 +24,7 @@ export const TokenSearch = ({ onChange, ref, value }: TokenSearchProps): ReactEl
       autoComplete="off"
       className={anatomy.parts.search}
       onChange={(event) => onChange(event.target.value)}
-      placeholder="Search by name or symbol"
+      placeholder="Search by name, symbol, id or issuer"
       ref={ref}
       spellCheck={false}
       type="search"

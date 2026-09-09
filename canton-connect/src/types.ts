@@ -52,14 +52,25 @@ export type ConnectionStatus =
   | 'disconnected'
 
 /**
- * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` is the
- * wallet's own, falling back to `CantonConnectConfig.networkId` where the wallet reports none.
+ * Canton's terms: a local party lives under the hosting participant's namespace and the participant
+ * signs for it; an external party lives under its own key's and signs for itself.
+ *
+ * @category Types
+ */
+export type PartyType = 'local' | 'external'
+
+/**
+ * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` falls
+ * back to `CantonConnectConfig.networkId` where the wallet reports none. `namespace` and
+ * `signingProviderId` come through as reported; CIP-0103 names no `signingProviderId` values.
  *
  * @category Types
  */
 export interface Party {
   partyId: string
   networkId: string
+  namespace: string
+  signingProviderId: string
   name?: string
   publicKey?: string
 }
@@ -114,7 +125,7 @@ export type ConnectionSubscription = Pick<ConnectionActorRef, 'getSnapshot' | 's
 /**
  * One connection and the actions on it, published once. Every hook selects its slice off
  * `connection`: prefer the narrower hooks and reach for this only when none exposes the slice.
- * The three actions are `useConnect`'s own, documented there.
+ * The four actions are `useConnect`'s own, documented there.
  *
  * @category Types
  */
@@ -122,6 +133,7 @@ export interface CantonConnectContextValue {
   config: CantonConnectConfig
   connection: ConnectionSubscription
   connect: () => Promise<void>
+  cancelConnect: () => void
   disconnect: () => Promise<void>
   resetConnectError: () => void
 }

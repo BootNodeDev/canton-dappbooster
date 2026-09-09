@@ -6,7 +6,7 @@ import { Modal } from '@/components/Modal'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
-import { formatTokenFull } from '@/utils/format'
+import { formatFigureFull } from '@/utils/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
 import { DBT } from '@/utils/tokens'
@@ -56,7 +56,7 @@ export const Claim = ({
       await onConfirm(raw)
       // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
       // tooltip to recover the digits from.
-      toast.success(`Claimed ${formatTokenFull(raw)} ${DBT.symbol}`)
+      toast.success(`Claimed ${formatFigureFull(raw)} ${DBT.symbol}`)
       onClose()
     } catch (err) {
       toast.error(errorText(err))

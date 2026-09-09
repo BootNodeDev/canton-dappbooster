@@ -8,7 +8,7 @@
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR upload, the token mint, the vesting bootstrap |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | token registry (external: [BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge)) | Node + Express + TypeScript | Read-only CIP-56 registry over the `canton-token-forge` package: serves instrument metadata and the transfer-factory choice context. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
-| `dapp/frontend/` | Vite + React + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
+| `dapp/frontend/` | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |

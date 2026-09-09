@@ -188,6 +188,27 @@ describe('command builders', () => {
     })
   })
 
+  // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
+  it('canonicalizes a trailing-dot amount before it reaches the payload', () => {
+    const cmd = buildCreateVestingCommand('TID', 'fcid', {
+      configCid: CONFIG_CID,
+      proposer: 'P',
+      receiver: 'B',
+      totalAmount: '1000.',
+      schedule: linear,
+      tokenCids: [],
+    })
+    expect((cmd.ExerciseCommand.choiceArgument as { totalAmount: string }).totalAmount).toBe('1000')
+    expect(
+      buildWithdrawCommand('TID', 'cid', '100.', CONFIG_CID).ExerciseCommand.choiceArgument
+        .withdrawAmount,
+    ).toBe('100')
+    expect(
+      buildClaimResidualCommand('TID', 'rcid', '50.', CONFIG_CID).ExerciseCommand.choiceArgument
+        .withdrawAmount,
+    ).toBe('50')
+  })
+
   it('canonicalizes the amount and refuses one it cannot parse', () => {
     expect(
       buildWithdrawCommand('pkg:Vesting:VestingContract', 'c1', '10.50', CONFIG_CID).ExerciseCommand
