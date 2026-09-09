@@ -1,9 +1,9 @@
 # @canton-dappbooster/frontend: vesting dApp
 
-dApp for **vesting a canton-token-forge instrument**: propose a grant, the receiver accepts, claim
-as it vests, or cancel into a residual claim. Accepting locks the funder's `DBT` in a `LockedToken`
-escrow and each claim releases part of it, so the figures on screen are real holdings; grants render
-live vested/claimable figures from the pure schedule math in
+dApp for **vesting a canton-token-forge instrument**: propose a grant, the receiver accepts or
+declines it, claim as it vests, or cancel into a residual claim. Accepting locks the funder's `DBT`
+in a `LockedToken` escrow and each claim releases part of it, so the figures on screen are real
+holdings; grants render live vested/claimable figures from the pure schedule math in
 [`src/utils/schedule.ts`](src/utils/schedule.ts).
 
 Every read and every write goes through the connected CIP-0103 wallet, so the app acts as
