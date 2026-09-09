@@ -19,9 +19,9 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       },
-      "./testing": {
-        "types": "./dist/testing/index.d.ts",
-        "import": "./dist/testing/index.js"
+      "./connect": {
+        "types": "./dist/connect.d.ts",
+        "import": "./dist/connect.js"
       }
     }
   },
