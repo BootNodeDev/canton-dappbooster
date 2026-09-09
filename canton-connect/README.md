@@ -116,6 +116,9 @@ and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
+`ledgerApi` names its route the way Canton's JSON API OpenAPI does: templated, with the variable
+parts in `path`, never written into the string; `query` and `body` carry the rest.
+
 ### Connecting through a Wallet Gateway
 
 ```tsx
@@ -131,8 +134,8 @@ const config = {
 
 Restore after a reload is silent only for a gateway configured here; a URL typed into the picker
 at connect time has nothing to match at the next init and does not come back. A gateway has no
-lock, so `useWalletStatus().isLocked` never turns true on one. `ledgerApi` reads must use the
-templated Canton route with values in `path`; a concrete URL is refused.
+lock, so `useWalletStatus().isLocked` never turns true on one. `ledgerApi` reads follow the
+templated form above; a concrete URL is refused here too.
 
 Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`. The config
 needs a `self_signed` IDP and `ledgerApi.baseUrl` pointed at the participant's JSON API; see the

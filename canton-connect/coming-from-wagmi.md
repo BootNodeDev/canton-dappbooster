@@ -15,5 +15,5 @@ The hook names follow wagmi, so a developer arriving from it knows which one to 
 | `useWriteContract` then `useWaitForTransactionReceipt` | `useExecute().execute`, resolving after execution | The wallet submits and waits; one call covers both. |
 | none | `useExecute().lastTx` | The wallet pushes `pending`, `signed`, `executed`, `failed` as it goes; wagmi has no hook returning a stream. |
 | `useSignMessage().data`, a hex string | `useSignMessage().signature` | The name says the type. |
-| `usePublicClient()`, a typed client | `useLedger().ledgerApi`, untyped, gated by `isReady` | The participant's JSON API, passed through the wallet's session. |
+| `useReadContract`, `usePublicClient().request` | `useLedger().ledgerApi`, untyped, gated by `isReady` | The participant's JSON API; the route is templated, with values in `path`, never written into the string. |
 | `mutate`, `mutateAsync`, `status`, `variables`, `data` | none; `isPending`, `error`, `reset` carry over | No TanStack Query underneath. |

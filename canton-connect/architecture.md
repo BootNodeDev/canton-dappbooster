@@ -135,8 +135,8 @@ the dApp's, so `useWalletStatus().isLocked` never turns true on one. Disconnect 
 work: status goes to not connected and the SDK clears its session and discovery keys, keeping the
 picker's cache.
 
-The gateway checks every `ledgerApi` resource against the Canton JSON API route list exactly (the
-templated route with values in `path`, never a concrete URL); extensions accept either.
+The gateway checks every `ledgerApi` resource against the Canton JSON API route list exactly;
+extensions accept either. Ledger reads (below) covers the general rule this enforces.
 
 Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`, with
 `kernel.clientType: "remote"`, a `server.port` / `dappPath`, one `self_signed` entry in
@@ -164,6 +164,19 @@ ends the session on the wallet's side too.
 
 `useExecute` travels as one relay request (`canton_prepareSignExecute`); approval happens on the wallet,
 and the result comes back `executed`, with an update id, in under five seconds.
+
+### Ledger reads
+
+`ledgerApi` names its route the way Canton's JSON API OpenAPI does: templated, with the variable
+parts in `path`, never written into the string. The SDK's client sends this same shape on every
+transport, which is why the Remote gateway's exact route check (above) applies to every wallet.
+
+```text
+resource: '/v2/users/{user-id}/rights', path: { 'user-id': userId }   // every wallet
+resource: `/v2/users/${userId}/rights`                                // gateway refuses this
+```
+
+`query` holds query parameters, `body` the request body; neither goes into `resource`.
 
 ### The party type
 

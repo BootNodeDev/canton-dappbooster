@@ -20,14 +20,19 @@ export interface UseLedgerResult {
 
 /**
  * Escape hatch for ledger reads `useExecute` and `useSignMessage` do not cover: the participant's
- * JSON API, passed through untyped.
+ * JSON API, passed through untyped. `ledgerApi` names its route the way Canton's JSON API OpenAPI
+ * does: templated, with the variable parts in `path`, never written into the string.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
  * is connected, which `isReady` is there to check first.
  *
  * @example
  * const { ledgerApi } = useLedger()
- * await ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
+ * await ledgerApi({
+ *   requestMethod: 'get',
+ *   resource: '/v2/users/{user-id}/rights',
+ *   path: { 'user-id': 'alice' },
+ * })
  *
  * @category Hooks
  */
