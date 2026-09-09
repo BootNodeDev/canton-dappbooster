@@ -72,6 +72,14 @@ One implementation each, so a second one is a bug and not a choice:
   Text takes `text-primary-strong`, `text-accent-strong` or `bg-pink-strong`, defined per theme to
   clear AA; the plain tokens stay for fills, borders and gradients.
 
+## Ledger reads
+
+- **A read goes through `call` in [`backend/config.ts`](src/backend/config.ts),** which is the one
+  place the untyped `ledgerApi` answer is cast. A second inline `as` is a duplicated type.
+- **A filter travels in `query`, never spelled into `resource` as a query string.** A wallet is free
+  to allowlist the resource against the ledger API's own route list, which a path carrying `?…`
+  misses. A route's own path segments still interpolate (`/v2/users/${id}/rights`).
+
 ## Naming
 
 - No name repeats what its folder, its parent, or its own markup already says. `Claim`, not

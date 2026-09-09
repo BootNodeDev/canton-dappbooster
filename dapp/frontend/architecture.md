@@ -12,11 +12,11 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, and `config.ts`, which loads the deployment. |
-| `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
+| `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useWrongNetwork` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
-| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
@@ -83,6 +83,74 @@ SPA catch-all is scoped away from `/api/` so it cannot answer the route with `in
 The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
 opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
 consume. Every Amulet is DSO-signed, so it is the same party by construction.
+
+## Telling the user they are on the wrong network
+
+A write fails at the participant when the wallet submits to a network the app's contracts do not
+live on, because the `AmuletRules` and mining round ids do not exist on the ledger the wallet
+reaches. Both sides of that are read.
+[`transferContext.ts`](src/backend/transferContext.ts) carries `fetchAppNetwork`, which taps and
+returns only the `synchronizerId` wallet-service stamped on the disclosures, the network the app's
+contracts are on. Its own export rather than a field on the transfer context: that builder waits for
+an `AmuletRules` and an open mining round both, and the SV opens the first round minutes after a
+LocalNet start, while the id sits on the rules alone.
+[`synchronizer.ts`](src/backend/synchronizer.ts) reads the other side, the synchronizers the
+wallet's own participant is connected to. That is a read of its own rather than
+[`config.ts`](src/backend/config.ts)'s `synchronizerId` off the factory row, which the deployment
+already carries: that one is three round trips and its answer rebuilds the backend, so repeating it
+would re-run every ledger read along with it.
+
+The rule in [`src/utils/network.ts`](src/utils/network.ts) is membership rather than equality,
+because a participant can be connected to several synchronizers and reaching the app's one is what
+decides whether a write lands. A missing side is not a mismatch, or the strip would warn about a read
+that has not come back yet. `party.networkId` is not what is compared: CIP-0103 only recommends a
+CAIP-2 label, so two wallets may spell one network differently.
+
+The rule reports a verdict and not the ids behind it, because **the strip names the wallet's network
+and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
+defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
+the spec says what a *wallet* answers, so nothing in it names the app's side. wallet-service does
+expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and reaching it would take
+allowing a second method in [`api/rpc.ts`](api/rpc.ts). It was not worth it: that value and the
+wallet's are both typed by hand, by different people, so they read the same for two networks as
+easily as differently for one, and a strip saying "switch to canton:localnet" while already claiming
+to be on it is worse than one naming no target. Nothing checks either label against the id it claims
+to name, and no single source knows both sides — the wallet only knows the network it is on, and
+wallet-service only its own.
+
+One thing to know about the label that is shown: `CantonConnectProvider` defaults `networkId` to
+`canton:local` where the wallet reports none, and nothing downstream can tell that default from a
+real answer, so a wallet quiet about its network reads as local wherever it actually is. Only a
+non-compliant wallet gets there — the spec makes `networkId` required on an account entry, and
+canton-connect's own comment says the fallback exists for `createMockAdapter`. It can mislabel the
+sentence but never decides whether the strip appears, which is what keeps it acceptable.
+
+[`useWrongNetwork`](src/hooks/useWrongNetwork.ts) is what keeps it current, and it polls because a
+wallet-side switch reaches the app through nothing at all: CIP-0103 defines no network-change event
+and the SDK pushes accounts only. So it re-reads on three triggers — the party changing, the page
+regaining focus, and every 30 seconds. Focus is the one that catches a switch as it happens, since
+switching networks means using the wallet and the wallet takes focus; `visibilitychange` misses it,
+because an extension popup draws over the tab rather than hiding it. The interval is the backstop for
+a switch made in a window the user never comes back from. A failed read is silent and leaves the last
+answer standing, because a wallet-service that is down, or a wallet that has just locked, is not a
+wrong network.
+
+Only the wallet's side is on that poll. wallet-service answers for the one network its `NETWORK`
+variable names, so the app's side is read once and kept, and every later check is a single read of
+the wallet's participant rather than another `amulet.tap` through
+[`api/rpc.ts`](api/rpc.ts). Two of those checks can still be in flight at once — a focus landing
+mid-interval — so each carries a sequence number and only the last one started may write. The
+verdict carries the party it was read for too, or the previous party's answer would be shown against
+the new one's network for as long as the first read for that party takes.
+[`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,
+and nothing dismisses it, because only the wallet can put it right.
+
+The verdict also decides what the page itself says. On the wrong network `config.ts` finds no
+operator on the ledger the wallet reaches, so it throws its `run pnpm run bootstrap` advice and
+[`AppShell`](src/components/AppShell.tsx) would fill the page with it. That message names a symptom:
+the deployment is there, the wallet is not looking at it. So where the verdict stands, the card
+carries the network instead and the advice is held back for the case it was written for, a ledger
+that really has no deployment.
 
 ## Creating a grant takes two approvals
 

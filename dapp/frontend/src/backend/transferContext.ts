@@ -19,6 +19,8 @@ export type AppTransferContext = {
   openMiningRound: string
 }
 
+const AMULET_RULES = ':Splice.AmuletRules:AmuletRules'
+
 // Suffix match: the resolved package id differs per network and, on devnet, between entries.
 const byTemplate = (disclosures: DisclosedContract[], entity: string): DisclosedContract[] =>
   disclosures.filter((disclosure) => disclosure.templateId.endsWith(entity))
@@ -42,6 +44,14 @@ const rpc = async (method: string, params: Record<string, unknown>): Promise<unk
   return body.result
 }
 
+// The network wallet-service answered for, which is the only thing comparable against the wallet's
+// own. Its own read rather than a field on `fetchTransferContext`: the id sits on the AmuletRules
+// disclosure alone, so it must not inherit that builder's wait for an open round.
+export const fetchAppNetwork = async (party: string): Promise<string | undefined> => {
+  const result = (await rpc('amulet.tap', { receiver: party })) as TapResult
+  return byTemplate(result.disclosedContracts ?? [], AMULET_RULES).at(0)?.synchronizerId
+}
+
 export const fetchTransferContext = async (
   party: string,
 ): Promise<{
@@ -51,7 +61,7 @@ export const fetchTransferContext = async (
 }> => {
   const result = (await rpc('amulet.tap', { receiver: party })) as TapResult
   const disclosures = result.disclosedContracts ?? []
-  const amuletRules = byTemplate(disclosures, ':Splice.AmuletRules:AmuletRules').at(0)
+  const amuletRules = byTemplate(disclosures, AMULET_RULES).at(0)
   const rounds = byTemplate(disclosures, ':Splice.Round:OpenMiningRound')
   const chosen = result.commands?.ExerciseCommand?.choiceArgument?.openRound
   const round = rounds.find((one) => one.contractId === chosen) ?? rounds.at(0)

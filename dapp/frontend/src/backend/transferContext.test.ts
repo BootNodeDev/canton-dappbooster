@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchTransferContext } from '@/backend/transferContext'
+import { fetchAppNetwork, fetchTransferContext } from '@/backend/transferContext'
 
 const disclosure = (templateId: string, contractId: string): Record<string, unknown> => ({
   templateId,
@@ -141,5 +141,32 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(
       /wallet-service answered 200 for amulet.tap/,
     )
+  })
+})
+
+describe('fetchAppNetwork', () => {
+  it('reads the network wallet-service stamped on the AmuletRules disclosure', async () => {
+    stubTap([RULES, ROUND])
+
+    await expect(fetchAppNetwork('funder::1')).resolves.toBe('global-domain::1220')
+  })
+
+  // The id sits on the rules alone, and the SV opens the first round minutes after a LocalNet
+  // start, so waiting for one the way `fetchTransferContext` must would answer nothing until then.
+  it('answers before the SV has opened a round', async () => {
+    stubTap([RULES])
+
+    await expect(fetchAppNetwork('funder::1')).resolves.toBe('global-domain::1220')
+  })
+
+  const { synchronizerId: _dropped, ...RULES_WITHOUT_NETWORK } = RULES
+
+  it.each([
+    ['no AmuletRules is disclosed', [ROUND]],
+    ['the disclosure carries no network', [RULES_WITHOUT_NETWORK]],
+  ])('reports nothing when %s', async (_case, disclosures) => {
+    stubTap(disclosures)
+
+    await expect(fetchAppNetwork('funder::1')).resolves.toBeUndefined()
   })
 })

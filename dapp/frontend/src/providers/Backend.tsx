@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { VestingBackend } from '@/backend/VestingBackend'
+import { useWrongNetwork } from '@/hooks/useWrongNetwork'
 import { errorText } from '@/utils/errorText'
 
 // `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
@@ -14,6 +15,7 @@ export interface BackendState {
   configError: string | undefined
   configPending: boolean
   sessionPending: boolean
+  wrongNetwork: boolean
 }
 
 // canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both
@@ -35,7 +37,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   // re-read the ACS whenever the wallet re-pushes the same account.
   const { party } = useParty()
   const hasParty = party !== undefined
+  const partyId = party?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
+  const wrongNetwork = useWrongNetwork(ledgerApi, partyId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)
@@ -85,8 +89,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
       sessionPending: checkingSession && !hasParty,
+      wrongNetwork,
     }),
-    [backend, checkingSession, configError, deployment, hasParty],
+    [backend, checkingSession, configError, deployment, hasParty, wrongNetwork],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>
