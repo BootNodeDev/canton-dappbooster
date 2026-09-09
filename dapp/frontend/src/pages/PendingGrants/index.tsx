@@ -25,11 +25,12 @@ export const PendingGrants = (): React.JSX.Element => {
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
-  // Captured at open, not read live off `role`: a URL search param can flip under an open dialog
-  // (browser Back/Forward), and this is what keeps the dialog's title and its write pinned together.
-  const [ending, setEnding] = useState<{ pendingGrant: PendingGrant; role: Role } | undefined>(
-    undefined,
-  )
+  // Captured at open, not read live: the role comes from a URL search param and the party from the
+  // wallet session, so either can flip under an open dialog (browser Back/Forward, an account
+  // change). This is what keeps the dialog's title and its write pinned to the grant it opened on.
+  const [ending, setEnding] = useState<
+    { pendingGrant: PendingGrant; role: Role; partyId: string } | undefined
+  >(undefined)
   const cancelProposal = useVestingStore((s) => s.cancelProposal)
   const rejectProposal = useVestingStore((s) => s.rejectProposal)
 
@@ -82,7 +83,7 @@ export const PendingGrants = (): React.JSX.Element => {
               direction={direction}
               nowMs={nowMs}
               onAccept={(p) => void onAccept(p)}
-              onEnd={(p) => setEnding({ pendingGrant: p, role })}
+              onEnd={(p) => setEnding({ pendingGrant: p, role, partyId })}
             />
           ))}
         </div>
@@ -95,8 +96,8 @@ export const PendingGrants = (): React.JSX.Element => {
           role={ending.role}
           onConfirm={() =>
             ending.role === 'funder'
-              ? cancelProposal(backend, partyId, ending.pendingGrant.id)
-              : rejectProposal(backend, partyId, ending.pendingGrant.id)
+              ? cancelProposal(backend, ending.partyId, ending.pendingGrant.id)
+              : rejectProposal(backend, ending.partyId, ending.pendingGrant.id)
           }
         />
       )}

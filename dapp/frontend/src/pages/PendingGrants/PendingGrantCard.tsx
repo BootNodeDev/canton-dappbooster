@@ -77,6 +77,7 @@ export const PendingGrantCard = ({
             <Button
               size="sm"
               variant="danger-ghost"
+              className="flex-1 md:flex-none"
               onClick={() => onEnd(pendingGrant)}
               aria-label={`Decline ${pendingGrant.title}`}
             >
@@ -84,6 +85,7 @@ export const PendingGrantCard = ({
             </Button>
             <Button
               size="sm"
+              className="flex-1 md:flex-none"
               onClick={() => onAccept(pendingGrant)}
               aria-label={`Accept ${pendingGrant.title}`}
             >

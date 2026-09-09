@@ -739,6 +739,26 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
     expect(storedTokens().map((one) => one.contractId)).toEqual(['funding-t1'])
   })
 
+  // The other way round: the exit is already on the ledger, so a browser that refuses to write must
+  // not report a failure the funder would read as the grant surviving.
+  it('reports a cancel this browser cannot record as done', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const { backend } = harness({ acs })
+    await backend.createVesting(grant())
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new DOMException('storage is blocked', 'SecurityError')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(
+      backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' }),
+    ).resolves.toBeUndefined()
+
+    expect(warn).toHaveBeenCalled()
+    setItem.mockRestore()
+    warn.mockRestore()
+  })
+
   // Criterion 3, and it costs no ledger work: the holding is excluded only while a proposal names
   // it, so archiving the proposal is what returns it.
   it('returns the reserved holding to the funder’s balance', async () => {

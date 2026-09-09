@@ -178,17 +178,24 @@ const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
 
 // What a grant leaves in this browser once it can no longer be accepted: the blob its Accept would
 // have disclosed, and the count of reads spent looking for that holding. Both are keyed by the
-// holding, so both go whichever way the grant ended.
+// holding, so both go whichever way the grant ended. Every caller runs after its submission has
+// landed, so a browser refusing to write must not turn a committed exit into a reported failure:
+// what is left behind names a proposal that no longer exists and can only mislead a later Accept,
+// which already says so on its own.
 const forgetFunding = (tokenCid: string | undefined): void => {
   if (tokenCid === undefined) {
     return
   }
-  localStorage.setItem(
-    TOKEN_STORE_KEY,
-    JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
-  )
-  const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
-  localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+  try {
+    localStorage.setItem(
+      TOKEN_STORE_KEY,
+      JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
+    )
+    const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
+    localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+  } catch (cause: unknown) {
+    console.warn('could not forget what this browser kept for a grant that has ended', cause)
+  }
 }
 
 export class LedgerBackend implements VestingBackend {
