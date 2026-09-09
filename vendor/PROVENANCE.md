@@ -32,11 +32,11 @@ its own.
 | | |
 |---|---|
 | Source | https://github.com/BootNodeDev/canton-vesting-forge |
-| Release | `v0.1.0` |
-| Asset | `vesting-0.0.1.dar` |
-| Size | 677236 bytes |
-| sha256 | `0aafd73375f82679a575e4ea87efa3ea96b4b98da4e71251db793460a9ce801b` |
-| package-id | `64ed80c9a4bd847b2aa9621c02510a1feddb9a0e7e47a48b890a5fa800eeae30` |
+| Release | `v0.2.0` |
+| Asset | `vesting-0.0.2.dar` |
+| Size | 688686 bytes |
+| sha256 | `b78439bafdfb4c2e38666d3d99ac73e8c27722dada41d52876d997f16858d5b3` |
+| package-id | `e96e3b9b70a12538cc3bba264480dca9e88e87593706cc3f2e638e877ff99f67` |
 | Bundled canton-token-forge | 0.0.1, package-id `20d54824dc4d76694c70ac51dd5f0b9e063ab789ffa02d07432abb848c8360cc` |
 | Daml SDK | 3.4.11 |
 | LF target | 2.1 |
@@ -53,3 +53,14 @@ that order.
 
 There is no automated update path. To move to a later release of either: replace
 the binary, re-run the checksum, and update every row above by hand.
+
+A participant that already vetted an earlier version of the same package refuses
+the new one outright when the two are not a valid smart-contract upgrade:
+`vesting` 0.0.2 changed `VestingFactory_CreateVesting`'s return type, so a
+LocalNet carrying 0.0.1 answers the upload with
+`NOT_VALID_UPGRADE_PACKAGE`. Nothing can be uploaded past that; drop the ledger
+first and let the stack redeploy both DARs onto it:
+
+    ./scripts/dev-stack.sh down
+    ( cd .canton-localnet && ../node_modules/.bin/canton-barebones reset )
+    ./scripts/dev-stack.sh up

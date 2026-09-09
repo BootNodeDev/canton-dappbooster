@@ -68,6 +68,7 @@ export const decodeSchedule = (raw: unknown): VestingSchedule => {
 // ── Command builders ────────────────────────────────────────────────────────
 
 type CreateVestingArgs = {
+  configCid: string
   note?: string
   proposer: string
   receiver: string
@@ -83,8 +84,8 @@ const exercise = (
   choiceArgument: Record<string, unknown>,
 ) => ({ ExerciseCommand: { templateId, contractId, choice, choiceArgument } })
 
-// The only choice taking no config: it moves no token, it only records which of the funder's
-// holdings the eventual Accept will lock.
+// `tokenCids` are the funder's inputs, which the choice splits down to the grant; the holding the
+// proposal ends up naming is the exact-size output that split leaves behind.
 export const buildCreateVestingCommand = (
   templateId: string,
   factoryCid: string,
@@ -96,6 +97,7 @@ export const buildCreateVestingCommand = (
     totalAmount: canonicalAmount(args.totalAmount),
     schedule: encodeSchedule(args.schedule),
     tokenCids: args.tokenCids,
+    configCid: args.configCid,
     note: args.note ?? null,
   })
 

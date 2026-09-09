@@ -252,22 +252,27 @@ export const tokenValue = (row: AcsRow): string => {
 }
 
 // A shared participant can hold another admin's instrument under the same id, so both halves of the
-// pair are compared. `VestingProposal` carries neither field and so is never passed here.
+// pair are compared.
 export const matchesInstrument = (row: AcsRow, instrument: RegistryInstrument): boolean => {
   const { admin, instrumentId } = argOf(row) as TokenArg
   return admin === instrument.admin && instrumentId === instrument.instrumentId
 }
 
-// The holdings a pending grant has already pledged: its Accept consumes exactly these, so nothing
-// else may spend them while it is outstanding.
-export const pledgedTokens = (row: AcsRow): string[] => {
-  const cids = argOf(row).tokenCids
-  return Array.isArray(cids) ? cids.map(String) : []
+// The holding a pending grant reserves: the factory split it off at exactly the grant, and its
+// Accept consumes that one contract, so nothing else may spend it while the grant is outstanding.
+export const reservedToken = (row: AcsRow): string | undefined => {
+  const cid = argOf(row).tokenCid
+  return typeof cid === 'string' ? cid : undefined
 }
 
-// Largest first, so a grant names the fewest inputs: every named holding is a disclosure blob the
-// receiver has to carry to Accept. Undefined rather than a partial set, so the caller can report by
-// how much the funder is short.
+// Whether a pending grant is one this party funded. A `Token` has no observers, so only the funder
+// can read the holding their own grant reserves, and the grants they received are nobody's to
+// reconcile from here.
+export const fundedBy = (row: AcsRow, party: string): boolean => argOf(row).proposer === party
+
+// Largest first, so the factory splits the fewest inputs. Not for the receiver's sake any more: the
+// split leaves one holding whatever is picked. Undefined rather than a partial set, so the caller
+// can report by how much the funder is short.
 export const selectHoldings = (rows: AcsRow[], total: string): AcsRow[] | undefined => {
   // The empty set covers a non-positive total, and a grant submitted with no inputs aborts at
   // Accept while `VestingProposal` offers the receiver no way to clear it.

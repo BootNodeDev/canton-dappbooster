@@ -88,47 +88,64 @@ scoped away from `/api/` so it cannot answer the route with `index.html`.
 
 ## Creating a grant takes one approval
 
-A pending grant records the contract ids of the holdings its Accept will lock, and that Accept
-consumes exactly those. So two grants may never name the same holding: accepting one archives it and
-leaves the other permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch` before the transfer
-even runs. Whatever an outstanding grant already pledged is therefore kept out of the next
-selection, read off the funder's own pending-grant rows rather than remembered locally.
+`VestingFactory_CreateVesting` splits the funder's inputs itself: it transfers them into one
+unlocked holding of exactly the grant, hands the change straight back, and the proposal names that
+holding alone. So a grant reserves its own amount and nothing more, and the rest of the funder's
+balance stays spendable while the proposal is outstanding. That split is why the choice takes the
+`InstrumentConfig`, and it is still one submission and one wallet approval, because an unlocked
+self-transfer's controllers are the sender alone. The Amulet version could not do this in one:
+`AmuletRules_Transfer` consumes everything it is given, which is why creating a grant used to be two
+submissions and two wallet prompts.
 
-What it does not need is a pre-split. `executeTokenTransfer` returns the sender's leftover input as
-change, so `VestingProposal_Accept` can be handed a set of holdings that over-covers the grant and
-splits them itself. The Amulet version could not: `AmuletRules_Transfer` consumes everything it is
-given, which is why creating a grant used to be two submissions and two wallet prompts.
+The reserved holding is still kept out of the next selection, read off the funder's own
+pending-grant rows rather than remembered locally: an Accept consumes exactly that contract, so
+spending it would leave the grant permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch`
+before the transfer even runs. A selection built against a stale read now fails its own submission
+rather than creating a second grant on a holding that is already gone.
 
-`createVesting` picks unpledged holdings largest first until they cover the total. Largest rather
-than smallest, so a grant names the fewest inputs: every named holding is a disclosure blob the
-receiver has to carry to Accept.
+`createVesting` picks unreserved holdings largest first until they cover the total. Largest rather
+than smallest so the factory splits the fewest inputs, no longer for the receiver's sake: the split
+leaves one holding to disclose whichever inputs went into it.
 
 A holding is worth its `amount` field and nothing is computed: a token-forge `Token` does not decay,
 so unlike an Amulet there is no decayed value to reason about and no headroom to guess at.
 
 Accept is still the one write disclosing something the connected party cannot read for itself: the
-funder's holdings. `Token` is `signatory admin, owner` with no observers, so the receiver is no
-stakeholder. Their blobs are read with `includeCreatedEventBlob` while the funder is connected and
-kept in `localStorage`, written only once the grant is on the ledger, since a declined prompt must
-not leave blobs behind for holdings no grant is waiting on. Appended rather than replacing, because
-every outstanding grant's own holdings have to stay disclosable.
+holding the grant reserves. `Token` is `signatory admin, owner` with no observers, so the receiver is
+no stakeholder. That holding is created by the funder's own create submission, so its blob cannot be
+read before it exists: `createVesting` re-reads the funder's holdings with `includeCreatedEventBlob`
+once the grant is on the ledger, and keeps in `localStorage` the blob of every holding an
+outstanding grant of theirs reserves. Reconciling the whole set rather than only the grant just made
+is what lets a read that failed once be repaired later, instead of leaving a grant nobody can
+accept; and reading after the write rather than before is what keeps a declined prompt from leaving
+a blob behind for a holding no grant is waiting on. A failure there leaves the grant alone, since it
+is already on the ledger and reporting one would invite a second, so it is logged and left to the
+next reconcile.
 
-Which of those blobs a given Accept sends is read off the ledger, not guessed: the receiver is an
-observer of the grant, so `accept` fetches it and discloses exactly the `tokenCids` it names, then
-drops them, since that submission archived them. Sending the whole store instead would re-disclose
-holdings earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
-missing blob from an unrelated one. It is a browser-local hand-off between two wallet accounts,
-which is what the demo is; a receiver on another machine has no way to disclose it and `accept` says
-so rather than submitting a rejection.
+`viewAs` runs that same reconcile, which is what makes the repair reachable: a funder who creates
+one grant and stops never triggers a second create, and their own dashboard is the only other place
+the grant is seen. It costs nothing on the settled path, since the holdings are read only once a
+grant of this party's is found to be missing its blob, and it is skipped outright for the grants a
+party received rather than funded, whose holdings they could not read anyway.
+
+Which blob a given Accept sends is read off the ledger, not guessed: the receiver is an observer of
+the grant, so `accept` fetches it and discloses exactly the `tokenCid` it names, then drops it, since
+that submission archived it. Sending the whole store instead would re-disclose holdings earlier
+accepts already consumed, which the participant rejects, and grow without bound. It is a
+browser-local hand-off between two wallet accounts, which is what the demo
+is; a receiver on another machine has no way to disclose it and `accept` says so rather than
+submitting a rejection. A grant that has left the receiver's view says something else, because a
+stale dashboard and a missing blob are different problems and pointing the first at the blob store
+sends the reader to a browser that was never involved.
 
 The escrow needs no such hand-off. A `LockedToken` is `signatory admin, owner, holders` and the
 escrow's holders are the provider and the receiver, so both ends of a grant can read it. Only the
 config is disclosed on withdraw, cancel and residual claim.
 
-A grant and a residual claim each carry `admin` and `instrumentId` as template fields, so a row from
-another instrument on a shared participant is dropped before it is mapped. A pending grant carries
-neither: `VestingProposal_Accept` derives both by fetching the first holding it names, which the
-receiver cannot read. So a pending grant in a foreign instrument does render, and fails at Accept.
+A grant, a pending grant and a residual claim each carry `admin` and `instrumentId` as template
+fields, so a row from another instrument on a shared participant is dropped before it is mapped. The
+proposal stores its pair rather than deriving it, which is what lets the receiver see what a grant is
+denominated in: the funder's holdings, which the factory read the pair off, are unreadable to them.
 
 A filter always names a template by package name (`#vesting:Vesting:…`) and a command always by the
 resolved id the deployment carries. The participant rejects each in the other's position, the filter
@@ -287,8 +304,8 @@ the `balance` it was given.
 A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
 set `selectHoldings` will draw from: a holding already escrowed is a `LockedToken` and so out by
-template, and one an outstanding grant pledged is out because spending it would leave that grant
-unacceptable. The two agreeing is the point: a `Max` that offered more would put an amount in the
+template, and the one an outstanding grant reserves is out because spending it would leave that
+grant unacceptable. The two agreeing is the point: a `Max` that offered more would put an amount in the
 field that the next step always refuses. The read runs once, on mount: nothing the form does moves
 the funder's holdings.
 
