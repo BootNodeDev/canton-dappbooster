@@ -75,9 +75,10 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
+| Version lockstep check | `scripts/check-versions.mjs` | `pnpm run check:versions` fails unless every declared range pointing at a library is `^<that library folder's version>`. Runs inside `pnpm test` and in the PR job. Given a version argument it also requires the root and the three libraries to be on it, which is how the release workflow refuses a tag that disagrees with the manifests |
 | Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` is its build settings and nobody else's |
 | Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. Git-connected, production branch `main`, so a merge deploys and a branch gets a preview. `dapp/frontend/api/` ships alongside the bundle as Vercel functions; the SPA catch-all in `vercel.json` is scoped away from `/api/` so it cannot answer one with `index.html` |
-| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
+| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `.github/workflows/release.yml` publishes to npm when a GitHub release is published; see Packaging And Publishing. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
 ## Subprojects
@@ -382,6 +383,10 @@ The three libraries — `canton-connect`, `canton-dappbooster`, `canton-theme` �
 under `@bootnodedev/`. All three are `private: false` with `publishConfig.access: "public"`, since
 the scope is private by default on npm.
 
+All three declare `"license": "MIT"`, the root `LICENSE`. None of them carries a copy of that file:
+pnpm packs the workspace root's `LICENSE` into a package that has none of its own, so the tarball
+ships the text without three copies of it in the repo.
+
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
 `linkWorkspacePackages: true`, so pnpm links the local folder whenever that folder's own `version`
 satisfies the range, and downloads from npm when it does not. `dapp/frontend` and
@@ -398,9 +403,10 @@ break the second case: it is not a range npm can resolve.
 
 **Bumping a library past its declared range silently unlinks it.** Set `canton-connect` to `0.4.0`
 and leave the `^0.3.0` in `canton-dappbooster` and `dapp/frontend`, and the next install stops
-linking the folder and pulls `0.3.x` off npm instead. Local edits then have no visible effect and
-nothing reports it — no check, no warning. A version bump therefore has to update every range that
-points at that package in the same commit. Verify by looking for the symlink:
+linking the folder and pulls `0.3.x` off npm instead. Local edits then have no visible effect, and
+nothing about the install says so. A version bump therefore has to update every range that points
+at that package in the same commit, which is what `scripts/release-version.mjs` below does and what
+`pnpm run check:versions` refuses to let drift. To see it with your own eyes, look for the symlink:
 `ls -l dapp/frontend/node_modules/@bootnodedev/`.
 
 **A library's top-level `exports` is for us; `publishConfig.exports` is for consumers.** Top-level
@@ -420,9 +426,40 @@ every publish on purpose, back when the `development` condition had no override 
 `pnpm -r --filter './canton-*' publish --no-git-checks`. `pnpm -r` walks the workspace in dependency
 order, so `canton-connect` publishes before `canton-dappbooster`, which depends on it.
 
-**Versioning and tagging are manual.** No release workflow exists: bump the versions, commit, tag,
-and run `pnpm run release` yourself. `--no-git-checks` means pnpm will not stop you publishing from
-a dirty tree or an unpushed branch.
+**Four versions move in lockstep**: the root `package.json` and the three libraries. `dapp/frontend`
+and `dapp/daml` keep their own, because neither is published — and `dapp/daml`'s real version is
+`version: 0.0.2` in `dapp/daml/daml.yaml`, which names the built DAR, so its `package.json` version
+is not the one that matters.
+
+**`node scripts/release-version.mjs 0.4.0` does the whole bump.** `pnpm run release:version 0.4.0`
+is the same thing; never spell it with a `--` separator, which pnpm forwards into `argv` so the
+version arrives as `--`. In order, it:
+
+1. refuses a malformed version, a dirty working tree, or a `v0.4.0` tag that already exists
+2. writes the version into the four manifests, and rewrites every range pointing at a library to
+   `^0.4.0`. It reads both lists off the workspace manifests — a library is a workspace package that
+   is not private — so a new library, or a new consumer of one, needs no edit here
+3. runs `pnpm install`, then commits the manifests and `pnpm-lock.yaml` as `release: v0.4.0`, tags
+   `v0.4.0`, and pushes the branch and the tag
+4. opens a **draft** GitHub release with generated notes, `--prerelease` when the version has a
+   prerelease part
+
+A prerelease version goes into both halves, which is what keeps the folders linked through an rc:
+`^0.4.0-rc.0` does satisfy `0.4.0-rc.0`.
+
+**Publishing that draft is the only irreversible step, and it is a human click.**
+`.github/workflows/release.yml` runs on `release: published`. It checks the tag out, runs
+`node scripts/check-versions.mjs` with the tag minus its `v` so a mistyped tag cannot reach npm,
+runs `pnpm lint`, `pnpm typecheck` and `pnpm test`, then publishes with the root `release` script.
+`--no-git-checks` is what lets it publish from that detached HEAD. npm auth is the `NPM_TOKEN` repo
+secret, reaching npm as `NODE_AUTH_TOKEN` through `setup-node`'s `registry-url`.
+
+**A prerelease publishes under the `next` dist-tag**, keyed off `github.event.release.prerelease`,
+so an rc never becomes what `npm install` resolves. `pnpm -r publish` skips a package whose version
+is already on npm, so re-running the workflow after a partial failure is safe.
+
+`pnpm run release:dry` packs all three and uploads nothing, which is how a tarball's contents get
+looked at before a release.
 
 ## Architecture
 
@@ -436,10 +473,11 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-connect`: `pnpm test` (vitest + jsdom)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
   - root `scripts/`: covered by the root `pnpm test`, which appends
-    `node --test "scripts/*.test.mjs"` to the fan-out because `pnpm -r` skips the root package
+    `node --test "scripts/*.test.mjs"` and `node scripts/check-versions.mjs` to the fan-out because
+    `pnpm -r` skips the root package
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build, which needs `dpm` and a network fetch of the Splice DARs.
-- `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`) and `pnpm run check:anatomy` do not fan out: both read the two library packages directly, and typedoc has one config over both. `pnpm docs:build` writes the reference site to `typedoc/`.
+- `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`), `pnpm run check:anatomy` and `pnpm run check:versions` do not fan out: each reads the packages it covers directly, and typedoc has one config over both libraries. `pnpm docs:build` writes the reference site to `typedoc/`.
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
 ## Commit Standards
@@ -523,7 +561,7 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`.
+- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`, `pnpm run check:versions`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
 - For the full end-to-end loop (LocalNet up → wallet-service → DAR built → DAR deployed → bootstrap → wallet → dApp), follow [`README.md`](README.md).

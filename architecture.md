@@ -146,6 +146,14 @@ What the two cases resolve *to* differs as well. Each TypeScript library's `expo
 directly. The published copy has no such condition — `publishConfig.exports` overrides the map at
 publish time — so a consumer resolves `dist`, built by `prepack`.
 
-`pnpm run release` publishes the three in dependency order. Versioning and tagging are manual; no
-workflow does it. The version ranges are the link, so a bump that outruns them turns a local folder
-into a download without saying so; the packaging rules in [`CLAUDE.md`](CLAUDE.md) cover that.
+`pnpm run release` publishes the three in dependency order, and
+[`.github/workflows/release.yml`](.github/workflows/release.yml) is what runs it, on a published
+GitHub release. The bump before that is one command,
+[`scripts/release-version.mjs`](scripts/release-version.mjs): it moves four versions in lockstep —
+the root and the three libraries — rewrites every range that points at one of them, commits, tags,
+pushes, and leaves a draft release for a human to publish.
+
+The version ranges are the link, so a bump that outruns them turns a local folder into a download
+without saying so. [`scripts/check-versions.mjs`](scripts/check-versions.mjs) is what catches that,
+in `pnpm test` and in the PR job, and it doubles as the release workflow's check that the tag and
+the manifests agree. The packaging rules in [`CLAUDE.md`](CLAUDE.md) cover the rest.
