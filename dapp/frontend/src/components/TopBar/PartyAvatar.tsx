@@ -1,6 +1,6 @@
 import Avatar from 'boring-avatars'
 
-const SIZE_PX = 24
+const DEFAULT_SIZE_PX = 24
 
 const hslToHex = (h: number, s: number, l: number): string => {
   const c = (1 - Math.abs(2 * l - 1)) * s
@@ -28,11 +28,20 @@ const AVATAR_COLORS = Array.from({ length: 256 }, (_value, i) =>
   hslToHex((i * 137.508) % 360, 0.62 + (i % 3) * 0.08, 0.52 + (i % 2) * 0.08),
 )
 
-export const PartyAvatar = ({ partyId }: { partyId: string }): React.JSX.Element => (
+export const PartyAvatar = ({
+  partyId,
+  size = DEFAULT_SIZE_PX,
+}: {
+  partyId: string
+  size?: number
+}): React.JSX.Element => (
   <span
     aria-hidden="true"
-    className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-black/10"
+    // Grid, not inline: an inline SVG sits on the baseline and leaves descender space under it,
+    // which reads as extra padding below the avatar.
+    className="grid shrink-0 overflow-hidden rounded-full ring-1 ring-black/10"
+    style={{ height: size, width: size }}
   >
-    <Avatar colors={AVATAR_COLORS} name={partyId} size={SIZE_PX} variant="beam" />
+    <Avatar colors={AVATAR_COLORS} name={partyId} size={size} variant="beam" />
   </span>
 )

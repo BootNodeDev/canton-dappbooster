@@ -13,12 +13,16 @@ export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConne
 export { ConnectCancelledError } from '#src/connectError'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
+export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
+export { useDisconnect } from '#src/hooks/useDisconnect'
 export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecute'
 export { useExecute } from '#src/hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
 export { useLedger } from '#src/hooks/useLedger'
 export type { UsePartyResult } from '#src/hooks/useParty'
 export { useParty } from '#src/hooks/useParty'
+export type { UsePartyTypeResult } from '#src/hooks/usePartyType'
+export { usePartyType } from '#src/hooks/usePartyType'
 export type { UseSignMessageResult } from '#src/hooks/useSignMessage'
 export { useSignMessage } from '#src/hooks/useSignMessage'
 export type { UseWalletStatusResult } from '#src/hooks/useWalletStatus'
@@ -34,6 +38,7 @@ export type {
   ConnectionStatus,
   ConnectionSubscription,
   Party,
+  PartyType,
   TxStatusSnapshot,
   WalletSdk,
 } from '#src/types'

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchInstrument, fetchInstrumentConfig } from '@/backend/registry'
+import { fetchAppNetwork, fetchInstrument, fetchInstrumentConfig } from '@/backend/registry'
 
 const ADMIN = 'instrument-admin-1700000000000::ns'
 const INSTRUMENT = { admin: ADMIN, instrumentId: 'DBT' }
@@ -132,7 +132,9 @@ describe('fetchInstrumentConfig', () => {
     })
   })
 
-  it('returns the config reference and its disclosure without the synchronizer id', async () => {
+  // The synchronizer comes back beside the disclosure and not on it: `submit` stamps its own, and
+  // the loose one is what `fetchAppNetwork` compares the wallet against.
+  it('returns the config reference, its stripped disclosure and the synchronizer id', async () => {
     stubRegistry(factory)
 
     await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).resolves.toEqual({
@@ -145,6 +147,7 @@ describe('fetchInstrumentConfig', () => {
           createdEventBlob: 'YmxvYg==',
         },
       ],
+      synchronizerId: 'global-domain::1220',
     })
   })
 
@@ -219,5 +222,31 @@ describe('fetchInstrumentConfig', () => {
     await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).rejects.toThrow(
       /registry answered/,
     )
+  })
+})
+
+describe('fetchAppNetwork', () => {
+  it('reads the network off the config disclosure the registry serves', async () => {
+    stubRegistry({ ...metadata, ...factory })
+
+    await expect(fetchAppNetwork('funder::1')).resolves.toBe('global-domain::1220')
+  })
+
+  // A registry that answers without one leaves the check with nothing to compare, which reads as
+  // no verdict rather than a mismatch.
+  it('reports no network when the disclosure carries none', async () => {
+    const { synchronizerId, ...bare } = CONFIG
+    stubRegistry({
+      ...metadata,
+      '/registry/transfer-instruction/v1/transfer-factory': {
+        body: {
+          factoryId: '00cfg',
+          transferKind: 'self',
+          choiceContext: { choiceContextData: { values: {} }, disclosedContracts: [bare] },
+        },
+      },
+    })
+
+    await expect(fetchAppNetwork('funder::1')).resolves.toBeUndefined()
   })
 })

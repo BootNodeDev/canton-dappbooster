@@ -10,29 +10,33 @@ import type { TxStatusSnapshot } from '#src/types'
  */
 export type { PrepareExecuteParams }
 
+// An unset `actAs` lets the wallet pick its own primary, which may not be the party the kit shows.
+/** Defaults `actAs` to the connected party, leaving a caller's own `actAs` untouched. */
+const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecuteParams =>
+  params.actAs === undefined ? { ...params, actAs: [partyId] } : params
+
 /**
  * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
- * at submission, and throws when nothing is connected; `lastTx` follows the wallet's own
- * `txChanged` pushes, so it moves even while `execute` is still pending.
+ * at submission, and throws when nothing is connected or no party is reported; `lastTx` follows
+ * the wallet's own `txChanged` pushes, so it moves even while `execute` is still pending.
  *
  * @category Hooks
  */
 export interface UseExecuteResult {
   execute: (params: PrepareExecuteParams) => Promise<unknown>
   lastTx: TxStatusSnapshot | undefined
-  isExecuting: boolean
+  isPending: boolean
   error: Error | undefined
   reset: () => void
 }
 
 /**
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
- * event.
- * Wagmi: `useWriteContract` + `useWaitForTransactionReceipt`, since `execute` resolves after
- * execution rather than at submission.
+ * event. `actAs` defaults to the party `useParty` reports, so a submit acts as the party the UI
+ * shows rather than the wallet's own primary.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
- * connected or the command fails, the failure also landing in `error`.
+ * connected or no party is reported. A command that fails throws too, and lands in `error`.
  *
  * @example
  * const { execute, lastTx } = useExecute()
@@ -42,15 +46,17 @@ export interface UseExecuteResult {
  * @category Hooks
  */
 export const useExecute = (): UseExecuteResult => {
-  const { call, isBusy, error, reset, connection, sdk } = useWalletCall()
+  const { call, isPending, error, reset, connection, sdk } = useWalletCall()
 
   const lastTx = useTxFeed(sdk, connection)
 
   const execute = useCallback(
     (params: PrepareExecuteParams): Promise<unknown> =>
-      call((walletSdk) => walletSdk.prepareExecuteAndWait(params)),
+      call((walletSdk, actingPartyId) =>
+        walletSdk.prepareExecuteAndWait(withActAs(params, actingPartyId)),
+      ),
     [call],
   )
 
-  return { execute, lastTx, isExecuting: isBusy, error, reset }
+  return { execute, lastTx, isPending, error, reset }
 }

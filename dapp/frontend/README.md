@@ -37,6 +37,10 @@ finds both once a wallet connects: the operator through the rights the bootstrap
 factory through an active-contracts read that returns its explicit-disclosure payload, without
 which a grant cannot be created. Re-running it supersedes the last one, on any ledger.
 
+Funding a grant takes `DBT`, and the account menu has a faucet for it: **Tap dAppBooster Token**
+taps 1000 DBT into the connected party, straight off the instrument's own config. It refuses an
+amount above the `maxPerTap` the bootstrap set, and says so in the failure toast.
+
 Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
 the session is restored on reload by the wallet itself. Changing the wallet's primary
 account changes the party the dApp acts as. Its two env knobs, the explorer party ids

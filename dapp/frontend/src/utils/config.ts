@@ -1,10 +1,15 @@
 import type { ExplorerConfig } from '@bootnodedev/canton-dappbooster'
 
-// Validated and defaulted at build time by `vite.config.ts`, so reading them here is safe.
-
 // Unused while #113 is open, which is why knip is told this export is deliberate.
 /** @public */
 export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER_URL }
 
 // Direct in dev; #169 fronts it same-origin: an https page cannot reach a plain-http registry.
 export const REGISTRY_URL: string = import.meta.env.VITE_REGISTRY_URL
+
+// The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.
+export const ASSET_LIST_URL = '/assets.json'
+
+// A top-level key of the asset list. The published one carries `MainNet`, `TestNet` and `DevNet`; a
+// stack it does not cover is served a file of its own, under whatever key that file uses.
+export const ASSET_LIST_NETWORK: string | undefined = 'LocalNet'

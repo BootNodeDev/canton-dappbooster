@@ -102,6 +102,20 @@ exactly the case the attribute exists for.
   once; a fallback would be a second copy that drifts and that nothing checks.
 - Select only on parts and states a component actually renders. `anatomy.ts` in
   [`../canton-dappbooster`](../canton-dappbooster) is the source of truth; never invent a selector.
+- Where every entry of a selector list repeats the same trailing part, hoist it into `:is()` rather
+  than spelling the shared part once per entry. A list whose entries share no suffix
+  (`.cnc-token-input__token, .cnc-token-select-dialog__favorite`) stays a list, and a list only some
+  of whose entries share one is left alone: a half-hoist reads as two rules fused rather than one.
+- **Hoist only entries of equal specificity.** `:is()` takes the specificity of its most specific
+  argument and hands it to every branch, so one `.cnc-token-input__token[data-interactive]` in the
+  list silently raises the six plain classes beside it from `(0,2,0)` to `(0,3,0)` and they start
+  beating overrides written against them. An attribute-carrying entry stays written out on its own
+  line beside the `:is()`, which is why the `:focus-visible` rule has two selectors.
+- **Never nest with `&`,** however much repetition it would spare. `pnpm check:anatomy` harvests
+  class names by regex over each rule's own selector text, so a nested `&:disabled` contributes no
+  class and reports at the block head instead of the rule. Flat selectors are also what keeps
+  `rg cnc-connect-button` returning every rule that touches it, which is how the two rules above are
+  audited at all.
 - Put colour on the root part, never on the inner value part, so a consumer's utility class on the
   root still wins.
 - Never declare `font-size` on a primitive that can sit inside a heading, a row, or a table cell.
@@ -151,24 +165,22 @@ exactly the case the attribute exists for.
   rule collapsing it. What announces the change is a separate live region the component hides
   inline and out of flow; never style it with `display: none`, which drops a live region out of the
   accessibility tree and silences the announcement it exists for.
-- Depth is set twice, on the token select dialog's backdrop and positioner at `100` and the account
-  popover's positioner at `50`, because those sit above the page instead of in it. Both are
-  portalled, so document order cannot decide it: a host's own stacking context — a sticky header,
-  say — otherwise renders over them. The two values are ordered so a dialog covers a popover.
-  Everything else stacks in document order, and a third value means three components can fight
-  over depth, so treat adding one as a contract decision.
-- **A part Zag marks `hidden` needs its own `[hidden] { display: none }` rule here.** Zag's
-  `getContentProps` closes a popover by setting the `hidden` attribute and leaves the hiding to CSS,
-  but `[hidden]` only carries `display: none` in the user-agent stylesheet, which any author `display`
-  loses to whatever the layer or the specificity. So `.cnc-account-popover`'s own `display: flex`
-  keeps the closed panel on screen for a consumer whose reset does not re-declare `[hidden]`; ours
-  only looked right because `dapp/frontend` pulls in Tailwind's preflight. This applies to every
-  future part whose machine hides it by attribute rather than by unmounting.
-- The popover's `z-index` goes on its content, never its positioner. Zag's popper owns the
-  positioner's inline style and, on every placement, copies the *content's* computed `z-index` onto
-  it as `--z-index`; a rule on the positioner is overwritten with `auto`, and the popover ends up
-  behind the header it was opened from. The dialog is the other way round, on the positioner and
-  the backdrop, because its machine does not use the popper.
+- Depth is set once, on the token select dialog's backdrop and positioner at `100`, because those
+  sit above the page instead of in it. Both are portalled, so document order cannot decide it: a
+  host's own stacking context — a sticky header, say — otherwise renders over them. Everything else
+  stacks in document order, and a second value means components can fight over depth, so treat
+  adding one as a contract decision.
+- **A part Zag marks `hidden` needs its own `[hidden] { display: none }` rule here.** Zag closes a
+  panel by setting the `hidden` attribute and leaves the hiding to CSS, but `[hidden]` only carries
+  `display: none` in the user-agent stylesheet, which any author `display` loses to whatever the
+  layer or the specificity. So a part with its own `display` keeps the closed panel on screen for a
+  consumer whose reset does not re-declare `[hidden]`; ours only looked right because
+  `dapp/frontend` pulls in Tailwind's preflight.
+- The dialog's `z-index` goes on its positioner and its backdrop, which is only safe because its
+  machine does not use Zag's popper. A popper-positioned part takes it on the *content* instead: the
+  popper owns the positioner's inline style and copies the content's computed `z-index` onto it as
+  `--z-index`, so a rule on the positioner is overwritten with `auto`. Nothing here is
+  popper-positioned today, so that half is for whoever adds the first one.
 - A `@keyframes` name is global whatever layer declares it, so it carries the `cnc-` prefix like a
   token does and is public the moment it ships. Its duration comes off the `duration` scale, by
   `calc()` where no step fits, for the same reason every other distance does.

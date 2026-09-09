@@ -40,7 +40,7 @@ export interface VestingBackend {
   cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void>
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
-  createVesting(args: CreateVestInput): Promise<{ disclosedBytes: number }>
+  createVesting(args: CreateVestInput): Promise<void>
   rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void>
   tap(args: { amount: string; party: string }): Promise<void>
   viewAs(partyId: string): Promise<VestingView>

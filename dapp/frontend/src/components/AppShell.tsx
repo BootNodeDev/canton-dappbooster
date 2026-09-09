@@ -1,25 +1,39 @@
-import { Outlet } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Outlet, ScrollRestoration } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
+import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
+import { WrongNetwork } from '@/components/WrongNetwork'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError, retryConfig } = useBackend()
+  const { backend, configPending, configError, retryConfig, sessionPending, wrongNetwork } =
+    useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
-  // the action would otherwise repeat the mount, and a reader can open it from any of them. Held
-  // until there is a backend so a deep link with no session still lands on the page's connect card.
+  // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
 
   useConnectErrorToast()
 
+  // A lock or a disconnect takes the action away, so the param goes too: left in the URL it would
+  // reopen the dialog on the next connect. Only once the session is settled, or a reload would drop
+  // it before the restore has had its chance.
+  const noSession = !sessionPending && !configPending && backend === undefined
+  useEffect(() => {
+    if (creating && noSession) {
+      setCreating(false)
+    }
+  }, [creating, noSession, setCreating])
+
   return (
     <div className="flex min-h-screen">
+      <ScrollRestoration getKey={(location) => location.pathname} />
       <div className="relative flex min-w-0 flex-1 flex-col">
         <a
           href="#main"
@@ -27,19 +41,32 @@ export const AppShell = (): React.JSX.Element => {
         >
           Skip to main content
         </a>
+        <WrongNetwork />
         <TopBar />
         <main
           id="main"
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
         >
+          {/* On the wrong network `configError` names a missing deployment, but the network is the
+              cause, so the script it advises would not help. */}
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-              <h1 className="text-base font-bold text-danger">No deployment</h1>
-              <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
-              <Button variant="secondary" size="sm" onClick={retryConfig}>
-                Try again
-              </Button>
+              <h1 className="text-base font-bold text-danger">
+                {wrongNetwork ? 'Wrong network' : 'No deployment'}
+              </h1>
+              <p className="max-w-lg text-sm text-fg-muted">
+                {wrongNetwork
+                  ? 'This app found nothing on the network the wallet is connected to. Switch networks in the wallet to load it.'
+                  : configError}
+              </p>
+              {/* Only off the wrong network: there the read failed for a reason retrying cannot
+                  change, and the wallet is where the fix is. */}
+              {!wrongNetwork && (
+                <Button variant="secondary" size="sm" onClick={retryConfig}>
+                  Try again
+                </Button>
+              )}
             </Card>
           )}
           {configPending && <Loading />}
@@ -52,10 +79,7 @@ export const AppShell = (): React.JSX.Element => {
             </>
           )}
         </main>
-        <footer className="flex items-center justify-center gap-2 px-5 py-5 text-xs text-fg-muted sm:px-8">
-          <span className="size-1.5 rounded-full bg-success" />
-          Canton · direct ledger
-        </footer>
+        <Footer />
       </div>
       <Toaster />
     </div>

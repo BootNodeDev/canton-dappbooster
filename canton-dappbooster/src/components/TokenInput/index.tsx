@@ -12,7 +12,7 @@ import { anatomy } from '#src/components/TokenInput/anatomy'
 import { TokenSelectDialog } from '#src/components/TokenInput/TokenSelectDialog'
 import { useFormattedField } from '#src/components/TokenInput/useFormattedField'
 import { TokenLogo } from '#src/components/TokenLogo'
-import type { Token } from '#src/providers/TokenListProvider/context'
+import type { InstrumentId, Token } from '#src/providers/TokenListProvider/context'
 import { cx } from '#src/utils/cx'
 import { resolveInvalid } from '#src/utils/invalid'
 import {
@@ -64,7 +64,7 @@ interface TokenInputOwnProps
   balance?: string
   balanceState?: 'loading' | 'error'
   disabled?: boolean
-  favoriteIds?: readonly string[]
+  favoriteIds?: readonly InstrumentId[]
   label?: string
   onBlur?: FocusEventHandler<HTMLInputElement>
   onChange: (value: string, error: TokenAmountError | undefined) => void

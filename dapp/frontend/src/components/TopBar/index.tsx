@@ -1,10 +1,10 @@
-import { ConnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
+import { ConnectFace } from '@/components/ConnectFace'
+import { Spinner } from '@/components/Spinner'
+import { AccountMenu } from '@/components/TopBar/AccountMenu'
 import { Logo } from '@/components/TopBar/Logo'
-import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useParty } from '@/hooks/useParty'
-import { SpinnerIcon } from '@/icons'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -17,6 +17,7 @@ const items = [
 export const TopBar = (): React.JSX.Element => {
   const { party } = useParty()
   const { sessionPending } = useBackend()
+  const wallet = party !== undefined ? <AccountMenu party={party} /> : <ConnectFace />
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
     party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
@@ -33,18 +34,15 @@ export const TopBar = (): React.JSX.Element => {
               role="status"
               className="inline-flex size-9 items-center justify-center text-fg-muted"
             >
-              <SpinnerIcon width={18} height={18} />
+              <Spinner />
               <span className="sr-only">Restoring wallet session</span>
             </span>
           ) : (
-            <ConnectButton avatar={(partyId) => <PartyAvatar partyId={partyId} />} />
+            wallet
           )}
         </div>
       </div>
 
-      {/* Centred over the row above from md, where there is room beside the logo and the wallet
-          chip; below that it takes a row of its own, since hiding it left Pending reachable
-          only by typing the URL. */}
       <nav
         aria-label="Primary"
         className="flex items-center gap-1 border-t border-border px-5 py-2 sm:px-8 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:border-0 md:p-0"

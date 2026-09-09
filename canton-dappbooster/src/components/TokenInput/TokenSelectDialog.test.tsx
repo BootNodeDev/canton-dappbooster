@@ -62,7 +62,7 @@ describe('TokenSelectDialog', () => {
     const onClose = vi.fn()
     const onSelect = vi.fn()
     const returnFocusTo = createRef<HTMLElement>()
-    render(dialog({ favoriteIds: ['canton-coin'], onClose, onSelect, returnFocusTo }))
+    render(dialog({ favoriteIds: [TOKENS[0].instrumentId], onClose, onSelect, returnFocusTo }))
 
     const favorites = screen.getByRole('region', { name: 'Favorite tokens' })
     expect(favorites).toHaveClass(anatomy.parts.favorites)

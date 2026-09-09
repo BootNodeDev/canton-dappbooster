@@ -11,7 +11,9 @@ import {
 } from 'react'
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
+import type { RegistryInstrument } from '@/backend/registry'
 import type { VestingBackend } from '@/backend/VestingBackend'
+import { useWrongNetwork } from '@/hooks/useWrongNetwork'
 import { errorText } from '@/utils/errorText'
 
 // `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
@@ -22,8 +24,12 @@ export interface BackendState {
   backend: VestingBackend | undefined
   configError: string | undefined
   configPending: boolean
+  // The one instrument this deployment vests, which is what tells the token catalogue which of its
+  // rows the app can act on. Undefined until the deployment is read.
+  instrument: RegistryInstrument | undefined
   retryConfig: () => void
   sessionPending: boolean
+  wrongNetwork: boolean
 }
 
 // canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both
@@ -48,7 +54,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   // re-read the ACS whenever the wallet re-pushes the same account.
   const { party } = useParty()
   const hasParty = party !== undefined
+  const partyId = party?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
+  const wrongNetwork = useWrongNetwork(ledgerApi, partyId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)
@@ -102,15 +110,34 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     [deployment, execute, hasParty, ledgerApi],
   )
 
+  const instrument = useMemo<RegistryInstrument | undefined>(
+    () =>
+      deployment === undefined
+        ? undefined
+        : { admin: deployment.admin, instrumentId: deployment.instrumentId },
+    [deployment],
+  )
+
   const value = useMemo<BackendState>(
     () => ({
       backend,
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
+      instrument,
       retryConfig: loadConfig,
       sessionPending: checkingSession && !hasParty,
+      wrongNetwork,
     }),
-    [backend, checkingSession, configError, deployment, hasParty, loadConfig],
+    [
+      backend,
+      checkingSession,
+      configError,
+      deployment,
+      hasParty,
+      instrument,
+      loadConfig,
+      wrongNetwork,
+    ],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>

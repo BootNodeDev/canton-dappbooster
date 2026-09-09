@@ -1,4 +1,4 @@
-<!-- starter-kit: v2026.08 -->
+<!-- starter-kit: v2026.09 -->
 
 # Agent Configuration — Canton dAppBooster
 
@@ -30,7 +30,7 @@ Use one reader per doc type, layered by scope:
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, non-trivial control flow, or named abstractions. |
 | `architecture/<topic>.md` | Human or agent editing one subsystem: how does it behave in full? | Only beside an `architecture.md` that indexes it, when a section outgrows the seam it describes. The index keeps the seam and links the chapter; no chapter without its index entry. |
-| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. |
+| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. `canton-connect/coming-from-wagmi.md`, published through `projectDocuments`, is the one hand-written page in it: an exception for a mapping to another library's API, not a pattern to repeat. |
 
 Current distribution:
 
@@ -83,7 +83,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 | Path | Purpose | Stack | Port |
 |------|---------|-------|------|
-| [`dapp/frontend/`](dapp/frontend/) | `DBT` vesting dApp over the local participant. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory and the instrument's `InstrumentConfig` arrive by explicit disclosure, the config from the token registry. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Tailwind v4 + zustand + react-router + Biome | 3012 |
+| [`dapp/frontend/`](dapp/frontend/) | `DBT` vesting dApp over the local participant. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory and the instrument's `InstrumentConfig` arrive by explicit disclosure, the config from the token registry. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router + Biome | 3012 |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + xstate 5 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
@@ -330,6 +330,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   `onClick ?? doTheThing` silently drops the behaviour the component exists for. Where a state
   machine owns the handler, merge through its own utility (`mergeProps` in Zag) rather than by
   hand, so a handler the library adds later is not missed.
+- **A ternary is for a two-way toggle between two things to render; a guard clause is for bailing
+  out of the whole render** (loading, error, no data). Two real faces get
+  `cond ? <A /> : <B />`; a bail-out gets an `if` above the return.
 - Tests assert on roles, accessible names, and whatever contract the component declares. Never on
   styling.
 

@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
 import { LogoMark } from '@/icons'
 
-// `level` is the rank the surrounding page leaves free: 2 under a PageTitle, 1 where this state
-// replaces the page and there is no other heading for it to sit beneath.
 export const EmptyState = ({
   title,
   description,

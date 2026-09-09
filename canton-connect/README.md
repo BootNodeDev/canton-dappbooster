@@ -12,13 +12,14 @@ types.
 
 [`@partylayer/react`](https://partylayer.xyz) is the alternative, built over its own wallet
 adapters. This one wraps Digital Asset's official SDK, the dependency these dApps already carry, and
-stays thin enough to delete. How close the result shapes should sit to wagmi's is open in #52.
+stays thin enough to delete. How the hook results relate to wagmi's is in
+[coming-from-wagmi.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/coming-from-wagmi.md).
 
 ## Why a state machine
 
 The connection lifecycle looks like four states (idle, connecting, connected,
 disconnected) and isn't. The hard part isn't holding state, it's canceling work
-when the state that started it is gone: a picker the user walked out of, a lock
+when the state that started it is gone: a picker the user abandoned, a lock
 that races the account read, a connect asked for mid-disconnect, a wallet that
 answers late or never. Handled one at a time these were five separate races
 (#76). A state machine folds them into one model: a state's invoked work is
@@ -36,7 +37,7 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 | dapp-sdk gap | what it costs us | gone when |
 |---|---|---|
-| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state | `connect(signal)` truly aborts |
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state, `retireSdk`'s picker swap | `connect(signal)` truly aborts |
 | `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
 | `disconnect()` has no timeout (#105) | `DISCONNECT_TIMEOUT_MS`, and `retireSdk` when it fires | `disconnect()` times out itself |
 | lock and wallet-side disconnect are one push | `session.unauthenticated`, party-dropped-on-lock | CIP-0103 separates them (spec, not SDK) |
@@ -75,7 +76,7 @@ function App() {
 }
 
 function Dapp() {
-  const { connect, isConnecting, isConnected, connectError } = useConnect()
+  const { connect, isPending, isConnected, error } = useConnect()
   const { party } = useParty()
   const { isLocked } = useWalletStatus()
   const { signMessage } = useSignMessage()
@@ -85,10 +86,10 @@ function Dapp() {
   if (!isConnected) {
     return (
       <div>
-        <button onClick={() => connect().catch(() => undefined)} disabled={isConnecting}>
+        <button onClick={() => connect().catch(() => undefined)} disabled={isPending}>
           Connect
         </button>
-        {connectError !== undefined && <p>{connectError.message}</p>}
+        {error !== undefined && <p>{error.message}</p>}
       </div>
     )
   }
@@ -103,12 +104,15 @@ function Dapp() {
 
 `connect()` opens the SDK's wallet picker, a popup by default. There is no mode argument: the picker
 is what chooses the wallet. Dismissing it rejects with `ConnectCancelledError`, which you filter by
-`instanceof`, never by message. Whether `connectError` records it as well depends on which side saw
+`instanceof`, never by message. Whether `error` records it as well depends on which side saw
 the close, so do not gate on that.
 
 `signMessage`, `execute` and `ledgerApi` refuse with no session, and refuse again while the wallet
-reports it is not authenticated; that is `isLocked`, and it happens after a successful connect. The
-SDK's status carries one `isConnected` flag, so a lock and a wallet-side disconnect look the same
+reports it is not authenticated; that is `isLocked`, and it happens after a successful connect.
+`signMessage` and `execute` also refuse with no party, which `ledgerApi` does not need. The
+reference gateway also refuses `signMessage` for a local party; `usePartyType().readPartyType()`
+tells local from external when you ask. The SDK's status carries one `isConnected` flag, so a lock
+and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
@@ -116,7 +120,7 @@ gate session content on the party, and use `isLocked` only to explain why it wen
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call
 site and which is published at
-[docs-canton-dappbooster.vercel.app](https://docs-canton-dappbooster.vercel.app). Start at
+[docs.dappbooster.cc](https://docs.dappbooster.cc/). Start at
 `CantonConnectProvider` and `CantonConnectConfig`.
 
 ## Testing helpers
