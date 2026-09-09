@@ -28,6 +28,7 @@ type Submission = {
   actAs?: string[]
   commands?: LedgerCommand[]
   disclosedContracts?: DisclosedContract[]
+  synchronizerId?: string
 }
 
 // As much of the ACS query LedgerBackend builds as these tests read back, named once so the two
@@ -369,6 +370,7 @@ describe('LedgerBackend.createVesting', () => {
     await backend.createVesting(grant)
 
     expect(submissions[0]?.disclosedContracts?.[0]).not.toHaveProperty('synchronizerId')
+    expect(submissions[0]).not.toHaveProperty('synchronizerId')
   })
 
   // The acceptance criterion this issue exists for: the funder keeps everything the grant did not
@@ -488,6 +490,11 @@ describe('LedgerBackend submissions', () => {
       stamped,
       stamped,
       stamped,
+    ])
+    expect(submissions.map((submission) => submission.synchronizerId)).toEqual([
+      'sync::1',
+      'sync::1',
+      'sync::1',
     ])
   })
 
@@ -672,6 +679,9 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
     // Empty, not the config: nothing is disclosed, which is also what proves the registry was
     // never asked.
     expect(submission?.disclosedContracts).toEqual([])
+    // The one write that discloses nothing, so the only one where a synchronizer stamped on the
+    // disclosures alone would leave the wallet to pick its own.
+    expect(submission?.synchronizerId).toBe('sync::1')
   })
 
   it('rejects as the receiver, disclosing nothing', async () => {

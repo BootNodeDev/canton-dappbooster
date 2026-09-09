@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/Button'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
@@ -33,6 +33,12 @@ export const PendingGrants = (): React.JSX.Element => {
   >(undefined)
   const cancelProposal = useVestingStore((s) => s.cancelProposal)
   const rejectProposal = useVestingStore((s) => s.rejectProposal)
+
+  // Pinning the party is only half of it: the grant belongs to the account that opened the dialog,
+  // so an account switch under it would submit as a party the wallet no longer holds. Close it.
+  useEffect(() => {
+    setEnding((current) => (current?.partyId === partyId ? current : undefined))
+  }, [partyId])
 
   const direction = role === 'receiver' ? 'incoming' : 'outgoing'
   const visible = useMemo<PendingGrant[]>(

@@ -253,8 +253,9 @@ export class LedgerBackend implements VestingBackend {
 
   // actAs is explicit rather than left to the wallet's primary account, so a submission that would
   // be signed by the wrong key is rejected by the participant instead of silently reassigned. The
-  // synchronizer is a property of the submission, so it is stamped here and nowhere the disclosures
-  // are built.
+  // synchronizer is stamped here and nowhere the disclosures are built, and on the submission as
+  // well as on each disclosure: a write that discloses nothing would otherwise reach a wallet on
+  // more than one synchronizer with none named, and land on its default.
   private submit(
     actAs: string,
     command: LedgerCommand,
@@ -265,6 +266,7 @@ export class LedgerBackend implements VestingBackend {
       actAs: [actAs],
       readAs: [actAs],
       commands: [command],
+      ...(sync === undefined ? {} : { synchronizerId: sync }),
       disclosedContracts:
         sync === undefined ? disclosed : disclosed.map((one) => ({ ...one, synchronizerId: sync })),
     })

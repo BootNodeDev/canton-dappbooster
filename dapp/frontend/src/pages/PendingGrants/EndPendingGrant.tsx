@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Modal } from '@/components/Modal'
@@ -24,13 +24,25 @@ export const EndPendingGrant = ({
 }: EndPendingGrantProps): React.JSX.Element => {
   const [submitting, setSubmitting] = useState(false)
   const funder = role === 'funder'
+  // Only the confirm button is disabled while a submission is in flight, so the dialog can still be
+  // dismissed over the wallet prompt. Closing then would close whichever dialog has since taken its
+  // place; the toast still fires, because the choice did land.
+  const onScreen = useRef(true)
+  useEffect(
+    () => () => {
+      onScreen.current = false
+    },
+    [],
+  )
 
   const submit = async (): Promise<void> => {
     setSubmitting(true)
     try {
       await onConfirm()
       toast.success(funder ? 'Grant cancelled' : 'Grant declined')
-      onClose()
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {
