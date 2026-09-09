@@ -2,6 +2,7 @@
   "name": "@bootnodedev/canton-theme",
   "version": "0.3.0",
   "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster",
+  "license": "MIT",
   "type": "module",
   "private": false,
   "publishConfig": {

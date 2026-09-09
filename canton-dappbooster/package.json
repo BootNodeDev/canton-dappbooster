@@ -2,6 +2,7 @@
   "name": "@bootnodedev/canton-dappbooster",
   "version": "0.3.0",
   "description": "Reusable UI components for Canton dApps",
+  "license": "MIT",
   "scripts": {
     "build": "tsdown",
     "lint:fix": "biome check --write",
