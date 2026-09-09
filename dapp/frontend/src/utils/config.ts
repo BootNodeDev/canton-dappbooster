@@ -6,6 +6,10 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 
 export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
 
+export const NETWORK_ID: string = import.meta.env.NETWORK
+
+export const WALLET_CONNECT_PROJECT_ID: string | undefined = import.meta.env.VITE_WC_PROJECT_ID
+
 export const REGISTRY_URL = '/registry'
 
 // The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.

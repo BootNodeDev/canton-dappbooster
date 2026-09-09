@@ -1,11 +1,17 @@
 export interface Env {
+  NETWORK: string
   VITE_EXPLORER_URL: string
   VITE_WALLET_RPC_URL: string
+  VITE_WC_PROJECT_ID: string | undefined
 }
 
+// NETWORK's default matches wallet-service's, so a fresh checkout has the dApp and the wallet
+// agreeing before anyone edits .env.
 const DEFAULTS: Env = {
+  NETWORK: 'canton:local',
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
+  VITE_WC_PROJECT_ID: undefined,
 }
 
 const isHttpUrl = (value: string): boolean => {
@@ -22,6 +28,8 @@ const isSameOriginPath = (value: string): boolean =>
 
 const isRpcUrl = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
 
+const isNonEmpty = (value: string): boolean => value !== ''
+
 // Reads one env key and validates it
 const read = (
   values: Record<string, unknown>,
@@ -36,6 +44,13 @@ const read = (
   return value
 }
 
+// Absent or blank is not a mistake here, unlike the required keys above: it just means no
+// WalletConnect adapter.
+const readOptional = (values: Record<string, unknown>, key: keyof Env): string | undefined => {
+  const value = values[key]
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
 // Validates the build's environment
 export const parseEnv = (source: unknown): Env => {
   if (typeof source !== 'object' || source === null) {
@@ -44,6 +59,7 @@ export const parseEnv = (source: unknown): Env => {
   const values = source as Record<string, unknown>
 
   return {
+    NETWORK: read(values, 'NETWORK', isNonEmpty, 'a non-empty network id'),
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
     VITE_WALLET_RPC_URL: read(
       values,
@@ -51,5 +67,6 @@ export const parseEnv = (source: unknown): Env => {
       isRpcUrl,
       'an http(s) url or a same-origin path',
     ),
+    VITE_WC_PROJECT_ID: readOptional(values, 'VITE_WC_PROJECT_ID'),
   }
 }

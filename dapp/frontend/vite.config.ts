@@ -72,6 +72,11 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
   name: 'localnet-asset-list',
 })
 
+// `JSON.stringify(undefined)` yields the JS value `undefined`, not a string, so an absent
+// optional key defines to the bare `undefined` keyword instead of that invalid define value.
+const toDefine = (value: string | undefined): string =>
+  value === undefined ? 'undefined' : JSON.stringify(value)
+
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url))
   const loaded = loadEnv(mode, envDir, '')
@@ -79,7 +84,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: Object.fromEntries(
-      Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+      Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, toDefine(value)]),
     ),
     // Without this a leftover `dapp/frontend/.env.local` is still loaded, silently losing to the
     // root for exactly the keys defined above.

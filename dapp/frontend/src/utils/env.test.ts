@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
+  NETWORK: 'canton:local',
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
+  VITE_WC_PROJECT_ID: undefined,
 }
 
 describe('parseEnv', () => {
@@ -22,7 +24,7 @@ describe('parseEnv', () => {
 
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
-  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_RPC_URL'])(
+  it.each(['NETWORK', 'VITE_EXPLORER_URL', 'VITE_WALLET_RPC_URL'])(
     'names %s and rejects an empty value',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
@@ -60,6 +62,29 @@ describe('parseEnv', () => {
     'javascript:alert(1)',
   ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
     expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
+  })
+
+  it('defaults NETWORK to the local stack', () => {
+    expect(parseEnv({}).NETWORK).toBe('canton:local')
+  })
+
+  it('passes NETWORK through when set', () => {
+    expect(parseEnv({ ...DEFAULTS, NETWORK: 'canton:devnet' }).NETWORK).toBe('canton:devnet')
+  })
+
+  it('leaves the WalletConnect project id undefined when absent', () => {
+    expect(parseEnv(DEFAULTS).VITE_WC_PROJECT_ID).toBeUndefined()
+  })
+
+  // Unlike the required keys above, blank here is a legitimate choice, not a mistake to report.
+  it('treats a blank WalletConnect project id as absent', () => {
+    expect(parseEnv({ ...DEFAULTS, VITE_WC_PROJECT_ID: '' }).VITE_WC_PROJECT_ID).toBeUndefined()
+  })
+
+  it('passes the WalletConnect project id through when set', () => {
+    expect(parseEnv({ ...DEFAULTS, VITE_WC_PROJECT_ID: 'abc123' }).VITE_WC_PROJECT_ID).toBe(
+      'abc123',
+    )
   })
 
   it('rejects a source that is not an object', () => {

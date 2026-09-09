@@ -5,10 +5,15 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Backend } from '@/providers/Backend'
 import { Tokens } from '@/providers/Tokens'
 import { routes } from '@/routes'
+import { NETWORK_ID, WALLET_CONNECT_PROJECT_ID } from '@/utils/config'
 
 const router = createBrowserRouter(routes)
 
-const connectConfig: CantonConnectConfig = { appName: 'Canton Vesting' }
+const connectConfig: CantonConnectConfig = {
+  appName: 'Canton Vesting',
+  networkId: NETWORK_ID,
+  walletConnectProjectId: WALLET_CONNECT_PROJECT_ID,
+}
 
 export const App = (): React.JSX.Element => (
   <LucideProvider size={18} strokeWidth={1.8}>
