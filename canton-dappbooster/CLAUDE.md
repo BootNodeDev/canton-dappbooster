@@ -43,8 +43,9 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 Root [`CLAUDE.md`](../CLAUDE.md) owns the general rules under Authoring a Component or Hook, including
 accessibility and markup semantics. The styling contract they defer to is this:
 
-`node scripts/add-component.mjs <Name>` from the repo root writes steps 1, 2, and 4 as stubs and
-prints the two it will not edit for you, 3 and 5. It decides nothing below; it only saves the typing.
+`node canton-dappbooster/scripts/add-component.mjs <Name>` from the repo root writes steps 1, 2, and
+4 as stubs and prints the two it will not edit for you, 3 and 5. It decides nothing below; it only
+saves the typing.
 
 1. **`anatomy.ts`** — declare `parts` (CSS class hooks) and `states` (the `data-*` the theme selects
    on, keyed by role: `invalid`, not `rootInvalid`). This typed const is what the theme, the tests,

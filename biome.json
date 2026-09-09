@@ -46,7 +46,7 @@
   },
   "overrides": [
     {
-      "includes": ["scripts/**", "**/*.d.ts"],
+      "includes": ["**/scripts/**", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {

@@ -352,8 +352,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   reject, or a new Splice tag, which would otherwise pin the stack to a version the tool was not
   tested against. Anything else set there survives until then, so a standing deviation belongs in a
   directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
-- `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
-  folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
+- `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
+  in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
+  loop above.
 - `pnpm run bootstrap` creates the vesting operator and its factory, which the
   dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
   both back off the ledger once a wallet connects, so nothing can go stale between the two, and

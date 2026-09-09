@@ -11,7 +11,7 @@
       "entry": ["src/**/*.test.{ts,tsx}"]
     },
     "canton-dappbooster": {
-      "entry": ["src/**/*.test.{ts,tsx}"]
+      "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
     },
     "dapp/frontend": {
       "entry": ["api/*.ts"]
