@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-dappbooster",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Reusable UI components for Canton dApps",
   "scripts": {
     "build": "tsdown",
@@ -12,7 +12,7 @@
     "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1"
   },
   "type": "module",
-  "private": true,
+  "private": false,
   "sideEffects": false,
   "engines": {
     "node": ">=24.15.0"
