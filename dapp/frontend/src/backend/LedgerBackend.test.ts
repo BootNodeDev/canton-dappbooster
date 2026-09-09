@@ -106,6 +106,11 @@ const reserving = (tokenCid: string): unknown =>
 const storedTokens = (): DisclosedContract[] =>
   JSON.parse(localStorage.getItem('vesting.tokenDisclosures') ?? '[]')
 
+// The other half of what a grant leaves behind: how many blob-bearing reads this browser has spent
+// looking for a holding it never found.
+const readMisses = (): Record<string, number> =>
+  JSON.parse(localStorage.getItem('vesting.tokenReadMisses') ?? '{}')
+
 const CONFIG = {
   templateId: '20d54824:Canton.TokenForge.Registry:InstrumentConfig',
   contractId: '00cfg',
@@ -621,6 +626,133 @@ describe('LedgerBackend.accept', () => {
     expect(submissions[0]?.disclosedContracts).toEqual(
       onSync([CONFIG, disclosedToken('funding-t1')]),
     )
+  })
+
+  // A miss counted before the blob was finally found used to outlive the grant entirely: `accept`
+  // dropped the blob and left the count behind for a contract id that can never come back.
+  it('drops a stale miss count when the grant is finally accepted', async () => {
+    const missed = harness({
+      acs: { [TOKEN]: [tokenRow('unrelated', '500')], [PENDING]: [reserving('funding-t1')] },
+    })
+    await missed.backend.viewAs('funder::1')
+    expect(readMisses()['funding-t1']).toBe(1)
+    const found = harness({
+      acs: { [TOKEN]: [tokenRow('funding-t1', '1000')], [PENDING]: [reserving('funding-t1')] },
+    })
+    await found.backend.viewAs('funder::1')
+
+    await found.backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-funding-t1' })
+
+    expect(storedTokens()).toEqual([])
+    expect(readMisses()).toEqual({})
+  })
+})
+
+// Both exits are bodyless and archive the proposal on the controller's own authority, so the
+// interesting part is not the ledger but what stops being kept in this browser afterwards.
+describe('LedgerBackend.cancelProposal and rejectProposal', () => {
+  const grant = (title = 'Advisor grant') => ({
+    proposer: 'funder::1',
+    receiver: 'receiver::1',
+    totalAmount: '1000',
+    schedule,
+    title,
+  })
+
+  it('cancels as the funder, disclosing nothing', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const { backend, submissions } = harness({ acs })
+    await backend.createVesting(grant())
+
+    await backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' })
+
+    const submission = submissions.at(-1)
+    expect(submission?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Cancel')
+    expect(submission?.actAs).toEqual(['funder::1'])
+    // Empty, not the config: nothing is disclosed, which is also what proves the registry was
+    // never asked.
+    expect(submission?.disclosedContracts).toEqual([])
+  })
+
+  it('rejects as the receiver, disclosing nothing', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting(grant())
+    const { backend, submissions } = harness({ acs })
+
+    await backend.rejectProposal({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
+
+    expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Reject')
+    expect(submissions[0]?.actAs).toEqual(['receiver::1'])
+    expect(submissions[0]?.disclosedContracts).toEqual([])
+  })
+
+  it('drops the blob of the grant it ended and keeps every other one', async () => {
+    const acs: Record<string, unknown[]> = {
+      [TOKEN]: [tokenRow('t1', '1500'), tokenRow('t2', '1500')],
+    }
+    const { backend } = harness({ acs })
+    await backend.createVesting(grant('First grant'))
+    await backend.createVesting(grant('Second grant'))
+
+    await backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' })
+
+    expect(storedTokens().map((one) => one.contractId)).toEqual(['funding-t2'])
+  })
+
+  it('drops the read misses counted against the grant it ended', async () => {
+    const { backend } = harness({
+      acs: { [TOKEN]: [tokenRow('t1', '500')], [PENDING]: [reserving('archived-elsewhere')] },
+    })
+    await backend.viewAs('funder::1')
+    expect(readMisses()['archived-elsewhere']).toBe(1)
+
+    await backend.cancelProposal({
+      proposer: 'funder::1',
+      pendingCid: 'pending-archived-elsewhere',
+    })
+
+    expect(readMisses()).toEqual({})
+  })
+
+  it('refuses to end a grant that is no longer outstanding', async () => {
+    const { backend, submissions } = harness()
+
+    await expect(
+      backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' }),
+    ).rejects.toThrow(/no longer outstanding/)
+    expect(submissions).toHaveLength(0)
+  })
+
+  // A prompt the wallet declines leaves a grant that is still outstanding and still acceptable, so
+  // forgetting its blob would break the one thing this browser is holding for it.
+  it('keeps the blob when the wallet declines the cancel', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const funder = harness({ acs })
+    await funder.backend.createVesting(grant())
+    const declined = harness({ acs, declines: true })
+
+    await expect(
+      declined.backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' }),
+    ).rejects.toThrow(/rejected/)
+
+    expect(storedTokens().map((one) => one.contractId)).toEqual(['funding-t1'])
+  })
+
+  // Criterion 3, and it costs no ledger work: the holding is excluded only while a proposal names
+  // it, so archiving the proposal is what returns it.
+  it('returns the reserved holding to the funder’s balance', async () => {
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const { backend } = harness({ acs })
+    await backend.createVesting(grant())
+    expect(await backend.balanceOf('funder::1')).toBe('500')
+
+    await backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' })
+    // The harness settles only the factory choice, so the archive the participant would do is done
+    // here.
+    acs[PENDING] = []
+
+    expect(await backend.balanceOf('funder::1')).toBe('1500')
   })
 })
 

@@ -4,8 +4,10 @@
 import {
   buildAcceptCommand,
   buildCancelCommand,
+  buildCancelProposalCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildRejectProposalCommand,
   buildTapCommand,
   buildWithdrawCommand,
 } from '@/backend/commands'
@@ -169,6 +171,21 @@ const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
     )
   }
   localStorage.setItem(MISS_STORE_KEY, JSON.stringify({ ...misses, ...bumped }))
+}
+
+// What a grant leaves in this browser once it can no longer be accepted: the blob its Accept would
+// have disclosed, and the count of reads spent looking for that holding. Both are keyed by the
+// holding, so both go whichever way the grant ended.
+const forgetFunding = (tokenCid: string | undefined): void => {
+  if (tokenCid === undefined) {
+    return
+  }
+  localStorage.setItem(
+    TOKEN_STORE_KEY,
+    JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
+  )
+  const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
+  localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
 }
 
 export class LedgerBackend implements VestingBackend {
@@ -454,10 +471,41 @@ export class LedgerBackend implements VestingBackend {
         buildAcceptCommand(this.tid('VestingProposal'), args.pendingCid, configCid),
       [token],
     )
-    // The submission archived it, so its blob can only mislead a later Accept from here on.
-    localStorage.setItem(
-      TOKEN_STORE_KEY,
-      JSON.stringify(storedTokens().filter((one) => one.contractId !== wanted)),
+    // The submission archived the proposal, so nothing this browser kept for it can do anything but
+    // mislead a later Accept.
+    forgetFunding(wanted)
+  }
+
+  // Neither exit moves anything, so neither takes the config or discloses a contract: the proposal
+  // is archived on its controller's own authority and the holding it reserved is already an
+  // ordinary Token of the funder's, back in their balance as soon as nothing names it. The proposal
+  // is read first for the holding it names, since reading it after the archive would be too late.
+  private async endProposal(
+    party: string,
+    pendingCid: string,
+    build: (templateId: string) => LedgerCommand,
+  ): Promise<void> {
+    const offset = await this.ledgerEnd()
+    const rows = await this.readAcs(party, vesting('VestingProposal'), offset)
+    const proposal = rows.find((row) => cidOf(row) === pendingCid)
+    if (proposal === undefined) {
+      throw new Error('this grant is no longer outstanding: reload to see where it went')
+    }
+    await this.submit(party, build(this.tid('VestingProposal')), [])
+    // Only once the submission has landed: a prompt the wallet declines leaves a grant that is
+    // still outstanding and still acceptable.
+    forgetFunding(reservedToken(proposal))
+  }
+
+  async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
+    await this.endProposal(args.proposer, args.pendingCid, (templateId) =>
+      buildCancelProposalCommand(templateId, args.pendingCid),
+    )
+  }
+
+  async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
+    await this.endProposal(args.receiver, args.pendingCid, (templateId) =>
+      buildRejectProposalCommand(templateId, args.pendingCid),
     )
   }
 
