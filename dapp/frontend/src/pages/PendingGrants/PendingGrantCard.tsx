@@ -74,15 +74,29 @@ export const PendingGrantCard = ({
         </div>
         {direction === 'incoming' ? (
           <div className="flex gap-2">
-            <Button size="sm" variant="danger-ghost" onClick={() => onEnd(pendingGrant)}>
+            <Button
+              size="sm"
+              variant="danger-ghost"
+              onClick={() => onEnd(pendingGrant)}
+              aria-label={`Decline ${pendingGrant.title}`}
+            >
               Decline
             </Button>
-            <Button size="sm" onClick={() => onAccept(pendingGrant)}>
+            <Button
+              size="sm"
+              onClick={() => onAccept(pendingGrant)}
+              aria-label={`Accept ${pendingGrant.title}`}
+            >
               Accept
             </Button>
           </div>
         ) : (
-          <Button size="sm" variant="danger-ghost" onClick={() => onEnd(pendingGrant)}>
+          <Button
+            size="sm"
+            variant="danger-ghost"
+            onClick={() => onEnd(pendingGrant)}
+            aria-label={`Cancel ${pendingGrant.title}`}
+          >
             Cancel
           </Button>
         )}

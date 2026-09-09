@@ -86,6 +86,9 @@ const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
 const MISS_STORE_KEY = 'vesting.tokenReadMisses'
 const MISS_LIMIT = 3
 
+// Shared by every exit that finds its proposal already gone, so the wording cannot drift between them.
+const PROPOSAL_GONE_MESSAGE = 'this grant is no longer outstanding: reload to see where it went'
+
 const storedTokens = (): DisclosedContract[] => {
   try {
     const stored = JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? '[]')
@@ -458,7 +461,7 @@ export class LedgerBackend implements VestingBackend {
     // Two different failures, and pointing a stale view at the blob store would send the receiver
     // hunting for a browser that never had anything to do with it.
     if (proposal === undefined) {
-      throw new Error('this grant is no longer outstanding: reload to see where it went')
+      throw new Error(PROPOSAL_GONE_MESSAGE)
     }
     const wanted = reservedToken(proposal)
     const token = storedTokens().find((one) => one.contractId === wanted)
@@ -483,30 +486,26 @@ export class LedgerBackend implements VestingBackend {
   private async endProposal(
     party: string,
     pendingCid: string,
-    build: (templateId: string) => LedgerCommand,
+    build: (templateId: string, pendingCid: string) => LedgerCommand,
   ): Promise<void> {
     const offset = await this.ledgerEnd()
     const rows = await this.readAcs(party, vesting('VestingProposal'), offset)
     const proposal = rows.find((row) => cidOf(row) === pendingCid)
     if (proposal === undefined) {
-      throw new Error('this grant is no longer outstanding: reload to see where it went')
+      throw new Error(PROPOSAL_GONE_MESSAGE)
     }
-    await this.submit(party, build(this.tid('VestingProposal')), [])
+    await this.submit(party, build(this.tid('VestingProposal'), pendingCid), [])
     // Only once the submission has landed: a prompt the wallet declines leaves a grant that is
     // still outstanding and still acceptable.
     forgetFunding(reservedToken(proposal))
   }
 
   async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
-    await this.endProposal(args.proposer, args.pendingCid, (templateId) =>
-      buildCancelProposalCommand(templateId, args.pendingCid),
-    )
+    await this.endProposal(args.proposer, args.pendingCid, buildCancelProposalCommand)
   }
 
   async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
-    await this.endProposal(args.receiver, args.pendingCid, (templateId) =>
-      buildRejectProposalCommand(templateId, args.pendingCid),
-    )
+    await this.endProposal(args.receiver, args.pendingCid, buildRejectProposalCommand)
   }
 
   async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {

@@ -201,6 +201,11 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await get().refresh(backend, partyId)
   },
 
+  rejectProposal: async (backend, partyId, pendingCid) => {
+    await backend.rejectProposal({ receiver: partyId, pendingCid })
+    await get().refresh(backend, partyId)
+  },
+
   // Returns the successor's contract id, since the claim replaced the one the caller passed.
   withdraw: async (backend, partyId, contractCid, amount) => {
     const successor = trackSuccessor(get().grants, contractCid, grantLineage)
@@ -221,11 +226,6 @@ export const useVestingStore = create<VestingState>((set, get) => ({
     await backend.claimResidual({ receiver: partyId, claimCid, amount })
     await get().refresh(backend, partyId)
     return successor(get().claims)
-  },
-
-  rejectProposal: async (backend, partyId, pendingCid) => {
-    await backend.rejectProposal({ receiver: partyId, pendingCid })
-    await get().refresh(backend, partyId)
   },
 }))
 
