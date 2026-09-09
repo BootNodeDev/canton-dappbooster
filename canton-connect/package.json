@@ -10,11 +10,23 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
-    "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1",
     "coverage": "vitest run --coverage"
   },
   "type": "module",
   "private": false,
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
+      }
+    }
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=24.15.0"

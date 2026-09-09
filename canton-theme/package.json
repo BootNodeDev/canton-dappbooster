@@ -4,6 +4,9 @@
   "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster",
   "type": "module",
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": [
     "**/*.css"
   ],
