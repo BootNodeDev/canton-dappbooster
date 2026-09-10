@@ -11,4 +11,3 @@ packages:
 allowBuilds:
   esbuild: true
   protobufjs: true
-  puppeteer: false

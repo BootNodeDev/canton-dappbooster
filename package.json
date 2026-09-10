@@ -34,7 +34,6 @@
     "@bootnodedev/canton-wallet-service": "^0.3.0",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
-    "@mermaid-js/mermaid-cli": "^11.15.0",
     "husky": "^9.1.7",
     "knip": "6.33.0",
     "lint-staged": "^17.0.4",
