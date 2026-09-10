@@ -116,9 +116,6 @@ and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
-`ledgerApi` names its route the way Canton's JSON API OpenAPI does: templated, with the variable
-parts in `path`, never written into the string; `query` and `body` carry the rest.
-
 ### Connecting through a Wallet Gateway
 
 ```tsx
@@ -132,33 +129,25 @@ const config = {
 }
 ```
 
-Restore after a reload is silent only for a gateway configured here; a URL typed into the picker
-at connect time has nothing to match at the next init and does not come back. A gateway has no
-lock, so `useWalletStatus().isLocked` never turns true on one. `ledgerApi` reads follow the
-templated form above; a concrete URL is refused here too.
+> [!NOTE]
+> The dapp-sdk wallet picker also lets a user paste any gateway URL and connect to it without the
+> dApp listing it. That session does not survive a reload; one with a gateway listed here does.
 
-Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`. The config
-needs a `self_signed` IDP and `ledgerApi.baseUrl` pointed at the participant's JSON API; see the
-package on [npm](https://www.npmjs.com/package/@canton-network/wallet-gateway-remote).
-
-The full seam, including the popup flow and the party read, is in
-[architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md).
+Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#remote-gateway).
 
 ### Connecting through WalletConnect
 
 ```tsx
 const config = {
   appName: 'My dApp',
-  networkId: 'canton:localnet',
+  networkId: 'canton:devnet',
   walletConnectProjectId: 'YOUR_REOWN_PROJECT_ID',
 }
 ```
 
-`networkId` must match what the wallet advertises or it rejects the session; our LocalNet
-wallet-service advertises `canton:localnet`. A wallet lock never crosses the relay, so
-`useWalletStatus().isLocked` never turns true on one, and restore after a reload is silent: the
-sign client persists the session and picks it up at init. Pair by scanning the QR code or copying
-the `wc:` URI the SDK popup shows.
+`networkId` is the Canton network the dApp targets, as a CAIP-2 chain id.
+
+Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#walletconnect).
 
 ## Reference
 

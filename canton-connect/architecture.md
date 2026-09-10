@@ -115,65 +115,46 @@ init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3
 
 ### Remote gateway
 
-Configured like any adapter: `additionalAdapters: [new RemoteAdapter({ name, rpcUrl })]` in
-`CantonConnectConfig`, `RemoteAdapter` imported from `dapp-sdk`. Connect, restore, disconnect and
-execute all reach a gateway with no change to this package.
+Configured like any adapter: `additionalAdapters: [new RemoteAdapter({ name, rpcUrl })]`, with
+`RemoteAdapter` imported from `dapp-sdk`. Connect, restore, disconnect and execute reach a gateway
+with no change to this package, and the popup-close guard behaves as it does on an extension. The
+flow itself (login page, status push, review page) is the SDK's:
+https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/remote-wallet.md.
 
-The SDK picker lists it by `name`; picking it opens the gateway's login page in the SDK popup,
-where a self-signed IDP takes a client id and secret, the gateway pushes the connected status over
-SSE, and the party arrives. `useExecute` opens the gateway's review page the same way; approval
-there signs and executes (an admin-workflow `Ping` create came back `executed`, with an update id,
-in about half a second). The popup-close guard behaves the same on a gateway as on an extension.
+What differs on a gateway:
 
-Restore after a reload is silent only for a gateway registered through `additionalAdapters` at
-init: `RemoteAdapter.restore()` requires the stored discovery URL to match a registered adapter's
-`rpcUrl`, so a gateway URL typed into the picker has nothing to match at the next init and its
-session does not come back.
-
-A gateway has no lock: its UI offers only Logout, which ends the gateway page's own session, not
-the dApp's, so `useWalletStatus().isLocked` never turns true on one. Disconnect from the dApp does
-work: status goes to not connected and the SDK clears its session and discovery keys, keeping the
-picker's cache.
-
-The gateway checks every `ledgerApi` resource against the Canton JSON API route list exactly;
-extensions accept either. Ledger reads (below) covers the general rule this enforces.
-
-Run one locally: `npx @canton-network/wallet-gateway-remote@1.10.0 -c config.json`, with
-`kernel.clientType: "remote"`, a `server.port` / `dappPath`, one `self_signed` entry in
-`bootstrap.idps`, and one `bootstrap.networks` entry pointing `ledgerApi.baseUrl` at the
-participant's JSON API with matching `self_signed` `auth` / `adminAuth`. Point the dApp's adapter
-at `rpcUrl: 'http://localhost:3030/api/v0/dapp'`.
+- Restore after a reload works only for a gateway registered through `additionalAdapters` at init:
+  `RemoteAdapter.restore()` matches the stored discovery URL against a registered `rpcUrl`, so a URL
+  the user typed into the SDK picker has nothing to match next time.
+- No lock: a gateway has none, so `useWalletStatus().isLocked` never turns true.
+- `ledgerApi` must name the route as a template with the values in `path`; a route with the value
+  written in is refused. See [Ledger reads](#ledger-reads).
 
 ### WalletConnect
 
-Extensions need no configuration; `walletConnectProjectId` is what makes `buildAdditionalAdapters` build
-the SDK's `WalletConnectAdapter` (Adapters above), whose `networkId` is the CAIP-2 chain the wallet must
-serve. It has to equal what the wallet advertises, or the wallet rejects the session: our LocalNet
-wallet-service advertises `canton:localnet`, so a dApp against it sets `networkId: 'canton:localnet'`.
+`walletConnectProjectId` is what makes `buildAdditionalAdapters` build the SDK's
+`WalletConnectAdapter` (Adapters above). Execute, disconnect and the popup-close guard behave as on
+an extension. Pairing and requests are the SDK's:
+https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/walletconnect.md.
 
-The SDK picker lists `WalletConnect`; picking it shows a QR code and a copyable `wc:` URI in the SDK
-popup, the wallet pairs and approves the session, and the popup closes itself about a second after
-the connected status arrives. The party follows `isConnected` shortly after, read over the relay. The
-popup-close guard passes here too: three closes with nothing chosen re-enable the button, and closing
-the popup after picking WalletConnect fails the connect as a cancel, with no error surfaced.
+What differs over WalletConnect:
 
-Restore after a reload is silent: the session is persisted by the sign client and picked up at init. A
-lock never crosses the relay either way, so `useWalletStatus().isLocked` stays false until the wallet
-answers a request again. Disconnect from the dApp does work: it clears the discovery session key and
-ends the session on the wallet's side too.
-
-`useExecute` travels as one relay request (`canton_prepareSignExecute`); approval happens on the wallet,
-and the result comes back `executed`, with an update id, in under five seconds.
+- Restore after a reload is silent: the sign client persists the session.
+- No lock reaches the dApp: `useWalletStatus().isLocked` never turns true, and a request sent to a
+  locked wallet waits.
+- `networkId` is the CAIP-2 chain id of the network the dApp targets: a wallet on another network
+  cannot pair, and the default `canton:local` is a local participant, so a dApp on devnet or mainnet
+  sets it.
 
 ### Ledger reads
 
 `ledgerApi` names its route the way Canton's JSON API OpenAPI does: templated, with the variable
-parts in `path`, never written into the string. The SDK's client sends this same shape on every
-transport, which is why the Remote gateway's exact route check (above) applies to every wallet.
+parts in `path`, never written into the string. It is the shape the SDK's own client sends, and the
+only one a gateway accepts.
 
 ```text
-resource: '/v2/users/{user-id}/rights', path: { 'user-id': userId }   // every wallet
-resource: `/v2/users/${userId}/rights`                                // gateway refuses this
+resource: '/v2/users/{user-id}/rights', path: { 'user-id': userId }   // the SDK's shape
+resource: `/v2/users/${userId}/rights`                                // a gateway refuses this
 ```
 
 `query` holds query parameters, `body` the request body; neither goes into `resource`.
