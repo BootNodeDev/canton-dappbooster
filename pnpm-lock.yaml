@@ -119,7 +119,7 @@ importers:
         version: 1.43.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@bootnodedev/canton-connect':
-        specifier: ^0.3.1
+        specifier: ^0.3.0
         version: link:../canton-connect
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -171,13 +171,13 @@ importers:
         specifier: ^5.39.1
         version: 5.39.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@bootnodedev/canton-connect':
-        specifier: ^0.3.1
+        specifier: ^0.3.0
         version: link:../../canton-connect
       '@bootnodedev/canton-dappbooster':
-        specifier: ^0.3.1
+        specifier: ^0.3.0
         version: link:../../canton-dappbooster
       '@bootnodedev/canton-theme':
-        specifier: ^0.3.1
+        specifier: ^0.3.0
         version: link:../../canton-theme
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8

@@ -511,6 +511,18 @@ points pnpm at npmjs.org.
 **Those npmjs.com entries name `release.yml` by filename.** Renaming or moving the workflow breaks
 publishing until all three are updated to match, and nothing in this repo can warn about it.
 
+**Every published package declares `repository`, with its own `directory`.** Trusted publishing
+attaches a sigstore provenance bundle naming the repository the build came from, and npm compares
+that claim against the package's own `repository.url`. A missing field is not treated as "nothing to
+check": the comparison runs against an empty string and the upload fails with a 422 saying
+`"repository.url" is ""`, which names no cause a reader can act on. The URL is the `https` form
+(`git+https://github.com/BootNodeDev/canton-dappbooster.git`), because that is the form the
+provenance claim carries and what npm normalises against; the repo's SSH-only rule covers git
+remotes, not this. `directory` is the package's path from the repo root, so npm and editors resolve
+links into the right folder instead of the monorepo root. The root `package.json` is private and
+never published, so it needs none. A manual publish from a laptop has no provenance to verify, which
+is why 0.3.0 went out without the field and v0.3.1 was the first to hit this.
+
 **A prerelease publishes under the `next` dist-tag**, keyed off `github.event.release.prerelease`,
 so an rc never becomes what `npm install` resolves. `pnpm -r publish` skips a package whose version
 is already on npm, so re-running the workflow after a partial failure is safe.
