@@ -139,7 +139,7 @@ sit in this repo. Which copy a consumer gets is decided per install, by version:
 | a project scaffolded from it | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
 Both cases read the same `package.json`. Nothing in `dapp/frontend` or `canton-dappbooster` names a
-workspace, only a range (`^0.3.0`), which is why the same file works in a repo that has the folders
+workspace, only a range (`^0.3.1`), which is why the same file works in a repo that has the folders
 and in one that does not.
 
 What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a

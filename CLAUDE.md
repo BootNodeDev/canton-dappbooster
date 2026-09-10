@@ -62,7 +62,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Category | Technology | Notes |
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash and Node for the root `scripts/` and `kit/` |
-| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
+| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
@@ -71,7 +71,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, `kit/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored, and `postcss` for the reason under `kit/` and the consumer scaffold |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-wallet-service` is in `ignoreDependencies` because nothing runs it from a `package.json` script: `scripts/dev-stack.sh` and the README call `pnpm exec canton-wallet-service`, and knip does not read shell scripts. `postcss` is there for the reason under `kit/` and the consumer scaffold |
 | Doc reference + gate | typedoc | `kit/typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
@@ -385,7 +385,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   how it reached npm. `dapp/frontend` also lists it in `dependencies` on the same range: pnpm and
   npm auto-install peers, yarn does not, and a consumer can turn that off. It can go back to
   optional once upstream moves that import behind a dynamic one.
-- Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
+- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild` and `protobufjs`. Anything else is blocked until it is added.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
 ## `kit/` and the consumer scaffold
@@ -438,7 +438,7 @@ ships the text without three copies of it in the repo.
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
 `linkWorkspacePackages: true`, so pnpm links the local folder whenever that folder's own `version`
 satisfies the range, and downloads from npm when it does not. `dapp/frontend` and
-`canton-dappbooster` both ask for `^0.3.0`, and the three folders are all on `0.3.0`, so every one
+`canton-dappbooster` both ask for `^0.3.1`, and the three folders are all on `0.3.1`, so every one
 of them links today. That is what lets a single `package.json` serve two readers:
 
 - In this repo the three folders exist and are in range, so an edit in `canton-connect/src` shows up
@@ -450,7 +450,7 @@ That is the whole difference between working here and consuming the kit. A `work
 break the second case: it is not a range npm can resolve.
 
 **Bumping a library past its declared range silently unlinks it.** Set `canton-connect` to `0.4.0`
-and leave the `^0.3.0` in `canton-dappbooster` and `dapp/frontend`, and the next install stops
+and leave the `^0.3.1` in `canton-dappbooster` and `dapp/frontend`, and the next install stops
 linking the folder and pulls `0.3.x` off npm instead. Local edits then have no visible effect, and
 nothing about the install says so. A version bump therefore has to update every range that points
 at that package in the same commit, which is what `kit/release-version.mjs` below does and what
