@@ -147,7 +147,7 @@ network.
 
 Only the wallet's side is on that poll. The registry serves one deployment for as long as it is up,
 so the app's side is read once and kept, and every later check is a single read of the wallet's
-participant. Two of those checks can still be in flight at once — a focus landing mid-interval — so
+participant. Two of those checks can still be in flight at once (a focus landing mid-interval), so
 each carries a sequence number and only the last one started may write. The verdict carries the
 party it was read for too, or the previous party's answer would be shown against the new one's
 network for as long as the first read for that party takes.
@@ -159,7 +159,7 @@ operator on the ledger the wallet reaches, so it throws its `run pnpm run bootst
 [`AppShell`](src/components/AppShell.tsx) would fill the page with it. That message names a symptom:
 the deployment is there, the wallet is not looking at it. So where the verdict stands, the card
 carries the network instead and the advice is held back for the case it was written for, a ledger
-that really has no deployment — where its Try again is worth offering, which is why that button is
+that really has no deployment, where its Try again is worth offering, which is why that button is
 shown only off the wrong network.
 
 ## Creating a grant takes one approval
@@ -467,7 +467,7 @@ A Canton balance is a set of holding contracts rather than a scalar, so the read
 summed. It reports what a grant could actually spend rather than what the party owns, over the same
 set `selectHoldings` will draw from: a holding already escrowed is a `LockedToken` and so out by
 template, and the one an outstanding grant reserves is out because spending it would leave that
-grant unacceptable. The two agreeing is the point — a `Max` that offered more would put an amount in
+grant unacceptable. The two agreeing is the point: a `Max` that offered more would put an amount in
 the field that the next step always refuses. The read belongs to `Tokens` now rather than to the
 form, so it runs when the party changes and again whenever the create dialog opens: a grant that
 dialog created has reserved a holding since, and the figure it showed before would be the one from

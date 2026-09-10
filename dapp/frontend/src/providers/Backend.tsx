@@ -91,6 +91,13 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   // pending but absent, which is what leaves the pages free to render their own connect card.
   useEffect(() => {
     if (!hasParty) {
+      // Cleared, not merely left alone: a reconnect against another participant would otherwise
+      // build a backend from the previous deployment for a render, long enough for a write to carry
+      // the old factory, and an error card left standing would hold the shell where a session that
+      // no longer exists cannot retry it.
+      generation.current += 1
+      setDeployment(undefined)
+      setConfigError(undefined)
       return
     }
     loadConfig()

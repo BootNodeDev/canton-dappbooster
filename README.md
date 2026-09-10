@@ -89,7 +89,9 @@ pnpm run deploy-dar -- vendor/canton-token-forge.dar
 pnpm run deploy-dar -- vendor/vesting.dar
 ```
 
-**Note:** The step is only needed the first time, or after a LocalNet reset. Both DARs are
+**Note:** Safe to re-run. It reuses the operator, factory and instrument it finds on the ledger and
+creates only what is missing, so the holdings and grants of an earlier run survive a `down` and `up`.
+A LocalNet reset drops the parties with the ledger, so the next run creates them again. Both DARs are
 committed binaries and need no build, so no DAML SDK is involved; `canton-token-forge` goes
 first, because `vesting` data-depends on it. See `vendor/PROVENANCE.md`.
 
@@ -109,7 +111,9 @@ Needs both LocalNet and wallet-service up and running.
 pnpm run bootstrap
 ```
 
-**Note:** The step is only needed the first time, or after a LocalNet reset.
+**Note:** Safe to re-run. It reuses the operator, factory and instrument it finds on the ledger and
+creates only what is missing, so the holdings and grants of an earlier run survive a `down` and `up`.
+A LocalNet reset drops the parties with the ledger, so the next run creates them again.
 
 ### Token registry
 
@@ -120,8 +124,12 @@ source .env
 # paste the block bootstrap printed, skipping its LEDGER_API_TOKEN placeholder line, then:
 export LEDGER_API_URL ADMIN_PARTY INSTRUMENT_CONFIG_TEMPLATE_ID PREAPPROVAL_TEMPLATE_ID \
   LOCKED_TOKEN_TEMPLATE_ID TRANSFER_INSTRUCTION_TEMPLATE_ID ALLOCATION_TEMPLATE_ID PORT
-LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" pnpm exec canton-token-forge-registry
+DOTENV_CONFIG_PATH=/dev/null LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" pnpm exec canton-token-forge-registry
 ```
+
+`DOTENV_CONFIG_PATH=/dev/null` is not optional: the registry loads dotenv from the directory it
+starts in, which here is the repo root, so without it the whole of `.env` is read into the registry
+process, `CANTON_AUTH_SECRET` included.
 
 **Note:** `./scripts/dev-stack.sh up` automates this step, reading the block back out of its own bootstrap log.
 

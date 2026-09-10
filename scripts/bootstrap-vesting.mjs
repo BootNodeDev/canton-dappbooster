@@ -78,14 +78,45 @@ const ledger = (requestMethod, resource, body, query) =>
     ...(query === undefined ? {} : { query }),
   })
 
-// Allocates the party and grants the authenticated user rights over it. That user is
-// whoever the participant authenticated CANTON_BACKEND_TOKEN as, which is also the
-// token the registry reads with, so this grant is what lets it read as the admin.
-const createParty = async (hint) => {
-  const result = await ledger('post', '/v2/parties', { partyIdHint: hint })
-  const party = result?.partyDetails?.party
-  if (typeof party !== 'string' || party.length === 0) {
-    throw new Error(`no party id for hint ${hint}: ${JSON.stringify(result)}`)
+// A party the participant already knows under this hint, or undefined. Party ids are
+// `<hint>::<fingerprint>`, so the hint is a prefix and not the id itself.
+const findParty = async (hint) => {
+  let pageToken
+  for (let page = 0; page < 20; page++) {
+    const result = await ledger(
+      'get',
+      '/v2/parties',
+      undefined,
+      pageToken === undefined ? undefined : { pageToken },
+    )
+    const found = (result?.partyDetails ?? []).find(
+      (details) => typeof details?.party === 'string' && details.party.startsWith(`${hint}::`),
+    )
+    if (found !== undefined) {
+      return found.party
+    }
+    pageToken = result?.nextPageToken
+    if (typeof pageToken !== 'string' || pageToken === '') {
+      return undefined
+    }
+  }
+  return undefined
+}
+
+// Allocates the party if the participant does not already know it, and grants the
+// authenticated user rights over it either way. That user is whoever the participant
+// authenticated CANTON_BACKEND_TOKEN as, which is also the token the registry reads
+// with, so this grant is what lets it read as the admin. Granting again is harmless
+// and is what makes a re-run against a party from an earlier run complete.
+const ensureParty = async (hint) => {
+  const existing = await findParty(hint)
+  let party = existing
+  if (party === undefined) {
+    const result = await ledger('post', '/v2/parties', { partyIdHint: hint })
+    party = result?.partyDetails?.party
+    if (typeof party !== 'string' || party.length === 0) {
+      throw new Error(`no party id for hint ${hint}: ${JSON.stringify(result)}`)
+    }
   }
   // wallet-service keeps its bearer token private, so ask the participant who it authenticated as.
   const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
@@ -97,7 +128,7 @@ const createParty = async (hint) => {
     identityProviderId: '',
     rights: [{ kind: { CanActAs: { value: { party } } } }],
   })
-  return party
+  return { party, reused: existing !== undefined }
 }
 
 // Ask the participant which package it would pick for the name, so a stale id cannot silently
@@ -149,33 +180,21 @@ const findInstrumentConfig = async (admin) => {
   const configs = (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract?.createdEvent)
     .filter((event) => event?.createArgument?.instrumentId === INSTRUMENT.instrumentId)
-  if (configs.length !== 1) {
+  // More than one is the state the registry cannot serve, since it scopes every route to its
+  // admin and would find two configs for one instrument. None is an admin with nothing created
+  // yet, which is the caller's cue to create it.
+  if (configs.length > 1) {
     throw new Error(
-      `expected one ${INSTRUMENT.instrumentId} InstrumentConfig for ${admin}, found ${configs.length}`,
+      `expected at most one ${INSTRUMENT.instrumentId} InstrumentConfig for ${admin}, found ${configs.length}`,
     )
   }
-  return configs[0].contractId
+  return configs[0]?.contractId
 }
 
-const main = async () => {
-  // A fresh operator per run, so the config always matches a factory this run created. Earlier
-  // operators and factories stay active on the local ledger and are simply superseded.
-  const operator = await createParty(`vesting-operator-${STAMP}`)
-  console.log(`operator   ${operator}`)
-
-  const pkg = process.env.PKG ?? (await resolvePackage(operator))
-  const factoryTid = `${pkg}:Vesting:VestingFactory`
-  console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
-
-  await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
-    commandId: `vesting-factory-${STAMP}`,
-    actAs: [operator],
-    readAs: [operator],
-    commands: [
-      { CreateCommand: { templateId: factoryTid, createArguments: { factoryOwner: operator } } },
-    ],
-  })
-
+// The operator's own factory, if this operator already signed one. Observer-less, so only the
+// operator can see it, which is also why the dApp reads it back as the operator and not as a
+// funder.
+const findFactory = async (operator) => {
   const end = await ledger('get', '/v2/state/ledger-end')
   if (end?.offset === undefined) {
     throw new Error('participant returned no ledger-end offset')
@@ -188,7 +207,7 @@ const main = async () => {
             {
               identifierFilter: {
                 // A filter takes the package-name reference; a participant rejects the package id
-                // the CreateCommand above carries.
+                // the CreateCommand carries.
                 TemplateFilter: {
                   value: {
                     templateId: `#${PACKAGE_NAME}:Vesting:VestingFactory`,
@@ -204,21 +223,73 @@ const main = async () => {
     activeAtOffset: end.offset,
     verbose: true,
   })
-  const active = (Array.isArray(rows) ? rows : [])
+  return (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract)
     .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)
+}
+
+// The whole contract with scripts/dev-stack.sh, which reads these keys back off stdout. Both exits
+// print it, because a reused deployment configures the registry exactly as a fresh one does.
+const printRegistryEnv = (adminParty) => {
+  console.log('\nregistry env')
+  console.log(
+    formatRegistryEnv({
+      ledgerApiUrl: process.env.CANTON_JSON_API_URL || 'http://localhost:2975',
+      adminParty,
+      port: REGISTRY_PORT,
+    }),
+  )
+}
+
+const main = async () => {
+  // Stable hints, and everything below is created only where it is missing. `dev-stack.sh up` runs
+  // this on every start and the LocalNet's volumes outlive a `down`, so minting a fresh operator and
+  // admin each time left every holding and every grant of the previous run on a ledger where
+  // nothing in the dApp matches their (admin, instrumentId) any more: an empty dashboard, a zero
+  // balance, and no error to read. A reset drops the parties with the ledger, so a genuinely fresh
+  // stack still gets fresh ones.
+  const { party: operator, reused: hadOperator } = await ensureParty('vesting-operator')
+  console.log(`operator   ${operator}${hadOperator ? ' (existing)' : ''}`)
+
+  const pkg = process.env.PKG ?? (await resolvePackage(operator))
+  const factoryTid = `${pkg}:Vesting:VestingFactory`
+  console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
+
+  let active = await findFactory(operator)
+  const hadFactory = active !== undefined
+  if (!hadFactory) {
+    await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+      commandId: `vesting-factory-${STAMP}`,
+      actAs: [operator],
+      readAs: [operator],
+      commands: [
+        { CreateCommand: { templateId: factoryTid, createArguments: { factoryOwner: operator } } },
+      ],
+    })
+    // Read back from the ACS rather than out of the submission response, so this does not depend
+    // on where a given Canton version puts a create result in the envelope.
+    active = await findFactory(operator)
+  }
   if (active === undefined) {
     throw new Error('factory created but no createdEventBlob came back from the ACS read')
   }
-  console.log(`factory    ${active.createdEvent.contractId}`)
+  console.log(`factory    ${active.createdEvent.contractId}${hadFactory ? ' (existing)' : ''}`)
 
   // Preflight before the admin exists, so an undeployed vendor/canton-token-forge.dar fails
   // with PACKAGE_NAMES_NOT_FOUND rather than a raw create error and a stray party.
   await resolvePackage(operator, TOKEN_FORGE_PACKAGE)
 
-  // A fresh admin per run, so (admin, instrumentId) is new every time and the registry
-  // can never find two configs for one instrument.
-  const admin = await createParty(`instrument-admin-${STAMP}`)
+  const { party: admin } = await ensureParty('instrument-admin')
+
+  const existingConfig = await findInstrumentConfig(admin)
+  if (existingConfig !== undefined) {
+    console.log(`admin      ${admin}`)
+    console.log(
+      `instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${existingConfig} (existing)`,
+    )
+    printRegistryEnv(admin)
+    return
+  }
 
   await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
     commandId: `instrument-config-${STAMP}`,
@@ -244,16 +315,12 @@ const main = async () => {
   })
 
   const configCid = await findInstrumentConfig(admin)
+  if (configCid === undefined) {
+    throw new Error(`created the ${INSTRUMENT.instrumentId} InstrumentConfig but it is not active`)
+  }
   console.log(`admin      ${admin}`)
   console.log(`instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${configCid}`)
-  console.log('\nregistry env')
-  console.log(
-    formatRegistryEnv({
-      ledgerApiUrl: process.env.CANTON_JSON_API_URL || 'http://localhost:2975',
-      adminParty: admin,
-      port: REGISTRY_PORT,
-    }),
-  )
+  printRegistryEnv(admin)
 }
 
 // import.meta.main, not a comparison against argv[1]: the loader realpaths

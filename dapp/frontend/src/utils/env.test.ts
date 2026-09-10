@@ -44,6 +44,23 @@ describe('parseEnv', () => {
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
   })
+
+  it.each(Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[])(
+    'refuses to fall back to the local default for %s without them',
+    (key) => {
+      expect(() => parseEnv({ ...DEFAULTS, [key]: undefined }, false)).toThrow(
+        /must be set explicitly/,
+      )
+    },
+  )
+
+  it('takes an explicit value without the local defaults', () => {
+    const deployed = {
+      VITE_EXPLORER_URL: 'https://scan.example',
+      VITE_REGISTRY_URL: '/api/registry',
+    }
+    expect(parseEnv(deployed, false)).toEqual(deployed)
+  })
 })
 
 describe('VITE_REGISTRY_URL', () => {

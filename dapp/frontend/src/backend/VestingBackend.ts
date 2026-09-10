@@ -186,7 +186,11 @@ type UpdateEntry = {
       value?: {
         effectiveAt?: string
         events?: {
-          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          CreatedEvent?: {
+            contractId?: string
+            createArgument?: Record<string, unknown>
+            templateId?: string
+          }
           ExercisedEvent?: {
             choice?: string
             choiceArgument?: Record<string, unknown>
@@ -212,7 +216,13 @@ export const updatesToClaims = (updates: unknown, instrument: RegistryInstrument
     const claim = events.find(
       (event) => event.ExercisedEvent?.choice === 'VestingContract_Withdraw',
     )?.ExercisedEvent
-    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
+    // The successor contract, picked by template rather than by being the first create: a withdraw
+    // also creates the receiver's `Token`, whose payload carries the same flat admin/instrumentId
+    // pair, so the instrument filter below cannot tell the two apart and `rowToGrant` would throw on
+    // the missing `totalAmount` rather than skip the event.
+    const created = events.find((event) =>
+      event.CreatedEvent?.templateId?.endsWith(':Vesting:VestingContract'),
+    )?.CreatedEvent
     const amount = claim?.choiceArgument?.withdrawAmount
     const replaces = claim?.contractId
     if (

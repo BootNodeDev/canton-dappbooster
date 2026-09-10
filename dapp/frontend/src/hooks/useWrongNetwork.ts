@@ -18,9 +18,10 @@ type Verdict = { party: string; wrong: boolean }
 export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefined): boolean => {
   const [verdict, setVerdict] = useState<Verdict | undefined>(undefined)
   // The registry serves one deployment for as long as it is up, so the app's side is read once and
-  // the poll re-reads only the wallet's. Boxed so that an answer carrying no id counts as read; the
-  // bare id would re-read the registry on every check.
-  const appNetwork = useRef<{ id: string | undefined } | undefined>(undefined)
+  // the poll re-reads only the wallet's. The promise is what is held, not its answer: assigning on
+  // resolve leaves nothing to find while the first read is still out, so every focus and every tick
+  // would start another one. Boxed so that an answer carrying no id still counts as read.
+  const appNetwork = useRef<Promise<{ id: string | undefined }> | undefined>(undefined)
 
   useEffect(() => {
     if (partyId === undefined) {
@@ -33,11 +34,18 @@ export const useWrongNetwork = (ledgerApi: LedgerApi, partyId: string | undefine
 
     const check = (): void => {
       const seq = ++started
-      const app = appNetwork.current ?? fetchAppNetwork(partyId).then((id) => ({ id }))
+      appNetwork.current ??= fetchAppNetwork(partyId).then(
+        (id) => ({ id }),
+        (cause: unknown) => {
+          // Cleared rather than cached, or a registry that was down once would answer from that
+          // failure for the rest of the session and the poll would never recover.
+          appNetwork.current = undefined
+          throw cause
+        },
+      )
 
-      void Promise.all([walletSynchronizers(ledgerApi, partyId), app]).then(
+      void Promise.all([walletSynchronizers(ledgerApi, partyId), appNetwork.current]).then(
         ([wallet, network]) => {
-          appNetwork.current = network
           if (!cancelled && seq === started) {
             setVerdict({ party: partyId, wrong: wrongNetwork(wallet, network.id) })
           }

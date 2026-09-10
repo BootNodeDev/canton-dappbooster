@@ -248,7 +248,13 @@ export class LedgerBackend implements VestingBackend {
         verbose: true,
       },
     })
-    return Array.isArray(rows) ? rows : []
+    // An answer that is not a list is a failure, not an empty ACS. Coercing it to `[]` made "this
+    // party holds nothing" and "the read did not work" one answer, which is what left the reconcile
+    // below unable to tell a reservation that is gone from one it simply failed to see.
+    if (!Array.isArray(rows)) {
+      throw new Error(`the participant did not answer ${templateId} with a list of contracts`)
+    }
+    return rows
   }
 
   // actAs is explicit rather than left to the wallet's primary account, so a submission that would
@@ -260,8 +266,8 @@ export class LedgerBackend implements VestingBackend {
     actAs: string,
     command: LedgerCommand,
     disclosed: DisclosedContract[],
+    sync: string | undefined = this.synchronizerId,
   ): Promise<unknown> {
-    const sync = this.synchronizerId
     return this.wallet.execute({
       actAs: [actAs],
       readAs: [actAs],
@@ -353,11 +359,10 @@ export class LedgerBackend implements VestingBackend {
       return
     }
     const held = await this.readAcs(party, TOKEN, offset, true)
-    // A read that fails soft answers with no rows, so an empty one says nothing about whether the
-    // reservation is still there and must not spend the budget that gives up on it.
-    if (held.length === 0) {
-      return
-    }
+    // An empty read counts like any other: it is the answer a funder who no longer holds the
+    // reservation gets, and it is the only one they ever get, so skipping it left the bound below
+    // unreachable in exactly the case it exists for. `readAcs` throws rather than answering `[]` for
+    // a reply it could not read, so this is the party's holdings and not a failure wearing them.
     recordMisses(wanted, storeTokens(held, wanted))
   }
 
@@ -402,10 +407,30 @@ export class LedgerBackend implements VestingBackend {
     build: (config: InstrumentConfigRef) => LedgerCommand,
     extra: DisclosedContract[] = [],
   ): Promise<DisclosedContract[]> {
-    const { disclosed, ...config } = await fetchInstrumentConfig(actAs, this.instrument)
+    const { disclosed, synchronizerId, ...config } = await fetchInstrumentConfig(
+      actAs,
+      this.instrument,
+    )
     const sent = [...disclosed, ...extra]
-    await this.submit(actAs, build(config), sent)
+    await this.submit(actAs, build(config), sent, this.agreedSynchronizer(synchronizerId))
     return sent
+  }
+
+  // One submission names one synchronizer, and the two contracts it needs are stamped by two
+  // different sources: the registry stamps the config it discloses, the deployment carries the
+  // factory's. The app assumes they agree, so a disagreement is said here rather than sent as a
+  // submission the participant refuses without naming either.
+  private agreedSynchronizer(fromConfig: string | undefined): string | undefined {
+    if (
+      fromConfig !== undefined &&
+      this.synchronizerId !== undefined &&
+      fromConfig !== this.synchronizerId
+    ) {
+      throw new Error(
+        `the registry's InstrumentConfig is on synchronizer ${fromConfig} and the vesting factory on ${this.synchronizerId}: this dApp needs both on one`,
+      )
+    }
+    return this.synchronizerId ?? fromConfig
   }
 
   // `TRANSACTION_SHAPE_LEDGER_EFFECTS` is what carries the exercise; the default ACS-delta shape
@@ -460,9 +485,7 @@ export class LedgerBackend implements VestingBackend {
   // instead would re-disclose holdings earlier accepts already consumed, which the participant
   // rejects.
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
-    const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.receiver, vesting('VestingProposal'), offset)
-    const proposal = rows.find((row) => cidOf(row) === args.pendingCid)
+    const proposal = await this.findProposal(args.receiver, args.pendingCid)
     // Two different failures, and pointing a stale view at the blob store would send the receiver
     // hunting for a browser that never had anything to do with it.
     if (proposal === undefined) {
@@ -498,9 +521,7 @@ export class LedgerBackend implements VestingBackend {
   // Read before the archive for the holding the proposal names, since reading it after would be too
   // late.
   async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
-    const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.proposer, vesting('VestingProposal'), offset)
-    const proposal = rows.find((row) => cidOf(row) === args.pendingCid)
+    const proposal = await this.findProposal(args.proposer, args.pendingCid)
     if (proposal === undefined) {
       throw new Error(PROPOSAL_GONE_MESSAGE)
     }
@@ -510,11 +531,22 @@ export class LedgerBackend implements VestingBackend {
     forgetFunding(reservedToken(proposal))
   }
 
-  // No read of its own, unlike the cancel above: blobs are stored only for grants this browser
-  // funded, so the receiver has nothing to forget, and readAcs answering short would have blocked a
-  // live decline for a prune that was never going to run.
+  // The two parties are two accounts of one browser, so a grant this receiver declines can be one
+  // this same browser funded and still holds the blob for. Read like the cancel above, but never
+  // guarded on: the receiver is not who the prune is for, so a read that fails must cost them a
+  // stale entry rather than a decline they cannot make.
   async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
+    const proposal = await this.findProposal(args.receiver, args.pendingCid).catch(() => undefined)
     await this.endProposal(args.receiver, args.pendingCid, buildRejectProposalCommand)
+    forgetFunding(proposal === undefined ? undefined : reservedToken(proposal))
+  }
+
+  // One proposal by id, for the three exits that each need its row before archiving it: accept for
+  // the holding to disclose, cancel and decline for the holding to forget.
+  private async findProposal(party: string, pendingCid: string): Promise<AcsRow | undefined> {
+    const offset = await this.ledgerEnd()
+    const rows = await this.readAcs(party, vesting('VestingProposal'), offset)
+    return rows.find((row) => cidOf(row) === pendingCid)
   }
 
   async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {

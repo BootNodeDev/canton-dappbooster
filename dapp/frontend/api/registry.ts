@@ -7,6 +7,10 @@ const ALLOWED = new Map([
   ['/registry/metadata/v1/instruments', 'GET'],
   ['/registry/transfer-instruction/v1/transfer-factory', 'POST'],
 ])
+// Allowlisted for the same reason the routes are: republishing an arbitrary parameter on the
+// product's own domain is a decision. `pageToken` is what the instrument listing follows its pages
+// with, so dropping the query strands every page past the first with no error to see.
+const FORWARDED_PARAMS = ['pageToken']
 const UPSTREAM_TIMEOUT_MS = 15_000
 
 const fail = (message: string, status: number): Response =>
@@ -17,7 +21,8 @@ const fail = (message: string, status: number): Response =>
 
 const forward = async (request: Request, body: string | undefined): Promise<Response> => {
   // A bracketed filename matches one segment, so vercel.json carries the real path as a parameter.
-  const paths = new URL(request.url).searchParams.getAll('path')
+  const asked = new URL(request.url).searchParams
+  const paths = asked.getAll('path')
   const path = paths.length === 1 ? paths[0] : undefined
   const method = request.method
   if (path === undefined) {
@@ -36,12 +41,19 @@ const forward = async (request: Request, body: string | undefined): Promise<Resp
     return fail('REGISTRY_URL is not set on this deployment', 500)
   }
 
+  const forwarded = new URLSearchParams()
+  for (const name of FORWARDED_PARAMS) {
+    const value = asked.get(name)
+    if (value !== null) {
+      forwarded.set(name, value)
+    }
+  }
+  const query = forwarded.size === 0 ? '' : `?${forwarded}`
+
   let status: number
   let payload: string
   try {
-    // The request's own query is dropped rather than forwarded: no listed route is paged today,
-    // and republishing arbitrary parameters is the same decision as republishing a route.
-    const upstream = await fetch(`${upstreamUrl}${path}`, {
+    const upstream = await fetch(`${upstreamUrl}${path}${query}`, {
       method,
       ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),

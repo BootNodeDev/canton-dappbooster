@@ -68,6 +68,18 @@ REGISTRY_ENV_KEYS=(
   PORT
 )
 
+# The registry's own options, which bootstrap knows nothing about. Passed through from the
+# environment or from .env when set, because the registry's dotenv is pointed at /dev/null
+# below and this is otherwise the one part of its configuration nothing can reach. CORS_ORIGINS
+# is the one that bites: it defaults to http://localhost:3012 exactly, so opening the dApp on
+# 127.0.0.1 instead is a different origin and every registry read is blocked.
+REGISTRY_OPTION_KEYS=(
+  CORS_ORIGINS
+  DIRECT_TRANSFER_MARGIN_MS
+  LEDGER_USER_ID
+  SHUTDOWN_TIMEOUT_MS
+)
+
 # Resolved in up(), once ./.env has been read.
 JSON_API_URL=""
 
@@ -251,10 +263,15 @@ start_registry() {
     [ -n "$value" ] || die "bootstrap printed no $key; cannot configure the registry (log: $BOOTSTRAP_LOG)"
     registry_env+=("$key=$value")
   done
+  for key in "${REGISTRY_OPTION_KEYS[@]}"; do
+    value="${!key-}"
+    [ -n "$value" ] || continue
+    registry_env+=("$key=$value")
+  done
   port="$(read_bootstrap_env PORT)"
 
-  # Restarted rather than skipped: bootstrap mints a fresh admin party each run, so a
-  # leftover registry serves a superseded instrument and still answers /readyz.
+  # Restarted rather than skipped: a leftover registry was configured by an earlier run and
+  # still answers /readyz, so a reset that moved the admin party would go unnoticed.
   if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
     log "Port $port in use; restarting the token registry."
     stop_pidfile "$REGISTRY_PID" "token registry"

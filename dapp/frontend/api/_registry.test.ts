@@ -47,6 +47,36 @@ describe('upstream url', () => {
   })
 })
 
+describe('the forwarded query', () => {
+  it('carries pageToken through, so the instrument listing can follow its pages', async () => {
+    vi.stubEnv('REGISTRY_URL', 'https://registry.example')
+    const { calls } = stubUpstream()
+
+    await GET(
+      new Request(
+        `https://demo.example/api/registry?path=${encodeURIComponent(INSTRUMENTS)}&pageToken=abc%2Fdef`,
+      ),
+    )
+
+    expect(calls[0]?.url).toBe(
+      'https://registry.example/registry/metadata/v1/instruments?pageToken=abc%2Fdef',
+    )
+  })
+
+  it('drops a parameter it does not list, the rewrite\u2019s own path included', async () => {
+    vi.stubEnv('REGISTRY_URL', 'https://registry.example')
+    const { calls } = stubUpstream()
+
+    await GET(
+      new Request(
+        `https://demo.example/api/registry?path=${encodeURIComponent(INFO)}&admin=someone`,
+      ),
+    )
+
+    expect(calls[0]?.url).toBe('https://registry.example/registry/metadata/v1/info')
+  })
+})
+
 describe('upstream reply', () => {
   it('relays a null-body status instead of reporting the upstream unreachable', async () => {
     vi.stubEnv('REGISTRY_URL', 'https://registry.example')

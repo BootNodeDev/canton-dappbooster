@@ -11,11 +11,12 @@ import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
-// funder. `ending` is a cancel or decline of this grant already in flight, which the card owner
-// knows about and the dismissed dialog no longer does.
+// funder. `busy` is the submission this grant already has in flight, which the page owns because a
+// dialog dismissed over the wallet prompt no longer knows about it: whichever exit it names, both
+// controls are out until it settles, or the same grant could be accepted and declined at once.
 interface PendingGrantCardProps {
+  busy: 'accept' | 'end' | undefined
   direction: 'incoming' | 'outgoing'
-  ending: boolean
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void
   onEnd: (pendingGrant: PendingGrant) => void
@@ -25,7 +26,7 @@ interface PendingGrantCardProps {
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
-  ending,
+  busy,
   nowMs,
   onAccept,
   onEnd,
@@ -84,7 +85,8 @@ export const PendingGrantCard = ({
               variant="danger-ghost"
               className="flex-1 md:flex-none"
               onClick={() => onEnd(pendingGrant)}
-              pending={ending}
+              pending={busy === 'end'}
+              disabled={busy !== undefined}
               aria-label={`Decline ${pendingGrant.title}`}
             >
               Decline
@@ -93,7 +95,8 @@ export const PendingGrantCard = ({
               size="sm"
               className="flex-1 md:flex-none"
               onClick={() => onAccept(pendingGrant)}
-              disabled={ending}
+              pending={busy === 'accept'}
+              disabled={busy !== undefined}
               aria-label={`Accept ${pendingGrant.title}`}
             >
               Accept
@@ -104,7 +107,8 @@ export const PendingGrantCard = ({
             size="sm"
             variant="danger-ghost"
             onClick={() => onEnd(pendingGrant)}
-            pending={ending}
+            pending={busy === 'end'}
+            disabled={busy !== undefined}
             aria-label={`Cancel ${pendingGrant.title}`}
           >
             Cancel

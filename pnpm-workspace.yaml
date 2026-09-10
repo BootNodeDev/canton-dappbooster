@@ -17,7 +17,6 @@ packages:
 # the new key.
 allowBuilds:
   '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7': true
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/99e7e69d2d91109e527a74a5c97c566a882de477': set this to true or false
   '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/d14ee9838986ca1f33c5eae204af54d70fbb55fd': true
   esbuild: true
   protobufjs: true

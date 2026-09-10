@@ -119,12 +119,16 @@ const CONFIG = {
 }
 
 // LedgerBackend owes putting whatever comes back into every write, so the fetch is replaced rather
-// than stubbed. What the registry returns is registry.test.ts's rule.
+// than stubbed. What the registry returns is registry.test.ts's rule. Hoisted, because a vi.mock
+// factory is lifted above every other statement in the file.
+const registryAnswer = vi.hoisted(() => ({ synchronizerId: undefined as string | undefined }))
+
 vi.mock('@/backend/registry', () => ({
   fetchInstrumentConfig: async () => ({
     configCid: CONFIG.contractId,
     configTemplateId: CONFIG.templateId,
     disclosed: [CONFIG],
+    synchronizerId: registryAnswer.synchronizerId,
   }),
 }))
 
@@ -240,6 +244,7 @@ const harness = (
 
 beforeEach(() => {
   localStorage.clear()
+  registryAnswer.synchronizerId = undefined
 })
 
 describe('LedgerBackend.createVesting', () => {
@@ -360,7 +365,7 @@ describe('LedgerBackend.createVesting', () => {
     )
   })
 
-  it('omits the synchronizer id when the config carries none', async () => {
+  it('omits the synchronizer id when neither the deployment nor the registry names one', async () => {
     const { synchronizerId, ...rest } = deployment
     const { backend, submissions } = harness({ deployment: rest })
 
@@ -368,6 +373,29 @@ describe('LedgerBackend.createVesting', () => {
 
     expect(submissions[0]?.disclosedContracts?.[0]).not.toHaveProperty('synchronizerId')
     expect(submissions[0]).not.toHaveProperty('synchronizerId')
+  })
+
+  // The config the registry discloses is rebuilt without the synchronizer it arrived stamped with,
+  // so what the registry knows would be thrown away rather than used where the deployment is silent.
+  it('falls back to the synchronizer the registry stamped when the deployment names none', async () => {
+    const { synchronizerId, ...rest } = deployment
+    registryAnswer.synchronizerId = 'sync::1'
+    const { backend, submissions } = harness({ deployment: rest })
+
+    await backend.createVesting(grant)
+
+    expect(submissions[0]?.synchronizerId).toBe('sync::1')
+    expect(submissions[0]?.disclosedContracts?.[0]).toHaveProperty('synchronizerId', 'sync::1')
+  })
+
+  // One submission names one synchronizer and the two contracts it needs come from two sources, so
+  // a disagreement has to be said here: sent, it is a rejection that names neither.
+  it('refuses to submit when the registry and the deployment disagree on the synchronizer', async () => {
+    registryAnswer.synchronizerId = 'sync::2'
+    const { backend, submissions } = harness()
+
+    await expect(backend.createVesting(grant)).rejects.toThrow(/sync::2.*sync::1/)
+    expect(submissions).toHaveLength(0)
   })
 
   // The acceptance criterion this issue exists for: the funder keeps everything the grant did not
@@ -692,16 +720,38 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
     expect(submissions[0]?.disclosedContracts).toEqual([])
   })
 
-  // Blobs are stored only for grants this browser funded, so the read the cancel needs to prune one
-  // buys the receiver nothing - and readAcs answers [] on a soft failure, which would have read as
-  // gone and blocked a decline of a grant that is perfectly live.
-  it('declines without reading the proposal first', async () => {
-    const { backend, submissions, reads } = harness()
+  // The read is for the prune, never for a guard: the receiver is not who the blob belongs to, so a
+  // participant that will not answer must cost them a stale entry rather than the decline itself.
+  it('declines even when the proposal cannot be read', async () => {
+    const submissions: Submission[] = []
+    const backend = new LedgerBackend(deployment, {
+      execute: async (params) => {
+        submissions.push(params as Submission)
+        return {}
+      },
+      ledgerApi: async () => {
+        throw new Error('the participant is not answering')
+      },
+    })
 
     await backend.rejectProposal({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
 
     expect(submissions[0]?.commands?.[0]?.ExerciseCommand.choice).toBe('VestingProposal_Reject')
-    expect(reads.some((read) => read.resource === '/v2/state/active-contracts')).toBe(false)
+  })
+
+  // Both parties are accounts of one browser, so the grant a receiver declines can be one this same
+  // browser funded and still holds the blob for. Nothing else would ever drop it.
+  it('drops the blob of a grant the receiver declined', async () => {
+    const acs: Record<string, unknown[]> = {
+      [TOKEN]: [tokenRow('t1', '1500'), tokenRow('t2', '1500')],
+    }
+    const { backend } = harness({ acs })
+    await backend.createVesting(grant('First grant'))
+    await backend.createVesting(grant('Second grant'))
+
+    await backend.rejectProposal({ receiver: 'receiver::1', pendingCid: 'pending-for-t1' })
+
+    expect(storedTokens().map((one) => one.contractId)).toEqual(['funding-t2'])
   })
 
   it('drops the blob of the grant it ended and keeps every other one', async () => {
@@ -794,6 +844,21 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
 })
 
 describe('LedgerBackend.viewAs', () => {
+  // Coerced to an empty list, a reply the participant could not have meant reads as a party that
+  // holds nothing and owns no grants: a blank dashboard for a failure, and the reconcile below
+  // unable to tell a reservation that is gone from one it never saw.
+  it('reports a reply that is not a list of contracts rather than reading it as an empty ACS', async () => {
+    const backend = new LedgerBackend(deployment, {
+      execute: async () => ({}),
+      ledgerApi: async (params) => {
+        const read = params as Read
+        return read.resource === '/v2/state/ledger-end' ? { offset: 42 } : { error: 'UNAVAILABLE' }
+      },
+    })
+
+    await expect(backend.viewAs('funder::1')).rejects.toThrow(/list of contracts/)
+  })
+
   it('reads all three templates as the connected party at one shared offset', async () => {
     const { backend, reads } = harness()
 
@@ -896,18 +961,17 @@ describe('LedgerBackend.viewAs', () => {
     expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(3)
   })
 
-  // `readAcs` answers an unparseable response with no rows, so an empty read is indistinguishable
-  // from a funder who holds nothing. Spending the budget on it would let one participant hiccup
-  // abandon every outstanding grant in the browser, with nothing short of wiping site data to undo
-  // it.
-  it('spends no part of that budget on a read that came back empty', async () => {
+  // The state the bound exists for: the reservation is gone and the funder holds nothing else, so
+  // an empty read is the only answer they will ever get. `readAcs` throws rather than answering
+  // `[]` for a reply it could not read, so this is a real answer and counts like any other.
+  it('spends that budget on a read that came back empty, and no more', async () => {
     const { backend, reads } = harness({ acs: { [PENDING]: [reserving('archived-elsewhere')] } })
 
     for (let view = 0; view < 5; view++) {
       await backend.viewAs('funder::1')
     }
 
-    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(5)
+    expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(3)
   })
 
   // A holding whose blob the read did not carry is as unusable as one that never came back: nothing

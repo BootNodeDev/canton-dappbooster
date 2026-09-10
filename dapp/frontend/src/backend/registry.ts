@@ -26,6 +26,11 @@ type WireDisclosure = {
 
 const advice = (reason: string): Error => new Error(`${reason}, run pnpm run bootstrap`)
 
+// A registry that accepts the socket and never answers would otherwise hang the write that is
+// waiting on it for good, with only the confirm button's spinner to show for it. The same budget
+// the deployed proxy gives its own upstream hop, so neither leg outlasts the other.
+const REQUEST_TIMEOUT_MS = 15_000
+
 // The registry answers a refusal with a status and a JSON `error`, so read both: a stopped service
 // is fronted by an html error page, which would otherwise surface as a JSON syntax error.
 const call = async <T>(path: string, body?: unknown): Promise<T> => {
@@ -40,10 +45,19 @@ const call = async <T>(path: string, body?: unknown): Promise<T> => {
   }
   let response: Response
   try {
-    response = await fetch(`${REGISTRY_URL}${path}`, init)
-  } catch {
+    response = await fetch(`${REGISTRY_URL}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch (cause: unknown) {
     // A service that is down, a CORS refusal and a mixed-content block all reject alike, as a bare
-    // `Failed to fetch` naming neither the registry nor where it was looked for.
+    // `Failed to fetch` naming neither the registry nor where it was looked for. A timeout is told
+    // apart from those, because it is the one where the registry did answer the connection.
+    if (cause instanceof DOMException && cause.name === 'TimeoutError') {
+      throw new Error(
+        `the registry did not answer ${path} within ${REQUEST_TIMEOUT_MS / 1000}s (${REGISTRY_URL})`,
+      )
+    }
     throw new Error(`the registry is unreachable at ${REGISTRY_URL}${path}`)
   }
   const parsed = (await response.json().catch(() => undefined)) as { error?: string } | undefined

@@ -184,6 +184,7 @@ const claimUpdate = (
           {
             CreatedEvent: {
               contractId: successor,
+              templateId: 'pkg1:Vesting:VestingContract',
               createArgument: {
                 admin: 'admin::1',
                 instrumentId: 'DBT',
@@ -204,6 +205,29 @@ const claimUpdate = (
 })
 
 describe('updatesToClaims', () => {
+  // A withdraw pays the receiver as well as replacing the grant, so its transaction carries a
+  // `Token` create the receiver is an informee of. Its payload is `{admin, instrumentId, amount}`,
+  // which the instrument filter accepts, so picking the first create rather than the successor's
+  // own template threw on the `totalAmount` it has no field for and lost the whole history.
+  it('skips the holding the withdraw paid out, even when it comes first', () => {
+    const { update } = claimUpdate(7, 'c1', 'c2', '250', '250')
+    const paidOut = {
+      CreatedEvent: {
+        contractId: 'paid-out',
+        templateId: 'tfpkg:Canton.TokenForge.Token:Token',
+        createArgument: { admin: 'admin::1', instrumentId: 'DBT', amount: '250' },
+      },
+    }
+    const { events, ...value } = update.Transaction.value
+    const withHolding = {
+      update: { Transaction: { value: { ...value, events: [events[0], paidOut, events[1]] } } },
+    }
+
+    const [record] = updatesToClaims([withHolding], INSTRUMENT)
+
+    expect(record?.grant.id).toBe('c2')
+  })
+
   it('carries the id the claim consumed alongside the successor it created', () => {
     const [record] = updatesToClaims([claimUpdate(7, 'c1', 'c2', '250', '250')], INSTRUMENT)
     expect(record?.replaces).toBe('c1')

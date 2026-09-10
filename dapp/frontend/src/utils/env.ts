@@ -33,9 +33,13 @@ const read = (
   key: keyof Env,
   accepts: (value: string) => boolean,
   expected: string,
+  localDefaults: boolean,
   normalize: (value: string) => string = (value) => value,
 ): string => {
-  const raw = values[key] ?? DEFAULTS[key]
+  const raw = values[key] ?? (localDefaults ? DEFAULTS[key] : undefined)
+  if (raw === undefined) {
+    throw new Error(`Invalid environment: ${key} must be set explicitly, e.g. ${DEFAULTS[key]}`)
+  }
   const value = typeof raw === 'string' ? normalize(raw) : raw
   if (typeof value !== 'string' || !accepts(value)) {
     throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
@@ -43,20 +47,30 @@ const read = (
   return value
 }
 
-// Validates the build's environment
-export const parseEnv = (source: unknown): Env => {
+// Validates the build's environment. `localDefaults` is off for a production build, where a value
+// left unset must fail the build instead: these are baked into the bundle, an https page blocks a
+// http://localhost call as mixed content before any request leaves, and localhost would mean the
+// viewer's own machine anyway, so the default can only produce a deployment nobody can use.
+export const parseEnv = (source: unknown, localDefaults = true): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')
   }
   const values = source as Record<string, unknown>
 
   return {
-    VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
+    VITE_EXPLORER_URL: read(
+      values,
+      'VITE_EXPLORER_URL',
+      isHttpUrl,
+      'an http(s) url',
+      localDefaults,
+    ),
     VITE_REGISTRY_URL: read(
       values,
       'VITE_REGISTRY_URL',
       isUrlOrPath,
       'an http(s) url or a same-origin path',
+      localDefaults,
       trimBase,
     ),
   }

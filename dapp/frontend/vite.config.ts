@@ -35,7 +35,9 @@ const localnetAssets = (): Plugin => ({
 
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url))
-  const env = parseEnv(loadEnv(mode, envDir, ''))
+  // A production build takes no localhost fallback: an unset key fails here rather than shipping a
+  // bundle that points at the viewer's own machine.
+  const env = parseEnv(loadEnv(mode, envDir, ''), mode !== 'production')
 
   return {
     define: Object.fromEntries(

@@ -79,12 +79,17 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
     disabled = false,
     children,
     asLink: _a,
+    'aria-label': ariaLabel,
     ...rest
   } = props
   return (
     <button
       type={type}
       aria-busy={pending || undefined}
+      // Dropped while pending, because the swap below replaces the visible label with "Submitting…"
+      // and a caller's name would go on announcing the action this button no longer offers. Nothing
+      // else carries the state to a screen reader: aria-busy alone is not reliably announced.
+      aria-label={pending ? undefined : ariaLabel}
       className={buttonClass(variant, size, className)}
       disabled={disabled || pending}
       {...rest}
