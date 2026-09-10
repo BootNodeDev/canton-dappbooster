@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-theme",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster",
   "license": "MIT",
   "type": "module",
