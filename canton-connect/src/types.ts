@@ -82,7 +82,22 @@ export interface Party {
  * and that surface is yours. The app fields stay inert until `walletConnectProjectId` (Reown) is set.
  *
  * @example
- * const config: CantonConnectConfig = { appName: 'Vesting', networkId: 'canton:devnet' }
+ * const config: CantonConnectConfig = {
+ *   appName: 'Vesting',
+ *   networkId: 'canton:devnet',
+ *   walletConnectProjectId: 'REOWN_PROJECT_ID',
+ * }
+ *
+ * @example
+ * import type { CantonConnectConfig } from '#src/types'
+ * import { RemoteAdapter } from '@canton-network/dapp-sdk'
+ *
+ * const config: CantonConnectConfig = {
+ *   appName: 'Vesting',
+ *   additionalAdapters: [
+ *     new RemoteAdapter({ name: 'Gateway', rpcUrl: 'https://gateway.example.com/dapp' }),
+ *   ],
+ * }
  *
  * @category Configuration
  */

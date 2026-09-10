@@ -9,15 +9,12 @@ packages:
 # it does not download a Chromium; nothing here renders mermaid via the CLI.
 # @bootnodedev/canton-token-forge: a git dependency whose `prepare` compiles
 # registry/src into the registry/dist its bin points at; upstream gitignores that
-# directory, so without this entry the bin exists but resolves to nothing.
-# @bootnodedev/canton-wallet-service: a git dependency, so its `prepare` build is
-# what produces the dist/ the canton-wallet-service binary points at. pnpm matches
-# a git dependency only by its resolved tarball id, so moving the ref in
+# directory, so without this entry the bin exists but resolves to nothing. pnpm
+# matches a git dependency only by its resolved tarball id, so moving the ref in
 # package.json means replacing the commit sha below; `pnpm approve-builds` prints
 # the new key.
 allowBuilds:
   '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7': true
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/d14ee9838986ca1f33c5eae204af54d70fbb55fd': true
   esbuild: true
   protobufjs: true
   puppeteer: false
