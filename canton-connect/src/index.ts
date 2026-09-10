@@ -33,6 +33,7 @@ export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from '#src/mo
 export { createMockAdapter } from '#src/mock/mockAdapter'
 
 export type {
+  Account,
   CantonConnectConfig,
   CantonConnectContextValue,
   ConnectionStatus,

@@ -4,6 +4,7 @@ import type {
   DappSDK,
   ProviderAdapter,
   TxChangedEvent,
+  Wallet,
   WalletPickerFn,
 } from '@canton-network/dapp-sdk'
 import type { ConnectionActorRef } from '#src/machine/connectionMachine'
@@ -58,6 +59,39 @@ export type ConnectionStatus =
  * @category Types
  */
 export type PartyType = 'local' | 'external'
+
+/**
+ * One account the connected wallet reports: a party plus its key, signing provider and network.
+ * Only `dapp-sdk`'s schema calls it a wallet, and CIP-0103 makes that schema binding from v1.0.0.
+ * Until then the CIP text is what binds, and it says account.
+ *
+ * @category Types
+ */
+export type Account = Wallet
+
+// The account entry as dapp-sdk 1.5.1 declares it.
+type PinnedAccount = {
+  primary: boolean
+  partyId: string
+  status: 'initialized' | 'allocated' | 'removed'
+  hint: string
+  publicKey: string
+  namespace: string
+  networkId: string
+  signingProviderId: string
+  externalTxId?: string
+  topologyTransactions?: string
+  disabled?: boolean
+  reason?: string
+}
+
+// `false`, never `never`: `never extends true` holds, so a `never` sentinel would never fire.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type Assert<T extends true> = T
+
+// Exists to fail typecheck when an SDK bump changes the account entry, rather than let the new
+// shape reach the hooks unnoticed.
+type _AccountPinned = Assert<Exact<Account, PinnedAccount>>
 
 /**
  * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` falls
