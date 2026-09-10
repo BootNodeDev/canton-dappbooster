@@ -113,6 +113,52 @@ init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3
 `networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
 `Party.networkId` for a wallet that reports none.
 
+### Remote gateway
+
+Configured like any adapter: `additionalAdapters: [new RemoteAdapter({ name, rpcUrl })]`, with
+`RemoteAdapter` imported from `dapp-sdk`. Connect, restore, disconnect and execute reach a gateway
+with no change to this package, and the popup-close guard behaves as it does on an extension. The
+flow itself (login page, status push, review page) is the SDK's:
+https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/remote-wallet.md.
+
+What differs on a gateway:
+
+- Restore after a reload works only for a gateway registered through `additionalAdapters` at init:
+  `RemoteAdapter.restore()` matches the stored discovery URL against a registered `rpcUrl`, so a URL
+  the user typed into the SDK picker has nothing to match next time.
+- No lock: a gateway has none, so `useWalletStatus().isLocked` never turns true.
+- `ledgerApi` must name the route as a template with the values in `path`; a route with the value
+  written in is refused. See [Ledger reads](#ledger-reads).
+
+### WalletConnect
+
+`walletConnectProjectId` is what makes `buildAdditionalAdapters` build the SDK's
+`WalletConnectAdapter` (Adapters above). Execute, disconnect and the popup-close guard behave as on
+an extension. Pairing and requests are the SDK's:
+https://docs.canton.network/sdks-tools/sdks/dapp-sdk/wallet-providers/walletconnect.md.
+
+What differs over WalletConnect:
+
+- Restore after a reload is silent: the sign client persists the session.
+- No lock reaches the dApp: `useWalletStatus().isLocked` never turns true, and a request sent to a
+  locked wallet waits.
+- `networkId` is the CAIP-2 chain id of the network the dApp targets: a wallet on another network
+  cannot pair, and the default `canton:local` is a local participant, so a dApp on devnet or mainnet
+  sets it.
+
+### Ledger reads
+
+`ledgerApi` names its route the way Canton's JSON API OpenAPI does: templated, with the variable
+parts in `path`, never written into the string. It is the shape the SDK's own client sends, and the
+only one a gateway accepts.
+
+```text
+resource: '/v2/users/{user-id}/rights', path: { 'user-id': userId }   // the SDK's shape
+resource: `/v2/users/${userId}/rights`                                // a gateway refuses this
+```
+
+`query` holds query parameters, `body` the request body; neither goes into `resource`.
+
 ### The party type
 
 A party under the hosting participant's namespace is local, any other is external. A dApp cares
@@ -131,8 +177,6 @@ announce, detect and connect path. `createAutoPicker` answers the picker headles
 
 ## Deferred
 
-- Remote / Wallet Gateway (OIDC) path: a configurable `RemoteAdapter` through `additionalAdapters`
-  and `CantonConnectConfig` (#2).
 - Themed in-page picker (#50): its PR (#63) was closed unmerged, so the SDK popup is still the only
   picker; a new attempt starts from the `walletPicker` seam.
 

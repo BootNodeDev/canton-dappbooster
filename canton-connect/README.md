@@ -116,6 +116,39 @@ and a wallet-side disconnect look the same
 here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
+### Connecting through a Wallet Gateway
+
+```tsx
+import { RemoteAdapter } from '@canton-network/dapp-sdk'
+
+const config = {
+  appName: 'My dApp',
+  additionalAdapters: [
+    new RemoteAdapter({ name: 'Gateway', rpcUrl: 'http://localhost:3030/api/v0/dapp' }),
+  ],
+}
+```
+
+> [!NOTE]
+> The dapp-sdk wallet picker also lets a user paste any gateway URL and connect to it without the
+> dApp listing it. That session does not survive a reload; one with a gateway listed here does.
+
+Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#remote-gateway).
+
+### Connecting through WalletConnect
+
+```tsx
+const config = {
+  appName: 'My dApp',
+  networkId: 'canton:devnet',
+  walletConnectProjectId: 'YOUR_REOWN_PROJECT_ID',
+}
+```
+
+`networkId` is the Canton network the dApp targets, as a CAIP-2 chain id.
+
+Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#walletconnect).
+
 ## Reference
 
 Every hook and every config field is documented in JSDoc, which your editor surfaces at the call
