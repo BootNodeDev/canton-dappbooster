@@ -1,5 +1,6 @@
 // Underscore-prefixed because Vercel publishes every other file under `api/` as a function: named
 // `registry.test.ts` this suite would deploy as a public endpoint at `/api/registry.test`.
+import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GET, POST } from '#api/registry'
 
@@ -61,6 +62,21 @@ describe('the forwarded query', () => {
     expect(calls[0]?.url).toBe(
       'https://registry.example/registry/metadata/v1/instruments?pageToken=abc%2Fdef',
     )
+  })
+
+  // `?pageToken=` is what a client following pages sends once there are none left to follow; relayed,
+  // the registry has to resolve an empty token instead of being asked for the first page.
+  it('drops a pageToken that carries no value', async () => {
+    vi.stubEnv('REGISTRY_URL', 'https://registry.example')
+    const { calls } = stubUpstream()
+
+    await GET(
+      new Request(
+        `https://demo.example/api/registry?path=${encodeURIComponent(INSTRUMENTS)}&pageToken=`,
+      ),
+    )
+
+    expect(calls[0]?.url).toBe('https://registry.example/registry/metadata/v1/instruments')
   })
 
   it('drops a parameter it does not list, the rewrite\u2019s own path included', async () => {
@@ -213,5 +229,24 @@ describe('deployment configuration', () => {
 
     expect(response.status).toBe(502)
     expect(await errorOf(response)).toBe('Upstream unreachable')
+  })
+})
+
+// This proxy and the browser client that calls it are the two legs of one registry read, so a longer
+// budget on either only makes the caller wait past a hop that has already given up. Held by reading
+// both files rather than by sharing a module: `api/` is its own tsconfig project and never imports
+// from `src/`.
+describe('the upstream timeout', () => {
+  const budgetOf = async (path: string): Promise<string | undefined> =>
+    /_TIMEOUT_MS = ([\d_]+)/.exec(await readFile(new URL(path, import.meta.url), 'utf8'))?.[1]
+
+  it('matches the budget the browser client gives the same read', async () => {
+    const [proxy, client] = await Promise.all([
+      budgetOf('./registry.ts'),
+      budgetOf('../src/backend/registry.ts'),
+    ])
+
+    expect(proxy).toBe('15_000')
+    expect(client).toBe(proxy)
   })
 })

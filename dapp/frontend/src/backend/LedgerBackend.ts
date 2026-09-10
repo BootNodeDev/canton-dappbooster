@@ -176,6 +176,22 @@ const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
   localStorage.setItem(MISS_STORE_KEY, JSON.stringify({ ...misses, ...bumped }))
 }
 
+const dropMiss = (tokenCid: string): void => {
+  const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
+  localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+}
+
+// Puts a reservation this browser has given up on back in front of the reconcile. The bound exists
+// so that a holding nobody can find stops costing a blob-bearing read on every view, not so that a
+// read which came back short once leaves a live grant unacceptable until site data is wiped.
+const retryFunding = (tokenCid: string): void => {
+  try {
+    dropMiss(tokenCid)
+  } catch (cause: unknown) {
+    console.warn('could not reset the read count for the holding a grant reserves', cause)
+  }
+}
+
 // What a grant leaves in this browser once it can no longer be accepted: the blob its Accept would
 // have disclosed, and the count of reads spent looking for that holding. Both are keyed by the
 // holding, so both go whichever way the grant ended. Every caller runs after its submission has
@@ -191,8 +207,7 @@ const forgetFunding = (tokenCid: string | undefined): void => {
       TOKEN_STORE_KEY,
       JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
     )
-    const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
-    localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+    dropMiss(tokenCid)
   } catch (cause: unknown) {
     console.warn('could not forget what this browser kept for a grant that has ended', cause)
   }
@@ -204,6 +219,9 @@ export class LedgerBackend implements VestingBackend {
   private readonly instrument: RegistryInstrument
   private readonly synchronizerId: string | undefined
   private readonly pkg: string
+  // The registry's answer to the same question, kept from the last write that fetched a config, for
+  // the two exits that fetch none and would otherwise name no synchronizer at all.
+  private fromRegistry: string | undefined
 
   constructor(deployment: Deployment, wallet: WalletFns) {
     this.wallet = wallet
@@ -214,6 +232,11 @@ export class LedgerBackend implements VestingBackend {
       templateId: this.tid('VestingFactory'),
       contractId: deployment.factoryCid,
       createdEventBlob: deployment.factoryBlob,
+      // Its own deployment's, never the submission's: nothing else knows where this contract lives,
+      // so a deployment that reports none must leave the participant to resolve it.
+      ...(deployment.synchronizerId === undefined
+        ? {}
+        : { synchronizerId: deployment.synchronizerId }),
     }
   }
 
@@ -259,22 +282,27 @@ export class LedgerBackend implements VestingBackend {
 
   // actAs is explicit rather than left to the wallet's primary account, so a submission that would
   // be signed by the wrong key is rejected by the participant instead of silently reassigned. The
-  // synchronizer is stamped here and nowhere the disclosures are built, and on the submission as
-  // well as on each disclosure: a write that discloses nothing would otherwise reach a wallet on
-  // more than one synchronizer with none named, and land on its default.
+  // synchronizer goes on the submission as well, because a write that discloses nothing would
+  // otherwise reach a wallet on more than one synchronizer with none named and land on its default.
   private submit(
     actAs: string,
     command: LedgerCommand,
     disclosed: DisclosedContract[],
-    sync: string | undefined = this.synchronizerId,
+    sync: string | undefined = this.synchronizerId ?? this.fromRegistry,
   ): Promise<unknown> {
     return this.wallet.execute({
       actAs: [actAs],
       readAs: [actAs],
       commands: [command],
       ...(sync === undefined ? {} : { synchronizerId: sync }),
-      disclosedContracts:
-        sync === undefined ? disclosed : disclosed.map((one) => ({ ...one, synchronizerId: sync })),
+      // Filled from the deployment alone, and only where whoever built the disclosure named none:
+      // the registry vouches for its own config and for nothing else, so a fallback to its answer
+      // must not travel onto a blob it has never seen. The participant resolves an unstamped one.
+      disclosedContracts: disclosed.map((one) =>
+        one.synchronizerId === undefined && this.synchronizerId !== undefined
+          ? { ...one, synchronizerId: this.synchronizerId }
+          : one,
+      ),
     })
   }
 
@@ -361,8 +389,8 @@ export class LedgerBackend implements VestingBackend {
     const held = await this.readAcs(party, TOKEN, offset, true)
     // An empty read counts like any other: it is the answer a funder who no longer holds the
     // reservation gets, and it is the only one they ever get, so skipping it left the bound below
-    // unreachable in exactly the case it exists for. `readAcs` throws rather than answering `[]` for
-    // a reply it could not read, so this is the party's holdings and not a failure wearing them.
+    // unreachable in exactly the case it exists for. What keeps that from condemning a grant whose
+    // read was merely short is `retryFunding`, which the receiver's own Accept reaches.
     recordMisses(wanted, storeTokens(held, wanted))
   }
 
@@ -430,6 +458,7 @@ export class LedgerBackend implements VestingBackend {
         `the registry's InstrumentConfig is on synchronizer ${fromConfig} and the vesting factory on ${this.synchronizerId}: this dApp needs both on one`,
       )
     }
+    this.fromRegistry = fromConfig ?? this.fromRegistry
     return this.synchronizerId ?? fromConfig
   }
 
@@ -470,7 +499,7 @@ export class LedgerBackend implements VestingBackend {
     let beginExclusive: string | number = 0
     for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
       const updates = await this.readUpdates(partyId, beginExclusive, endInclusive)
-      records.push(...updatesToClaims(updates, this.instrument))
+      records.push(...updatesToClaims(updates, this.instrument, this.tid('VestingContract')))
       const last = lastUpdateOffset(updates)
       if (!Array.isArray(updates) || updates.length < CLAIM_HISTORY_LIMIT || last === undefined) {
         break
@@ -494,6 +523,11 @@ export class LedgerBackend implements VestingBackend {
     const wanted = reservedToken(proposal)
     const token = storedTokens().find((one) => one.contractId === wanted)
     if (wanted === undefined || token === undefined) {
+      // A receiver asking for a grant this browser gave up finding the funding for is the one signal
+      // that it is worth another look, so the funder's next view gets its read budget back.
+      if (wanted !== undefined) {
+        retryFunding(wanted)
+      }
       throw new Error('the funder holding this grant locks is not disclosable from this browser')
     }
     await this.submitWithConfig(

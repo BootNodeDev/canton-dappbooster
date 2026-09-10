@@ -27,9 +27,9 @@ type WireDisclosure = {
 const advice = (reason: string): Error => new Error(`${reason}, run pnpm run bootstrap`)
 
 // A registry that accepts the socket and never answers would otherwise hang the write that is
-// waiting on it for good, with only the confirm button's spinner to show for it. The same budget
-// the deployed proxy gives its own upstream hop, so neither leg outlasts the other.
-const REQUEST_TIMEOUT_MS = 15_000
+// waiting on it for good, with only the confirm button's spinner to show for it. The same budget the
+// deployed proxy gives its own upstream hop, which `api/_registry.test.ts` is what holds.
+const REGISTRY_TIMEOUT_MS = 15_000
 
 // The registry answers a refusal with a status and a JSON `error`, so read both: a stopped service
 // is fronted by an html error page, which would otherwise surface as a JSON syntax error.
@@ -47,7 +47,7 @@ const call = async <T>(path: string, body?: unknown): Promise<T> => {
   try {
     response = await fetch(`${REGISTRY_URL}${path}`, {
       ...init,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
     })
   } catch (cause: unknown) {
     // A service that is down, a CORS refusal and a mixed-content block all reject alike, as a bare
@@ -55,7 +55,7 @@ const call = async <T>(path: string, body?: unknown): Promise<T> => {
     // apart from those, because it is the one where the registry did answer the connection.
     if (cause instanceof DOMException && cause.name === 'TimeoutError') {
       throw new Error(
-        `the registry did not answer ${path} within ${REQUEST_TIMEOUT_MS / 1000}s (${REGISTRY_URL})`,
+        `the registry did not answer ${path} within ${REGISTRY_TIMEOUT_MS / 1000}s (${REGISTRY_URL})`,
       )
     }
     throw new Error(`the registry is unreachable at ${REGISTRY_URL}${path}`)
@@ -137,14 +137,15 @@ export const fetchInstrumentConfig = async (
   return {
     configCid: result.factoryId,
     configTemplateId: config.templateId,
-    // Rebuilt field by field to drop the wire object's `synchronizerId`, which `submit` stamps from
-    // the factory's own deployment instead, assuming the two share one synchronizer. Returned
-    // alongside because that same assumption is what makes it the app's network.
+    // Rebuilt field by field so nothing else off the wire travels, `synchronizerId` kept: the
+    // registry is what vouches for where this contract lives. Returned alongside as well, because
+    // the submission carrying it has to agree with the deployment's own.
     disclosed: [
       {
         templateId: config.templateId,
         contractId: config.contractId,
         createdEventBlob: config.createdEventBlob,
+        ...(config.synchronizerId === undefined ? {} : { synchronizerId: config.synchronizerId }),
       },
     ],
     synchronizerId: config.synchronizerId,

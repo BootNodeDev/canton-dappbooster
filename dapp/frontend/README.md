@@ -52,6 +52,11 @@ The deployed demo is inert until its Vercel project points the registry knob at 
 from the internet, and no such registry is hosted today, so `loadBackendConfig` hard-fails and every
 page shows "No deployment" once a wallet connects.
 
+A build whose output is going to be served takes no defaults for those two knobs: `vercel.json`'s
+build command sets `DEPLOYED_BUILD=1`, and with it an unset key fails the build rather than baking in
+a `localhost` address that an https page blocks as mixed content. Any other host serving this bundle
+sets it too; a local build and CI's compile check do not.
+
 ## How it fits together
 
 The internal seams and the reasoning behind them are in

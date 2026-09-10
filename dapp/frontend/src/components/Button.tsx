@@ -87,8 +87,9 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
       type={type}
       aria-busy={pending || undefined}
       // Dropped while pending, because the swap below replaces the visible label with "Submitting…"
-      // and a caller's name would go on announcing the action this button no longer offers. Nothing
-      // else carries the state to a screen reader: aria-busy alone is not reliably announced.
+      // and a caller's name would go on announcing the action this button no longer offers. The new
+      // name is not what carries the change, though: `disabled` takes the button out of the tab
+      // order, so nothing focuses it to hear one. The live region below is what announces it.
       aria-label={pending ? undefined : ariaLabel}
       className={buttonClass(variant, size, className)}
       disabled={disabled || pending}
@@ -97,7 +98,7 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
       {pending ? (
         <>
           <Spinner size={16} />
-          Submitting…
+          <span role="status">Submitting…</span>
         </>
       ) : (
         children

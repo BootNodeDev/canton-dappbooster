@@ -40,7 +40,7 @@ than implemented by a class. They come straight from `canton-connect`'s `useExec
 
 Both halves of the pairing are runtime state. The deployment comes from
 [`config.ts`](src/backend/config.ts), which assembles it from two sources at once. Off the ledger,
-through that same `ledgerApi`: the newest `vesting-operator-*` among the connected user's rights,
+through that same `ledgerApi`: the `vesting-operator::*` party among the connected user's rights,
 then an active-contracts read as that operator for the factory, which yields `pkg`, the contract id
 and the `createdEventBlob`. And off the registry, through
 [`registry.ts`](src/backend/registry.ts), for the instrument's `admin` and `instrumentId`; reading

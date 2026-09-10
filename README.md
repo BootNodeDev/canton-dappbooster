@@ -113,7 +113,9 @@ pnpm run bootstrap
 
 **Note:** Safe to re-run. It reuses the operator, factory and instrument it finds on the ledger and
 creates only what is missing, so the holdings and grants of an earlier run survive a `down` and `up`.
-A LocalNet reset drops the parties with the ledger, so the next run creates them again.
+A LocalNet reset drops the parties with the ledger, so the next run creates them again. A ledger
+bootstrapped before this step became idempotent carries `vesting-operator-<stamp>` parties that no
+run adopts; reset it once and the holdings from those runs are gone with it.
 
 ### Token registry
 

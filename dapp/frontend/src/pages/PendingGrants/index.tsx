@@ -35,11 +35,7 @@ export const PendingGrants = (): React.JSX.Element => {
   // wallet session, so either can flip under an open dialog (browser Back/Forward, an account
   // change). This is what keeps the dialog's title and its write pinned to the grant it opened on.
   const [ending, setEnding] = useState<Ending | undefined>(undefined)
-  // What each grant already has in flight. Tracked by the page rather than by the dialog, which can
-  // be dismissed over the wallet prompt and unmount with its submission still out; and covering the
-  // accept as well as the two ends, because both exits archive the same proposal, so leaving either
-  // live during the other sends a second one the ledger can only reject.
-  const [busy, setBusy] = useState<ReadonlyMap<string, 'accept' | 'end'>>(new Map())
+  const busy = useVestingStore((s) => s.busy)
   const cancelProposal = useVestingStore((s) => s.cancelProposal)
   const rejectProposal = useVestingStore((s) => s.rejectProposal)
 
@@ -63,41 +59,21 @@ export const PendingGrants = (): React.JSX.Element => {
     return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
-  const whileBusy = async (
-    pendingCid: string,
-    kind: 'accept' | 'end',
-    run: () => Promise<void>,
-  ): Promise<void> => {
-    setBusy((current) => new Map(current).set(pendingCid, kind))
+  // The accept owns its own toasts, where the two ends leave theirs to the dialog that confirmed
+  // them: this is the only one reached from the card itself.
+  const onAccept = async (pendingGrant: PendingGrant): Promise<void> => {
     try {
-      await run()
-    } finally {
-      setBusy((current) => {
-        const next = new Map(current)
-        next.delete(pendingCid)
-        return next
-      })
+      await accept(backend, partyId, pendingGrant.id)
+      toast.success('Grant accepted and active')
+    } catch (err) {
+      toast.error(errorText(err))
     }
   }
 
-  // The accept owns its own toasts, where the two ends leave theirs to the dialog that confirmed
-  // them: this is the only one reached from the card itself.
-  const onAccept = (pendingGrant: PendingGrant): Promise<void> =>
-    whileBusy(pendingGrant.id, 'accept', async () => {
-      try {
-        await accept(backend, partyId, pendingGrant.id)
-        toast.success('Grant accepted and active')
-      } catch (err) {
-        toast.error(errorText(err))
-      }
-    })
-
   const endGrant = (target: Ending): Promise<void> =>
-    whileBusy(target.pendingGrant.id, 'end', () =>
-      target.role === 'funder'
-        ? cancelProposal(backend, target.partyId, target.pendingGrant.id)
-        : rejectProposal(backend, target.partyId, target.pendingGrant.id),
-    )
+    target.role === 'funder'
+      ? cancelProposal(backend, target.partyId, target.pendingGrant.id)
+      : rejectProposal(backend, target.partyId, target.pendingGrant.id)
 
   return (
     <div className="flex flex-col gap-7">

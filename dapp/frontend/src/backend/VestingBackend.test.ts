@@ -204,6 +204,9 @@ const claimUpdate = (
   },
 })
 
+// The resolved id LedgerBackend spells its own commands with, which is where this comes from.
+const SUCCESSOR = 'pkg1:Vesting:VestingContract'
+
 describe('updatesToClaims', () => {
   // A withdraw pays the receiver as well as replacing the grant, so its transaction carries a
   // `Token` create the receiver is an informee of. Its payload is `{admin, instrumentId, amount}`,
@@ -223,13 +226,28 @@ describe('updatesToClaims', () => {
       update: { Transaction: { value: { ...value, events: [events[0], paidOut, events[1]] } } },
     }
 
-    const [record] = updatesToClaims([withHolding], INSTRUMENT)
+    const [record] = updatesToClaims([withHolding], INSTRUMENT, SUCCESSOR)
 
     expect(record?.grant.id).toBe('c2')
   })
 
+  // A grant created before the package was upgraded is still its own successor, so the match is on
+  // module and entity rather than on the whole resolved id.
+  it('accepts a successor created under another version of the package', () => {
+    const [record] = updatesToClaims(
+      [claimUpdate(7, 'c1', 'c2', '250', '250')],
+      INSTRUMENT,
+      'otherpkg:Vesting:VestingContract',
+    )
+    expect(record?.grant.id).toBe('c2')
+  })
+
   it('carries the id the claim consumed alongside the successor it created', () => {
-    const [record] = updatesToClaims([claimUpdate(7, 'c1', 'c2', '250', '250')], INSTRUMENT)
+    const [record] = updatesToClaims(
+      [claimUpdate(7, 'c1', 'c2', '250', '250')],
+      INSTRUMENT,
+      SUCCESSOR,
+    )
     expect(record?.replaces).toBe('c1')
     expect(record?.grant.id).toBe('c2')
     expect(record?.amount).toBe('250')
@@ -251,12 +269,12 @@ describe('updatesToClaims', () => {
         },
       },
     }
-    expect(updatesToClaims([orphan], INSTRUMENT)).toEqual([])
+    expect(updatesToClaims([orphan], INSTRUMENT, SUCCESSOR)).toEqual([])
   })
 
   it('ignores anything that is not an array of transactions', () => {
-    expect(updatesToClaims(undefined, INSTRUMENT)).toEqual([])
-    expect(updatesToClaims([{}], INSTRUMENT)).toEqual([])
+    expect(updatesToClaims(undefined, INSTRUMENT, SUCCESSOR)).toEqual([])
+    expect(updatesToClaims([{}], INSTRUMENT, SUCCESSOR)).toEqual([])
   })
 })
 
@@ -268,6 +286,7 @@ describe('claimChain', () => {
       claimUpdate(11, 'other1', 'other2', '10', '10'),
     ],
     INSTRUMENT,
+    SUCCESSOR,
   )
 
   it('walks a grant back through the contracts its own claims replaced, newest first', () => {

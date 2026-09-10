@@ -5,6 +5,7 @@ import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
 import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
+import { ReadError } from '@/components/ReadError'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { WrongNetwork } from '@/components/WrongNetwork'
@@ -72,6 +73,7 @@ export const AppShell = (): React.JSX.Element => {
           {configPending && <Loading />}
           {configError === undefined && !configPending && (
             <>
+              <ReadError />
               <Outlet />
               {creating && backend !== undefined && (
                 <CreateGrant onClose={() => setCreating(false)} />

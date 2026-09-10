@@ -78,19 +78,31 @@ const ledger = (requestMethod, resource, body, query) =>
     ...(query === undefined ? {} : { query }),
   })
 
-// A party the participant already knows under this hint, or undefined. Party ids are
-// `<hint>::<fingerprint>`, so the hint is a prefix and not the id itself.
+const PARTY_PAGES = 20
+
+// A party this participant hosts under this hint, or undefined. Party ids are
+// `<hint>::<fingerprint>`, so the hint is a prefix and not the id itself, and
+// `isLocal` is what separates a party this participant hosts from one it merely
+// knows about: allocating rights on somebody else's party succeeds and every
+// command as that party then fails.
 const findParty = async (hint) => {
   let pageToken
-  for (let page = 0; page < 20; page++) {
+  for (let page = 0; page < PARTY_PAGES; page++) {
     const result = await ledger(
       'get',
       '/v2/parties',
       undefined,
       pageToken === undefined ? undefined : { pageToken },
     )
-    const found = (result?.partyDetails ?? []).find(
-      (details) => typeof details?.party === 'string' && details.party.startsWith(`${hint}::`),
+    const details = result?.partyDetails
+    if (!Array.isArray(details)) {
+      throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
+    }
+    const found = details.find(
+      (one) =>
+        typeof one?.party === 'string' &&
+        one.party.startsWith(`${hint}::`) &&
+        one.isLocal !== false,
     )
     if (found !== undefined) {
       return found.party
@@ -100,7 +112,9 @@ const findParty = async (hint) => {
       return undefined
     }
   }
-  return undefined
+  // Never "not allocated": the next step would allocate the hint again and the participant would
+  // refuse a party it already hosts, naming nothing about the pages this stopped short of.
+  throw new Error(`gave up looking for ${hint} after ${PARTY_PAGES} pages of parties`)
 }
 
 // Allocates the party if the participant does not already know it, and grants the
@@ -188,7 +202,25 @@ const findInstrumentConfig = async (admin) => {
       `expected at most one ${INSTRUMENT.instrumentId} InstrumentConfig for ${admin}, found ${configs.length}`,
     )
   }
-  return configs[0]?.contractId
+  return configs[0]
+}
+
+// How the config on the ledger differs from what INSTRUMENT above asks for. The contract is
+// admin-signed and created once, so an edit here reaches a ledger that already carries one only
+// through a reset: creating a second is the state findInstrumentConfig refuses just above.
+export const instrumentDrift = (createArgument) => {
+  const arg = createArgument ?? {}
+  const exactly = (found, wanted) => found === wanted
+  // A Daml Decimal comes back padded to its full scale, so 1000.0 reads as 1000.0000000000.
+  const sameNumber = (found, wanted) => Number(found) === Number(wanted)
+  return [
+    ['name', arg.name, INSTRUMENT.name, exactly],
+    ['symbol', arg.symbol, INSTRUMENT.symbol, exactly],
+    ['decimals', arg.decimals, String(INSTRUMENT.decimals), exactly],
+    ['maxPerTap', arg.faucet?.maxPerTap, INSTRUMENT.maxPerTap, sameNumber],
+  ]
+    .filter(([, found, wanted, matches]) => !matches(found, wanted))
+    .map(([field, found, wanted]) => `${field} is ${found}, this script asks for ${wanted}`)
 }
 
 // The operator's own factory, if this operator already signed one. Observer-less, so only the
@@ -274,6 +306,14 @@ const main = async () => {
     throw new Error('factory created but no createdEventBlob came back from the ACS read')
   }
   console.log(`factory    ${active.createdEvent.contractId}${hadFactory ? ' (existing)' : ''}`)
+  // The filter above takes the package *name*, so a factory signed under a superseded version of it
+  // is reused like any other, and the dApp takes its package id from this very contract.
+  const factoryPkg = active.createdEvent.templateId?.split(':')[0]
+  if (hadFactory && factoryPkg !== pkg) {
+    console.warn(`warning:   that factory is on package ${factoryPkg}, not the preferred ${pkg}.`)
+    console.warn('           The dApp follows the contract, so a newly deployed DAR takes effect')
+    console.warn('           only after `canton-barebones reset`.')
+  }
 
   // Preflight before the admin exists, so an undeployed vendor/canton-token-forge.dar fails
   // with PACKAGE_NAMES_NOT_FOUND rather than a raw create error and a stray party.
@@ -285,8 +325,11 @@ const main = async () => {
   if (existingConfig !== undefined) {
     console.log(`admin      ${admin}`)
     console.log(
-      `instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${existingConfig} (existing)`,
+      `instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${existingConfig.contractId} (existing)`,
     )
+    for (const line of instrumentDrift(existingConfig.createArgument)) {
+      console.warn(`warning:   ${line}; reset the ledger to pick that up.`)
+    }
     printRegistryEnv(admin)
     return
   }
@@ -314,12 +357,12 @@ const main = async () => {
     ],
   })
 
-  const configCid = await findInstrumentConfig(admin)
-  if (configCid === undefined) {
+  const created = await findInstrumentConfig(admin)
+  if (created === undefined) {
     throw new Error(`created the ${INSTRUMENT.instrumentId} InstrumentConfig but it is not active`)
   }
   console.log(`admin      ${admin}`)
-  console.log(`instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${configCid}`)
+  console.log(`instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${created.contractId}`)
   printRegistryEnv(admin)
 }
 

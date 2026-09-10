@@ -209,8 +209,16 @@ export const lastUpdateOffset = (updates: unknown): number | undefined => {
   return entries.at(-1)?.update?.Transaction?.value?.offset
 }
 
-export const updatesToClaims = (updates: unknown, instrument: RegistryInstrument): ClaimRecord[] =>
-  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
+export const updatesToClaims = (
+  updates: unknown,
+  instrument: RegistryInstrument,
+  successorTemplateId: string,
+): ClaimRecord[] => {
+  // Module and entity rather than the whole id, so a grant created under an earlier version of the
+  // package still joins its own chain; taken from the caller's resolved id rather than spelled here
+  // a third time, so a Daml rename cannot leave this one behind.
+  const entity = successorTemplateId.slice(successorTemplateId.indexOf(':'))
+  return (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
     const transaction = entry.update?.Transaction?.value
     const events = transaction?.events ?? []
     const claim = events.find(
@@ -221,7 +229,7 @@ export const updatesToClaims = (updates: unknown, instrument: RegistryInstrument
     // pair, so the instrument filter below cannot tell the two apart and `rowToGrant` would throw on
     // the missing `totalAmount` rather than skip the event.
     const created = events.find((event) =>
-      event.CreatedEvent?.templateId?.endsWith(':Vesting:VestingContract'),
+      event.CreatedEvent?.templateId?.endsWith(entity),
     )?.CreatedEvent
     const amount = claim?.choiceArgument?.withdrawAmount
     const replaces = claim?.contractId
@@ -249,6 +257,7 @@ export const updatesToClaims = (updates: unknown, instrument: RegistryInstrument
           },
         ]
   })
+}
 
 type TokenArg = { admin?: string; amount?: string; instrumentId?: string }
 

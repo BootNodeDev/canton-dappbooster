@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type LedgerApi, loadBackendConfig } from '@/backend/config'
 
-const OPERATOR = 'vesting-operator-1700000000001::ns'
-const OLDER = 'vesting-operator-1600000000000::ns'
+const OPERATOR = 'vesting-operator::ns'
+// What a bootstrap predating the stable hint left behind. A different party, whose factory is not
+// the one the registry is now configured for.
+const LEGACY = 'vesting-operator-1700000000001::ns'
 
 const factoryRow = (
   createdEvent: Record<string, unknown>,
@@ -33,7 +35,7 @@ const ledger = (
     if (resource.endsWith('/rights')) {
       return {
         rights: overrides.rights ?? [
-          { kind: { CanActAs: { value: { party: OLDER } } } },
+          { kind: { CanActAs: { value: { party: LEGACY } } } },
           { kind: { CanActAs: { value: { party: OPERATOR } } } },
           { kind: { ParticipantAdmin: { value: {} } } },
         ],
@@ -95,11 +97,17 @@ describe('loadBackendConfig', () => {
     await expect(loadBackendConfig(ledgerApi)).resolves.not.toHaveProperty('synchronizerId')
   })
 
-  // Every run leaves its operator behind, so the newest is the one whose factory the config means.
-  it('reads as the newest operator among the rights', async () => {
+  it('reads as the operator allocated under the bootstrap hint', async () => {
     const { ledgerApi, filteredParty } = ledger()
     await loadBackendConfig(ledgerApi)
     expect(filteredParty()).toBe(OPERATOR)
+  })
+
+  // The stamped spelling is a prefix of nothing the current bootstrap creates, and adopting it would
+  // point the app at that run's factory while the registry serves this run's admin.
+  it('does not adopt a stamped operator from an earlier bootstrap', async () => {
+    const { ledgerApi } = ledger({ rights: [{ kind: { CanActAs: { value: { party: LEGACY } } } }] })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no vesting operator/)
   })
 
   it('names the bootstrap script when no operator was ever created', async () => {

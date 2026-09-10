@@ -263,10 +263,11 @@ start_registry() {
     [ -n "$value" ] || die "bootstrap printed no $key; cannot configure the registry (log: $BOOTSTRAP_LOG)"
     registry_env+=("$key=$value")
   done
+  # Set-but-empty is passed through rather than dropped: for CORS_ORIGINS it is the only way to ask
+  # for no allowed origin at all, where dropping it hands the registry its own localhost default.
   for key in "${REGISTRY_OPTION_KEYS[@]}"; do
-    value="${!key-}"
-    [ -n "$value" ] || continue
-    registry_env+=("$key=$value")
+    [ -n "${!key+set}" ] || continue
+    registry_env+=("$key=${!key}")
   done
   port="$(read_bootstrap_env PORT)"
 
@@ -341,8 +342,20 @@ up() {
   # matching deploy-dar.sh and mint-token.mjs; nothing is exported, because each step
   # reads .env for itself and only the mint recipe would travel.
   local preset_json_api_url="${CANTON_JSON_API_URL:-}"
+  # The same rule for the registry's own options, which `source` would otherwise overwrite with the
+  # file's, against what REGISTRY_OPTION_KEYS says about where they come from.
+  local -a preset_registry_options=()
+  local option
+  for option in "${REGISTRY_OPTION_KEYS[@]}"; do
+    if [ -n "${!option+set}" ]; then
+      preset_registry_options+=("$option=${!option}")
+    fi
+  done
   # shellcheck disable=SC1091
   source .env
+  for option in ${preset_registry_options[@]+"${preset_registry_options[@]}"}; do
+    export "${option?}"
+  done
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned

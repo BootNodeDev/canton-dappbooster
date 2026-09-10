@@ -11,12 +11,16 @@ import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
 import type { Grant, Role } from '@/store/types'
-import type { GrantDerived } from '@/store/useVestingStore'
+import type { BusyKind, GrantDerived } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
 import { formatDate, formatPct, relativeTime } from '@/utils/format'
 import { nextMilestone } from '@/utils/schedule'
 
+// `busy` is the exit this grant already has in flight. A dialog stays dismissible over the wallet
+// prompt, so dismissing it mid-flight would otherwise leave these controls offering a second write
+// against a contract the first is about to archive.
 interface GrantCardProps {
+  busy: BusyKind | undefined
   className?: string
   derived: GrantDerived
   grant: Grant
@@ -53,6 +57,7 @@ const scheduleMeta = (
 }
 
 export const GrantCard = ({
+  busy,
   grant,
   derived,
   role,
@@ -136,6 +141,7 @@ export const GrantCard = ({
               <Button
                 size="sm"
                 disabled={!derived.canClaim}
+                pending={busy !== undefined}
                 onClick={() => onClaim(grant)}
                 className="md:w-auto"
               >
@@ -165,6 +171,7 @@ export const GrantCard = ({
                 aria-label="Cancel grant"
                 size="icon"
                 variant="danger-ghost"
+                disabled={busy !== undefined}
                 onClick={() => onCancel(grant)}
               >
                 <Trash2 size={16} />

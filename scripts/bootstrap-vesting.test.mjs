@@ -3,7 +3,12 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { formatRegistryEnv, REGISTRY_PORT, REGISTRY_TEMPLATE_IDS } from './bootstrap-vesting.mjs'
+import {
+  formatRegistryEnv,
+  instrumentDrift,
+  REGISTRY_PORT,
+  REGISTRY_TEMPLATE_IDS,
+} from './bootstrap-vesting.mjs'
 
 const block = formatRegistryEnv({
   ledgerApiUrl: 'http://localhost:2975',
@@ -86,5 +91,36 @@ describe('the contract between bootstrap and dev-stack.sh', () => {
       const printed = block.split('\n').find((line) => line.startsWith(`${key}=`))
       assert.equal(printed.slice(key.length + 1).replace(/^'|'$/g, ''), id)
     }
+  })
+})
+
+// The InstrumentConfig is admin-signed and created once, so a bootstrap that finds one reuses it
+// whatever this script now asks for, and saying nothing would make the constants write-once.
+describe('the drift between the ledger and the INSTRUMENT constants', () => {
+  const onLedger = {
+    admin: 'instrument-admin::ns',
+    instrumentId: 'DBT',
+    name: 'dAppBooster Token',
+    symbol: 'DBT',
+    decimals: '10',
+    faucet: { maxPerTap: '1000.0000000000' },
+  }
+
+  it('reports none for the config this script would have created', () => {
+    assert.deepEqual(instrumentDrift(onLedger), [])
+  })
+
+  it('compares the tap ceiling as a number, since Daml pads a Decimal to its full scale', () => {
+    assert.deepEqual(instrumentDrift({ ...onLedger, faucet: { maxPerTap: '5000.0000000000' } }), [
+      'maxPerTap is 5000.0000000000, this script asks for 1000.0',
+    ])
+  })
+
+  it('names every field that differs, and reports a missing faucet as one', () => {
+    const drift = instrumentDrift({ ...onLedger, symbol: 'OLD', faucet: undefined })
+    assert.deepEqual(drift, [
+      'symbol is OLD, this script asks for DBT',
+      'maxPerTap is undefined, this script asks for 1000.0',
+    ])
   })
 })

@@ -132,9 +132,9 @@ describe('fetchInstrumentConfig', () => {
     })
   })
 
-  // The synchronizer comes back beside the disclosure and not on it: `submit` stamps its own, and
-  // the loose one is what `fetchAppNetwork` compares the wallet against.
-  it('returns the config reference, its stripped disclosure and the synchronizer id', async () => {
+  // The synchronizer stays on the disclosure, because the registry is what vouches for where that
+  // contract lives, and comes back loose as well for `fetchAppNetwork` to compare the wallet against.
+  it('returns the config reference, its rebuilt disclosure and the synchronizer id', async () => {
     stubRegistry(factory)
 
     await expect(fetchInstrumentConfig('funder::1', INSTRUMENT)).resolves.toEqual({
@@ -145,6 +145,7 @@ describe('fetchInstrumentConfig', () => {
           templateId: CONFIG.templateId,
           contractId: '00cfg',
           createdEventBlob: 'YmxvYg==',
+          synchronizerId: 'global-domain::1220',
         },
       ],
       synchronizerId: 'global-domain::1220',

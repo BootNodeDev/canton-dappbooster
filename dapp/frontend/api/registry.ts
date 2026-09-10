@@ -11,6 +11,9 @@ const ALLOWED = new Map([
 // product's own domain is a decision. `pageToken` is what the instrument listing follows its pages
 // with, so dropping the query strands every page past the first with no error to see.
 const FORWARDED_PARAMS = ['pageToken']
+// Held equal to the browser client's own budget by the suite in _registry.test.ts: neither file can
+// import the other, and a longer budget on either leg only makes the caller wait past a hop that has
+// already given up.
 const UPSTREAM_TIMEOUT_MS = 15_000
 
 const fail = (message: string, status: number): Response =>
@@ -43,8 +46,10 @@ const forward = async (request: Request, body: string | undefined): Promise<Resp
 
   const forwarded = new URLSearchParams()
   for (const name of FORWARDED_PARAMS) {
+    // An empty one is dropped rather than relayed: the registry reads `pageToken=` as a token it
+    // cannot resolve, where leaving it out asks for the first page, which is what was meant.
     const value = asked.get(name)
-    if (value !== null) {
+    if (value !== null && value !== '') {
       forwarded.set(name, value)
     }
   }

@@ -7,15 +7,15 @@ import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
 import type { PendingGrant } from '@/store/types'
+import type { BusyKind } from '@/store/useVestingStore'
 import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
-// funder. `busy` is the submission this grant already has in flight, which the page owns because a
-// dialog dismissed over the wallet prompt no longer knows about it: whichever exit it names, both
+// funder. `busy` is the submission this grant already has in flight: whichever exit it names, both
 // controls are out until it settles, or the same grant could be accepted and declined at once.
 interface PendingGrantCardProps {
-  busy: 'accept' | 'end' | undefined
+  busy: BusyKind | undefined
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void

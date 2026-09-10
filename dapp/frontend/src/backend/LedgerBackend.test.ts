@@ -119,7 +119,7 @@ const CONFIG = {
 }
 
 // LedgerBackend owes putting whatever comes back into every write, so the fetch is replaced rather
-// than stubbed. What the registry returns is registry.test.ts's rule. Hoisted, because a vi.mock
+// than stubbed, and what the registry returns is registry.test.ts's rule. Hoisted, because a vi.mock
 // factory is lifted above every other statement in the file.
 const registryAnswer = vi.hoisted(() => ({ synchronizerId: undefined as string | undefined }))
 
@@ -127,7 +127,13 @@ vi.mock('@/backend/registry', () => ({
   fetchInstrumentConfig: async () => ({
     configCid: CONFIG.contractId,
     configTemplateId: CONFIG.templateId,
-    disclosed: [CONFIG],
+    // Stamped the way the real client leaves it, because the registry is what vouches for where its
+    // own config lives.
+    disclosed: [
+      registryAnswer.synchronizerId === undefined
+        ? CONFIG
+        : { ...CONFIG, synchronizerId: registryAnswer.synchronizerId },
+    ],
     synchronizerId: registryAnswer.synchronizerId,
   }),
 }))
@@ -188,7 +194,8 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission): void =>
   acs[PENDING] = [...(acs[PENDING] ?? []), pending]
 }
 
-// The submission carries the synchronizer, so everything disclosed on one arrives stamped with it.
+// The deployment names one here, so every disclosure it does not already carry one for is filled in
+// with it.
 const onSync = <T>(contracts: T[]): (T & { synchronizerId: string })[] =>
   contracts.map((contract) => ({ ...contract, synchronizerId: 'sync::1' }))
 
@@ -386,6 +393,18 @@ describe('LedgerBackend.createVesting', () => {
 
     expect(submissions[0]?.synchronizerId).toBe('sync::1')
     expect(submissions[0]?.disclosedContracts?.[0]).toHaveProperty('synchronizerId', 'sync::1')
+  })
+
+  // The registry vouches for its own config and for nothing else, so its answer cannot travel onto
+  // the factory's blob: where that contract lives is the deployment's to say or nobody's.
+  it('leaves the factory blob unstamped when the deployment names no synchronizer', async () => {
+    const { synchronizerId, ...rest } = deployment
+    registryAnswer.synchronizerId = 'sync::1'
+    const { backend, submissions } = harness({ deployment: rest })
+
+    await backend.createVesting(grant)
+
+    expect(submissions[0]?.disclosedContracts?.[1]).not.toHaveProperty('synchronizerId')
   })
 
   // One submission names one synchronizer and the two contracts it needs come from two sources, so
@@ -707,6 +726,22 @@ describe('LedgerBackend.cancelProposal and rejectProposal', () => {
     expect(submission?.synchronizerId).toBe('sync::1')
   })
 
+  // The exits fetch no config, so the registry's answer has to be the one an earlier write kept:
+  // without it these two would be the only writes naming no synchronizer at all, on a deployment
+  // where every other write names the registry's.
+  it('names the synchronizer an earlier write learned from the registry', async () => {
+    const { synchronizerId, ...rest } = deployment
+    registryAnswer.synchronizerId = 'sync::9'
+    const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
+    const { backend, submissions } = harness({ acs, deployment: rest })
+    await backend.createVesting(grant())
+
+    await backend.cancelProposal({ proposer: 'funder::1', pendingCid: 'pending-for-t1' })
+
+    expect(submissions.at(-1)?.disclosedContracts).toEqual([])
+    expect(submissions.at(-1)?.synchronizerId).toBe('sync::9')
+  })
+
   it('rejects as the receiver, disclosing nothing', async () => {
     const acs: Record<string, unknown[]> = { [TOKEN]: [tokenRow('t1', '1500')] }
     const funder = harness({ acs })
@@ -959,6 +994,28 @@ describe('LedgerBackend.viewAs', () => {
     }
 
     expect(reads.filter((read) => filteredTemplate(read) === TOKEN)).toHaveLength(3)
+  })
+
+  // The bound stops a read this browser cannot satisfy costing one per view; it must not also mean
+  // the grant is unacceptable for good, so a receiver asking for it is what buys the reads back.
+  it('looks again once a receiver has asked for a grant it gave up on', async () => {
+    const acs: Record<string, unknown[]> = {
+      [TOKEN]: [tokenRow('t1', '500')],
+      [PENDING]: [reserving('archived-elsewhere')],
+    }
+    const { backend, reads } = harness({ acs })
+    const tokenReads = (): number => reads.filter((read) => filteredTemplate(read) === TOKEN).length
+    for (let view = 0; view < 5; view++) {
+      await backend.viewAs('funder::1')
+    }
+    expect(tokenReads()).toBe(3)
+
+    await expect(
+      backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-archived-elsewhere' }),
+    ).rejects.toThrow(/not disclosable/)
+    await backend.viewAs('funder::1')
+
+    expect(tokenReads()).toBe(4)
   })
 
   // The state the bound exists for: the reservation is gone and the funder holds nothing else, so

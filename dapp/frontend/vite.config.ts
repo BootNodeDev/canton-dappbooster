@@ -36,10 +36,11 @@ const localnetAssets = (): Plugin => ({
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('../..', import.meta.url))
   // A build that is going to be served takes no localhost fallback: an unset key fails here rather
-  // than shipping a bundle that points at the viewer's own machine. Keyed on Vercel's own variable
-  // rather than on `mode`, because the deployments this repo has are Vercel's, while CI runs the
-  // same production build purely as a compile check and has no `.env` to read.
-  const env = parseEnv(loadEnv(mode, envDir, ''), process.env.VERCEL === undefined)
+  // than shipping a bundle that points at the viewer's own machine. The deployer declares which kind
+  // of build this is, `vercel.json` for the one project that serves this bundle, because nothing
+  // here can tell: `mode` is production for CI's compile check too, which has no `.env` and deploys
+  // nothing, while a vendor's own variable leaves every other host silently on the fallback.
+  const env = parseEnv(loadEnv(mode, envDir, ''), process.env.DEPLOYED_BUILD !== '1')
 
   return {
     define: Object.fromEntries(
