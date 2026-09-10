@@ -87,7 +87,8 @@ pnpm exec canton-barebones start
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
+# use the appropriate version for amulet-vesting-*.dar
+pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-*.dar
 ```
 
 **Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
