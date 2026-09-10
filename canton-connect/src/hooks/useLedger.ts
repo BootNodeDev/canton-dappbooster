@@ -27,7 +27,11 @@ export interface UseLedgerResult {
  *
  * @example
  * const { ledgerApi } = useLedger()
- * await ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
+ * await ledgerApi({
+ *   requestMethod: 'get',
+ *   resource: '/v2/users/{user-id}/rights',
+ *   path: { 'user-id': 'alice' },
+ * })
  *
  * @category Hooks
  */

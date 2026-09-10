@@ -9,7 +9,6 @@ packages:
   - dapp/frontend
 
 allowBuilds:
-  '@bootnodedev/canton-wallet-service@https://codeload.github.com/BootNodeDev/canton-wallet-service/tar.gz/d14ee9838986ca1f33c5eae204af54d70fbb55fd': true
   esbuild: true
   protobufjs: true
   puppeteer: false
