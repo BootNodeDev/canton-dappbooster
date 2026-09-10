@@ -375,6 +375,16 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - The `@canton-network/wallet-sdk` pin left with wallet-service: its own repository holds that exact version, so `pnpm-workspace.yaml` carries no SDK overrides. Its `core-acs-reader` override does **not** travel here — pnpm applies `overrides` only in the root running the install, and a published package ships no lock file to read — so this repo resolves `core-acs-reader` on the SDK's own range and the root lock records 1.19.0, where the extracted repo pins 1.12.0. The loop was verified end to end on 1.18.1; the move to npm re-resolved it to 1.19.0. Renovate's `@canton-network/**` hold plus the lock file are what keep it there; re-resolve deliberately, not as a side effect. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
+- **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
+  `@canton-network/dapp-sdk` calls it optional.** The SDK's `peerDependenciesMeta` marks it
+  optional but its `dist/index.js` imports it statically, so nothing that loads the SDK runs
+  without it, whether or not the dApp ever uses WalletConnect. Mirroring the SDK's declaration
+  shipped 0.3.0 with no copy in a consumer tree: pnpm installed nothing, warned about nothing, two
+  `dapp/frontend` test files failed, and the bundle rendered a blank page. `pnpm -C dapp/frontend
+  build` still exited 0, because Vite 8 turns an unresolved import into a throwing stub, which is
+  how it reached npm. `dapp/frontend` also lists it in `dependencies` on the same range: pnpm and
+  npm auto-install peers, yarn does not, and a consumer can turn that off. It can go back to
+  optional once upstream moves that import behind a dynamic one.
 - Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
