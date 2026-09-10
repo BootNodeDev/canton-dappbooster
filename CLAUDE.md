@@ -489,8 +489,17 @@ A prerelease version goes into both halves, which is what keeps the folders link
 `.github/workflows/release.yml` runs on `release: published`. It checks the tag out, runs
 `node kit/check-versions.mjs` with the tag minus its `v` so a mistyped tag cannot reach npm,
 runs `pnpm lint`, `pnpm typecheck` and `pnpm test`, then publishes with the root `release` script.
-`--no-git-checks` is what lets it publish from that detached HEAD. npm auth is the `NPM_TOKEN` repo
-secret, reaching npm as `NODE_AUTH_TOKEN` through `setup-node`'s `registry-url`.
+`--no-git-checks` is what lets it publish from that detached HEAD.
+
+**npm auth is OIDC trusted publishing, so there is no token and no repo secret.** Each of the three
+packages has a trusted publisher on npmjs.com naming this repo and the workflow file, and the job
+proves it is that workflow with a short-lived OIDC token. `id-token: write` in the top-level
+`permissions` is what lets it request one, and without that key the publish fails with no token to
+fall back on. `setup-node`'s `registry-url` still earns its place: it writes the `.npmrc` that
+points pnpm at npmjs.org.
+
+**Those npmjs.com entries name `release.yml` by filename.** Renaming or moving the workflow breaks
+publishing until all three are updated to match, and nothing in this repo can warn about it.
 
 **A prerelease publishes under the `next` dist-tag**, keyed off `github.event.release.prerelease`,
 so an rc never becomes what `npm install` resolves. `pnpm -r publish` skips a package whose version

@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   HUSKY: 0
@@ -37,7 +38,6 @@ jobs:
       # failure safe.
       - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           # A prerelease goes out as `next` so it does not become what `npm install` resolves.
