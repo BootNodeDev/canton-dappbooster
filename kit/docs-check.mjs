@@ -13,7 +13,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
-import { createGate, repoRoot } from '../scripts/lib/gate.mjs'
+import { createGate, repoRoot } from './gate.mjs'
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'))
 

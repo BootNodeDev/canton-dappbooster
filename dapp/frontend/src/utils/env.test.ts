@@ -3,7 +3,7 @@ import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
-  VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
+  VITE_REGISTRY_URL: 'http://localhost:3013',
 }
 
 describe('parseEnv', () => {
@@ -22,7 +22,7 @@ describe('parseEnv', () => {
 
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
-  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_RPC_URL'])(
+  it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL'])(
     'names %s and rejects an empty value',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
@@ -41,12 +41,39 @@ describe('parseEnv', () => {
     },
   )
 
-  // The deployed spelling: `fetch` resolves it against the page, so it is same-origin.
-  it('accepts a same-origin path as the rpc url', () => {
-    expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/api/rpc' })).toEqual({
-      ...DEFAULTS,
-      VITE_WALLET_RPC_URL: '/api/rpc',
-    })
+  it('rejects a source that is not an object', () => {
+    expect(() => parseEnv(undefined)).toThrow()
+  })
+
+  it.each(Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[])(
+    'refuses to fall back to the local default for %s without them',
+    (key) => {
+      expect(() => parseEnv({ ...DEFAULTS, [key]: undefined }, false)).toThrow(
+        /must be set explicitly/,
+      )
+    },
+  )
+
+  it('takes an explicit value without the local defaults', () => {
+    const deployed = {
+      VITE_EXPLORER_URL: 'https://scan.example',
+      VITE_REGISTRY_URL: '/api/registry',
+    }
+    expect(parseEnv(deployed, false)).toEqual(deployed)
+  })
+})
+
+describe('VITE_REGISTRY_URL', () => {
+  it('defaults to the local registry port', () => {
+    expect(parseEnv({}).VITE_REGISTRY_URL).toBe('http://localhost:3013')
+  })
+
+  it('accepts a same-origin path, which is what a deployed build sets', () => {
+    expect(parseEnv({ VITE_REGISTRY_URL: '/api/registry' }).VITE_REGISTRY_URL).toBe('/api/registry')
+  })
+
+  it('rejects a value that is neither a url nor a path', () => {
+    expect(() => parseEnv({ VITE_REGISTRY_URL: 'registry' })).toThrow(/VITE_REGISTRY_URL/)
   })
 
   // Leading-slash spellings the URL parser still resolves to somebody else's origin.
@@ -56,13 +83,25 @@ describe('parseEnv', () => {
     '/\\/evil.example/rpc',
     '/\t/evil.example/rpc',
     '/\n/evil.example/rpc',
-    'api/rpc',
+    'api/registry',
     'javascript:alert(1)',
-  ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
-    expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
+  ])('rejects %j as the registry url', (VITE_REGISTRY_URL) => {
+    expect(() => parseEnv({ ...DEFAULTS, VITE_REGISTRY_URL })).toThrow(/VITE_REGISTRY_URL/)
   })
 
-  it('rejects a source that is not an object', () => {
-    expect(() => parseEnv(undefined)).toThrow()
+  // A base, not an endpoint: every caller appends a path, so a trailing slash would request
+  // `//registry/...` and 404 against a path the thrown message would then misreport.
+  it.each([
+    ['http://localhost:3013/', 'http://localhost:3013'],
+    ['http://localhost:3013///', 'http://localhost:3013'],
+    ['/api/registry/', '/api/registry'],
+  ])('trims the trailing slash off %j', (VITE_REGISTRY_URL, expected) => {
+    expect(parseEnv({ VITE_REGISTRY_URL }).VITE_REGISTRY_URL).toBe(expected)
+  })
+
+  // Accepted by `isUrlOrPath` but nothing once trimmed, which would resolve every call against the
+  // app's own origin and hand `response.json()` the SPA catch-all's `index.html`.
+  it.each(['/', '///'])('rejects %j, which trims away to no base at all', (VITE_REGISTRY_URL) => {
+    expect(() => parseEnv({ VITE_REGISTRY_URL })).toThrow(/VITE_REGISTRY_URL/)
   })
 })

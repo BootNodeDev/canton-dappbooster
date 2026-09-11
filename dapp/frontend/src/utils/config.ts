@@ -4,9 +4,8 @@ import type { ExplorerConfig } from '@bootnodedev/canton-dappbooster'
 /** @public */
 export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER_URL }
 
-export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
-
-export const REGISTRY_URL = '/registry'
+// Direct in dev; #169 fronts it same-origin: an https page cannot reach a plain-http registry.
+export const REGISTRY_URL: string = import.meta.env.VITE_REGISTRY_URL
 
 // The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.
 export const ASSET_LIST_URL = '/assets.json'

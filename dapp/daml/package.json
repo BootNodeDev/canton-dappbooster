@@ -1,8 +1,0 @@
-{
-  "name": "@canton-dappbooster/daml",
-  "private": true,
-  "version": "0.3.0",
-  "scripts": {
-    "build": "node ../../scripts/fetch-daml-deps.mjs && LANG=C.UTF-8 dpm build"
-  }
-}

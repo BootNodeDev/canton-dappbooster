@@ -1,8 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["@bootnodedev/canton-wallet-service", "postcss"],
-  "ignoreWorkspaces": ["dapp/daml"],
+  "ignoreDependencies": [
+    "@bootnodedev/canton-token-forge",
+    "@bootnodedev/canton-wallet-service",
+    "postcss"
+  ],
   "workspaces": {
     ".": {
       "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]
@@ -14,7 +17,7 @@
       "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
     },
     "dapp/frontend": {
-      "entry": ["api/*.ts"]
+      "entry": ["api/**/*.ts"]
     }
   }
 }

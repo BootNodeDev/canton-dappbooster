@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
 import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
+import { ReadError } from '@/components/ReadError'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { WrongNetwork } from '@/components/WrongNetwork'
@@ -12,7 +14,8 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError, sessionPending, wrongNetwork } = useBackend()
+  const { backend, configPending, configError, retryConfig, sessionPending, wrongNetwork } =
+    useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
   // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
@@ -58,11 +61,19 @@ export const AppShell = (): React.JSX.Element => {
                   ? 'This app found nothing on the network the wallet is connected to. Switch networks in the wallet to load it.'
                   : configError}
               </p>
+              {/* Only off the wrong network: there the read failed for a reason retrying cannot
+                  change, and the wallet is where the fix is. */}
+              {!wrongNetwork && (
+                <Button variant="secondary" size="sm" onClick={retryConfig}>
+                  Try again
+                </Button>
+              )}
             </Card>
           )}
           {configPending && <Loading />}
           {configError === undefined && !configPending && (
             <>
+              <ReadError />
               <Outlet />
               {creating && backend !== undefined && (
                 <CreateGrant onClose={() => setCreating(false)} />

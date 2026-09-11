@@ -12,7 +12,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { repoRoot } from '../scripts/lib/gate.mjs'
+import { repoRoot } from './gate.mjs'
 import { DEPENDENCY_FIELDS, libraryNames, ROOT_MANIFEST, readManifests } from './manifests.mjs'
 
 // semver.org's own regex, minus the named groups: a build-metadata or prerelease version has to

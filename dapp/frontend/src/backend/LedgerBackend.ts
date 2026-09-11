@@ -1,44 +1,51 @@
-// The VestingBackend over the amulet-vesting templates, reached through the connected wallet: reads
-// go out as the connected party, writes come back with a real approval prompt.
+// The VestingBackend over the canton-vesting-forge templates, reached through the connected wallet:
+// reads go out as the connected party, writes come back with a real approval prompt.
 
 import {
   buildAcceptCommand,
   buildCancelCommand,
+  buildCancelProposalCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
-  buildSplitCommand,
+  buildRejectProposalCommand,
   buildTapCommand,
   buildWithdrawCommand,
 } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
-import { type AppTransferContext, fetchTransferContext } from '@/backend/transferContext'
+import {
+  fetchInstrumentConfig,
+  type InstrumentConfigRef,
+  type RegistryInstrument,
+} from '@/backend/registry'
 import {
   type AcsRow,
-  amuletDso,
-  amuletValue,
   type ClaimRecord,
   type CreateVestInput,
   claimChain,
   composeNote,
+  fundedBy,
   lastUpdateOffset,
-  pledgedAmulets,
+  matchesInstrument,
+  reservedToken,
   rowToClaim,
   rowToGrant,
   rowToPendingGrant,
+  selectHoldings,
+  tokenValue,
   updatesToClaims,
   type VestingBackend,
   type VestingView,
 } from '@/backend/VestingBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
-import { addAmounts, canonicalAmount, compareAmounts } from '@/utils/amount'
+import { addAmounts } from '@/utils/amount'
 
 const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
   rows.map(mapper).filter((value): value is T => value !== undefined)
 
 // A filter takes the package-name reference; the participant rejects the resolved id a command
 // carries with INVALID_FIELD.
-const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
-const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
+const vesting = (entity: string): string => `#vesting:Vesting:${entity}`
+const TOKEN = '#canton-token-forge:Canton.TokenForge.Token:Token'
 
 // The JSON Ledger API's party/template filter, shared by the ACS read and the update stream. Built
 // in one place because a typo in this nesting yields a silent empty read rather than an error.
@@ -67,17 +74,38 @@ const STREAM_IDLE_MS = 1000
 // Bounded so an offset that fails to advance cannot spin.
 const CLAIM_HISTORY_PAGES = 20
 
-// Accept locks the funder's Amulets, which the receiver is no stakeholder of and so cannot read the
-// disclosure blobs for. They are kept here as the funder submits the pending grant. Persisted, because
-// the two parties are two wallet accounts and switching between them reloads the app.
-const AMULET_STORE_KEY = 'vesting.amuletDisclosures'
+// Accept locks the holding a grant reserves, which the receiver is no stakeholder of and so cannot
+// read the disclosure blob for. It is kept here as the funder submits the pending grant. Persisted,
+// because the two parties are two wallet accounts and switching between them reloads the app.
+const TOKEN_STORE_KEY = 'vesting.tokenDisclosures'
+// How often a reservation this browser cannot find is looked for again, counted across reloads. The
+// read that answers it carries a blob per holding and runs on the funder's dashboard, so a holding
+// archived outside this dApp would otherwise cost that read on every view forever, for a grant
+// nobody can accept any more. Counted rather than given up on the first miss, because a read that
+// answers short is indistinguishable from one that answers in full.
+const MISS_STORE_KEY = 'vesting.tokenReadMisses'
+const MISS_LIMIT = 3
 
-const storedAmulets = (): DisclosedContract[] => {
+// Shared by every exit that finds its proposal already gone, so the wording cannot drift between them.
+const PROPOSAL_GONE_MESSAGE = 'this grant is no longer outstanding: reload to see where it went'
+
+const storedTokens = (): DisclosedContract[] => {
   try {
-    const stored = JSON.parse(localStorage.getItem(AMULET_STORE_KEY) ?? '[]')
-    return Array.isArray(stored) ? stored : []
+    const stored = JSON.parse(localStorage.getItem(TOKEN_STORE_KEY) ?? '[]')
+    return Array.isArray(stored) ? (stored as DisclosedContract[]) : []
   } catch {
     return []
+  }
+}
+
+const readMisses = (): Record<string, number> => {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(MISS_STORE_KEY) ?? '{}')
+    return typeof stored === 'object' && stored !== null && !Array.isArray(stored)
+      ? (stored as Record<string, number>)
+      : {}
+  } catch {
+    return {}
   }
 }
 
@@ -92,26 +120,129 @@ const rowToDisclosed = (row: AcsRow): DisclosedContract | undefined => {
     : { templateId, contractId, createdEventBlob }
 }
 
+// The holdings this party's own outstanding grants reserve that this browser has neither a blob for
+// nor given up on. Empty is the common answer, which is what lets the caller skip reading the
+// holdings at all.
+const unstoredReservations = (party: string, pendingRows: AcsRow[]): Set<string> => {
+  const known = new Set(storedTokens().map((one) => one.contractId))
+  const misses = readMisses()
+  const reserved = mapRows(
+    pendingRows.filter((row) => fundedBy(row, party)),
+    reservedToken,
+  )
+  return new Set(
+    reserved.filter(
+      (contractId) => !known.has(contractId) && (misses[contractId] ?? 0) < MISS_LIMIT,
+    ),
+  )
+}
+
+// Merged by contract id rather than appended, because two reconciles can overlap, a dashboard
+// refresh racing a fresh grant, and each computes what it is missing from a store snapshot taken
+// before its own read. Answers with what it stored, which is what a miss is counted against.
+const storeTokens = (held: AcsRow[], wanted: Set<string>): Set<string> => {
+  const missing = mapRows(
+    held.filter((row) => wanted.has(cidOf(row))),
+    rowToDisclosed,
+  )
+  if (missing.length === 0) {
+    return new Set()
+  }
+  const merged = new Map(storedTokens().map((one) => [one.contractId, one]))
+  for (const one of missing) {
+    merged.set(one.contractId, one)
+  }
+  localStorage.setItem(TOKEN_STORE_KEY, JSON.stringify([...merged.values()]))
+  return new Set(missing.map((one) => one.contractId))
+}
+
+// Counted against what was stored rather than against what came back, because a holding that
+// arrives without its blob is as unusable as one that never arrived: calling it found would leave
+// it wanted with no miss ever recorded, and so no bound on the read it costs.
+const recordMisses = (wanted: Set<string>, stored: Set<string>): void => {
+  const missed = [...wanted].filter((contractId) => !stored.has(contractId))
+  if (missed.length === 0) {
+    return
+  }
+  const misses = readMisses()
+  const bumped = Object.fromEntries(missed.map((one) => [one, (misses[one] ?? 0) + 1]))
+  const abandoned = Object.entries(bumped).filter(([, count]) => count === MISS_LIMIT)
+  if (abandoned.length > 0) {
+    console.warn(
+      'giving up on the holdings these grants reserve: they cannot be accepted from this browser',
+      abandoned.map(([contractId]) => contractId),
+    )
+  }
+  localStorage.setItem(MISS_STORE_KEY, JSON.stringify({ ...misses, ...bumped }))
+}
+
+const dropMiss = (tokenCid: string): void => {
+  const kept = Object.entries(readMisses()).filter(([contractId]) => contractId !== tokenCid)
+  localStorage.setItem(MISS_STORE_KEY, JSON.stringify(Object.fromEntries(kept)))
+}
+
+// Puts a reservation this browser has given up on back in front of the reconcile. The bound exists
+// so that a holding nobody can find stops costing a blob-bearing read on every view, not so that a
+// read which came back short once leaves a live grant unacceptable until site data is wiped.
+const retryFunding = (tokenCid: string): void => {
+  try {
+    dropMiss(tokenCid)
+  } catch (cause: unknown) {
+    console.warn('could not reset the read count for the holding a grant reserves', cause)
+  }
+}
+
+// What a grant leaves in this browser once it can no longer be accepted: the blob its Accept would
+// have disclosed, and the count of reads spent looking for that holding. Both are keyed by the
+// holding, so both go whichever way the grant ended. Every caller runs after its submission has
+// landed, so a browser refusing to write must not turn a committed exit into a reported failure:
+// what is left behind names a proposal that no longer exists and can only mislead a later Accept,
+// which already says so on its own.
+const forgetFunding = (tokenCid: string | undefined): void => {
+  if (tokenCid === undefined) {
+    return
+  }
+  try {
+    localStorage.setItem(
+      TOKEN_STORE_KEY,
+      JSON.stringify(storedTokens().filter((one) => one.contractId !== tokenCid)),
+    )
+    dropMiss(tokenCid)
+  } catch (cause: unknown) {
+    console.warn('could not forget what this browser kept for a grant that has ended', cause)
+  }
+}
+
 export class LedgerBackend implements VestingBackend {
   private readonly wallet: WalletFns
   private readonly factory: DisclosedContract
+  private readonly instrument: RegistryInstrument
   private readonly synchronizerId: string | undefined
   private readonly pkg: string
+  // The registry's answer to the same question, kept from the last write that fetched a config, for
+  // the two exits that fetch none and would otherwise name no synchronizer at all.
+  private fromRegistry: string | undefined
 
   constructor(deployment: Deployment, wallet: WalletFns) {
     this.wallet = wallet
     this.synchronizerId = deployment.synchronizerId
     this.pkg = deployment.pkg
+    this.instrument = { admin: deployment.admin, instrumentId: deployment.instrumentId }
     this.factory = {
-      templateId: this.tid('AmuletVestingFactory'),
+      templateId: this.tid('VestingFactory'),
       contractId: deployment.factoryCid,
       createdEventBlob: deployment.factoryBlob,
+      // Its own deployment's, never the submission's: nothing else knows where this contract lives,
+      // so a deployment that reports none must leave the participant to resolve it.
+      ...(deployment.synchronizerId === undefined
+        ? {}
+        : { synchronizerId: deployment.synchronizerId }),
     }
   }
 
   // The resolved-id twin of `vesting()`: a command carries this spelling, a filter the other one.
   private tid(entity: string): string {
-    return `${this.pkg}:AmuletVesting:${entity}`
+    return `${this.pkg}:Vesting:${entity}`
   }
 
   private async ledgerEnd(): Promise<string | number> {
@@ -140,142 +271,195 @@ export class LedgerBackend implements VestingBackend {
         verbose: true,
       },
     })
-    return Array.isArray(rows) ? rows : []
+    // An answer that is not a list is a failure, not an empty ACS. Coercing it to `[]` made "this
+    // party holds nothing" and "the read did not work" one answer, which is what left the reconcile
+    // below unable to tell a reservation that is gone from one it simply failed to see.
+    if (!Array.isArray(rows)) {
+      throw new Error(`the participant did not answer ${templateId} with a list of contracts`)
+    }
+    return rows
   }
 
   // actAs is explicit rather than left to the wallet's primary account, so a submission that would
   // be signed by the wrong key is rejected by the participant instead of silently reassigned. The
-  // synchronizer is a property of the submission, so it is stamped here and nowhere the disclosures
-  // are built.
+  // synchronizer goes on the submission as well, because a write that discloses nothing would
+  // otherwise reach a wallet on more than one synchronizer with none named and land on its default.
   private submit(
     actAs: string,
     command: LedgerCommand,
     disclosed: DisclosedContract[],
+    sync: string | undefined = this.synchronizerId ?? this.fromRegistry,
   ): Promise<unknown> {
-    const sync = this.synchronizerId
     return this.wallet.execute({
       actAs: [actAs],
       readAs: [actAs],
       commands: [command],
-      disclosedContracts:
-        sync === undefined ? disclosed : disclosed.map((one) => ({ ...one, synchronizerId: sync })),
+      ...(sync === undefined ? {} : { synchronizerId: sync }),
+      // Filled from the deployment alone, and only where whoever built the disclosure named none:
+      // the registry vouches for its own config and for nothing else, so a fallback to its answer
+      // must not travel onto a blob it has never seen. The participant resolves an unstamped one.
+      disclosedContracts: disclosed.map((one) =>
+        one.synchronizerId === undefined && this.synchronizerId !== undefined
+          ? { ...one, synchronizerId: this.synchronizerId }
+          : one,
+      ),
     })
   }
 
-  // What is free to fund a grant, which is the same set `splitOff` will spend and not simply what
-  // the party holds: coin already escrowed is a LockedAmulet and so out by template, and coin an
-  // outstanding grant pledged is out because spending it would leave that grant unacceptable.
-  // Offering more than this would put an amount in the field that the next step always refuses.
+  // What is free to fund a grant, and not simply what the party holds: a holding already escrowed is
+  // a LockedToken and so out by template, and the holding an outstanding grant reserves is out
+  // because spending it would leave that grant unacceptable. Offering more than this would put an
+  // amount in the field that the next step always refuses.
   async balanceOf(partyId: string): Promise<string> {
-    const { free } = await this.freeAmulets(partyId)
-    return addAmounts(...free.map(amuletValue))
+    const free = await this.freeTokens(partyId)
+    return addAmounts(...free.map(tokenValue))
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
     // One ledger-end fetch for all three reads, so they share a consistent snapshot offset.
     const offset = await this.ledgerEnd()
     const [pendingGrantRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, vesting('AmuletVestingProposal'), offset),
-      this.readAcs(partyId, vesting('AmuletVestingContract'), offset),
-      this.readAcs(partyId, vesting('AmuletVestedClaim'), offset),
+      this.readAcs(partyId, vesting('VestingProposal'), offset),
+      this.readAcs(partyId, vesting('VestingContract'), offset),
+      this.readAcs(partyId, vesting('VestedClaim'), offset),
     ])
+    // The funder's own view is the one place a grant whose blob never got recorded is seen again,
+    // so it is also where that is repaired: without it a funder who makes one grant and stops has
+    // an unacceptable grant and no way to notice. A failure here must not blank the dashboard.
+    await this.storeFunding(partyId, offset, pendingGrantRows).catch((cause: unknown) => {
+      console.warn('could not read back the holdings this party’s grants reserve', cause)
+    })
     return {
-      pendingGrants: mapRows(pendingGrantRows, rowToPendingGrant),
-      grants: mapRows(contractRows, rowToGrant),
-      claims: mapRows(claimRows, rowToClaim),
+      pendingGrants: mapRows(this.ofInstrument(pendingGrantRows), rowToPendingGrant),
+      grants: mapRows(this.ofInstrument(contractRows), rowToGrant),
+      claims: mapRows(this.ofInstrument(claimRows), rowToClaim),
     }
   }
 
-  // Two submissions, so two wallet approvals: a grant has to name an Amulet nothing else pledged,
-  // and one Daml transaction cannot feed a contract that one command creates into the next. So the
-  // funder splits exactly `totalAmount` off its unpledged holdings, and the grant names only what
-  // the split produced. The factory is the operator's and observer-less, so the funder cannot read
-  // it and its disclosure comes from the deployment.
+  // One submission, so one wallet approval: the factory splits the funder's inputs down to the grant
+  // and hands the change back in the same transaction, so the funder never pre-splits the way the
+  // Amulet version had to. The factory is the operator's and observer-less, so the funder cannot
+  // read it and its disclosure comes from the deployment.
   async createVesting(args: CreateVestInput): Promise<void> {
-    const escrow = await this.splitOff(args.proposer, args.totalAmount)
-    const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
-      proposer: args.proposer,
-      receiver: args.receiver,
-      totalAmount: args.totalAmount,
-      schedule: args.schedule,
-      amuletCids: [escrow.contractId],
-      note: composeNote(args.title, args.note),
-    })
-    await this.submit(args.proposer, command, [this.factory])
-    // After the submit, not before: a grant the wallet declined must not leave blobs behind for an
-    // Amulet no grant is waiting on. Appended rather than replacing, because every outstanding
-    // grant's own Amulet has to stay disclosable.
-    localStorage.setItem(AMULET_STORE_KEY, JSON.stringify([...storedAmulets(), escrow]))
-  }
-
-  // A transfer consumes everything it is given, so an Amulet an outstanding grant pledged has to
-  // stay out of one: consuming it is exactly what leaves that grant unacceptable. `held` is the
-  // whole set, which is what tells a later read which Amulets are new.
-  private async freeAmulets(owner: string): Promise<{ free: AcsRow[]; held: AcsRow[] }> {
-    const offset = await this.ledgerEnd()
-    const [held, pendingRows] = await Promise.all([
-      this.readAcs(owner, AMULET, offset),
-      this.readAcs(owner, vesting('AmuletVestingProposal'), offset),
-    ])
-    const pledged = new Set(pendingRows.flatMap(pledgedAmulets))
-    return { free: held.filter((row) => !pledged.has(cidOf(row))), held }
-  }
-
-  // Every Amulet-moving choice takes the same context and the same two disclosures, so the
-  // invariant is held here rather than re-spelled per choice; `extra` is what only Accept adds.
-  private async submitWithContext(
-    actAs: string,
-    build: (ctx: AppTransferContext, rulesTemplateId: string) => LedgerCommand,
-    extra: DisclosedContract[] = [],
-  ): Promise<void> {
-    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext(actAs)
-    await this.submit(actAs, build(ctx, rulesTemplateId), [...disclosed, ...extra])
-  }
-
-  // Self-transfers `amount` into an Amulet of the funder's own and returns it, disclosure blob
-  // included. The result is found by re-reading rather than off the submission, which reports an
-  // update id and nothing about what it created.
-  private async splitOff(owner: string, amount: string): Promise<DisclosedContract> {
-    const [{ free, held }, { ctx, disclosed, rulesTemplateId }] = await Promise.all([
-      this.freeAmulets(owner),
-      fetchTransferContext(owner),
-    ])
-    const freeTotal = addAmounts(...free.map(amuletValue))
-    if (compareAmounts(freeTotal, amount) < 0) {
+    const free = await this.freeTokens(args.proposer)
+    const picked = selectHoldings(free, args.totalAmount)
+    if (picked === undefined) {
       throw new Error(
-        `only ${freeTotal} AMT is free to fund this grant — the rest is pledged to a pending one`,
+        `only ${addAmounts(...free.map(tokenValue))} ${this.instrument.instrumentId} is free to fund this grant`,
       )
     }
-    const dso = free.map(amuletDso).find((party) => party !== undefined)
-    if (dso === undefined) {
-      throw new Error('the Amulets funding this grant name no DSO party')
-    }
-
-    await this.submit(
-      owner,
-      buildSplitCommand(rulesTemplateId, ctx.amuletRules, {
-        amount,
-        amuletCids: free.map(cidOf),
-        dso,
-        openMiningRound: ctx.openMiningRound,
-        owner,
-      }),
-      disclosed,
+    await this.submitWithConfig(
+      args.proposer,
+      ({ configCid }) =>
+        buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
+          configCid,
+          proposer: args.proposer,
+          receiver: args.receiver,
+          totalAmount: args.totalAmount,
+          schedule: args.schedule,
+          tokenCids: picked.map(cidOf),
+          note: composeNote(args.title, args.note),
+        }),
+      [this.factory],
     )
+    // The grant is on the ledger by now, so a failure to record the blob must not report one: it
+    // would invite the funder to make a second grant, and `accept` is where a missing blob is felt
+    // and said. Logged rather than swallowed outright, because the next reconcile is what repairs
+    // it and nothing else would say one was needed.
+    await this.reconcileFunding(args.proposer).catch((cause: unknown) => {
+      console.warn('could not read back the holding this grant reserves', cause)
+    })
+  }
 
-    // The split archives every input, so anything of the right size that was not there before is
-    // one of its two outputs and pledged to nothing.
-    const before = new Set(held.map(cidOf))
-    const wanted = canonicalAmount(amount)
-    const after = await this.readAcs(owner, AMULET, await this.ledgerEnd(), true)
-    const created = after.find(
-      (row) => !before.has(cidOf(row)) && canonicalAmount(amuletValue(row)) === wanted,
-    )
-    const disclosure = created === undefined ? undefined : rowToDisclosed(created)
-    if (disclosure === undefined) {
-      throw new Error('the split produced no Amulet of the grant amount')
+  // The receiver has to disclose the holding a grant reserves, and only the funder can read it: a
+  // `Token` has no observers. Every outstanding grant of this funder is reconciled rather than just
+  // the one just made, so a read that failed once is repaired by their next grant or their next
+  // dashboard load instead of leaving a grant nobody can accept. The holdings are read only when
+  // something is actually missing, since this runs on every view, and a reservation the read keeps
+  // not answering is given up on so that this cannot become a read on every view for good.
+  private async storeFunding(
+    party: string,
+    offset: string | number,
+    pendingRows: AcsRow[],
+  ): Promise<void> {
+    const wanted = unstoredReservations(party, pendingRows)
+    if (wanted.size === 0) {
+      return
     }
-    return disclosure
+    const held = await this.readAcs(party, TOKEN, offset, true)
+    // An empty read counts like any other: it is the answer a funder who no longer holds the
+    // reservation gets, and it is the only one they ever get, so skipping it left the bound below
+    // unreachable in exactly the case it exists for. What keeps that from condemning a grant whose
+    // read was merely short is `retryFunding`, which the receiver's own Accept reaches.
+    recordMisses(wanted, storeTokens(held, wanted))
+  }
+
+  // Reconciles against a snapshot of its own, for a caller that has read no rows to hand over.
+  // Taken after the submit, never before, because the factory creates the holding in that very
+  // submission and a grant the wallet declined must leave no blob behind.
+  private async reconcileFunding(party: string): Promise<void> {
+    const offset = await this.ledgerEnd()
+    const pendingRows = await this.readAcs(party, vesting('VestingProposal'), offset)
+    await this.storeFunding(party, offset, pendingRows)
+  }
+
+  async tap(args: { amount: string; party: string }): Promise<void> {
+    await this.submitWithConfig(args.party, ({ configCid, configTemplateId }) =>
+      buildTapCommand(configTemplateId, configCid, { amount: args.amount, user: args.party }),
+    )
+  }
+
+  // A transfer consumes every holding it is given, so the one an outstanding grant reserves has to
+  // stay out: consuming it is exactly what leaves that grant unacceptable.
+  private async freeTokens(owner: string): Promise<AcsRow[]> {
+    const offset = await this.ledgerEnd()
+    const [held, pendingRows] = await Promise.all([
+      this.readAcs(owner, TOKEN, offset),
+      this.readAcs(owner, vesting('VestingProposal'), offset),
+    ])
+    const reserved = new Set(pendingRows.map(reservedToken))
+    return held.filter(
+      (row) => matchesInstrument(row, this.instrument) && !reserved.has(cidOf(row)),
+    )
+  }
+
+  private ofInstrument(rows: AcsRow[]): AcsRow[] {
+    return rows.filter((row) => matchesInstrument(row, this.instrument))
+  }
+
+  // Every choice that moves a holding takes the same config and the same one disclosure, so the
+  // invariant is held here rather than re-spelled per choice; `extra` is what only create and
+  // Accept add. It answers with what it disclosed, which only create has a use for.
+  private async submitWithConfig(
+    actAs: string,
+    build: (config: InstrumentConfigRef) => LedgerCommand,
+    extra: DisclosedContract[] = [],
+  ): Promise<DisclosedContract[]> {
+    const { disclosed, synchronizerId, ...config } = await fetchInstrumentConfig(
+      actAs,
+      this.instrument,
+    )
+    const sent = [...disclosed, ...extra]
+    await this.submit(actAs, build(config), sent, this.agreedSynchronizer(synchronizerId))
+    return sent
+  }
+
+  // One submission names one synchronizer, and the two contracts it needs are stamped by two
+  // different sources: the registry stamps the config it discloses, the deployment carries the
+  // factory's. The app assumes they agree, so a disagreement is said here rather than sent as a
+  // submission the participant refuses without naming either.
+  private agreedSynchronizer(fromConfig: string | undefined): string | undefined {
+    if (
+      fromConfig !== undefined &&
+      this.synchronizerId !== undefined &&
+      fromConfig !== this.synchronizerId
+    ) {
+      throw new Error(
+        `the registry's InstrumentConfig is on synchronizer ${fromConfig} and the vesting factory on ${this.synchronizerId}: this dApp needs both on one`,
+      )
+    }
+    this.fromRegistry = fromConfig ?? this.fromRegistry
+    return this.synchronizerId ?? fromConfig
   }
 
   // `TRANSACTION_SHAPE_LEDGER_EFFECTS` is what carries the exercise; the default ACS-delta shape
@@ -297,7 +481,7 @@ export class LedgerBackend implements VestingBackend {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
             eventFormat: {
               verbose: true,
-              ...templateFilter(partyId, vesting('AmuletVestingContract')),
+              ...templateFilter(partyId, vesting('VestingContract')),
             },
           },
         },
@@ -315,7 +499,7 @@ export class LedgerBackend implements VestingBackend {
     let beginExclusive: string | number = 0
     for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
       const updates = await this.readUpdates(partyId, beginExclusive, endInclusive)
-      records.push(...updatesToClaims(updates))
+      records.push(...updatesToClaims(updates, this.instrument, this.tid('VestingContract')))
       const last = lastUpdateOffset(updates)
       if (!Array.isArray(updates) || updates.length < CLAIM_HISTORY_LIMIT || last === undefined) {
         break
@@ -325,57 +509,95 @@ export class LedgerBackend implements VestingBackend {
     return claimChain(records, contractCid)
   }
 
-  // The grant names the Amulet its Accept locks, and the receiver is an observer of the grant, so
+  // The grant names the holding its Accept locks, and the receiver is an observer of the grant, so
   // which blob to send is read off the ledger rather than guessed at. Sending the whole store
-  // instead would re-disclose Amulets earlier accepts already consumed, and would leave the guard
-  // below unable to tell a missing blob from an unrelated one.
+  // instead would re-disclose holdings earlier accepts already consumed, which the participant
+  // rejects.
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
-    const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.receiver, vesting('AmuletVestingProposal'), offset)
-    const wanted = new Set(
-      rows.filter((row) => cidOf(row) === args.pendingCid).flatMap(pledgedAmulets),
-    )
-    const amulets = storedAmulets().filter((amulet) => wanted.has(amulet.contractId))
-    if (wanted.size === 0 || amulets.length !== wanted.size) {
-      throw new Error('the funder Amulets this grant locks are not disclosable from this browser')
+    const proposal = await this.findProposal(args.receiver, args.pendingCid)
+    // Two different failures, and pointing a stale view at the blob store would send the receiver
+    // hunting for a browser that never had anything to do with it.
+    if (proposal === undefined) {
+      throw new Error(PROPOSAL_GONE_MESSAGE)
     }
-    await this.submitWithContext(
+    const wanted = reservedToken(proposal)
+    const token = storedTokens().find((one) => one.contractId === wanted)
+    if (wanted === undefined || token === undefined) {
+      // A receiver asking for a grant this browser gave up finding the funding for is the one signal
+      // that it is worth another look, so the funder's next view gets its read budget back.
+      if (wanted !== undefined) {
+        retryFunding(wanted)
+      }
+      throw new Error('the funder holding this grant locks is not disclosable from this browser')
+    }
+    await this.submitWithConfig(
       args.receiver,
-      (ctx) => buildAcceptCommand(this.tid('AmuletVestingProposal'), args.pendingCid, ctx),
-      amulets,
+      ({ configCid }) =>
+        buildAcceptCommand(this.tid('VestingProposal'), args.pendingCid, configCid),
+      [token],
     )
-    // The submission archived them, so their blobs can only mislead a later Accept from here on.
-    localStorage.setItem(
-      AMULET_STORE_KEY,
-      JSON.stringify(storedAmulets().filter((amulet) => !wanted.has(amulet.contractId))),
-    )
+    // The submission archived the proposal, so nothing this browser kept for it can do anything but
+    // mislead a later Accept.
+    forgetFunding(wanted)
+  }
+
+  // Neither exit moves anything, so neither takes the config or discloses a contract: the proposal
+  // is archived on its controller's own authority and the holding it reserved is already an
+  // ordinary Token of the funder's, back in their balance as soon as nothing names it.
+  private endProposal(
+    party: string,
+    pendingCid: string,
+    build: (templateId: string, pendingCid: string) => LedgerCommand,
+  ): Promise<unknown> {
+    return this.submit(party, build(this.tid('VestingProposal'), pendingCid), [])
+  }
+
+  // Read before the archive for the holding the proposal names, since reading it after would be too
+  // late.
+  async cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void> {
+    const proposal = await this.findProposal(args.proposer, args.pendingCid)
+    if (proposal === undefined) {
+      throw new Error(PROPOSAL_GONE_MESSAGE)
+    }
+    await this.endProposal(args.proposer, args.pendingCid, buildCancelProposalCommand)
+    // Only once the submission has landed: a prompt the wallet declines leaves a grant that is
+    // still outstanding and still acceptable.
+    forgetFunding(reservedToken(proposal))
+  }
+
+  // The two parties are two accounts of one browser, so a grant this receiver declines can be one
+  // this same browser funded and still holds the blob for. Read like the cancel above, but never
+  // guarded on: the receiver is not who the prune is for, so a read that fails must cost them a
+  // stale entry rather than a decline they cannot make.
+  async rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void> {
+    const proposal = await this.findProposal(args.receiver, args.pendingCid).catch(() => undefined)
+    await this.endProposal(args.receiver, args.pendingCid, buildRejectProposalCommand)
+    forgetFunding(proposal === undefined ? undefined : reservedToken(proposal))
+  }
+
+  // One proposal by id, for the three exits that each need its row before archiving it: accept for
+  // the holding to disclose, cancel and decline for the holding to forget.
+  private async findProposal(party: string, pendingCid: string): Promise<AcsRow | undefined> {
+    const offset = await this.ledgerEnd()
+    const rows = await this.readAcs(party, vesting('VestingProposal'), offset)
+    return rows.find((row) => cidOf(row) === pendingCid)
   }
 
   async withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void> {
-    await this.submitWithContext(args.receiver, (ctx) =>
-      buildWithdrawCommand(this.tid('AmuletVestingContract'), args.contractCid, args.amount, ctx),
+    await this.submitWithConfig(args.receiver, ({ configCid }) =>
+      buildWithdrawCommand(this.tid('VestingContract'), args.contractCid, args.amount, configCid),
     )
   }
 
   async cancel(args: { creator: string; contractCid: string }): Promise<void> {
-    await this.submitWithContext(args.creator, (ctx) =>
-      buildCancelCommand(this.tid('AmuletVestingContract'), args.contractCid, ctx),
+    await this.submitWithConfig(args.creator, ({ configCid }) =>
+      buildCancelCommand(this.tid('VestingContract'), args.contractCid, configCid),
     )
   }
 
   async claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void> {
-    await this.submitWithContext(args.receiver, (ctx) =>
-      buildClaimResidualCommand(this.tid('AmuletVestedClaim'), args.claimCid, args.amount, ctx),
-    )
-  }
-
-  // The only write not on an amulet-vesting template: it exercises AmuletRules itself.
-  async tap(partyId: string): Promise<void> {
-    await this.submitWithContext(partyId, (ctx, rulesTemplateId) =>
-      buildTapCommand(rulesTemplateId, ctx.amuletRules, {
-        openMiningRound: ctx.openMiningRound,
-        receiver: partyId,
-      }),
+    await this.submitWithConfig(args.receiver, ({ configCid }) =>
+      buildClaimResidualCommand(this.tid('VestedClaim'), args.claimCid, args.amount, configCid),
     )
   }
 }

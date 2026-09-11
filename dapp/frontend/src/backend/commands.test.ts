@@ -2,22 +2,18 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAcceptCommand,
   buildCancelCommand,
+  buildCancelProposalCommand,
   buildClaimResidualCommand,
   buildCreateVestingCommand,
+  buildRejectProposalCommand,
   buildTapCommand,
   buildWithdrawCommand,
   decodeSchedule,
   encodeSchedule,
-  TAP_AMOUNT,
 } from '@/backend/commands'
-import type { AppTransferContext } from '@/backend/transferContext'
 import type { VestingSchedule } from '@/utils/schedule'
 
-const ctx: AppTransferContext = {
-  amuletRules: 'rules-cid',
-  openMiningRound: 'round-cid',
-  featuredAppRight: null,
-}
+const CONFIG_CID = '00cfg'
 
 const linear: VestingSchedule = {
   cliff: '2026-01-01T00:00:00Z',
@@ -80,123 +76,146 @@ describe('decodeSchedule', () => {
 })
 
 describe('command builders', () => {
-  it('buildCreateVestingCommand shapes the factory choice with the encoded schedule', () => {
-    const cmd = buildCreateVestingCommand('TID', 'fcid', {
-      proposer: 'P',
-      receiver: 'B',
-      totalAmount: '1000',
-      schedule: linear,
-      amuletCids: ['a1', 'a2'],
-      note: 'Title\nbody',
-    })
-    expect(cmd).toEqual({
+  it('builds the factory choice with the canonical amount, encoded schedule and token ids', () => {
+    expect(
+      buildCreateVestingCommand('pkg:Vesting:VestingFactory', 'factory-cid', {
+        configCid: CONFIG_CID,
+        proposer: 'funder::1',
+        receiver: 'receiver::1',
+        totalAmount: '1000.00',
+        schedule: linear,
+        tokenCids: ['t1', 't2'],
+      }),
+    ).toEqual({
       ExerciseCommand: {
-        templateId: 'TID',
-        contractId: 'fcid',
-        choice: 'AmuletVestingFactory_CreateVesting',
+        templateId: 'pkg:Vesting:VestingFactory',
+        contractId: 'factory-cid',
+        choice: 'VestingFactory_CreateVesting',
         choiceArgument: {
-          proposer: 'P',
-          receiver: 'B',
+          proposer: 'funder::1',
+          receiver: 'receiver::1',
           totalAmount: '1000',
           schedule: encodeSchedule(linear),
-          amuletCids: ['a1', 'a2'],
-          note: 'Title\nbody',
+          tokenCids: ['t1', 't2'],
+          configCid: CONFIG_CID,
+          note: null,
         },
       },
     })
   })
 
-  it('buildCreateVestingCommand sends null note when omitted', () => {
-    const cmd = buildCreateVestingCommand('TID', 'fcid', {
-      proposer: 'P',
-      receiver: 'B',
-      totalAmount: '1',
-      schedule: linear,
-      amuletCids: [],
-    })
-    expect((cmd.ExerciseCommand.choiceArgument as { note: unknown }).note).toBeNull()
-  })
-
-  it('buildWithdrawCommand carries the amount and the context, no nowMicros (getTime)', () => {
-    expect(buildWithdrawCommand('TID', 'cid', '100', ctx)).toEqual({
+  it('builds Accept carrying nothing but the config', () => {
+    expect(buildAcceptCommand('pkg:Vesting:VestingProposal', 'p1', CONFIG_CID)).toEqual({
       ExerciseCommand: {
-        templateId: 'TID',
-        contractId: 'cid',
-        choice: 'AmuletVestingContract_Withdraw',
-        choiceArgument: { withdrawAmount: '100', ctx },
+        templateId: 'pkg:Vesting:VestingProposal',
+        contractId: 'p1',
+        choice: 'VestingProposal_Accept',
+        choiceArgument: { configCid: CONFIG_CID },
       },
     })
   })
 
-  it('buildAcceptCommand carries the flat transfer context and nothing else', () => {
-    expect(buildAcceptCommand('TID', 'pcid', ctx)).toEqual({
+  it("builds the funder's proposal cancel with no argument at all", () => {
+    expect(buildCancelProposalCommand('pkg:Vesting:VestingProposal', 'p1')).toEqual({
       ExerciseCommand: {
-        templateId: 'TID',
-        contractId: 'pcid',
-        choice: 'AmuletVestingProposal_Accept',
-        choiceArgument: { ctx },
+        templateId: 'pkg:Vesting:VestingProposal',
+        contractId: 'p1',
+        choice: 'VestingProposal_Cancel',
+        choiceArgument: {},
       },
     })
   })
 
-  it('buildCancelCommand takes the context as its only argument', () => {
-    expect(buildCancelCommand('TID', 'ccid', ctx)).toEqual({
+  it("builds the receiver's proposal reject with no argument at all", () => {
+    expect(buildRejectProposalCommand('pkg:Vesting:VestingProposal', 'p1')).toEqual({
       ExerciseCommand: {
-        templateId: 'TID',
-        contractId: 'ccid',
-        choice: 'AmuletVestingContract_Cancel',
-        choiceArgument: { ctx },
+        templateId: 'pkg:Vesting:VestingProposal',
+        contractId: 'p1',
+        choice: 'VestingProposal_Reject',
+        choiceArgument: {},
       },
     })
   })
 
-  it('buildClaimResidualCommand targets the residual claim and carries withdrawAmount', () => {
-    expect(buildClaimResidualCommand('TID', 'rcid', '50', ctx)).toEqual({
+  it('builds Withdraw with a canonical amount beside the config', () => {
+    expect(buildWithdrawCommand('pkg:Vesting:VestingContract', 'c1', '10.5', CONFIG_CID)).toEqual({
       ExerciseCommand: {
-        templateId: 'TID',
-        contractId: 'rcid',
-        choice: 'AmuletVestedClaim_Withdraw',
-        choiceArgument: { withdrawAmount: '50', ctx },
+        templateId: 'pkg:Vesting:VestingContract',
+        contractId: 'c1',
+        choice: 'VestingContract_Withdraw',
+        choiceArgument: { withdrawAmount: '10.5', configCid: CONFIG_CID },
       },
     })
   })
 
-  it('buildTapCommand exercises AmuletRules itself, for the fixed amount', () => {
+  it('builds Cancel with the config alone', () => {
+    expect(buildCancelCommand('pkg:Vesting:VestingContract', 'c1', CONFIG_CID)).toEqual({
+      ExerciseCommand: {
+        templateId: 'pkg:Vesting:VestingContract',
+        contractId: 'c1',
+        choice: 'VestingContract_Cancel',
+        choiceArgument: { configCid: CONFIG_CID },
+      },
+    })
+  })
+
+  it('builds the residual withdraw against the claim template', () => {
+    expect(buildClaimResidualCommand('pkg:Vesting:VestedClaim', 'r1', '2.00', CONFIG_CID)).toEqual({
+      ExerciseCommand: {
+        templateId: 'pkg:Vesting:VestedClaim',
+        contractId: 'r1',
+        choice: 'VestedClaim_Withdraw',
+        choiceArgument: { withdrawAmount: '2', configCid: CONFIG_CID },
+      },
+    })
+  })
+
+  // The faucet is exercised on the config itself, so it takes the resolved template id the
+  // registry's disclosure carries rather than the package-name form a filter takes.
+  it('builds the faucet tap against the resolved config template id', () => {
     expect(
-      buildTapCommand('RULESTID', ctx.amuletRules, {
-        openMiningRound: ctx.openMiningRound,
-        receiver: 'P',
+      buildTapCommand('20d54824:Canton.TokenForge.Registry:InstrumentConfig', CONFIG_CID, {
+        amount: '1000.00',
+        user: 'funder::1',
       }),
     ).toEqual({
       ExerciseCommand: {
-        templateId: 'RULESTID',
-        contractId: 'rules-cid',
-        choice: 'AmuletRules_DevNet_Tap',
-        choiceArgument: { receiver: 'P', amount: TAP_AMOUNT, openRound: 'round-cid' },
+        templateId: '20d54824:Canton.TokenForge.Registry:InstrumentConfig',
+        contractId: CONFIG_CID,
+        choice: 'InstrumentConfig_Tap',
+        choiceArgument: { user: 'funder::1', amount: '1000' },
       },
     })
   })
 
+  // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
   it('canonicalizes a trailing-dot amount before it reaches the payload', () => {
-    // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
+      configCid: CONFIG_CID,
       proposer: 'P',
       receiver: 'B',
       totalAmount: '1000.',
       schedule: linear,
-      amuletCids: [],
+      tokenCids: [],
     })
     expect((cmd.ExerciseCommand.choiceArgument as { totalAmount: string }).totalAmount).toBe('1000')
     expect(
-      buildWithdrawCommand('TID', 'cid', '100.', ctx).ExerciseCommand.choiceArgument.withdrawAmount,
+      buildWithdrawCommand('TID', 'cid', '100.', CONFIG_CID).ExerciseCommand.choiceArgument
+        .withdrawAmount,
     ).toBe('100')
     expect(
-      buildClaimResidualCommand('TID', 'rcid', '50.', ctx).ExerciseCommand.choiceArgument
+      buildClaimResidualCommand('TID', 'rcid', '50.', CONFIG_CID).ExerciseCommand.choiceArgument
         .withdrawAmount,
     ).toBe('50')
   })
 
-  it('rejects a malformed amount rather than sending it to the ledger', () => {
-    expect(() => buildWithdrawCommand('TID', 'cid', 'not-a-number', ctx)).toThrow()
+  it('canonicalizes the amount and refuses one it cannot parse', () => {
+    expect(
+      buildWithdrawCommand('pkg:Vesting:VestingContract', 'c1', '10.50', CONFIG_CID).ExerciseCommand
+        .choiceArgument.withdrawAmount,
+    ).toBe('10.5')
+    expect(() =>
+      buildWithdrawCommand('pkg:Vesting:VestingContract', 'c1', 'not-a-number', CONFIG_CID),
+    ).toThrow()
   })
 })

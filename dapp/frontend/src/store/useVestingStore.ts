@@ -114,7 +114,13 @@ const trackSuccessor = <T extends { id: string }>(
   return (after) => after.find((item) => !seen.has(item.id) && lineageOf(item) === lineage)?.id
 }
 
+// Which exit a contract already has in flight. Every dialog here stays dismissible over the wallet
+// prompt, so one can unmount with its submission still out, and the control behind it would then
+// offer the same exit again on a contract the first is about to archive.
+export type BusyKind = 'accept' | 'cancel' | 'claim' | 'end'
+
 interface VestingState {
+  busy: ReadonlyMap<string, BusyKind>
   claims: VestedClaim[]
   error: string | undefined
   grants: Grant[]
@@ -123,6 +129,7 @@ interface VestingState {
 
   accept: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   cancel: (backend: VestingBackend, partyId: string, contractCid: string) => Promise<void>
+  cancelProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   claimResidual: (
     backend: VestingBackend,
     partyId: string,
@@ -132,6 +139,7 @@ interface VestingState {
   clear: () => void
   createVesting: (backend: VestingBackend, partyId: string, input: CreateVestInput) => Promise<void>
   refresh: (backend: VestingBackend, partyId: string) => Promise<void>
+  rejectProposal: (backend: VestingBackend, partyId: string, pendingCid: string) => Promise<void>
   withdraw: (
     backend: VestingBackend,
     partyId: string,
@@ -144,73 +152,108 @@ interface VestingState {
 // resolve last and clobber the fresh view.
 let refreshEpoch = 0
 
-export const useVestingStore = create<VestingState>((set, get) => ({
-  grants: [],
-  pendingGrants: [],
-  claims: [],
-  loading: false,
-  error: undefined,
-
-  // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
-  clear: () => {
-    refreshEpoch++
-    set({ grants: [], pendingGrants: [], claims: [], loading: false, error: undefined })
-  },
-
-  refresh: async (backend, partyId) => {
-    const epoch = ++refreshEpoch
-    set({ loading: true, error: undefined })
+export const useVestingStore = create<VestingState>((set, get) => {
+  // Held by the store rather than by the page that opened the dialog, because leaving the route
+  // unmounts a page while its submission is still in flight.
+  const busyWith = async <T>(id: string, kind: BusyKind, run: () => Promise<T>): Promise<T> => {
+    set((state) => ({ busy: new Map(state.busy).set(id, kind) }))
     try {
-      const view = await backend.viewAs(partyId)
-      if (epoch !== refreshEpoch) {
-        return
-      }
-      set({
-        grants: sortBy(view.grants, grantLineage),
-        pendingGrants: sortBy(view.pendingGrants, (pendingGrant) => pendingGrant.id),
-        claims: sortBy(view.claims, claimLineage),
-        loading: false,
+      return await run()
+    } finally {
+      set((state) => {
+        const next = new Map(state.busy)
+        next.delete(id)
+        return { busy: next }
       })
-    } catch (err) {
-      if (epoch !== refreshEpoch) {
-        return
-      }
-      set({ loading: false, error: errorText(err) })
     }
-  },
+  }
 
-  createVesting: async (backend, partyId, input) => {
-    await backend.createVesting(input)
-    await get().refresh(backend, partyId)
-  },
+  return {
+    busy: new Map(),
+    grants: [],
+    pendingGrants: [],
+    claims: [],
+    loading: false,
+    error: undefined,
 
-  accept: async (backend, partyId, pendingCid) => {
-    await backend.accept({ receiver: partyId, pendingCid })
-    await get().refresh(backend, partyId)
-  },
+    // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
+    // `busy` survives: a submission the wallet still holds outlives the party that opened it.
+    clear: () => {
+      refreshEpoch++
+      set({ grants: [], pendingGrants: [], claims: [], loading: false, error: undefined })
+    },
 
-  // Returns the successor's contract id, since the claim replaced the one the caller passed.
-  withdraw: async (backend, partyId, contractCid, amount) => {
-    const successor = trackSuccessor(get().grants, contractCid, grantLineage)
-    await backend.withdraw({ receiver: partyId, contractCid, amount })
-    await get().refresh(backend, partyId)
-    return successor(get().grants)
-  },
+    refresh: async (backend, partyId) => {
+      const epoch = ++refreshEpoch
+      set({ loading: true, error: undefined })
+      try {
+        const view = await backend.viewAs(partyId)
+        if (epoch !== refreshEpoch) {
+          return
+        }
+        set({
+          grants: sortBy(view.grants, grantLineage),
+          pendingGrants: sortBy(view.pendingGrants, (pendingGrant) => pendingGrant.id),
+          claims: sortBy(view.claims, claimLineage),
+          loading: false,
+        })
+      } catch (err) {
+        if (epoch !== refreshEpoch) {
+          return
+        }
+        set({ loading: false, error: errorText(err) })
+      }
+    },
 
-  cancel: async (backend, partyId, contractCid) => {
-    await backend.cancel({ creator: partyId, contractCid })
-    await get().refresh(backend, partyId)
-  },
+    createVesting: async (backend, partyId, input) => {
+      await backend.createVesting(input)
+      await get().refresh(backend, partyId)
+    },
 
-  // Like withdraw, except a drained claim is archived outright rather than re-created, so undefined
-  // here means there is nothing left to point at.
-  claimResidual: async (backend, partyId, claimCid, amount) => {
-    const successor = trackSuccessor(get().claims, claimCid, claimLineage)
-    await backend.claimResidual({ receiver: partyId, claimCid, amount })
-    await get().refresh(backend, partyId)
-    return successor(get().claims)
-  },
-}))
+    accept: (backend, partyId, pendingCid) =>
+      busyWith(pendingCid, 'accept', async () => {
+        await backend.accept({ receiver: partyId, pendingCid })
+        await get().refresh(backend, partyId)
+      }),
+
+    cancelProposal: (backend, partyId, pendingCid) =>
+      busyWith(pendingCid, 'end', async () => {
+        await backend.cancelProposal({ proposer: partyId, pendingCid })
+        await get().refresh(backend, partyId)
+      }),
+
+    rejectProposal: (backend, partyId, pendingCid) =>
+      busyWith(pendingCid, 'end', async () => {
+        await backend.rejectProposal({ receiver: partyId, pendingCid })
+        await get().refresh(backend, partyId)
+      }),
+
+    // Returns the successor's contract id, since the claim replaced the one the caller passed.
+    withdraw: (backend, partyId, contractCid, amount) =>
+      busyWith(contractCid, 'claim', async () => {
+        const successor = trackSuccessor(get().grants, contractCid, grantLineage)
+        await backend.withdraw({ receiver: partyId, contractCid, amount })
+        await get().refresh(backend, partyId)
+        return successor(get().grants)
+      }),
+
+    cancel: (backend, partyId, contractCid) =>
+      busyWith(contractCid, 'cancel', async () => {
+        await backend.cancel({ creator: partyId, contractCid })
+        await get().refresh(backend, partyId)
+      }),
+
+    // Like withdraw, except a drained claim is archived outright rather than re-created, so undefined
+    // here means there is nothing left to point at.
+    claimResidual: (backend, partyId, claimCid, amount) =>
+      busyWith(claimCid, 'claim', async () => {
+        const successor = trackSuccessor(get().claims, claimCid, claimLineage)
+        await backend.claimResidual({ receiver: partyId, claimCid, amount })
+        await get().refresh(backend, partyId)
+        return successor(get().claims)
+      }),
+  }
+})
 
 // Wires the store to the context backend + acting party and re-reads the ACS whenever either
 // changes. Components call this once near the top of a page; an undefined backend means no

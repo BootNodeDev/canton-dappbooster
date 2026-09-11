@@ -13,7 +13,7 @@ import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
 import { popoverClass } from '@/utils/popover'
 import { toast } from '@/utils/toast'
-import { AMT } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
 const TRUNCATE = { head: 6, hint: 12, tail: 6 }
 
@@ -35,9 +35,9 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   const { backend } = useBackend()
 
   const runTap = (ledger: VestingBackend): void => {
-    toast.info(`Tapping ${TAP_AMOUNT} ${AMT.symbol}…`)
-    ledger.tap(party.partyId).then(
-      () => toast.success(`${TAP_AMOUNT} ${AMT.symbol} tapped`),
+    toast.info(`Tapping ${TAP_AMOUNT} ${DBT.symbol}…`)
+    ledger.tap({ amount: TAP_AMOUNT, party: party.partyId }).then(
+      () => toast.success(`${TAP_AMOUNT} ${DBT.symbol} tapped`),
       (err: unknown) => toast.error(errorText(err)),
     )
   }
@@ -91,9 +91,9 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
                     <Droplet />
                   </span>
                   <span className="flex flex-col">
-                    <span className="text-sm font-semibold text-fg">Tap {AMT.name}</span>
+                    <span className="text-sm font-semibold text-fg">Tap {DBT.name}</span>
                     <span className="text-xs text-fg-muted">
-                      Get {TAP_AMOUNT} {AMT.symbol} from the faucet
+                      Get {TAP_AMOUNT} {DBT.symbol} from the faucet
                     </span>
                   </span>
                 </Menu.Item>

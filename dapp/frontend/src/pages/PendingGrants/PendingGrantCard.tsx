@@ -7,23 +7,29 @@ import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
 import type { PendingGrant } from '@/store/types'
+import type { BusyKind } from '@/store/useVestingStore'
 import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
-// funder.
+// funder. `busy` is the submission this grant already has in flight: whichever exit it names, both
+// controls are out until it settles, or the same grant could be accepted and declined at once.
 interface PendingGrantCardProps {
+  busy: BusyKind | undefined
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void
+  onEnd: (pendingGrant: PendingGrant) => void
   pendingGrant: PendingGrant
 }
 
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
+  busy,
   nowMs,
   onAccept,
+  onEnd,
 }: PendingGrantCardProps): React.JSX.Element => {
   const curve = pendingGrant.schedule.curve
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
@@ -73,11 +79,40 @@ export const PendingGrantCard = ({
           />
         </div>
         {direction === 'incoming' ? (
-          <Button size="sm" onClick={() => onAccept(pendingGrant)}>
-            Accept
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="danger-ghost"
+              className="flex-1 md:flex-none"
+              onClick={() => onEnd(pendingGrant)}
+              pending={busy === 'end'}
+              disabled={busy !== undefined}
+              aria-label={`Decline ${pendingGrant.title}`}
+            >
+              Decline
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 md:flex-none"
+              onClick={() => onAccept(pendingGrant)}
+              pending={busy === 'accept'}
+              disabled={busy !== undefined}
+              aria-label={`Accept ${pendingGrant.title}`}
+            >
+              Accept
+            </Button>
+          </div>
         ) : (
-          <span className="font-mono text-xs text-fg-muted">awaiting acceptance</span>
+          <Button
+            size="sm"
+            variant="danger-ghost"
+            onClick={() => onEnd(pendingGrant)}
+            pending={busy === 'end'}
+            disabled={busy !== undefined}
+            aria-label={`Cancel ${pendingGrant.title}`}
+          >
+            Cancel
+          </Button>
         )}
       </div>
     </Card>

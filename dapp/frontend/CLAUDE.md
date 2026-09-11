@@ -20,9 +20,14 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
 - `providers/` names what it provides, not the role the folder already states: `Backend`, not
   `BackendProvider`.
 - `api/` sits beside `src/`, not inside it. Vercel publishes each module there at `/api/<basename>`,
-  so the path is the route and moving one renames the endpoint. Server-side code: it never imports
-  from `src/`, reads its configuration from `process.env`, and any variable it needs is deliberately
-  not a `VITE_` name, since those are inlined into the bundle.
+  so the path is the route and moving one renames the endpoint. A bracketed filename matches exactly
+  one path segment, catch-all spelling included, so forwarding a service's own multi-segment paths
+  takes an explicit `vercel.json` rewrite carrying the path as a parameter, which is what
+  `registry.ts` does. Server-side code: it never imports from `src/`, reads its configuration from
+  `process.env`, and any variable it needs is deliberately not a `VITE_` name, since those are
+  inlined into the bundle. Every file here is published, so a test beside one is an endpoint: only a
+  `_` or `.` prefix somewhere in the path is skipped, which is why the suite is `_registry.test.ts`
+  and reaches its subject through the `#api/*` subpath imports rather than a relative specifier.
 
 ## Shared pieces to reach for
 
@@ -38,7 +43,7 @@ One implementation each, so a second one is a bug and not a choice:
   element it does not, so an icon trigger is a legal child. Childless it is a `?` badge. It adds the
   tap-to-open Ark leaves out.
 - **A figure: `components/AmountDisplay`.** It owns the grouping, the forced two decimals, and the
-  Amulet mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
+  instrument mark with its tooltip. `count` is the escape hatch for a tally, which owes neither.
   Where the surrounding text already spells out the unit, reach for `components/CompactAmount`, the
   same figure without the mark: it is what keeps the exact value in a tooltip and in the accessible
   name once an outsized amount is abbreviated, so a hand-rolled `formatFigureCompact` loses it.

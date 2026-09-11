@@ -32,6 +32,7 @@ export const GrantDetail = (): React.JSX.Element => {
   const { backend, partyId, sessionPending } = useVesting()
   const grant = useVestingStore((s) => s.grants.find((g) => g.id === id))
   const loading = useVestingStore((s) => s.loading)
+  const busy = useVestingStore((s) => s.busy)
   const withdraw = useVestingStore((s) => s.withdraw)
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
@@ -85,6 +86,9 @@ export const GrantDetail = (): React.JSX.Element => {
   }
 
   const derived = deriveGrant(grant, nowMs)
+  // Either dialog stays dismissible over the wallet prompt, so without this the control behind it
+  // would offer a second write against a contract the first is about to archive.
+  const inFlight = busy.get(grant.id) !== undefined
   const isReceiver = grant.receiver === partyId
   const isCreator = grant.creator === partyId
   const isMilestone = grant.schedule.curve.kind === 'milestone'
@@ -112,12 +116,21 @@ export const GrantDetail = (): React.JSX.Element => {
             (derived.locked ? (
               <GrantLock className="self-center" />
             ) : (
-              <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
-                Claim <CompactAmount value={derived.claimable} plain /> AMT
+              <Button
+                disabled={!derived.canClaim}
+                pending={inFlight}
+                onClick={() => setClaimOpen(true)}
+              >
+                Claim <CompactAmount value={derived.claimable} plain /> DBT
               </Button>
             ))}
           {isCreator && (
-            <Button size="sm" variant="danger" onClick={() => setCancelOpen(true)}>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={inFlight}
+              onClick={() => setCancelOpen(true)}
+            >
               Cancel grant
             </Button>
           )}
@@ -227,7 +240,7 @@ export const GrantDetail = (): React.JSX.Element => {
       {claimOpen && (
         <Claim
           onClose={() => setClaimOpen(false)}
-          title="Claim vested AMT"
+          title="Claim vested DBT"
           available={derived.claimable}
           backing={grantBacking(grant)}
           onConfirm={async (amount) => {
@@ -246,7 +259,7 @@ export const GrantDetail = (): React.JSX.Element => {
           onClose={() => setCancelOpen(false)}
           grant={grant}
           nowMs={nowMs}
-          description="Vested-but-unclaimed AMT becomes a residual claim for the receiver; the contract is archived."
+          description="Vested-but-unclaimed DBT becomes a residual claim for the receiver; the contract is archived."
           successMessage="Grant cancelled"
           onConfirm={async () => {
             await cancel(backend, partyId, grant.id)

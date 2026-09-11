@@ -5,9 +5,17 @@ packages:
   - canton-connect
   - canton-dappbooster
   - canton-theme
-  - dapp/daml
   - dapp/frontend
 
+# Dependencies allowed to run install/build scripts (pnpm blocks them by default).
+# esbuild: needed by Vite/tsx.
+# @bootnodedev/canton-token-forge: a git dependency whose `prepare` compiles
+# registry/src into the registry/dist its bin points at; upstream gitignores that
+# directory, so without this entry the bin exists but resolves to nothing. pnpm
+# matches a git dependency only by its resolved tarball id, so moving the ref in
+# package.json means replacing the commit sha below; `pnpm approve-builds` prints
+# the new key.
 allowBuilds:
+  '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7': true
   esbuild: true
   protobufjs: true
