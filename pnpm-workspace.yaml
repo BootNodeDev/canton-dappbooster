@@ -1,3 +1,6 @@
+# allows to use local package folders if versions are within range, fetch from npm if not
+linkWorkspacePackages: true
+
 packages:
   - canton-connect
   - canton-dappbooster
@@ -8,4 +11,3 @@ packages:
 allowBuilds:
   esbuild: true
   protobufjs: true
-  puppeteer: false

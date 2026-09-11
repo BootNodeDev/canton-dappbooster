@@ -9,7 +9,7 @@ const ANSI = { reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', green: '\x1b[3
 
 const BLOB = 'https://github.com/BootNodeDev/canton-dappbooster/blob/main'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const componentsDir = path.join(repoRoot, 'canton-dappbooster/src/components')
 
 const fail = (message) => {
@@ -19,7 +19,7 @@ const fail = (message) => {
 
 const name = process.argv[2]
 
-if (!name) fail('Usage: node scripts/add-component.mjs <PascalCaseName>')
+if (!name) fail('Usage: node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>')
 if (!/^[A-Z][A-Za-z0-9]*$/.test(name)) fail(`"${name}" is not PascalCase. Example: ExplorerLink`)
 
 const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()

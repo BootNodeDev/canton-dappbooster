@@ -1,20 +1,39 @@
 {
   "name": "@bootnodedev/canton-connect",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
+    "directory": "canton-connect"
+  },
+  "license": "MIT",
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check",
-    "lint:fix": "biome check --write",
+    "coverage": "vitest run --coverage",
     "format": "biome format --write",
-    "prepublishOnly": "echo \"always-dist: remove the development export condition before publishing (it points at src, which the files field does not ship)\" && exit 1",
-    "coverage": "vitest run --coverage"
+    "lint:fix": "biome check --write",
+    "lint": "biome check",
+    "prepack": "tsdown",
+    "test:watch": "vitest",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "type": "module",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
+      }
+    }
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=24.15.0"
@@ -52,11 +71,6 @@
     "@canton-network/dapp-sdk": "^1.4.0",
     "@walletconnect/sign-client": "^2.23.9",
     "react": "^19.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@walletconnect/sign-client": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@canton-network/core-types": "1.10.0",

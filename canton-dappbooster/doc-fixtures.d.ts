@@ -1,4 +1,4 @@
-// The placeholder vocabulary an @example may lean on. `scripts/docs-check.mjs` compiles every
+// The placeholder vocabulary an @example may lean on. `kit/docs-check.mjs` compiles every
 // snippet with this file as a root, so an example may use only what is declared here, and a
 // placeholder's type is the real one — a loosened signature here would hide a broken example.
 //

@@ -31,7 +31,7 @@ Use one reader per doc type, layered by scope:
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, non-trivial control flow, or named abstractions. |
 | `architecture/<topic>.md` | Human or agent editing one subsystem: how does it behave in full? | Only beside an `architecture.md` that indexes it, when a section outgrows the seam it describes. The index keeps the seam and links the chapter; no chapter without its index entry. |
-| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. `canton-connect/coming-from-wagmi.md`, published through `projectDocuments`, is the one hand-written page in it: an exception for a mapping to another library's API, not a pattern to repeat. |
+| Generated reference | Human: what does this export do and how do I call it? | Not hand-maintained and not a file anyone edits. `kit/typedoc.json` builds it from the JSDoc on `canton-dappbooster` and `canton-connect`'s barrels; `@internal` keeps a symbol off it. Fix the doc block, never the site. `canton-connect/coming-from-wagmi.md`, published through `projectDocuments`, is the one hand-written page in it: an exception for a mapping to another library's API, not a pattern to repeat. |
 
 Current distribution:
 
@@ -61,23 +61,24 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 | Category | Technology | Notes |
 |----------|-----------|-------|
-| Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash and Node for the root `scripts/` |
-| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout + overrides live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
+| Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash and Node for the root `scripts/` and `kit/` |
+| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
-| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
+| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, `kit/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@canton-network/*` ignored |
-| Doc reference + gate | typedoc | Root `typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
-| Doc rules gate | `scripts/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
-| Anatomy parity gate | `scripts/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-wallet-service` is in `ignoreDependencies` because nothing runs it from a `package.json` script: `scripts/dev-stack.sh` and the README call `pnpm exec canton-wallet-service`, and knip does not read shell scripts. `postcss` is there for the reason under `kit/` and the consumer scaffold |
+| Doc reference + gate | typedoc | `kit/typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
+| Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
+| Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
+| Version lockstep check | `kit/check-versions.mjs` | `pnpm run check:versions` fails unless every declared range pointing at a library is `^<that library folder's version>`. `kit/check-versions.test.mjs` runs the same check inside `pnpm test`, and the PR job calls the script. Given a version argument it also requires the root and the three libraries to be on it, which is how the release workflow refuses a tag that disagrees with the manifests |
 | Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` is its build settings and nobody else's |
 | Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. Git-connected, production branch `main`, so a merge deploys and a branch gets a preview. `dapp/frontend/api/` ships alongside the bundle as Vercel functions; the SPA catch-all in `vercel.json` is scoped away from `/api/` so it cannot answer one with `index.html` |
-| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `add-to-project` and `pr-assign` automate the board and PR assignee |
+| CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `.github/workflows/release.yml` publishes to npm when a GitHub release is published; see Packaging And Publishing. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
 ## Subprojects
@@ -191,9 +192,9 @@ Placement:
     adding a key.
   - Imports carry no file extension, and tsdown inlines every internal module, so no `#` or `@/`
     specifier reaches `dist`.
-- Root `scripts/` is exempt from both rules: plain `.mjs` and Bash, run by `node` and `bash`
-  directly, with no bundler and no `imports` map to reach through. Relative specifiers with
-  extensions are correct there and lint allows them.
+- `kit/` and any `scripts/` folder are exempt from both rules: plain `.mjs` and Bash, run by `node`
+  and `bash` directly, with no bundler and no `imports` map to reach through. Relative specifiers
+  with extensions are correct there and lint allows them, kebab-case filenames included.
 
 ## Doc blocks
 
@@ -209,7 +210,7 @@ derivable from the repo's own naming, which is what makes the floors and the cei
 | Result type, status union | `Result` suffix, or a union of string literals | one sentence | none required |
 | Config object | reached by the caller passing it in rather than being handed one back | 1 to 3 lines, defaults included | 1 |
 
-`scripts/docs-check.mjs` enforces the example requirement and a ceiling per tier that sits above the
+`kit/docs-check.mjs` enforces the example requirement and a ceiling per tier that sits above the
 table: 6 prose lines for a component or a callable util, 4 for a hook or a config object, 3 for a
 props or result type, and 8 lines inside any one `@example`. The ceilings are deliberately loose —
 they catch a block that has become an essay, not one that spent a second sentence well. Whether the
@@ -226,11 +227,11 @@ Which tags a block may carry is decided the same way, so that two authors write 
 | `@param` | never required: one sentence plus a compiled example is the spec | a callable that takes no parameters |
 | `@returns` | never required | a hook, whose result type is the contract; any callable whose return type is itself an export |
 
-- **`typedoc.shared.json` holds every option that resolves *per package*, and both packages extend
-  it.** `blockTags`, `modifierTags`, `inlineTags` and `sourceLinkTemplate` all behave like
-  `categoryOrder` under `entryPointStrategy: "packages"`: set at the root they are accepted and
-  silently ignored, which reads as the option not working. Adding a tag is a decision about every
-  block in the repo, so it is a review conversation and not a free choice.
+- **`kit/typedoc.shared.json` holds every option that resolves *per package*, and both packages
+  extend it.** `blockTags`, `modifierTags`, `inlineTags` and `sourceLinkTemplate` all behave like
+  `categoryOrder` under `entryPointStrategy: "packages"`: set in `kit/typedoc.json` they are
+  accepted and silently ignored, which reads as the option not working. Adding a tag is a decision
+  about every block in the repo, so it is a review conversation and not a free choice.
 - **`sourceLinkTemplate` looks redundant and is load-bearing.** It is character-for-character what
   typedoc builds by itself, so deleting it changes no link. What it also does is skip the
   `git remote get-url origin` call typedoc otherwise makes to learn the repo address for every
@@ -289,9 +290,9 @@ leaf something you call or render, and keep parameter and return types inside th
   which is safe only because everything with a local declaration is required to be tagged.
 - **`categoryOrder`, `defaultCategory`, `categorizeByGroup`, `groupOrder` and `sort` resolve per
   package** under `entryPointStrategy: "packages"`, so they live in each package's own
-  `typedoc.json`. At the root they are accepted and silently ignored, which reads as the tag not
-  working rather than the option being in the wrong file. Root `typedoc.json` owns entry points,
-  validation, and `navigation`.
+  `typedoc.json`. In `kit/typedoc.json` they are accepted and silently ignored, which reads as the
+  tag not working rather than the option being in the wrong file. `kit/typedoc.json` owns entry
+  points, validation, and `navigation`.
 - **A link in a README or doc block is absolute, or it is not a link.** typedoc copies every
   relative link target into the published site and points the link at the copy, and no option
   disables it. So a relative path silently republishes the file, frozen at build time, and a `.ts`
@@ -351,8 +352,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   reject, or a new Splice tag, which would otherwise pin the stack to a version the tool was not
   tested against. Anything else set there survives until then, so a standing deviation belongs in a
   directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
-- `node scripts/add-component.mjs <PascalCaseName>` scaffolds a `canton-dappbooster` component
-  folder. Not wired into `package.json`: it is an authoring convenience, not part of the loop above.
+- `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
+  in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
+  loop above.
 - `pnpm run bootstrap` creates the vesting operator and its factory, which the
   dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
   both back off the ledger once a wallet connects, so nothing can go stale between the two, and
@@ -373,8 +375,160 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - The `@canton-network/wallet-sdk` pin left with wallet-service: its own repository holds that exact version, so `pnpm-workspace.yaml` carries no SDK overrides. Its `core-acs-reader` override does **not** travel here — pnpm applies `overrides` only in the root running the install, and a published package ships no lock file to read — so this repo resolves `core-acs-reader` on the SDK's own range and the root lock records 1.19.0, where the extracted repo pins 1.12.0. The loop was verified end to end on 1.18.1; the move to npm re-resolved it to 1.19.0. Renovate's `@canton-network/**` hold plus the lock file are what keep it there; re-resolve deliberately, not as a side effect. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
-- Build scripts are gated in `pnpm-workspace.yaml` under `allowBuilds` (`esbuild`/`protobufjs` allowed; `puppeteer` blocked so `@mermaid-js/mermaid-cli` does not download a Chromium).
+- **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
+  `@canton-network/dapp-sdk` calls it optional.** The SDK's `peerDependenciesMeta` marks it
+  optional but its `dist/index.js` imports it statically, so nothing that loads the SDK runs
+  without it, whether or not the dApp ever uses WalletConnect. Mirroring the SDK's declaration
+  shipped 0.3.0 with no copy in a consumer tree: pnpm installed nothing, warned about nothing, two
+  `dapp/frontend` test files failed, and the bundle rendered a blank page. `pnpm -C dapp/frontend
+  build` still exited 0, because Vite 8 turns an unresolved import into a throwing stub, which is
+  how it reached npm. `dapp/frontend` also lists it in `dependencies` on the same range: pnpm and
+  npm auto-install peers, yarn does not, and a consumer can turn that off. It can go back to
+  optional once upstream moves that import behind a dynamic one.
+- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild` and `protobufjs`. Anything else is blocked until it is added.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
+
+## `kit/` and the consumer scaffold
+
+This repo is two things at once: the development monorepo for the three published libraries, and
+the template a scaffolding installer clones for a consumer. A consumer gets the libraries from npm
+and never sees their source, so scaffolding must be pure deletion — no file rewriting and no config
+surgery.
+
+`kit/` is where the root-level tooling that reads the library source lives, scripts and config
+together, so it leaves with the libraries. The whole list a scaffold deletes:
+
+```
+canton-connect/  canton-dappbooster/  canton-theme/
+kit/
+pnpm-lock.yaml
+vercel.json
+```
+
+Two rules keep that list short:
+
+- **Tooling that belongs to one package lives in that package.**
+  `canton-dappbooster/scripts/add-component.mjs` is the example.
+- **`scripts/lib/` stays put.** `fetch-daml-deps.mjs` imports `repoRoot` from `gate.mjs` and
+  survives in a consumer tree, so the folder cannot move. `manifests.mjs` moved to `kit/` because
+  only `check-versions.mjs` and `release-version.mjs` import it, and both left.
+
+What survives deletion, and why nothing has to be edited afterwards:
+
+- `docs:check`, `docs:build`, `check:anatomy` and `check:versions` stay in `package.json` and fail
+  if called. Nothing in a consumer's local loop calls them, but `.github/workflows/pr.yml` runs
+  three, so an installer keeping that workflow drops those steps. That is the one edit deletion
+  does not cover.
+- `pnpm test` names both folders, and `node --test` exits 0 on a pattern that matches nothing.
+- `postcss` is in knip's `ignoreDependencies` because `kit/check-anatomy.mjs` is its only importer;
+  without the entry a consumer tree fails on an unused root devDependency. knip only hints here, and
+  hints do not fail without `--treat-config-hints-as-errors`.
+- pnpm ignores a `pnpm-workspace.yaml` `packages:` entry whose folder is missing.
+
+## Packaging And Publishing
+
+The three libraries — `canton-connect`, `canton-dappbooster`, `canton-theme` — are published to npm
+under `@bootnodedev/`. All three are `private: false` with `publishConfig.access: "public"`, since
+the scope is private by default on npm.
+
+All three declare `"license": "MIT"`, the root `LICENSE`. None of them carries a copy of that file:
+pnpm packs the workspace root's `LICENSE` into a package that has none of its own, so the tarball
+ships the text without three copies of it in the repo.
+
+**Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
+`linkWorkspacePackages: true`, so pnpm links the local folder whenever that folder's own `version`
+satisfies the range, and downloads from npm when it does not. `dapp/frontend` and
+`canton-dappbooster` both ask for `^0.3.1`, and the three folders are all on `0.3.1`, so every one
+of them links today. That is what lets a single `package.json` serve two readers:
+
+- In this repo the three folders exist and are in range, so an edit in `canton-connect/src` shows up
+  in the dApp with no build and no republish.
+- In a project scaffolded out of this repo the folders are absent, so pnpm installs the published
+  versions. Nothing in the file changes between the two.
+
+That is the whole difference between working here and consuming the kit. A `workspace:*` range would
+break the second case: it is not a range npm can resolve.
+
+**Bumping a library past its declared range silently unlinks it.** Set `canton-connect` to `0.4.0`
+and leave the `^0.3.1` in `canton-dappbooster` and `dapp/frontend`, and the next install stops
+linking the folder and pulls `0.3.x` off npm instead. Local edits then have no visible effect, and
+nothing about the install says so. A version bump therefore has to update every range that points
+at that package in the same commit, which is what `kit/release-version.mjs` below does and what
+`pnpm run check:versions` refuses to let drift. To see it with your own eyes, look for the symlink:
+`ls -l dapp/frontend/node_modules/@bootnodedev/`.
+
+**A library's top-level `exports` is for us; `publishConfig.exports` is for consumers.** Top-level
+carries the `development` condition that points at `src`, which is what the dev loop compiles
+through and what `canton-dappbooster`'s `customConditions` depends on. `files` ships only `dist`, so
+that condition would be a dead path in a consumer's `node_modules`. `publishConfig.exports` mirrors
+the top-level map with the `development` entries removed, and npm swaps it in at publish time, so
+what a consumer resolves points only at `dist`. Add a sub-path to one map and add it to the other:
+they are two hand-maintained copies of the same list, and nothing compares them. `canton-theme`
+ships `src` and has no such condition, so it needs no override.
+
+`prepack: tsdown` in both TypeScript libraries rebuilds `dist` on every `pnpm pack` and
+`pnpm publish`, so a stale or missing build cannot ship. It replaced a `prepublishOnly` that failed
+every publish on purpose, back when the `development` condition had no override to strip it.
+
+`pnpm run release` from the root is
+`pnpm -r --filter './canton-*' publish --no-git-checks`. `pnpm -r` walks the workspace in dependency
+order, so `canton-connect` publishes before `canton-dappbooster`, which depends on it.
+
+**Four versions move in lockstep**: the root `package.json` and the three libraries. `dapp/frontend`
+and `dapp/daml` keep their own, because neither is published — and `dapp/daml`'s real version is
+`version: 0.0.2` in `dapp/daml/daml.yaml`, which names the built DAR, so its `package.json` version
+is not the one that matters.
+
+**`node kit/release-version.mjs 0.4.0` does the whole bump.** `pnpm run release:version 0.4.0`
+is the same thing; never spell it with a `--` separator, which pnpm forwards into `argv` so the
+version arrives as `--`. In order, it:
+
+1. refuses a malformed version, a dirty working tree, or a `v0.4.0` tag that already exists
+2. writes the version into the four manifests, and rewrites every range pointing at a library to
+   `^0.4.0`. It reads both lists off the workspace manifests — a library is a workspace package that
+   is not private — so a new library, or a new consumer of one, needs no edit here
+3. runs `pnpm install`, then commits the manifests and `pnpm-lock.yaml` as `release: v0.4.0`, tags
+   `v0.4.0`, and pushes the branch and the tag
+4. opens a **draft** GitHub release with generated notes, `--prerelease` when the version has a
+   prerelease part
+
+A prerelease version goes into both halves, which is what keeps the folders linked through an rc:
+`^0.4.0-rc.0` does satisfy `0.4.0-rc.0`.
+
+**Publishing that draft is the only irreversible step, and it is a human click.**
+`.github/workflows/release.yml` runs on `release: published`. It checks the tag out, runs
+`node kit/check-versions.mjs` with the tag minus its `v` so a mistyped tag cannot reach npm,
+runs `pnpm lint`, `pnpm typecheck` and `pnpm test`, then publishes with the root `release` script.
+`--no-git-checks` is what lets it publish from that detached HEAD.
+
+**npm auth is OIDC trusted publishing, so there is no token and no repo secret.** Each of the three
+packages has a trusted publisher on npmjs.com naming this repo and the workflow file, and the job
+proves it is that workflow with a short-lived OIDC token. `id-token: write` in the top-level
+`permissions` is what lets it request one, and without that key the publish fails with no token to
+fall back on. `setup-node`'s `registry-url` still earns its place: it writes the `.npmrc` that
+points pnpm at npmjs.org.
+
+**Those npmjs.com entries name `release.yml` by filename.** Renaming or moving the workflow breaks
+publishing until all three are updated to match, and nothing in this repo can warn about it.
+
+**Every published package declares `repository`, with its own `directory`.** Trusted publishing
+attaches a sigstore provenance bundle naming the repository the build came from, and npm compares
+that claim against the package's own `repository.url`. A missing field is not treated as "nothing to
+check": the comparison runs against an empty string and the upload fails with a 422 saying
+`"repository.url" is ""`, which names no cause a reader can act on. The URL is the `https` form
+(`git+https://github.com/BootNodeDev/canton-dappbooster.git`), because that is the form the
+provenance claim carries and what npm normalises against; the repo's SSH-only rule covers git
+remotes, not this. `directory` is the package's path from the repo root, so npm and editors resolve
+links into the right folder instead of the monorepo root. The root `package.json` is private and
+never published, so it needs none. A manual publish from a laptop has no provenance to verify, which
+is why 0.3.0 went out without the field and v0.3.1 was the first to hit this.
+
+**A prerelease publishes under the `next` dist-tag**, keyed off `github.event.release.prerelease`,
+so an rc never becomes what `npm install` resolves. `pnpm -r publish` skips a package whose version
+is already on npm, so re-running the workflow after a partial failure is safe.
+
+`pnpm run release:dry` packs all three and uploads nothing, which is how a tarball's contents get
+looked at before a release.
 
 ## Architecture
 
@@ -387,11 +541,13 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
     reached through `canton-connect` touches DOM globals on import)
   - `canton-connect`: `pnpm test` (vitest + jsdom)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
-  - root `scripts/`: covered by the root `pnpm test`, which appends
-    `node --test "scripts/*.test.mjs"` to the fan-out because `pnpm -r` skips the root package
+  - root `scripts/` and `kit/`: covered by the root `pnpm test`, which appends
+    `node --test "scripts/**/*.test.mjs" "kit/**/*.test.mjs"` to the fan-out because `pnpm -r` skips
+    the root package. The version lockstep check is one of those tests,
+    `kit/check-versions.test.mjs`, for the reason under `kit/` and the consumer scaffold
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `dapp/frontend`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). CI runs these minus `dapp/daml`'s build, which needs `dpm` and a network fetch of the Splice DARs.
-- `pnpm docs:check` (typedoc plus `scripts/docs-check.mjs`) and `pnpm run check:anatomy` do not fan out: both read the two library packages directly, and typedoc has one config over both. `pnpm docs:build` writes the reference site to `typedoc/`.
+- `pnpm docs:check` (typedoc plus `kit/docs-check.mjs`), `pnpm run check:anatomy` and `pnpm run check:versions` do not fan out: each reads the packages it covers directly, and typedoc has one config over both libraries. `pnpm docs:build` writes the reference site to `typedoc/`.
 - Cover the paths that matter — business logic, API integrations, component behaviour. Skip styling, third-party library internals, trivial getters/setters.
 
 ## Commit Standards
@@ -475,7 +631,7 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 Before declaring monorepo-touching work done:
 
 - Subproject-level: `pnpm run lint` and `pnpm test` inside any subproject you touched.
-- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`.
+- Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`, `pnpm run check:versions`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
 - For the full end-to-end loop (LocalNet up → wallet-service → DAR built → DAR deployed → bootstrap → wallet → dApp), follow [`README.md`](README.md).

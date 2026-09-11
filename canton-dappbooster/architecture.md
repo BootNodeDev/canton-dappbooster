@@ -250,10 +250,12 @@ throws rather than guessing a mode the client would then hydrate away from.
   incompatible.) The theme package instead declares `sideEffects: ["**/*.css"]` so a consumer's
   `import '@bootnodedev/canton-theme/default.css'` survives tree-shaking.
 - `exports` carries a `development` condition → `src` for live dev; `dist` is used for production.
-  Stripping that condition before publish is enforced by `prepublishOnly` (publish hygiene is a
-  separate future issue).
+  `publishConfig.exports` is the same map without that condition, so the published package points
+  only at `dist`, and `prepack: tsdown` rebuilds `dist` before it ships. The two maps are
+  hand-maintained copies: a new sub-path goes in both. See the packaging rules in the root
+  [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/CLAUDE.md).
 
 ## Deferred (not this package's concern yet)
 
 Open Props + Lightning CSS theme toolchain (tokens are hand-authored `--cnc-*` for now; aliasing
-Open Props behind them later is non-breaking), the browser + axe test matrix, and publish hygiene.
+Open Props behind them later is non-breaking), and the browser + axe test matrix.

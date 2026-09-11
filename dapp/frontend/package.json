@@ -1,7 +1,7 @@
 {
   "name": "@canton-dappbooster/frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "node": ">=24.15.0"
@@ -18,11 +18,12 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.1",
-    "@bootnodedev/canton-connect": "workspace:*",
-    "@bootnodedev/canton-dappbooster": "workspace:*",
-    "@bootnodedev/canton-theme": "workspace:*",
+    "@bootnodedev/canton-connect": "^0.3.1",
+    "@bootnodedev/canton-dappbooster": "^0.3.1",
+    "@bootnodedev/canton-theme": "^0.3.1",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
+    "@walletconnect/sign-client": "^2.23.9",
     "boring-avatars": "^2.0.4",
     "lucide-react": "^1.39.0",
     "react": "^19.1.0",

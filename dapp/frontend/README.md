@@ -23,7 +23,8 @@ that is up, from the repo root (one `pnpm install` links every workspace):
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.1.dar
+# use the appropriate version for amulet-vesting-*.dar
+pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-*.dar
 pnpm run bootstrap   # creates the operator and its factory
 pnpm run app:dev     # → http://localhost:3012
 ```

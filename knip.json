@@ -1,17 +1,17 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["@mermaid-js/mermaid-cli", "@bootnodedev/canton-wallet-service"],
+  "ignoreDependencies": ["@bootnodedev/canton-wallet-service", "postcss"],
   "ignoreWorkspaces": ["dapp/daml"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.mjs!", ".lintstagedrc.format.mjs"]
+      "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]
     },
     "canton-connect": {
       "entry": ["src/**/*.test.{ts,tsx}"]
     },
     "canton-dappbooster": {
-      "entry": ["src/**/*.test.{ts,tsx}"]
+      "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
     },
     "dapp/frontend": {
       "entry": ["api/*.ts"]

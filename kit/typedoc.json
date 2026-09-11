@@ -2,11 +2,8 @@
   "$schema": "https://typedoc.org/schema.json",
   "name": "Canton dAppBooster",
   "entryPointStrategy": "packages",
-  "entryPoints": [
-    "canton-dappbooster",
-    "canton-connect"
-  ],
-  "out": "typedoc",
+  "entryPoints": ["../canton-dappbooster", "../canton-connect"],
+  "out": "../typedoc",
   "excludeInternal": true,
   "excludePrivate": true,
   "excludeExternals": true,
@@ -20,14 +17,7 @@
   },
   "treatValidationWarningsAsErrors": true,
   "treatWarningsAsErrors": true,
-  "requiredToBeDocumented": [
-    "Enum",
-    "EnumMember",
-    "Variable",
-    "Class",
-    "Interface",
-    "TypeAlias"
-  ],
+  "requiredToBeDocumented": ["Enum", "EnumMember", "Variable", "Class", "Interface", "TypeAlias"],
   "packagesRequiringDocumentation": [
     "@bootnodedev/canton-dappbooster",
     "@bootnodedev/canton-connect"

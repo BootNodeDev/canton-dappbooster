@@ -10,12 +10,7 @@
     "@see",
     "@throws"
   ],
-  "modifierTags": [
-    "@inline",
-    "@internal"
-  ],
-  "inlineTags": [
-    "@link"
-  ],
+  "modifierTags": ["@inline", "@internal"],
+  "inlineTags": ["@link"],
   "sourceLinkTemplate": "https://github.com/BootNodeDev/canton-dappbooster/blob/{gitRevision}/{path}#L{line}"
 }

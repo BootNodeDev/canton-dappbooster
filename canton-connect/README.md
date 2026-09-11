@@ -44,15 +44,16 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 ## Status
 
-Consumed by `dapp/frontend` in this repo as a workspace package. Not published (`private: true`).
+Published to npm as `@bootnodedev/canton-connect`. Also consumed by `dapp/frontend` in this repo,
+which links the local folder while its version satisfies the declared range.
 
 ## Install
 
 Peers a consumer installs beside it: `@canton-network/dapp-sdk`, `@canton-network/core-types`,
-`react` 19 and `@walletconnect/sign-client`. The last is declared optional, but `dapp-sdk` imports
-it statically at the top of its bundle (checked on 1.5.1), so it has to be present whether or not
-you set `walletConnectProjectId`. Only the session is lazy: `SignClient.init()` runs when a pairing
-starts, not at import.
+`react` 19 and `@walletconnect/sign-client`. The last is required here, though `dapp-sdk` marks it
+optional: `dapp-sdk` imports it statically at the top of its bundle (checked on 1.5.1), so it has to
+be present whether or not you set `walletConnectProjectId`. Only the session is lazy:
+`SignClient.init()` runs when a pairing starts, not at import.
 
 ## Usage
 

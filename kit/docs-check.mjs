@@ -8,29 +8,33 @@
 // vocabulary is typedoc's outright — typedoc.shared.json is the allow-list. See the Doc blocks
 // section of root CLAUDE.md for both splits.
 //
-// Usage: node scripts/docs-check.mjs
+// Usage: node kit/docs-check.mjs
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
-import { createGate, repoRoot } from './lib/gate.mjs'
+import { createGate, repoRoot } from '../scripts/lib/gate.mjs'
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
 // Every list is read rather than restated: a package or an entry point added to the reference
 // would otherwise render on the site while escaping every check here, and a category invented here
 // would disagree with the one typedoc sorts by.
-const PACKAGES = readJson(path.join(repoRoot, 'typedoc.json')).entryPoints.map((dir) => {
-  const config = readJson(path.join(repoRoot, dir, 'typedoc.json'))
-  return {
-    dir,
-    barrels: config.entryPoints,
-    categories: new Set((config.categoryOrder ?? []).filter((name) => name !== '*')),
-    componentsDir: existsSync(path.join(repoRoot, dir, 'src/components'))
-      ? 'src/components'
-      : undefined,
-  }
-})
+const PACKAGES = readJson(path.join(import.meta.dirname, 'typedoc.json')).entryPoints.map(
+  (entry) => {
+    // typedoc resolves an entry point against its config file, so it is kit-relative here.
+    const packageDir = path.resolve(import.meta.dirname, entry)
+    const config = readJson(path.join(packageDir, 'typedoc.json'))
+    return {
+      dir: path.relative(repoRoot, packageDir),
+      barrels: config.entryPoints,
+      categories: new Set((config.categoryOrder ?? []).filter((name) => name !== '*')),
+      componentsDir: existsSync(path.join(packageDir, 'src/components'))
+        ? 'src/components'
+        : undefined,
+    }
+  },
+)
 
 const MAX_COLUMNS = 100
 const EXAMPLE_LINE_CAP = 8
