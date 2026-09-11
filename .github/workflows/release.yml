@@ -1,0 +1,48 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  HUSKY: 0
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - run: corepack enable
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Verify the tag matches the manifests
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: node kit/check-versions.mjs "${TAG#v}"
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      # prepack rebuilds each library's dist during publish, so nothing is built here. pnpm skips a
+      # package whose version is already on npm, which is what makes a re-run after a partial
+      # failure safe.
+      - name: Publish
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          # A prerelease goes out as `next` so it does not become what `npm install` resolves.
+          if [ "$PRERELEASE" = true ]; then
+            pnpm run release --tag next
+          else
+            pnpm run release
+          fi

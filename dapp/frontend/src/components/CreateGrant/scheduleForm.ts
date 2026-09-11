@@ -25,7 +25,7 @@ export interface ScheduleForm {
 
 const addMonths = (d: Date, m: number): Date => {
   const copy = new Date(d)
-  copy.setMonth(copy.getMonth() + m)
+  copy.setUTCMonth(copy.getUTCMonth() + m)
   return copy
 }
 

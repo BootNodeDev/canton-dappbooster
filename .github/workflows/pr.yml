@@ -46,6 +46,7 @@ jobs:
       - run: pnpm knip
       - run: pnpm docs:check
       - run: pnpm run check:anatomy
+      - run: pnpm run check:versions
 
   test:
     name: 3 - test

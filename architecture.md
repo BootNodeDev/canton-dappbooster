@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR upload, the token mint, the vesting bootstrap |
+| `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the typedoc configs. Grouped so a consumer scaffold deletes it whole; see [`CLAUDE.md`](CLAUDE.md) |
 | wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A root devDependency installed from npm, run on the host by `scripts/dev-stack.sh` |
 | token registry (external: [BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge)) | Node + Express + TypeScript | Read-only CIP-56 registry over the `canton-token-forge` package: serves instrument metadata and the transfer-factory choice context. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | `dapp/frontend/` | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
@@ -128,3 +129,34 @@ template moves past the local copy, so the config drifts from the installed vers
 from a committed file. The Splice checkout and the runtime env land in its `.generated/`.
 
 For the bring-up sequence, follow [`README.md`](README.md).
+
+## Packaging
+
+`canton-connect`, `canton-dappbooster` and `canton-theme` are three npm packages that also happen to
+sit in this repo. Which copy a consumer gets is decided per install, by version:
+
+| Where | What resolves | Why |
+| --- | --- | --- |
+| this repo | the local folder, symlinked into `node_modules` | `linkWorkspacePackages: true` in `pnpm-workspace.yaml`, and the folder's `version` satisfies the declared range |
+| a project scaffolded from it | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
+
+Both cases read the same `package.json`. Nothing in `dapp/frontend` or `canton-dappbooster` names a
+workspace, only a range (`^0.3.1`), which is why the same file works in a repo that has the folders
+and in one that does not.
+
+What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a
+`development` condition pointing at `src`, so the dApp's Vite and `tsc` compile library source
+directly. The published copy has no such condition — `publishConfig.exports` overrides the map at
+publish time — so a consumer resolves `dist`, built by `prepack`.
+
+`pnpm run release` publishes the three in dependency order, and
+[`.github/workflows/release.yml`](.github/workflows/release.yml) is what runs it, on a published
+GitHub release. The bump before that is one command,
+[`kit/release-version.mjs`](kit/release-version.mjs): it moves four versions in lockstep —
+the root and the three libraries — rewrites every range that points at one of them, commits, tags,
+pushes, and leaves a draft release for a human to publish.
+
+The version ranges are the link, so a bump that outruns them turns a local folder into a download
+without saying so. [`kit/check-versions.mjs`](kit/check-versions.mjs) is what catches that,
+in `pnpm test` and in the PR job, and it doubles as the release workflow's check that the tag and
+the manifests agree. The packaging rules in [`CLAUDE.md`](CLAUDE.md) cover the rest.
