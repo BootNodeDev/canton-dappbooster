@@ -297,9 +297,8 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
     pid="$(cat "$pidfile" 2>/dev/null || true)"
     if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
       log "Stopping $label (pid $pid)"
-      # kill the dev-server process group so child vite dies too
+      # pnpm forwards SIGTERM to what it spawned, so one kill reaches vite two levels down.
       kill "$pid" 2>/dev/null || true
-      pkill -P "$pid" 2>/dev/null || true
     fi
     rm -f "$pidfile"
   fi
@@ -308,8 +307,6 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
-  # Belt-and-suspenders: kill any stray vite on our port.
-  pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
 
