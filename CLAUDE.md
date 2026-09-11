@@ -392,20 +392,20 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 
 This repo is two things at once: the development monorepo for the three published libraries, and
 the template a scaffolding installer clones for a consumer. A consumer gets the libraries from npm
-and never sees their source, so scaffolding must be pure deletion — no file rewriting and no config
-surgery.
+and never sees their source.
+
+The installer owns what leaves, in
+[`dAppBoosterInstallScript`](https://github.com/BootNodeDev/dAppBoosterInstallScript)'s
+`source/stacks/canton.ts`, and that file is the list, not this one. It deletes the three library
+folders, `kit/`, `.claude/`, `.github/`, every `CLAUDE.md`, `AGENTS.md` and `architecture.md`,
+`renovate.json`, `vercel.json`, `pnpm-lock.yaml` and the `PROVENANCE.md` files. It then rewrites
+`package.json`: any script naming a deleted directory goes automatically, `release` and
+`release:dry` go by name, and `typedoc` and `postcss` go with them.
 
 `kit/` is where the root-level tooling that reads the library source lives, scripts and config
-together, so it leaves with the libraries. The whole list a scaffold deletes:
+together, so it leaves with the libraries in one entry rather than a dozen.
 
-```
-canton-connect/  canton-dappbooster/  canton-theme/
-kit/
-pnpm-lock.yaml
-vercel.json
-```
-
-Two rules keep that list short:
+Two rules keep that entry whole:
 
 - **Tooling that belongs to one package lives in that package.**
   `canton-dappbooster/scripts/add-component.mjs` is the example.
@@ -413,17 +413,22 @@ Two rules keep that list short:
   survives in a consumer tree, so the folder cannot move. `manifests.mjs` moved to `kit/` because
   only `check-versions.mjs` and `release-version.mjs` import it, and both left.
 
-What survives deletion, and why nothing has to be edited afterwards:
+What survives, and why it still works with the libraries gone:
 
-- `docs:check`, `docs:build`, `check:anatomy` and `check:versions` stay in `package.json` and fail
-  if called. Nothing in a consumer's local loop calls them, but `.github/workflows/pr.yml` runs
-  three, so an installer keeping that workflow drops those steps. That is the one edit deletion
-  does not cover.
 - `pnpm test` names both folders, and `node --test` exits 0 on a pattern that matches nothing.
-- `postcss` is in knip's `ignoreDependencies` because `kit/check-anatomy.mjs` is its only importer;
-  without the entry a consumer tree fails on an unused root devDependency. knip only hints here, and
-  hints do not fail without `--treat-config-hints-as-errors`.
+- `.lintstagedrc.mjs` still calls `docs:check` and `check:anatomy`, but every glob it keys on points
+  inside a deleted library folder, so neither task can fire.
+- `biome.json`, `knip.json` and `.lintstagedrc.format.mjs` name `kit/` in globs that then match
+  nothing.
+- `postcss` stays in knip's `ignoreDependencies` even though the installer removes the dependency
+  too. `kit/check-anatomy.mjs` is its only importer, so the entry is what keeps a consumer tree from
+  failing on an unused root devDependency the day the installer stops removing it. knip only hints
+  here, and hints do not fail without `--treat-config-hints-as-errors`.
 - pnpm ignores a `pnpm-workspace.yaml` `packages:` entry whose folder is missing.
+
+A rule here that a consumer tree cannot satisfy is a bug in this repo *or* in the installer, and the
+two have to move together. Adding a root script that reads a library, or a root devDependency only
+`kit/` imports, means adding it to `source/stacks/canton.ts` in the same breath.
 
 ## Packaging And Publishing
 
