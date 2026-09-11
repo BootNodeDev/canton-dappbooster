@@ -70,7 +70,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, `kit/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-wallet-service` and `@bootnodedev/canton-token-forge` are in `ignoreDependencies` because nothing runs either from a `package.json` script: `scripts/dev-stack.sh` and the README call them through `pnpm exec`, and knip does not read shell scripts |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-wallet-service` and `@bootnodedev/canton-token-forge` are in `ignoreDependencies` because nothing runs either from a `package.json` script: `scripts/dev-stack.sh` and the README call them through `pnpm exec`, and knip does not read shell scripts. `postcss` is there for the reason under `kit/` and the consumer scaffold |
 | Doc reference + gate | typedoc | `kit/typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
@@ -432,6 +432,10 @@ What survives, and why it still works with the libraries gone:
   inside a deleted library folder, so neither task can fire.
 - `biome.json`, `knip.json` and `.lintstagedrc.format.mjs` name `kit/` in globs that then match
   nothing.
+- `postcss` stays in knip's `ignoreDependencies` even though the installer removes the dependency
+  too. `kit/check-anatomy.mjs` is its only importer, so the entry is what keeps a consumer tree from
+  failing on an unused root devDependency the day the installer stops removing it. knip only hints
+  here, and hints do not fail without `--treat-config-hints-as-errors`.
 - pnpm ignores a `pnpm-workspace.yaml` `packages:` entry whose folder is missing.
 
 A rule here that a consumer tree cannot satisfy is a bug in this repo *or* in the installer, and the
