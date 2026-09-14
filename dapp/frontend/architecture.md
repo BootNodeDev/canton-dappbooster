@@ -21,7 +21,6 @@ interfaces carry that, and every other decision hangs off them.
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
-| `api/` | Vercel functions, published at `/api/<name>` off the deployed origin. `rpc.ts` is the only one, and it forwards a single wallet-service method. Not part of the bundle and not reachable in `pnpm dev`. |
 
 ## The two seams
 
@@ -72,13 +71,10 @@ amount, and this way `TAP_AMOUNT` is the app's to change. The choice exists on L
 only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
 moment not found`, which reaches the user as the failure toast.
 
-Where that call goes is `VITE_WALLET_RPC_URL`. Locally it is wallet-service itself; a deployed build
-sets it to `/api/rpc`, [the app's own function](api/rpc.ts), because an https page cannot call a
-plain-http wallet-service and Node's fetch has no such policy. The function forwards `amulet.tap`
-and nothing else, rebuilding the request rather than relaying it: the dispatcher behind it also
-serves `ledgerApi` and `executePrepared` unauthenticated, and republishing those on the product's
-own domain is the whole reason this is a function and not a blanket rewrite. `vercel.json`'s
-SPA catch-all is scoped away from `/api/` so it cannot answer the route with `index.html`.
+Where that call goes is `VITE_WALLET_RPC_URL`, and the browser makes it itself. Locally that is
+wallet-service on `localhost`; a deployed build names the deployed one, which has to answer over
+https because an https page cannot call a plain-http server, and has to allow the app's origin in
+`WALLET_SERVICE_CORS_ORIGINS`. The value is read at build time, so changing it needs a redeploy.
 
 The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
 opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
@@ -110,8 +106,8 @@ The rule reports a verdict and not the ids behind it, because **the strip names 
 and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
 defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
 the spec says what a *wallet* answers, so nothing in it names the app's side. wallet-service does
-expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and reaching it would take
-allowing a second method in [`api/rpc.ts`](api/rpc.ts). It was not worth it: that value and the
+expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and the app could read it.
+It was not worth it: that value and the
 wallet's are both typed by hand, by different people, so they read the same for two networks as
 easily as differently for one, and a strip saying "switch to canton:localnet" while already claiming
 to be on it is worse than one naming no target. Nothing checks either label against the id it claims
@@ -137,8 +133,8 @@ wrong network.
 
 Only the wallet's side is on that poll. wallet-service answers for the one network its `NETWORK`
 variable names, so the app's side is read once and kept, and every later check is a single read of
-the wallet's participant rather than another `amulet.tap` through
-[`api/rpc.ts`](api/rpc.ts). Two of those checks can still be in flight at once — a focus landing
+the wallet's participant rather than another `amulet.tap`. Two of those checks can still be in
+flight at once — a focus landing
 mid-interval — so each carries a sequence number and only the last one started may write. The
 verdict carries the party it was read for too, or the previous party's answer would be shown against
 the new one's network for as long as the first read for that party takes.

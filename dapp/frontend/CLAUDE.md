@@ -19,10 +19,8 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
   `utils/`, the viewport in `components/` (`utils/toast.ts` and `components/Toaster/`).
 - `providers/` names what it provides, not the role the folder already states: `Backend`, not
   `BackendProvider`.
-- `api/` sits beside `src/`, not inside it. Vercel publishes each module there at `/api/<basename>`,
-  so the path is the route and moving one renames the endpoint. Server-side code: it never imports
-  from `src/`, reads its configuration from `process.env`, and any variable it needs is deliberately
-  not a `VITE_` name, since those are inlined into the bundle.
+- This app is a static bundle and nothing else. It ships no server code, so every call the browser
+  makes goes straight to the service that answers it, and every variable it reads is a `VITE_` one.
 
 ## Shared pieces to reach for
 
