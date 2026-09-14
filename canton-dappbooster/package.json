@@ -78,7 +78,7 @@
     "tsdown": "^0.23.0",
     "typescript": "^5.9.3",
     "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "@bootnodedev/canton-connect": "^0.3.1",
