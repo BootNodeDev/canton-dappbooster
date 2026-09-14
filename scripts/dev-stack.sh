@@ -304,11 +304,25 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
   fi
 }
 
+# Catches a listener no pidfile knows about, left by a crashed `up` or a dev server
+# started by hand. The cwd match is what keeps another checkout's stack alone.
+stop_port() { # stop_port <port> <label>
+  local port="$1" label="$2" pid cwd
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+    case "$cwd" in "$ROOT_DIR" | "$ROOT_DIR"/*) ;; *) continue ;; esac
+    log "Freeing port $port from a stray $label (pid $pid)"
+    kill "$pid" 2>/dev/null || true
+  done
+}
+
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
+  stop_port 3010 "wallet-service"
+  stop_port 3012 "dApp dev server"
 
   # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
   # survives; drop them with 'canton-barebones reset'. Docker itself is left
