@@ -45,7 +45,9 @@ flowchart TD
 > takes the current `AmuletRules` and open mining round as an argument, and no connected party is a
 > stakeholder of either, so the dApp asks wallet-service's `amulet.tap` — a pure builder that
 > submits nothing — and keeps the two disclosures its answer carries. The browser makes that call
-> itself, locally and deployed alike, at whatever `VITE_WALLET_RPC_URL` names.
+> itself, locally and deployed alike, at whatever `VITE_WALLET_RPC_URL` names. Deployed, that host
+> must answer over https and carry the app's origin in its `WALLET_SERVICE_CORS_ORIGINS`, or the
+> faucet fails.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side

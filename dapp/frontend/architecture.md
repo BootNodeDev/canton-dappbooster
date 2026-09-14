@@ -71,10 +71,10 @@ amount, and this way `TAP_AMOUNT` is the app's to change. The choice exists on L
 only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
 moment not found`, which reaches the user as the failure toast.
 
-Where that call goes is `VITE_WALLET_RPC_URL`, and the browser makes it itself. Locally that is
-wallet-service on `localhost`; a deployed build names the deployed one, which has to answer over
-https because an https page cannot call a plain-http server, and has to allow the app's origin in
-`WALLET_SERVICE_CORS_ORIGINS`. The value is read at build time, so changing it needs a redeploy.
+Where that call goes is `VITE_WALLET_RPC_URL`, and the browser makes it itself: wallet-service on
+`localhost` locally, the deployed one otherwise, under the https and CORS requirements
+[the root architecture](../../architecture.md) states. The value is read at build time, so changing
+it needs a redeploy.
 
 The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
 opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
@@ -106,10 +106,10 @@ The rule reports a verdict and not the ids behind it, because **the strip names 
 and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
 defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
 the spec says what a *wallet* answers, so nothing in it names the app's side. wallet-service does
-expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and the app could read it.
-It was not worth it: that value and the
-wallet's are both typed by hand, by different people, so they read the same for two networks as
-easily as differently for one, and a strip saying "switch to canton:localnet" while already claiming
+expose a label of its own, `getActiveNetwork` off its `NETWORK` variable. Reading it was not worth
+it: that value and the wallet's are both typed by hand, by different people, so they read the same
+for two networks as easily as differently for one, and a strip saying "switch to canton:localnet"
+while already claiming
 to be on it is worse than one naming no target. Nothing checks either label against the id it claims
 to name, and no single source knows both sides — the wallet only knows the network it is on, and
 wallet-service only its own.
@@ -134,8 +134,8 @@ wrong network.
 Only the wallet's side is on that poll. wallet-service answers for the one network its `NETWORK`
 variable names, so the app's side is read once and kept, and every later check is a single read of
 the wallet's participant rather than another `amulet.tap`. Two of those checks can still be in
-flight at once — a focus landing
-mid-interval — so each carries a sequence number and only the last one started may write. The
+flight at once — a focus landing mid-interval — so each carries a sequence number and only the last
+one started may write. The
 verdict carries the party it was read for too, or the previous party's answer would be shown against
 the new one's network for as long as the first read for that party takes.
 [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,

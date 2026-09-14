@@ -19,8 +19,8 @@ The internal seams are in [`architecture.md`](architecture.md). Deltas for this 
   `utils/`, the viewport in `components/` (`utils/toast.ts` and `components/Toaster/`).
 - `providers/` names what it provides, not the role the folder already states: `Backend`, not
   `BackendProvider`.
-- This app is a static bundle and nothing else. It ships no server code, so every call the browser
-  makes goes straight to the service that answers it, and every variable it reads is a `VITE_` one.
+- No server code, and so no folder beside `src/` for it: this app is a static bundle, `vercel.json`
+  answers every path with `index.html`, and every call goes straight to the service answering it.
 
 ## Shared pieces to reach for
 
