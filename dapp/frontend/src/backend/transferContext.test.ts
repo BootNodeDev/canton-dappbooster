@@ -12,10 +12,15 @@ const RULES = disclosure('rulespkg:Splice.AmuletRules:AmuletRules', 'rules-cid')
 const ROUND = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-2')
 
 // Only the disclosures and `openRound` are kept; the command tap builds is discarded.
-const stubTap = (disclosedContracts: unknown[], openRound = 'round-2'): { calls: unknown[] } => {
+const stubTap = (
+  disclosedContracts: unknown[],
+  openRound = 'round-2',
+): { calls: unknown[]; signals: (AbortSignal | undefined)[] } => {
   const calls: unknown[] = []
-  vi.stubGlobal('fetch', async (_url: string, init: { body: string }) => {
+  const signals: (AbortSignal | undefined)[] = []
+  vi.stubGlobal('fetch', async (_url: string, init: { body: string; signal?: AbortSignal }) => {
     calls.push(JSON.parse(init.body))
+    signals.push(init.signal)
     return {
       ok: true,
       status: 200,
@@ -29,7 +34,7 @@ const stubTap = (disclosedContracts: unknown[], openRound = 'round-2'): { calls:
       }),
     }
   })
-  return { calls }
+  return { calls, signals }
 }
 
 describe('fetchTransferContext', () => {
@@ -97,23 +102,39 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // wallet-service refuses with a 200 carrying `error`, /api/rpc with a status and the same
-  // member, so the reason survives either way.
-  it.each([
-    ['a 200 from wallet-service', true, 200],
-    ['a 403 from the forwarding function', false, 403],
-  ])('surfaces the reason behind %s', async (_case, ok, status) => {
+  it('surfaces the reason behind a 200 carrying an error', async () => {
     vi.stubGlobal('fetch', async () => ({
-      ok,
-      status,
+      ok: true,
+      status: 200,
       json: async () => ({
         jsonrpc: '2.0',
         id: '1',
-        error: { code: -32601, message: 'Method not forwarded: amulet.tap' },
+        error: { code: -32601, message: 'Method not found: amulet.tap' },
       }),
     }))
 
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/Method not forwarded/)
+    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/Method not found/)
+  })
+
+  // Without a signal a service that accepts and never answers leaves the call pending, and the
+  // 30-second network poll stacks more behind it. The duration itself is not observable.
+  it('bounds the request with a signal that is live when it is sent', async () => {
+    const { signals } = stubTap([RULES, ROUND])
+
+    await fetchTransferContext('funder::1')
+
+    expect(signals[0]).toBeInstanceOf(AbortSignal)
+    expect(signals[0]?.aborted).toBe(false)
+  })
+
+  it('names wallet-service when the request is aborted', async () => {
+    vi.stubGlobal('fetch', async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    })
+
+    await expect(fetchTransferContext('funder::1')).rejects.toThrow(
+      /wallet-service unreachable for amulet\.tap: .*aborted due to timeout/,
+    )
   })
 
   it('names the status rather than letting an html error page fail as a parse error', async () => {

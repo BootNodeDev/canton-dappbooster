@@ -21,7 +21,6 @@ interfaces carry that, and every other decision hangs off them.
 | `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
 | `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
-| `api/` | Vercel functions, published at `/api/<name>` off the deployed origin. `rpc.ts` is the only one, and it forwards a single wallet-service method. Not part of the bundle and not reachable in `pnpm dev`. |
 
 ## The two seams
 
@@ -72,13 +71,10 @@ amount, and this way `TAP_AMOUNT` is the app's to change. The choice exists on L
 only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
 moment not found`, which reaches the user as the failure toast.
 
-Where that call goes is `VITE_WALLET_RPC_URL`. Locally it is wallet-service itself; a deployed build
-sets it to `/api/rpc`, [the app's own function](api/rpc.ts), because an https page cannot call a
-plain-http wallet-service and Node's fetch has no such policy. The function forwards `amulet.tap`
-and nothing else, rebuilding the request rather than relaying it: the dispatcher behind it also
-serves `ledgerApi` and `executePrepared` unauthenticated, and republishing those on the product's
-own domain is the whole reason this is a function and not a blanket rewrite. `vercel.json`'s
-SPA catch-all is scoped away from `/api/` so it cannot answer the route with `index.html`.
+Where that call goes is `VITE_WALLET_RPC_URL`, and the browser makes it itself: wallet-service on
+`localhost` locally, the deployed one otherwise, under the https and CORS requirements
+[the root architecture](../../architecture.md) states. The value is read at build time, so changing
+it needs a redeploy.
 
 The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
 opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
@@ -111,10 +107,10 @@ The rule reports a verdict and not the ids behind it, because **the strip names 
 and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
 defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
 the spec says what a *wallet* answers, so nothing in it names the app's side. wallet-service does
-expose a label of its own, `getActiveNetwork` off its `NETWORK` variable, and reaching it would take
-allowing a second method in [`api/rpc.ts`](api/rpc.ts). It was not worth it: that value and the
-wallet's are both typed by hand, by different people, so they read the same for two networks as
-easily as differently for one, and a strip saying "switch to canton:localnet" while already claiming
+expose a label of its own, `getActiveNetwork` off its `NETWORK` variable. Reading it was not worth
+it: that value and the wallet's are both typed by hand, by different people, so they read the same
+for two networks as easily as differently for one, and a strip saying "switch to canton:localnet"
+while already claiming
 to be on it is worse than one naming no target. Nothing checks either label against the id it claims
 to name, and no single source knows both sides — the wallet only knows the network it is on, and
 wallet-service only its own.
@@ -139,18 +135,18 @@ network.
 The timer starts fast and slows down. `amulet.tap` cannot answer until the SV opens the first mining
 round, minutes after a LocalNet start, so the first retry is 3 seconds away and each further one
 doubles — 3, 6, 12, 24 — up to the same 30 seconds every later check runs at. The first answer skips
-the rest of that ramp and settles straight to 30. The doubling is what keeps a wallet-service that
-is down from being asked twice every 3 seconds for as long as the tab is open, one of those asks a
-tap through [`api/rpc.ts`](api/rpc.ts). It reschedules from the timer rather than from the answer, or
-a read that never settles would stop the poll.
+the rest of that ramp and settles straight to 30. The doubling is what keeps a wallet-service that is
+down from being asked twice every 3 seconds for as long as the tab is open. It reschedules from the
+timer rather than from the answer, or a read that never settles would stop the poll.
 
 Both sides are on that poll, including the app's. wallet-service answers for the one network its
 `NETWORK` variable names, so keeping that id for the session was tempting, but a LocalNet reset
 gives the same service a new synchronizer and a cached id would outlive it, leaving the app sure of
-a network that no longer exists. Two checks can be in flight at once — a focus landing mid-interval
-— so each carries a sequence number and only the last one started may write. The verdict carries the
-party it was read for too, or the previous party's answer would be shown against the new one's
-network for as long as the first read for that party takes.
+a network that no longer exists. Several checks can be in flight at once — a focus landing
+mid-interval, or a retry starting while a tap runs down its 15 second timeout — so each carries a
+sequence number and only the last one started may write. The verdict carries the party it was read
+for too, or the previous party's answer would be shown against the new one's network for as long as
+the first read for that party takes.
 [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,
 and nothing dismisses it, because only the wallet can put it right.
 

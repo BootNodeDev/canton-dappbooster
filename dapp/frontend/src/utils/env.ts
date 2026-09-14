@@ -16,12 +16,6 @@ const isHttpUrl = (value: string): boolean => {
   }
 }
 
-const ORIGIN = 'https://same.origin.invalid'
-const isSameOriginPath = (value: string): boolean =>
-  value.startsWith('/') && new URL(value, ORIGIN).origin === ORIGIN
-
-const isRpcUrl = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
-
 // Reads one env key and validates it
 const read = (
   values: Record<string, unknown>,
@@ -45,11 +39,6 @@ export const parseEnv = (source: unknown): Env => {
 
   return {
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
-    VITE_WALLET_RPC_URL: read(
-      values,
-      'VITE_WALLET_RPC_URL',
-      isRpcUrl,
-      'an http(s) url or a same-origin path',
-    ),
+    VITE_WALLET_RPC_URL: read(values, 'VITE_WALLET_RPC_URL', isHttpUrl, 'an http(s) url'),
   }
 }
