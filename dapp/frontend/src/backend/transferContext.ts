@@ -25,12 +25,14 @@ const AMULET_RULES = ':Splice.AmuletRules:AmuletRules'
 const byTemplate = (disclosures: DisclosedContract[], entity: string): DisclosedContract[] =>
   disclosures.filter((disclosure) => disclosure.templateId.endsWith(entity))
 
-// wallet-service refuses with a 200 carrying `error`, so the body is read before the status.
+// wallet-service refuses with a 200 carrying `error`, which no status would report.
+// The bound is the poll's: without it a service that accepts and never answers stacks calls.
 const rpc = async (method: string, params: Record<string, unknown>): Promise<unknown> => {
   const response = await fetch(WALLET_RPC_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: '1', method, params }),
+    signal: AbortSignal.timeout(15_000),
   })
   const body = (await response.json().catch(() => undefined)) as RpcBody | undefined
   const reason = body?.error?.message
