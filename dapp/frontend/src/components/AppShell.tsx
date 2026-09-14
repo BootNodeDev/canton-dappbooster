@@ -10,18 +10,30 @@ import { WrongNetwork } from '@/components/WrongNetwork'
 import { useConnectErrorToast } from '@/hooks/useConnectErrorToast'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
+import type { NetworkStatus } from '@/utils/network'
+
+const NETWORK_CARD: Record<NetworkStatus, { body?: string; title: string }> = {
+  ok: { title: 'No deployment' },
+  unknown: {
+    title: 'Undefined network',
+    body: 'Network could not be fetched. This might be a temporary issue, check again in a few minutes.',
+  },
+  wrong: {
+    title: 'Wrong network',
+    body: 'The wallet is connected to the wrong network.',
+  },
+}
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError, sessionPending, wrongNetwork } = useBackend()
+  const { backend, configPending, configError, networkStatus, sessionPending } = useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
   // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
 
   useConnectErrorToast()
 
-  // A lock or a disconnect takes the action away, so the param goes too: left in the URL it would
-  // reopen the dialog on the next connect. Only once the session is settled, or a reload would drop
-  // it before the restore has had its chance.
+  const card = NETWORK_CARD[networkStatus ?? 'unknown']
+
   const noSession = !sessionPending && !configPending && backend === undefined
   useEffect(() => {
     if (creating && noSession) {
@@ -46,18 +58,10 @@ export const AppShell = (): React.JSX.Element => {
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
         >
-          {/* On the wrong network `configError` names a missing deployment, but the network is the
-              cause, so the script it advises would not help. */}
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-              <h1 className="text-base font-bold text-danger">
-                {wrongNetwork ? 'Wrong network' : 'No deployment'}
-              </h1>
-              <p className="max-w-lg text-sm text-fg-muted">
-                {wrongNetwork
-                  ? 'This app found nothing on the network the wallet is connected to. Switch networks in the wallet to load it.'
-                  : configError}
-              </p>
+              <h1 className="text-base font-bold text-danger">{card.title}</h1>
+              <p className="max-w-lg text-sm text-fg-muted">{card.body ?? configError}</p>
             </Card>
           )}
           {configPending && <Loading />}

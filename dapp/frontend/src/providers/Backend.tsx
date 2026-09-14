@@ -3,25 +3,18 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { VestingBackend } from '@/backend/VestingBackend'
-import { useWrongNetwork } from '@/hooks/useWrongNetwork'
+import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 import { errorText } from '@/utils/errorText'
+import type { NetworkStatus } from '@/utils/network'
 
-// `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
-// needed to reach the ledger, so pages render a connect placeholder rather than empty data. The
-// deployment is read through that same party, hence `configPending`: it only ever stands for a
-// connected session still resolving, so a page with no backend can only mean no party.
 export interface BackendState {
   backend: VestingBackend | undefined
   configError: string | undefined
   configPending: boolean
+  networkStatus: NetworkStatus | undefined
   sessionPending: boolean
-  wrongNetwork: boolean
 }
 
-// canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both
-// before `sdk.init()` resolves and forever after when there was no session to restore. So a page
-// waits this long for a party to appear before concluding there is none, which is what stops the
-// connect card flashing on every reload.
 const SESSION_GRACE_MS = 1500
 
 const BackendContext = createContext<BackendState | undefined>(undefined)
@@ -31,15 +24,12 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const [configError, setConfigError] = useState<string | undefined>(undefined)
   const { execute } = useExecute()
   const { ledgerApi } = useLedger()
-  // A restored-but-locked session reports `connected` with no party, so the party is the gate: it
-  // is what every read filters on and every submit acts as. Only its existence, though: the backend
-  // takes the acting party per call, so depending on the object would rebuild the backend and
-  // re-read the ACS whenever the wallet re-pushes the same account.
+
   const { party } = useParty()
   const hasParty = party !== undefined
   const partyId = party?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
-  const wrongNetwork = useWrongNetwork(ledgerApi, partyId)
+  const networkStatus = useNetworkStatus(ledgerApi, partyId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)
@@ -73,8 +63,6 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     }
   }, [hasParty, ledgerApi])
 
-  // Its own memo, because the grace timer below flips a purely visual flag: sharing one would mint a
-  // new backend identity mid-session and re-run every read that keys off it.
   const backend = useMemo(
     () =>
       deployment === undefined || !hasParty
@@ -88,10 +76,10 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       backend,
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
+      networkStatus,
       sessionPending: checkingSession && !hasParty,
-      wrongNetwork,
     }),
-    [backend, checkingSession, configError, deployment, hasParty, wrongNetwork],
+    [backend, checkingSession, configError, deployment, hasParty, networkStatus],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>
