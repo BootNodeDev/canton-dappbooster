@@ -174,10 +174,10 @@ importers:
         version: 0.5.0
       '@bootnodedev/canton-wallet-service':
         specifier: ^0.3.0
-        version: 0.3.0(supports-color@7.2.0)
+        version: 0.3.0
       '@commitlint/cli':
         specifier: ^21.0.1
-        version: 21.2.2(@types/node@26.4.0)(conventional-commits-parser@7.1.2)(typescript@5.9.3)
+        version: 21.2.2(@types/node@26.5.1)(conventional-commits-parser@7.1.2)(typescript@5.9.3)
       '@commitlint/config-conventional':
         specifier: ^21.0.1
         version: 21.2.2
@@ -204,17 +204,17 @@ importers:
     dependencies:
       '@xstate/react':
         specifier: ^6.1.0
-        version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.32.6)
+        version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.0)
       xstate:
         specifier: ^5.32.5
-        version: 5.32.6
+        version: 5.33.0
     devDependencies:
       '@canton-network/core-types':
         specifier: 1.10.0
         version: 1.10.0
       '@canton-network/dapp-sdk':
         specifier: 1.5.1
-        version: 1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.5.4))(@walletconnect/types@2.24.0)(supports-color@7.2.0)
+        version: 1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.6.4))(@walletconnect/types@2.24.0)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -232,13 +232,13 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.0.4
-        version: 6.1.1(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1))
       '@vitest/coverage-v8':
         specifier: ^5.0.0
         version: 5.0.0(vitest@5.0.0)
       '@walletconnect/sign-client':
         specifier: ^2.23.9
-        version: 2.24.0(typescript@5.9.3)(zod@4.5.4)
+        version: 2.24.0(typescript@5.9.3)(zod@4.6.4)
       '@walletconnect/types':
         specifier: ^2.23.9
         version: 2.24.0
@@ -259,10 +259,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+        version: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))
 
   canton-dappbooster:
     dependencies:
@@ -293,7 +293,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.0.4
-        version: 6.1.1(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1))
       jsdom:
         specifier: ^30.0.0
         version: 30.0.1(@noble/hashes@1.8.0)
@@ -311,10 +311,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.1.5
-        version: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+        version: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1))
 
   canton-theme: {}
 
@@ -342,13 +342,13 @@ importers:
         version: 5.3.0
       '@walletconnect/sign-client':
         specifier: ^2.23.9
-        version: 2.24.0(typescript@5.9.3)(zod@4.5.4)
+        version: 2.24.0(typescript@5.9.3)(zod@4.6.4)
       boring-avatars:
         specifier: ^2.0.4
         version: 2.0.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       lucide-react:
         specifier: ^1.39.0
-        version: 1.44.0(react@19.3.0)
+        version: 1.45.0(react@19.3.0)
       react:
         specifier: ^19.1.0
         version: 19.3.0
@@ -360,11 +360,11 @@ importers:
         version: 7.18.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       zustand:
         specifier: ^5.0.5
-        version: 5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
+        version: 5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.0
-        version: 4.3.3(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 4.3.3(vite@8.3.0(@types/node@26.5.1))
       '@types/react':
         specifier: ^19.1.0
         version: 19.3.0
@@ -373,7 +373,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.0.0
-        version: 6.1.1(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1))
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1(@noble/hashes@1.8.0)
@@ -385,10 +385,10 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^8.0.0
-        version: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+        version: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1))
 
 packages:
 
@@ -512,110 +512,86 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@canton-network/core-acs-reader@1.19.0':
-    resolution: {integrity: sha512-ivxFwhv5GacRqUa51e0fSmN82YxboFvlW17kW51O/ixDUSwJTNnkMfFf7HQLbmvON6kEttOY1SZV+Kh9NsuIlg==}
+  '@canton-network/core-acs-reader@1.20.1':
+    resolution: {integrity: sha512-qtY4TqT2f5ZtSNy6R2SeCvmSHkOlrKcLOHdWJTyg0o4Br9DxZm36esRJmCN1DQOC1QRlC2HVx3ag8PiX2B+01g==}
 
-  '@canton-network/core-amulet-service@1.11.0':
-    resolution: {integrity: sha512-VrGPWefgDFO5KuelwYWtRO+mqji9QVkSDiTksimJHMcWKQuam+KmKcf7zNIGT+QfV5EU68t2C8COljWsI3fMXQ==}
+  '@canton-network/core-amulet-service@1.12.1':
+    resolution: {integrity: sha512-bh9O+83GG6byRDbKdWrc/oQQPwr1OQLBrzQ3QJYcuU07HGJnq8kbMnTXROhpKjT1/KfeJA0PiY6kEehkooNPVw==}
 
-  '@canton-network/core-asyncapi-client@1.11.0':
-    resolution: {integrity: sha512-DaQAAEWc/Md9EcFU8D/ISN3ryrHxYMiorD+NViXr0YukbmpOaHGPLL/NLHet8ac+zJdDOkQDJjtXXOI0KEjJrg==}
+  '@canton-network/core-asyncapi-client@1.12.1':
+    resolution: {integrity: sha512-yjjirsQoTBwoYSeW/MSNs11/W52EfFsnuM/Bp37epMerWbH/1W2rKPe9EPKP7nm8ZdTzwyiE7FJY6+e3cPMjWg==}
 
-  '@canton-network/core-ledger-client-types@1.10.1':
-    resolution: {integrity: sha512-SxiXlmNbF6Js4H/WJPF0WAr03cgNWLhXGPo39PMZ4EAD6CfFi15VgR8szzTDjtEvDO/AyZtYe6u8Pe1e7F+yXQ==}
+  '@canton-network/core-ledger-client-types@1.12.1':
+    resolution: {integrity: sha512-pAiniQ94W5tGLO9dX9bdF4CeX4txDCLSYJAg3sTS8Yw1PEA6yLN0hjzTL3cB7UKGNIPH0O5nCoHX7A9W70RdxA==}
 
-  '@canton-network/core-ledger-client-types@1.11.0':
-    resolution: {integrity: sha512-vTkvmHZF99CBkmxV8GHNujUoTBYHAE7qCAeEmOLyhBSyE0Zlg8ISDkpORBkqEZJcNXHQEbZtemDwx6+yh/4ExA==}
+  '@canton-network/core-ledger-client@1.12.1':
+    resolution: {integrity: sha512-BnjnV5cEpK1oVAqz1t8kFpii3hqGlPMB5QdQR20df4WRGi+7siIZS8KwoeJqcK4ejB1DOE3YZt+03+YHMRRYbQ==}
 
-  '@canton-network/core-ledger-client@1.11.0':
-    resolution: {integrity: sha512-eXynEpKQ6Jdl4ZuYxEMXurKQ7sfcxjOvDiZn3cyBY5YrZvUxZ+y9236hNQPPVGgxwyyoQ9f4gwVn9l8BuJS+uA==}
+  '@canton-network/core-ledger-proto@1.11.0':
+    resolution: {integrity: sha512-O5Urfrz1GCoKJzscL1vgno0wmI4diY7qWGn6rraSvInyQVQh2Mu15wprHxoYPKW2Hrlbx+RclpJOrB3jwAqozQ==}
 
-  '@canton-network/core-ledger-proto@1.10.0':
-    resolution: {integrity: sha512-YIoiQDCaeUkuGuJhkoGKGTJI9t7OTT8Rga7ca4YUGaRHzpm8HY/2D90Om2k6bX3oOz1oY5uxBg6Xui5BPqXbIA==}
+  '@canton-network/core-provider-dapp@1.12.1':
+    resolution: {integrity: sha512-Zl05LZ0Nt/xHwUBrViCzZh9zx+MLFBH2tdX+B3uH3EafNS9Z7NDdPifeX4jhTUUo2Tjul5uQEkldIJQAMX41/g==}
 
-  '@canton-network/core-provider-dapp@1.10.1':
-    resolution: {integrity: sha512-K2hwUu9/EoJ6ClaTWYfVNbhgh2s1pZZxeVXJKie/diue3uBBT0ZezjdclEZM/EgaOr/xhh693DWv5OrebY4SJw==}
+  '@canton-network/core-provider-ledger@1.12.1':
+    resolution: {integrity: sha512-m3N9vXykV5Mycu+E16DCLOAJ/pHSR4O26oyAfZYIMHDKHvqDcjoJSeoJYjnlla7xluPSR+I1xh9unHGs7TCDEw==}
 
-  '@canton-network/core-provider-ledger@1.11.0':
-    resolution: {integrity: sha512-BC80/2Ih3Pm2bLI1WJ/HiX1Y7jBk3bJ63k/Us0TUd6Ip0Ln/FnnpQiC4O85p5h/mG8um+uuAmFasPQxuqMdtyQ==}
+  '@canton-network/core-rpc-errors@1.11.0':
+    resolution: {integrity: sha512-pHYvOeuIVO2QsYFdpk2MdHGLsRfbUHt25vekfRWc6Aa9svREq6dT1n0qwwc0tyXNhWeets55Abv75Xr1N4Gxng==}
 
-  '@canton-network/core-rpc-errors@1.10.0':
-    resolution: {integrity: sha512-u1Jn3iIqijM5uzvq9oMSSP4ZQbfL8DDlm7vaShyEzzIFk3X0AwIkQKXQgA24JW1TjvWB/KrAw0YNrScGdaDj7g==}
+  '@canton-network/core-rpc-transport@1.12.0':
+    resolution: {integrity: sha512-36IxxW8xqzxd91bUXOJ4abvBC+RDYpZRhCHoULM6yy0cm18Ac7w858dNwmTY0FoSJRrlIlF1IzFREYaPQjO2Pw==}
 
-  '@canton-network/core-rpc-errors@1.9.1':
-    resolution: {integrity: sha512-BZwmE1gVDnPuBLkFuJ301W5bH6ZJNoVXKsCHtZh4L4pMPV91dPJJ/MiuPflFTVzHKfmjPL5xhCrQsW22WR1SUA==}
-
-  '@canton-network/core-rpc-transport@1.10.1':
-    resolution: {integrity: sha512-fkrV1JXnc3NUri2/y4WYV5k6R5CVgjinRoUoyP7VUNt+meSkXO8cZ/occ2lPi9cCyYDF/IikDQ/5DSKpoZzFlg==}
-
-  '@canton-network/core-rpc-transport@1.11.0':
-    resolution: {integrity: sha512-vdOX8xlLsqRqDugYXJdqMDwrlcibhDK0JhHX1tu6Py2VSDZ9YU+RWUNrDaUMVGb2bVB9j5cgmkj3fPxgJX2B/Q==}
-
-  '@canton-network/core-signing-lib@1.11.0':
-    resolution: {integrity: sha512-ztDBfTJmVhpYAMXwWolfqhpV7WvcmKIl+hXkFeK5gf5fhrO0h6MkU5dyvk++j2LUm8vnIB9cQK2LYarRAwXQew==}
+  '@canton-network/core-signing-lib@1.12.0':
+    resolution: {integrity: sha512-NS8yn4wcZV1mH0yDwUY0yVhAvSJKLn8imr7K1f/BWDY9+nmUNNdnhwpekn3RIFYZ19UseW/B5WIDyXOK+zUywA==}
 
   '@canton-network/core-splice-client@1.10.1':
     resolution: {integrity: sha512-e8RTHpjaW4KbA7F47RmcYLW2xX8hj8nrG4/0bzqhT9sreoRAQrGXFHhpMpwytGF/UhWZwpMbJXfbImtKBWMxDg==}
 
-  '@canton-network/core-splice-client@1.11.0':
-    resolution: {integrity: sha512-BPlhTmxrWrbc8nRWAMziDlR3AssJwctHubpugwzTt0pP1obrfuxxnA9ox1rLMkoFS5UPlPF9FQ22XEO7IOQGEw==}
+  '@canton-network/core-splice-client@1.12.0':
+    resolution: {integrity: sha512-ZTmgfPrJ1pznFwR2CDmkUMKd2pTIh+HcHPO1hBAEVbVC3FurN0OHq0QyZ7u5zbJ9G4BuUbzlgUpV9t+ccYUUAA==}
 
-  '@canton-network/core-splice-provider@1.10.1':
-    resolution: {integrity: sha512-xOfD/2r6rsDwxPRY2W2oB89GHImxPqEf25o8NsAx6eHVIy8UwkDUPRZ07CZpgtP/BPVZmQRHAMkpaA10YS+4sw==}
+  '@canton-network/core-splice-provider@1.12.0':
+    resolution: {integrity: sha512-4khAxddrTnj/nrprSUdpbT+BeOLnUOL2JWHc7b6AS2pbrzFtl2g3Q/bnpKn1zMfaRBNNJsKnJYZBJTHI7ouEVg==}
 
-  '@canton-network/core-splice-provider@1.11.0':
-    resolution: {integrity: sha512-3Kg3ZVfA2Pqz49aMSxSU6u9xc1fetjod6MJnTpWDIaM8bIJjrvibL+FQkmveQCgTJIxNgQQYQxpea1qYjMVmZQ==}
+  '@canton-network/core-token-standard-service@1.12.1':
+    resolution: {integrity: sha512-7gmYkaAqE2TwpYzf87NcJ4GDTA7ZhzGnwsJs2skg4iwXf2KGwQwxWjSSvYzzyxyf9mW7EIk6Wdgiz4FOM76AJw==}
 
-  '@canton-network/core-token-standard-service@1.11.0':
-    resolution: {integrity: sha512-p8WhM2/0G5mZQEJu82kwRFwbHIwqJ+3ylW70G9Pk+ngMGN9Ow8l7bikh8IxTeDwUitfWQCJE93gBnVHxD9lwVQ==}
+  '@canton-network/core-token-standard@1.12.0':
+    resolution: {integrity: sha512-u8O+PGlAKphSqn0JUvXTebUPbw4kw4gFbCJvejV+PV57bksS8wb4NAX68BUjxctZy6XYcEUt7ehvBQwLd70u/A==}
 
-  '@canton-network/core-token-standard@1.11.0':
-    resolution: {integrity: sha512-uUvg6xKujxUa5xR9sI1N23AfthhEvyOJxEWOJ/b8tC7eE1mkuNkmUAW2vy2wlkz16Z0ouSSFDXnL1tOO4m/T2A==}
+  '@canton-network/core-tx-parser@1.12.1':
+    resolution: {integrity: sha512-Kidkb10uFOocrJX9KuVgCujhh25GkXT6slPTG1l32k8JmG0WyJXmko7DQcaI0qzhCdltR8ZvHQcL3kng5GX4RQ==}
 
-  '@canton-network/core-tx-parser@1.11.0':
-    resolution: {integrity: sha512-+CQtAIBO0wreeNZ1+7F6wFSsZookby6LtCgRauWVypdmJ9qN8AnCcmmivB+xsOZWyxIE8qsvJASZAGiHRHRxLQ==}
-
-  '@canton-network/core-tx-visualizer@1.9.1':
-    resolution: {integrity: sha512-yRjM+Q1GxzemExxHQM9B0KHgwS0OZ2lpKYECB/oY94Gs0fN1l34EXJ0NFGhnei20IKX2UuPDvS49HG0mGyp/Cg==}
+  '@canton-network/core-tx-visualizer@1.11.0':
+    resolution: {integrity: sha512-eoYk9nxnqfoa9PfdN18IolXS3Jz6w/C4BYwbPtAogVdlxWDOkJ5iIxkXghqsvQrX8yag/693qLbVA5f/VpXpNA==}
 
   '@canton-network/core-types@1.10.0':
     resolution: {integrity: sha512-MFP0iY8REKtq4kM85Uxuq80V3KZ6BncXw8kGfcD0Q4rroheZ+fXCY7Tbzz5Zohd/Jv4ztJsC7UGxMKijcmp4IA==}
 
-  '@canton-network/core-types@1.10.1':
-    resolution: {integrity: sha512-sX5bPnyn3xFPC2RhUPuSWNL7IknuwhF49iLLQpTWwKqCddLjfY6R2eFmi5qEvv/ahWotMEiGjg2ohYMbIf+6+A==}
+  '@canton-network/core-types@1.12.0':
+    resolution: {integrity: sha512-A3m7RLL0YE5hgl3EG3OhgvH3BfvCPc5+uLhDrk+/2JrF3lFHb5FTKze/ss3eEOviWGu/iuq9UCX6XC2AIGq+gA==}
 
-  '@canton-network/core-types@1.11.0':
-    resolution: {integrity: sha512-2iE0tbZc5e7Hnc8SDcxUGQ2fcnBHCUR3JGWEcerI+i2rU5MtcDpbbWrgMOc6sEMAG+hc5PchHKSHU/awuywvWw==}
+  '@canton-network/core-wallet-auth@1.12.0':
+    resolution: {integrity: sha512-K3a/0jSKMUuh6xJO5OuQsk0nXcxzrwt6IxK6b23daFDxfywrJa6XaUVipD4KrdX3JerfYGyYEJTBCdDN48h2KA==}
 
-  '@canton-network/core-wallet-auth@1.10.1':
-    resolution: {integrity: sha512-iebwO5P+L1O8J3qU7Kzti5wrq4EZ/c8/d81Rgvb6XT6xadP55y0LFocGurIPp4fgFOr6j3gNl7XvJsLZKUVzUg==}
+  '@canton-network/core-wallet-dapp-remote-rpc-client@1.12.0':
+    resolution: {integrity: sha512-4xvy/44GOuAByt6uv28j/OYrcW9fzcjP+13/OnN/Stxb1WjiXldzS+7m2/5LwWs+3uomXWwpLmVrKCKIlr5+dQ==}
 
-  '@canton-network/core-wallet-auth@1.11.0':
-    resolution: {integrity: sha512-5Cj7onjP38J0JtIw1IedtvNwtMfQtb5pNEVGc4ZE0YcfxVLyj65FZ4u05/Ylq/d45RH25WLM6VSD5Xnit14QYQ==}
+  '@canton-network/core-wallet-dapp-rpc-client@1.12.0':
+    resolution: {integrity: sha512-NIq4RPTFR8p3fEIHLxUmvJs9ITqKnjnKpQ9KGYAauHxJSAcXB1IGgvNVmtfXBB5pMMNitUMPvcXZQp7ktI2AyQ==}
 
-  '@canton-network/core-wallet-dapp-remote-rpc-client@1.10.1':
-    resolution: {integrity: sha512-4m9oFUnErk4D4kFV/E6rv1dfGfTlBnMuZeDDacYvgZ0d1sgzr8OLAybLsq+u8nEV2ZrdhrONqcLsQcVqRTc0HQ==}
+  '@canton-network/core-wallet-discovery@1.12.0':
+    resolution: {integrity: sha512-O4ER78LtN5/B8D4zlKXteQDJfd9eBprQSJf2tiv8gmk/hOpk4fg6/pmxOi3ZGWGf6Ark+RVGMSgxo1GhtKT3Og==}
 
-  '@canton-network/core-wallet-dapp-remote-rpc-client@1.11.0':
-    resolution: {integrity: sha512-v+sqjBXN28JwLuQwniB7bH0eFraewrLH/nl5Pz0KlYXFCZrz27MmFMlcqPehP9ZH72CIz6A4t4mAgg23iRurxQ==}
+  '@canton-network/core-wallet-store@1.13.0':
+    resolution: {integrity: sha512-sgF+NoZcH9wSfAM0YedSHafFZiSxST6Z2fvW/9rsAjd36gQ5CY77ZV4GXjq5HsSwCrhULGnL7Zu/W8ArtV4j7w==}
 
-  '@canton-network/core-wallet-dapp-rpc-client@1.10.1':
-    resolution: {integrity: sha512-84T1JW3NgneyOOK8Y59zl39+hqFGKrnOAftxhepnzodMGWMjDYnG1A292PjmxWqTB5Nl/wImggcgJffqNENO0w==}
+  '@canton-network/core-wallet-ui-components@1.14.0':
+    resolution: {integrity: sha512-AV5ilpY0pztbl6bO8G1maJx/kpE2UiUB2nOpJKCUu2/A/u8NwvjAPB7lwP2QDP0vc+3iEdwuBNyccoT3NL2R5w==}
 
-  '@canton-network/core-wallet-dapp-rpc-client@1.11.0':
-    resolution: {integrity: sha512-JuX5+iwv1EXLX9g2EjH8ApgGO5Wob50qL3KTOUMYAIOIaCRWuhLR4adVQHABIPtEzHNfPJAEX1uSSYq6m6T0Hg==}
-
-  '@canton-network/core-wallet-discovery@1.10.1':
-    resolution: {integrity: sha512-TFmfaAa+1+UmGUCv2ppqKbzgVxjEH4Xtw0+9clNYTFxj0+8iYHK8RQWbtnFQCkwEby2RljDYhFR3cQul7S0dMg==}
-
-  '@canton-network/core-wallet-store@1.11.1':
-    resolution: {integrity: sha512-Wf3A7eYydVnGBktjsEO3g4KPTu4rybyFy+N26oRy5QfZP9aLwA5rxUYih5+VAmF4lxVB2hkS+qAvOisopKgaDw==}
-
-  '@canton-network/core-wallet-ui-components@1.12.2':
-    resolution: {integrity: sha512-sfHopeH/JsdYrnRK+OE/+m6fr4ZqZGYB0uozUbUUM5XOfEpaifY3osqIoRLpD7ew1Pae4WXx8zHQgUXneihN0Q==}
-
-  '@canton-network/core-wallet-user-rpc-client@1.11.1':
-    resolution: {integrity: sha512-GnDrVYfdIcS7Kxvbb0VHkPfejjXDHBqIqjmMumJC15iqzyweyWVE/9k7XzPf5Ydys59uM7IL03tH+MvRl/KTYA==}
+  '@canton-network/core-wallet-user-rpc-client@1.13.0':
+    resolution: {integrity: sha512-0zncSrkrLZCfQ7xLSfvJm9RVEQI6ZHK8A7Nf1L1q7y11WIGNJrH12sRxAMnsjeRY1sYCK50XKgcPOgTE4lae1w==}
 
   '@canton-network/dapp-sdk@1.5.1':
     resolution: {integrity: sha512-AQYBu0QxCXTLgt7nb7LMx/W0YZUT98DL4IYk1Rqz0+H5+Hwlu+VtA/HGcHfllEjc79qti6qJae1uT4etJwm+Ig==}
@@ -720,15 +696,15 @@ packages:
     resolution: {integrity: sha512-gLNsunvwf3mCi5u5o46/Z/JcJMnhbHSaZ69rkgPzNM3J4s8hWwpPUQB6/tt0EDFyCiWzxANlx+2LJwpYj4zS1w==}
     engines: {node: '>=20.19.0'}
 
-  '@csstools/css-calc@3.3.0':
-    resolution: {integrity: sha512-c5ihYsPkdG6JCkU2zTMm4+k6r7RXuGxtWYhu5DHMIiF1FHzrfmHL5so11AoFpUv/tu61xfcmT4AmKoFfMPoqdQ==}
+  '@csstools/css-calc@3.4.0':
+    resolution: {integrity: sha512-XQKj5B7QiZcHiegCOCAzcAOJdhGgWOHbbu62h5e5mkHnn8lWcfiJhllkqWmxu5zWR9jucPHuo1iTB56P033hcg==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       '@csstools/css-parser-algorithms': ^4.0.0
       '@csstools/css-tokenizer': ^4.0.0
 
-  '@csstools/css-color-parser@4.2.2':
-    resolution: {integrity: sha512-3QKjR/vxyjcSXBLgb6lP0S3MGdvwbmqSsvLPbYdVORqPDc8FX1HAJ0Spk38bxaRXgvENTA47tlhhbb5Z2e8hEg==}
+  '@csstools/css-color-parser@4.2.3':
+    resolution: {integrity: sha512-y4LpL+lmpuyKDiEFq2PnZUVFdAjsoB/qQJod79yLNokXyW7jewi+/WJ69EfItj8A2unWtxXnGjw6LYXgXu5ZjA==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       '@csstools/css-parser-algorithms': ^4.0.0
@@ -740,8 +716,8 @@ packages:
     peerDependencies:
       '@csstools/css-tokenizer': ^4.0.0
 
-  '@csstools/css-syntax-patches-for-csstree@1.1.10':
-    resolution: {integrity: sha512-xBja6gaAaH2R2c7eNyl0TY4dhnnZ2uhj+KXpLdEQ6M/wuk9bYFZM8wY0ykw3VO4TgEJ56KGlerXS/9KBKVR/Cg==}
+  '@csstools/css-syntax-patches-for-csstree@1.1.13':
+    resolution: {integrity: sha512-i9ZylF5QNhmNfPA9l0vHAWK4kPrbIp6g9lKgaiIFsIBz2F/WNB7OLrzlNNcCOm+h42bkaSD2v1PG+IBPHhc3ZA==}
     peerDependencies:
       css-tree: ^3.2.1
     peerDependenciesMeta:
@@ -851,12 +827,16 @@ packages:
     resolution: {integrity: sha512-nrEaeBawm8yFU7hetJKok/CUs0tQsWtTqp3OLbFhPUMXYqU7uI5LAV5vi9o7rTjFkUyof7Nzbw5bea5+1ou+dg==}
     engines: {node: ^18.20 || ^20.17 || >=22}
 
+  '@metamask/scure-bip39@2.1.1':
+    resolution: {integrity: sha512-1K8aBsAqr6+8jWhguVl06n8e+zjV9sUnys+5PLyVU4mb8LbulQ60F6cq7iQys3xX/yCwKt1+7c7j2nuTEpW+ZQ==}
+    engines: {node: ^16.20 || ^18.16 || >=20}
+
   '@metamask/superstruct@3.4.1':
     resolution: {integrity: sha512-caTaaBUcwBGbUNf3r0uT48upX4nECRbKhQ9pPOfW4sIkfcIUUDV4S9DZxq/5fuNPVt5KWpyd5xIIz0sP+iWLlg==}
     engines: {node: '>=16.0.0'}
 
-  '@metamask/utils@11.11.0':
-    resolution: {integrity: sha512-0nF2CWjWQr/m0Y2t2lJnBTU1/CZPPTvKvcESLplyWe/tyeb8zFOi/FeneDmaFnML6LYRIGZU6f+xR0jKAIUZfw==}
+  '@metamask/utils@11.12.1':
+    resolution: {integrity: sha512-X97J5AEcaKDTIAfKb4X93ZTLfvOahzDVadlveQW+7OZ7yhXjMxXoFmhX2d9UKv48iS2Dxq9kbGJ1lUfphu9ebQ==}
     engines: {node: ^18.18 || ^20.14 || >=22}
 
   '@mojotech/json-type-validation@3.1.0':
@@ -867,8 +847,8 @@ packages:
     resolution: {integrity: sha512-47XIizs9XZXvuJgoaJUIE2lFoID8ugvc0jzSHP+Ptfk8nTbnR8g788wv48N03Kx0UkAv559HWRQ3yzOgzlRNUA==}
     engines: {node: '>= 18'}
 
-  '@napi-rs/wasm-runtime@1.2.3':
-    resolution: {integrity: sha512-UMduMbqO5s5zF2NkNacMT/yK5Y5QiKvWr2+50bzIIxFDwVJ2h49b+oyjaCGPhJxd2/gC2x39EHv/gHVuu36x2Q==}
+  '@napi-rs/wasm-runtime@1.2.4':
+    resolution: {integrity: sha512-AJxoUD2/15ESHbvpcyjU274nsAPLuOtPHCk0vKJM5pj//Fg/B1FXNWjPnXTT9PymCYYiHo4zPj0ZomXBKhoy7g==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
     peerDependencies:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
@@ -892,6 +872,10 @@ packages:
   '@noble/curves@1.9.7':
     resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@1.3.3':
+    resolution: {integrity: sha512-V7/fPHgl+jsVPXqqeOzT8egNj2iBIVt+ECeMMG8TdcnTikP3oaBtUVqpT/gYCR68aEBJSF+XbYUxStjbFMqIIA==}
+    engines: {node: '>= 16'}
 
   '@noble/hashes@1.4.0':
     resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
@@ -1449,8 +1433,8 @@ packages:
       '@types/react-dom':
         optional: true
 
-  '@tybys/wasm-util@0.10.3':
-    resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
+  '@tybys/wasm-util@0.10.4':
+    resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
 
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
@@ -1476,11 +1460,11 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
-  '@types/node@25.9.5':
-    resolution: {integrity: sha512-OScDchr2fwuUmWdf4kZ9h7PcJiYDVInhJizG/biAq3cAvqwYktuy/TYGGdZNMtNTFUP7rnb0NU4TUdm82kt4Rg==}
+  '@types/node@25.9.6':
+    resolution: {integrity: sha512-JR6Q/PV5DKFvjrGFVqQJdeG0qvsqQQLDa3TzFrqVwhqRXqwNaxPo2KYCtCQXpOdIulCouKwT7a6in9nFthBAzw==}
 
-  '@types/node@26.4.0':
-    resolution: {integrity: sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ==}
+  '@types/node@26.5.1':
+    resolution: {integrity: sha512-CzNm2FezW4VR/LjG6yUdiEgLE/rAQ9Slj5gCu/C2VrdcW7I0ahNZ8DRbHT7zOZ6r3ONgd/bsQIeSaoDGrd1C6g==}
 
   '@types/react-dom@19.3.0':
     resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
@@ -2035,8 +2019,8 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
-  argue-cli@3.1.0:
-    resolution: {integrity: sha512-DhBpBfXL4SS2uC0N922MMajKR3CdrTG0u2or1PNYgXMsrSzViJrbtvT0nCLlLGUI0plam/ZZCs7aAauHtW9thw==}
+  argue-cli@3.2.0:
+    resolution: {integrity: sha512-VipTB0gXgGIFO2Rg9yEVN5wLt2AurJcZqDbgmYSwPwsykhLrQhs240/bfceev4w68lI8JshoOJIk9uW7tFzROw==}
     engines: {node: '>=22'}
 
   aria-query@5.3.0:
@@ -2050,8 +2034,8 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
-  ast-v8-to-istanbul@1.0.5:
-    resolution: {integrity: sha512-UPAgKJFSEGMWSDr3LX4tqnAb4f7KGT8O40Tyx8wbYmmZ/yn58lNCm8h3svs3eXgiGd5AXxz8NDOvXWvicq+rJA==}
+  ast-v8-to-istanbul@1.0.6:
+    resolution: {integrity: sha512-fvpl29helSO2w/z7utIbrkNXILdrLwDwAMH2I/zPKlGf5244+gf+B4cyS1sANcrPY2h+hWCGSgC8N61s/+AF9A==}
 
   atomic-sleep@1.0.0:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
@@ -2061,8 +2045,8 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  bidi-js@1.0.3:
-    resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
+  bidi-js@1.1.0:
+    resolution: {integrity: sha512-fX1Onk0tdVPC7obPWB5EbJ1z7NVhLq4m2xZLq2YXBkxzMXIGRpNMU88n0EPgWseKl12J7zXs7qrDxPK4sRs2fg==}
 
   bignumber.js@10.0.2:
     resolution: {integrity: sha512-E8Wp9O06QA6lneJ4aRUXKYf/1GIomqUEmUMwtIOMtDxf1U52ffJY+y7JBk/8wRafA8qOIqLnXQGqonYXZdBnFQ==}
@@ -2325,16 +2309,16 @@ packages:
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
 
-  enhanced-resolve@5.24.5:
-    resolution: {integrity: sha512-L1l8TNvomm6UVW5B253AGxQagSQr+vGwhMlrrfRS2qmhx46AMpMVJKQYLvWYbysTMY8VoicOvzHzoHMbyzB+4A==}
+  enhanced-resolve@5.25.1:
+    resolution: {integrity: sha512-nGXts5znJzmWPu+mIE9izCOzdg63oJca2mDzGWWTth7sr4aCToKcoyFVBQwN75Ij5Pf6p510EwkTqViTRzDV+w==}
     engines: {node: '>=10.13.0'}
 
   entities@4.5.0:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
 
-  entities@8.0.0:
-    resolution: {integrity: sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA==}
+  entities@8.1.0:
+    resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
     engines: {node: '>=20.19.0'}
 
   env-paths@2.2.1:
@@ -2406,8 +2390,8 @@ packages:
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
-  fast-uri@3.1.6:
-    resolution: {integrity: sha512-7Ical1vFEMr0onbVzEDIreM22I4khW+fzyQPwvAFWBp1iwdshSZRsL4jjRvPG9JP1uiqMHRto+YU6R2/CzDz5Q==}
+  fast-uri@3.1.7:
+    resolution: {integrity: sha512-dOvZVzjdZdz7phd9v6jCbwxrBW3fK6n8Rc0CtdmM4bumzMnxywBYhuph6J819RRw/ku+rLbelwfMunktuzVVHg==}
 
   fd-package-json@2.0.0:
     resolution: {integrity: sha512-jKmm9YtsNXN789RS/0mSzOC1NUq9mkVd65vbSSVsKdjGvYXBuE4oWe2QOEoFeRmJg+lPuZxpmrfFclNhoRMneQ==}
@@ -2490,10 +2474,6 @@ packages:
 
   h3@1.15.11:
     resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
-
-  has-flag@4.0.0:
-    resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
-    engines: {node: '>=8'}
 
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
@@ -2580,8 +2560,8 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jose@6.2.10:
-    resolution: {integrity: sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==}
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -2812,8 +2792,8 @@ packages:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
     engines: {node: 20 || >=22}
 
-  lucide-react@1.44.0:
-    resolution: {integrity: sha512-2egNApH4hX4j/qdCgRublh88+9u3mEhz9iSlW5ckm4kaQEqZbXbMr0l5u5JZLy8nmWRx2dbHGQkEDYz6C9aCgw==}
+  lucide-react@1.45.0:
+    resolution: {integrity: sha512-yH1ubCAduho9UR7oJhRXIQXogksRILBiTuZC4/bQIGeB9JOkxMlSuEHyyZpo1Z3S0yWJO2KTSUZbjiNvVxeOUw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -2830,15 +2810,15 @@ packages:
   magic-string@1.3.1:
     resolution: {integrity: sha512-rm91zr2Ou+XueDTohjQQjdQEcYM6zVi8KVUCG8Ec3vHwUEKrhSdCNyfuIywkA6hcCAteIn0ZOtAHA6eGpiX+Pg==}
 
-  magicast@0.5.4:
-    resolution: {integrity: sha512-llBEhWm1SacoRwgHUoQJYtwp4PBLF4faQi5TCpIGyGs9n4y5+juI0tDgyKIfpqxckRHaHzouUEph3THklWh03w==}
+  magicast@0.5.5:
+    resolution: {integrity: sha512-UicdXN8zQ3JHlxVq+28afMXPr1z7WNY6+7EJnzTdQWkTAlMLF5fNCCKxJHBQwGaNGR11581EiQmQzx73+MvszA==}
 
   map-obj@6.0.0:
     resolution: {integrity: sha512-PwDvwt/tK70+luLw5k9ySLtzLAzwf7tZTY9GBj63Y010nHRPjwHcQTpTd5JwQqITC2ty7prtxBo71iwyYY0TAg==}
     engines: {node: '>=20'}
 
-  markdown-it@14.3.1:
-    resolution: {integrity: sha512-4Ej49aYTDFIQ+uBkfX8GBvJGccoARxxPep+7aWTs55ozbjQJpW9M26Fe53vnGgvLeVzva/amzjQQaQu9w0vMhA==}
+  markdown-it@14.3.2:
+    resolution: {integrity: sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -2887,8 +2867,8 @@ packages:
   multiformats@9.9.0:
     resolution: {integrity: sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==}
 
-  nanoid@3.3.18:
-    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
+  nanoid@3.3.19:
+    resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -2914,8 +2894,8 @@ packages:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
     engines: {node: '>= 0.4'}
 
-  obug@2.1.4:
-    resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
+  obug@2.2.1:
+    resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
 
   ofetch@1.5.1:
@@ -3317,10 +3297,6 @@ packages:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
 
-  supports-color@7.2.0:
-    resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
-    engines: {node: '>=8'}
-
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
@@ -3362,11 +3338,11 @@ packages:
     resolution: {integrity: sha512-yau8yJdTt989Mm0Bd/236QnzEiPf2xLLTqUZRUJOo/3CB078LSwzei343DgtJVmfJKJE3TMINY1u42SQsP6mXw==}
     engines: {node: '>=14.0.0'}
 
-  tldts-core@7.4.11:
-    resolution: {integrity: sha512-CW3WN2rIIE/Of21mulhgnGOwoDyEFNygyIBOONSdyAuSATgMMUCpLeUlB+E8sAwA5xRV9hYPl+kyZ9citHCaKg==}
+  tldts-core@7.4.12:
+    resolution: {integrity: sha512-nYNzS2WRf4QJmjzFFgAxLOBjyBxAGRbCy9PVBPaglcYyYajh40VBn+v5Ngr96ZMc7oM0+aCJdtQnNejvdBnXMQ==}
 
-  tldts@7.4.11:
-    resolution: {integrity: sha512-aBiNayCfTQxuIJBm06M+xR14cYaYlDlSXZbgsnKzKNxDKUVq7KFwTjwBSsb7m9Y5xO8WfPnBc63WaYFMTGlvqw==}
+  tldts@7.4.12:
+    resolution: {integrity: sha512-WylhSDKVeYnWXL3a+vKTaOxjnOeEGw938hImY8zoRWJjRRK/Jp1K+IihBzIONpUmW4e3WmXT6q5FW6vlESVZCA==}
     hasBin: true
 
   toidentifier@1.0.1:
@@ -3431,8 +3407,8 @@ packages:
   tweetnacl@1.0.3:
     resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
-  type-fest@5.8.0:
-    resolution: {integrity: sha512-YGYEVz3Fm5iy/AybuA0oyNFq7H4CgQNfRp/qfe8nurE1kuCeNm3/vfm9X4Mtl+qLyaKJUh5xrFZwogr41SMjYA==}
+  type-fest@5.9.0:
+    resolution: {integrity: sha512-yANm3Jr3GiJ1qgJlxGAVxTOIcEOk1rhQHamlXtnrCK7EHP4HeM9OGxtMg/W7HFdrVzw/ZWJKGVIJusVH85sLtw==}
     engines: {node: '>=20'}
 
   type-is@2.1.0:
@@ -3476,11 +3452,11 @@ packages:
   undici-types@7.24.6:
     resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
 
-  undici-types@8.3.0:
-    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.10.0:
-    resolution: {integrity: sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ==}
+  undici@8.10.2:
+    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
     engines: {node: '>=22.19.0'}
 
   universalify@2.0.1:
@@ -3565,8 +3541,8 @@ packages:
       '@types/react':
         optional: true
 
-  use-sync-external-store@1.6.0:
-    resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
+  use-sync-external-store@1.7.0:
+    resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -3691,8 +3667,8 @@ packages:
     resolution: {integrity: sha512-1to4zXBxmXHV3IiSSEInrreIlu02vUOvrhxJJH5vcxYTBDAx51cqZiKdyTxlecdKNSjj8EcxGBxNf6Vg+945gw==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
-  whatwg-url@17.1.0:
-    resolution: {integrity: sha512-3GeworPmc2ZfEEHP7lEbUfBX/L75wdEsi0rLNhXcXxnoN5jyq0SL5gCy06SGW2cyTIZdTvWIDQNQoza++vKeaw==}
+  whatwg-url@17.1.1:
+    resolution: {integrity: sha512-ohjk1mdUebJVadRt3bAhQhx8lSnISq+GDttK79LFl8EHQkAPvzwctoasC4hs8tBt6kLAncBWWyq1N52qEfKvDw==}
     engines: {node: ^22.14.0 || >=24.0.0}
 
   which-module@2.0.1:
@@ -3737,8 +3713,8 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
-  xstate@5.32.6:
-    resolution: {integrity: sha512-WfA8WNrh6r9osuGwVm+aIPM4jmMW2LKHV1Yv9thYpOtL4HVF/kobh95K/O8v2jDCpDmP2EoY+6uvuqHXCZ6ZLw==}
+  xstate@5.33.0:
+    resolution: {integrity: sha512-C58ZnDXlP5WNiiGVMxHTlKpUBtC46HN+H4o2po9Lvglt2pmPzqaqunXRmrvU4NIDvMbjVvaqqL4pGbgFSiYhgw==}
 
   y18n@4.0.3:
     resolution: {integrity: sha512-JKhqTOwSrqNA1NY5lSztJ1GrBiUodLMmIZuLiDaMRJ+itFd+ABVE8XBjOvIWL+rSqNDC74LCSFmlb/U4UZ4hJQ==}
@@ -3747,8 +3723,8 @@ packages:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
 
-  yaml@2.9.0:
-    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -3785,8 +3761,8 @@ packages:
   yuku-parser@0.9.5:
     resolution: {integrity: sha512-IBnAdNVMswWbJcM7woPluOudectJzFjJ1N8jVRxP9Uq4CIv5hZdBIcdmtRbFDYF/Ph2j2gVup4YJ4N9mh0jYFA==}
 
-  zod@4.5.4:
-    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+  zod@4.6.4:
+    resolution: {integrity: sha512-AXSD6hvGdvRjajG/l1cC+d6IrhH+sjmPKtYeQdJIK8MFJl3LyClzS+o/YsVC+zQZPupAaeH5skwwm8YqYH7BqA==}
 
   zustand@5.0.15:
     resolution: {integrity: sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==}
@@ -3888,15 +3864,15 @@ snapshots:
 
   '@asamuzakjp/css-color@6.0.7':
     dependencies:
-      '@csstools/css-calc': 3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-color-parser': 4.2.2(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-calc': 3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-color-parser': 4.2.3(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
       lru-cache: 11.5.2
 
   '@asamuzakjp/dom-selector@8.3.2':
     dependencies:
-      bidi-js: 1.0.3
+      bidi-js: 1.1.0
       css-tree: 3.2.1
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
@@ -3962,15 +3938,15 @@ snapshots:
   '@bootnodedev/canton-barebones@0.5.0':
     dependencies:
       js-yaml: 4.3.2
-      zod: 4.5.4
+      zod: 4.6.4
 
-  '@bootnodedev/canton-wallet-service@0.3.0(supports-color@7.2.0)':
+  '@bootnodedev/canton-wallet-service@0.3.0':
     dependencies:
-      '@canton-network/core-splice-client': 1.10.1(supports-color@7.2.0)
-      '@canton-network/wallet-sdk': 1.3.1(supports-color@7.2.0)
+      '@canton-network/core-splice-client': 1.10.1
+      '@canton-network/wallet-sdk': 1.3.1
       cors: 2.8.6
       dotenv: 17.4.2
-      express: 5.2.1(supports-color@7.2.0)
+      express: 5.2.1
     transitivePeerDependencies:
       - supports-color
 
@@ -3978,11 +3954,11 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@canton-network/core-acs-reader@1.19.0(supports-color@7.2.0)':
+  '@canton-network/core-acs-reader@1.20.1':
     dependencies:
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-provider-ledger': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-provider-ledger': 1.12.1
+      '@canton-network/core-types': 1.12.0
       bignumber.js: 9.3.1
       dayjs: 1.11.23
       openapi-fetch: 0.15.2
@@ -3991,14 +3967,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-amulet-service@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-amulet-service@1.12.1':
     dependencies:
-      '@canton-network/core-ledger-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-splice-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-token-standard-service': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-ledger-client': 1.12.1
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-splice-client': 1.12.0
+      '@canton-network/core-token-standard-service': 1.12.1
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       bignumber.js: 10.0.2
       dayjs: 1.11.23
       decimal.js: 10.6.0
@@ -4007,40 +3983,32 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-asyncapi-client@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-asyncapi-client@1.12.1':
     dependencies:
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       bignumber.js: 10.0.2
       pino: 10.3.1
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-ledger-client-types@1.10.1':
+  '@canton-network/core-ledger-client-types@1.12.1':
     dependencies:
-      '@canton-network/core-types': 1.10.1
+      '@canton-network/core-types': 1.12.0
       bignumber.js: 10.0.2
       dayjs: 1.11.23
       openapi-fetch: 0.17.0
       pino: 10.3.1
 
-  '@canton-network/core-ledger-client-types@1.11.0':
+  '@canton-network/core-ledger-client@1.12.1':
     dependencies:
-      '@canton-network/core-types': 1.11.0
-      bignumber.js: 10.0.2
-      dayjs: 1.11.23
-      openapi-fetch: 0.17.0
-      pino: 10.3.1
-
-  '@canton-network/core-ledger-client@1.11.0(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-ledger-proto': 1.10.0
-      '@canton-network/core-splice-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-token-standard': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-ledger-proto': 1.11.0
+      '@canton-network/core-splice-client': 1.12.0
+      '@canton-network/core-token-standard': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       bignumber.js: 10.0.2
       dayjs: 1.11.23
       openapi-fetch: 0.17.0
@@ -4049,108 +4017,90 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-ledger-proto@1.10.0':
+  '@canton-network/core-ledger-proto@1.11.0':
     dependencies:
       '@protobuf-ts/runtime': 2.11.1
       '@protobuf-ts/runtime-rpc': 2.11.1
 
-  '@canton-network/core-provider-dapp@1.10.1':
+  '@canton-network/core-provider-dapp@1.12.1':
     dependencies:
-      '@canton-network/core-ledger-client-types': 1.10.1
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-splice-provider': 1.10.1
-      '@canton-network/core-types': 1.10.1
-      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.10.1
-      '@canton-network/core-wallet-dapp-rpc-client': 1.10.1
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-splice-provider': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.12.0
+      '@canton-network/core-wallet-dapp-rpc-client': 1.12.0
 
-  '@canton-network/core-provider-ledger@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-provider-ledger@1.12.1':
     dependencies:
-      '@canton-network/core-ledger-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-splice-provider': 1.11.0
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-ledger-client': 1.12.1
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-splice-provider': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       pino: 10.3.1
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-rpc-errors@1.10.0(supports-color@7.2.0)':
+  '@canton-network/core-rpc-errors@1.11.0':
     dependencies:
-      '@metamask/rpc-errors': 7.0.3(supports-color@7.2.0)
+      '@metamask/rpc-errors': 7.0.3
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-rpc-errors@1.9.1(supports-color@7.2.0)':
+  '@canton-network/core-rpc-transport@1.12.0':
     dependencies:
-      '@metamask/rpc-errors': 7.0.3(supports-color@7.2.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@canton-network/core-rpc-transport@1.10.1':
-    dependencies:
-      '@canton-network/core-types': 1.10.1
+      '@canton-network/core-types': 1.12.0
       uuid: 14.0.2
 
-  '@canton-network/core-rpc-transport@1.11.0':
+  '@canton-network/core-signing-lib@1.12.0':
     dependencies:
-      '@canton-network/core-types': 1.11.0
-      uuid: 14.0.2
-
-  '@canton-network/core-signing-lib@1.11.0(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-wallet-auth': 1.12.0
       fs-extra: 11.4.0
       lodash: 4.18.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
-      zod: 4.5.4
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-splice-client@1.10.1(supports-color@7.2.0)':
+  '@canton-network/core-splice-client@1.10.1':
     dependencies:
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       openapi-fetch: 0.17.0
       uuid: 14.0.2
-      zod: 4.5.4
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-splice-client@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-splice-client@1.12.0':
     dependencies:
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       openapi-fetch: 0.17.0
       uuid: 14.0.2
-      zod: 4.5.4
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-splice-provider@1.10.1':
+  '@canton-network/core-splice-provider@1.12.0':
     dependencies:
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-types': 1.10.1
-      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.10.1
-      '@canton-network/core-wallet-dapp-rpc-client': 1.10.1
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.12.0
+      '@canton-network/core-wallet-dapp-rpc-client': 1.12.0
 
-  '@canton-network/core-splice-provider@1.11.0':
+  '@canton-network/core-token-standard-service@1.12.1':
     dependencies:
-      '@canton-network/core-rpc-transport': 1.11.0
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.11.0
-      '@canton-network/core-wallet-dapp-rpc-client': 1.11.0
-
-  '@canton-network/core-token-standard-service@1.11.0(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-acs-reader': 1.19.0(supports-color@7.2.0)
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-provider-ledger': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-splice-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-token-standard': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-tx-parser': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-acs-reader': 1.20.1
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-provider-ledger': 1.12.1
+      '@canton-network/core-splice-client': 1.12.0
+      '@canton-network/core-token-standard': 1.12.0
+      '@canton-network/core-tx-parser': 1.12.1
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       dayjs: 1.11.23
       decimal.js: 10.6.0
       openapi-fetch: 0.17.0
@@ -4159,28 +4109,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-token-standard@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-token-standard@1.12.0':
     dependencies:
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       '@daml/types': 3.5.2
       '@mojotech/json-type-validation': 3.1.0
       lodash: 4.18.1
       openapi-fetch: 0.17.0
       uuid: 14.0.2
-      zod: 4.5.4
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-tx-parser@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-tx-parser@1.12.1':
     dependencies:
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-ledger-proto': 1.10.0
-      '@canton-network/core-provider-ledger': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-splice-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-token-standard': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-ledger-proto': 1.11.0
+      '@canton-network/core-provider-ledger': 1.12.1
+      '@canton-network/core-splice-client': 1.12.0
+      '@canton-network/core-token-standard': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
       bignumber.js: 10.0.2
       dayjs: 1.11.23
       openapi-fetch: 0.17.0
@@ -4188,144 +4138,117 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-tx-visualizer@1.9.1':
+  '@canton-network/core-tx-visualizer@1.11.0':
     dependencies:
-      '@canton-network/core-ledger-proto': 1.10.0
-      '@types/node': 25.9.5
+      '@canton-network/core-ledger-proto': 1.11.0
+      '@types/node': 25.9.6
       camelcase-keys: 10.0.2
 
   '@canton-network/core-types@1.10.0':
     dependencies:
       '@daml/types': 3.5.2
       uuid: 14.0.2
-      zod: 4.5.4
+      zod: 4.6.4
 
-  '@canton-network/core-types@1.10.1':
+  '@canton-network/core-types@1.12.0':
     dependencies:
       '@daml/types': 3.5.2
       uuid: 14.0.2
-      zod: 4.5.4
+      zod: 4.6.4
 
-  '@canton-network/core-types@1.11.0':
+  '@canton-network/core-wallet-auth@1.12.0':
     dependencies:
-      '@daml/types': 3.5.2
-      uuid: 14.0.2
-      zod: 4.5.4
-
-  '@canton-network/core-wallet-auth@1.10.1(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-rpc-errors': 1.9.1(supports-color@7.2.0)
-      '@canton-network/core-types': 1.10.1
-      jose: 6.2.10
-      zod: 4.5.4
+      '@canton-network/core-rpc-errors': 1.11.0
+      '@canton-network/core-types': 1.12.0
+      jose: 6.2.12
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-wallet-auth@1.11.0(supports-color@7.2.0)':
+  '@canton-network/core-wallet-dapp-remote-rpc-client@1.12.0':
     dependencies:
-      '@canton-network/core-rpc-errors': 1.10.0(supports-color@7.2.0)
-      '@canton-network/core-types': 1.11.0
-      jose: 6.2.10
-      zod: 4.5.4
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      lodash: 4.18.1
+
+  '@canton-network/core-wallet-dapp-rpc-client@1.12.0':
+    dependencies:
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      lodash: 4.18.1
+
+  '@canton-network/core-wallet-discovery@1.12.0':
+    dependencies:
+      '@canton-network/core-splice-provider': 1.12.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-dapp-rpc-client': 1.12.0
+
+  '@canton-network/core-wallet-store@1.13.0':
+    dependencies:
+      '@canton-network/core-wallet-auth': 1.12.0
+      zod: 4.6.4
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-wallet-dapp-remote-rpc-client@1.10.1':
+  '@canton-network/core-wallet-ui-components@1.14.0':
     dependencies:
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-types': 1.10.1
-      lodash: 4.18.1
-
-  '@canton-network/core-wallet-dapp-remote-rpc-client@1.11.0':
-    dependencies:
-      '@canton-network/core-rpc-transport': 1.11.0
-      '@canton-network/core-types': 1.11.0
-      lodash: 4.18.1
-
-  '@canton-network/core-wallet-dapp-rpc-client@1.10.1':
-    dependencies:
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-types': 1.10.1
-      lodash: 4.18.1
-
-  '@canton-network/core-wallet-dapp-rpc-client@1.11.0':
-    dependencies:
-      '@canton-network/core-rpc-transport': 1.11.0
-      '@canton-network/core-types': 1.11.0
-      lodash: 4.18.1
-
-  '@canton-network/core-wallet-discovery@1.10.1':
-    dependencies:
-      '@canton-network/core-splice-provider': 1.10.1
-      '@canton-network/core-types': 1.10.1
-      '@canton-network/core-wallet-dapp-rpc-client': 1.10.1
-
-  '@canton-network/core-wallet-store@1.11.1(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-wallet-auth': 1.10.1(supports-color@7.2.0)
-      zod: 4.5.4
-    transitivePeerDependencies:
-      - supports-color
-
-  '@canton-network/core-wallet-ui-components@1.12.2(supports-color@7.2.0)':
-    dependencies:
-      '@canton-network/core-tx-visualizer': 1.9.1
-      '@canton-network/core-types': 1.10.1
-      '@canton-network/core-wallet-auth': 1.10.1(supports-color@7.2.0)
-      '@canton-network/core-wallet-store': 1.11.1(supports-color@7.2.0)
-      '@canton-network/core-wallet-user-rpc-client': 1.11.1
+      '@canton-network/core-tx-visualizer': 1.11.0
+      '@canton-network/core-types': 1.12.0
+      '@canton-network/core-wallet-auth': 1.12.0
+      '@canton-network/core-wallet-store': 1.13.0
+      '@canton-network/core-wallet-user-rpc-client': 1.13.0
       '@popperjs/core': 2.11.8
       bootstrap: 5.3.8(@popperjs/core@2.11.8)
       lit: 3.3.3
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/core-wallet-user-rpc-client@1.11.1':
+  '@canton-network/core-wallet-user-rpc-client@1.13.0':
     dependencies:
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-types': 1.10.1
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-types': 1.12.0
       lodash: 4.18.1
 
-  '@canton-network/dapp-sdk@1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.5.4))(@walletconnect/types@2.24.0)(supports-color@7.2.0)':
+  '@canton-network/dapp-sdk@1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.6.4))(@walletconnect/types@2.24.0)':
     dependencies:
-      '@canton-network/core-provider-dapp': 1.10.1
-      '@canton-network/core-rpc-transport': 1.10.1
-      '@canton-network/core-splice-provider': 1.10.1
+      '@canton-network/core-provider-dapp': 1.12.1
+      '@canton-network/core-rpc-transport': 1.12.0
+      '@canton-network/core-splice-provider': 1.12.0
       '@canton-network/core-types': 1.10.0
-      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.10.1
-      '@canton-network/core-wallet-dapp-rpc-client': 1.10.1
-      '@canton-network/core-wallet-discovery': 1.10.1
-      '@canton-network/core-wallet-ui-components': 1.12.2(supports-color@7.2.0)
+      '@canton-network/core-wallet-dapp-remote-rpc-client': 1.12.0
+      '@canton-network/core-wallet-dapp-rpc-client': 1.12.0
+      '@canton-network/core-wallet-discovery': 1.12.0
+      '@canton-network/core-wallet-ui-components': 1.14.0
       qrcode: 1.5.4
       uuid: 14.0.2
     optionalDependencies:
-      '@walletconnect/sign-client': 2.24.0(typescript@5.9.3)(zod@4.5.4)
+      '@walletconnect/sign-client': 2.24.0(typescript@5.9.3)(zod@4.6.4)
       '@walletconnect/types': 2.24.0
     transitivePeerDependencies:
       - supports-color
 
-  '@canton-network/wallet-sdk@1.3.1(supports-color@7.2.0)':
+  '@canton-network/wallet-sdk@1.3.1':
     dependencies:
-      '@canton-network/core-acs-reader': 1.19.0(supports-color@7.2.0)
-      '@canton-network/core-amulet-service': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-asyncapi-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-ledger-client-types': 1.11.0
-      '@canton-network/core-ledger-proto': 1.10.0
-      '@canton-network/core-provider-dapp': 1.10.1
-      '@canton-network/core-provider-ledger': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-signing-lib': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-splice-client': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-splice-provider': 1.11.0
-      '@canton-network/core-token-standard': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-token-standard-service': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-tx-parser': 1.11.0(supports-color@7.2.0)
-      '@canton-network/core-tx-visualizer': 1.9.1
+      '@canton-network/core-acs-reader': 1.20.1
+      '@canton-network/core-amulet-service': 1.12.1
+      '@canton-network/core-asyncapi-client': 1.12.1
+      '@canton-network/core-ledger-client-types': 1.12.1
+      '@canton-network/core-ledger-proto': 1.11.0
+      '@canton-network/core-provider-dapp': 1.12.1
+      '@canton-network/core-provider-ledger': 1.12.1
+      '@canton-network/core-signing-lib': 1.12.0
+      '@canton-network/core-splice-client': 1.10.1
+      '@canton-network/core-splice-provider': 1.12.0
+      '@canton-network/core-token-standard': 1.12.0
+      '@canton-network/core-token-standard-service': 1.12.1
+      '@canton-network/core-tx-parser': 1.12.1
+      '@canton-network/core-tx-visualizer': 1.11.0
       '@canton-network/core-types': 1.10.0
-      '@canton-network/core-wallet-auth': 1.11.0(supports-color@7.2.0)
+      '@canton-network/core-wallet-auth': 1.12.0
       '@grpc/grpc-js': 1.14.4
       '@protobuf-ts/grpc-transport': 2.11.1(@grpc/grpc-js@1.14.4)
       decimal.js: 10.6.0
-      jose: 6.2.10
+      jose: 6.2.12
       pino: 10.3.1
       pino-pretty: 13.1.3
       typescript-lru-cache: 2.0.0
@@ -4333,15 +4256,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@commitlint/cli@21.2.2(@types/node@26.4.0)(conventional-commits-parser@7.1.2)(typescript@5.9.3)':
+  '@commitlint/cli@21.2.2(@types/node@26.5.1)(conventional-commits-parser@7.1.2)(typescript@5.9.3)':
     dependencies:
       '@commitlint/config-conventional': 21.2.2
       '@commitlint/format': 21.2.2
       '@commitlint/lint': 21.2.2
-      '@commitlint/load': 21.2.2(@types/node@26.4.0)(typescript@5.9.3)
+      '@commitlint/load': 21.2.2(@types/node@26.5.1)(typescript@5.9.3)
       '@commitlint/read': 21.2.1(conventional-commits-parser@7.1.2)
       '@commitlint/types': 21.2.0
-      tinyexec: 1.3.0
+      tinyexec: 1.3.1
       yargs: 18.1.0
     transitivePeerDependencies:
       - '@types/node'
@@ -4383,14 +4306,14 @@ snapshots:
       '@commitlint/rules': 21.2.2
       '@commitlint/types': 21.2.0
 
-  '@commitlint/load@21.2.2(@types/node@26.4.0)(typescript@5.9.3)':
+  '@commitlint/load@21.2.2(@types/node@26.5.1)(typescript@5.9.3)':
     dependencies:
       '@commitlint/config-validator': 21.2.0
       '@commitlint/execute-rule': 21.0.1
       '@commitlint/resolve-extends': 21.2.2
       '@commitlint/types': 21.2.0
       cosmiconfig: 9.0.2(typescript@5.9.3)
-      cosmiconfig-typescript-loader: 6.3.0(@types/node@26.4.0)(cosmiconfig@9.0.2(typescript@5.9.3))(typescript@5.9.3)
+      cosmiconfig-typescript-loader: 6.3.0(@types/node@26.5.1)(cosmiconfig@9.0.2(typescript@5.9.3))(typescript@5.9.3)
       es-toolkit: 1.52.0
       is-plain-obj: 4.1.0
       picocolors: 1.1.1
@@ -4411,7 +4334,7 @@ snapshots:
       '@commitlint/top-level': 21.2.0
       '@commitlint/types': 21.2.0
       '@conventional-changelog/git-client': 3.1.2(conventional-commits-parser@7.1.2)
-      tinyexec: 1.3.0
+      tinyexec: 1.3.1
     transitivePeerDependencies:
       - conventional-commits-filter
       - conventional-commits-parser
@@ -4454,15 +4377,15 @@ snapshots:
 
   '@csstools/color-helpers@6.1.1': {}
 
-  '@csstools/css-calc@3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-calc@3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
     dependencies:
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
 
-  '@csstools/css-color-parser@4.2.2(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-color-parser@4.2.3(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
     dependencies:
       '@csstools/color-helpers': 6.1.1
-      '@csstools/css-calc': 3.3.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-calc': 3.4.0(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
 
@@ -4470,7 +4393,7 @@ snapshots:
     dependencies:
       '@csstools/css-tokenizer': 4.0.0
 
-  '@csstools/css-syntax-patches-for-csstree@1.1.10(css-tree@3.2.1)':
+  '@csstools/css-syntax-patches-for-csstree@1.1.13(css-tree@3.2.1)':
     optionalDependencies:
       css-tree: 3.2.1
 
@@ -4592,24 +4515,30 @@ snapshots:
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.6.0
 
-  '@metamask/rpc-errors@7.0.3(supports-color@7.2.0)':
+  '@metamask/rpc-errors@7.0.3':
     dependencies:
-      '@metamask/utils': 11.11.0(supports-color@7.2.0)
+      '@metamask/utils': 11.12.1
       fast-safe-stringify: 2.1.1
     transitivePeerDependencies:
       - supports-color
 
+  '@metamask/scure-bip39@2.1.1':
+    dependencies:
+      '@noble/hashes': 1.3.3
+      '@scure/base': 1.1.9
+
   '@metamask/superstruct@3.4.1': {}
 
-  '@metamask/utils@11.11.0(supports-color@7.2.0)':
+  '@metamask/utils@11.12.1':
     dependencies:
       '@ethereumjs/tx': 4.2.0
+      '@metamask/scure-bip39': 2.1.1
       '@metamask/superstruct': 3.4.1
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
       '@types/debug': 4.1.13
       '@types/lodash': 4.17.25
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       lodash: 4.18.1
       pony-cause: 2.1.11
       semver: 7.8.5
@@ -4623,11 +4552,11 @@ snapshots:
 
   '@msgpack/msgpack@3.1.3': {}
 
-  '@napi-rs/wasm-runtime@1.2.3(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)':
+  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)':
     dependencies:
       '@emnapi/core': 1.11.2
       '@emnapi/runtime': 1.11.2
-      '@tybys/wasm-util': 0.10.3
+      '@tybys/wasm-util': 0.10.4
     optional: true
 
   '@noble/ciphers@1.3.0': {}
@@ -4647,6 +4576,8 @@ snapshots:
   '@noble/curves@1.9.7':
     dependencies:
       '@noble/hashes': 1.8.0
+
+  '@noble/hashes@1.3.3': {}
 
   '@noble/hashes@1.4.0': {}
 
@@ -4767,7 +4698,7 @@ snapshots:
     dependencies:
       '@emnapi/core': 1.11.2
       '@emnapi/runtime': 1.11.2
-      '@napi-rs/wasm-runtime': 1.2.3(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)
+      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)
     optional: true
 
   '@oxc-resolver/binding-win32-arm64-msvc@11.24.2':
@@ -4922,7 +4853,7 @@ snapshots:
   '@tailwindcss/node@4.3.3':
     dependencies:
       '@jridgewell/remapping': 2.3.5
-      enhanced-resolve: 5.24.5
+      enhanced-resolve: 5.25.1
       jiti: 2.7.0
       lightningcss: 1.32.0
       magic-string: 0.30.21
@@ -4980,12 +4911,12 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
-  '@tailwindcss/vite@4.3.3(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))':
+  '@tailwindcss/vite@4.3.3(vite@8.3.0(@types/node@26.5.1))':
     dependencies:
       '@tailwindcss/node': 4.3.3
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
-      vite: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -5008,7 +4939,7 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
     optionalDependencies:
-      vitest: 5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+      vitest: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))
 
   '@testing-library/react@16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -5020,7 +4951,7 @@ snapshots:
       '@types/react': 19.3.0
       '@types/react-dom': 19.3.0(@types/react@19.3.0)
 
-  '@tybys/wasm-util@0.10.3':
+  '@tybys/wasm-util@0.10.4':
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -5048,13 +4979,13 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
-  '@types/node@25.9.5':
+  '@types/node@25.9.6':
     dependencies:
       undici-types: 7.24.6
 
-  '@types/node@26.4.0':
+  '@types/node@26.5.1':
     dependencies:
-      undici-types: 8.3.0
+      undici-types: 8.9.0
 
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
     dependencies:
@@ -5068,22 +4999,22 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.5.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
 
   '@vitest/coverage-v8@5.0.0(vitest@5.0.0)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/istanbul-lib-coverage': 1.0.1
       '@vitest/istanbul-lib-report': 1.0.1
-      ast-v8-to-istanbul: 1.0.5
-      magicast: 0.5.4
-      obug: 2.1.4
+      ast-v8-to-istanbul: 1.0.6
+      magicast: 0.5.5
+      obug: 2.2.1
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+      vitest: 5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.1': {}
 
@@ -5091,18 +5022,18 @@ snapshots:
     dependencies:
       '@vitest/istanbul-lib-coverage': 1.0.1
 
-  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))':
+  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@26.5.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
 
   '@vitest/spy@5.0.0': {}
 
-  '@walletconnect/core@2.24.0(typescript@5.9.3)(zod@4.5.4)':
+  '@walletconnect/core@2.24.0(typescript@5.9.3)(zod@4.6.4)':
     dependencies:
       '@walletconnect/heartbeat': 1.2.2
       '@walletconnect/jsonrpc-provider': 1.0.14
@@ -5116,7 +5047,7 @@ snapshots:
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
       '@walletconnect/types': 2.24.0
-      '@walletconnect/utils': 2.24.0(typescript@5.9.3)(zod@4.5.4)
+      '@walletconnect/utils': 2.24.0(typescript@5.9.3)(zod@4.6.4)
       '@walletconnect/window-getters': 1.0.1
       es-toolkit: 1.45.1
       events: 3.3.0
@@ -5234,14 +5165,14 @@ snapshots:
     dependencies:
       tslib: 1.14.1
 
-  '@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.5.4)':
+  '@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.6.4)':
     dependencies:
-      '@walletconnect/core': 2.24.0(typescript@5.9.3)(zod@4.5.4)
+      '@walletconnect/core': 2.24.0(typescript@5.9.3)(zod@4.6.4)
       '@walletconnect/jsonrpc-utils': 1.0.8
       '@walletconnect/logger': 3.0.2
       '@walletconnect/time': 1.0.2
       '@walletconnect/types': 2.24.0
-      '@walletconnect/utils': 2.24.0(typescript@5.9.3)(zod@4.5.4)
+      '@walletconnect/utils': 2.24.0(typescript@5.9.3)(zod@4.6.4)
       events: 3.3.0
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -5301,7 +5232,7 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@walletconnect/utils@2.24.0(typescript@5.9.3)(zod@4.5.4)':
+  '@walletconnect/utils@2.24.0(typescript@5.9.3)(zod@4.6.4)':
     dependencies:
       '@msgpack/msgpack': 3.1.3
       '@noble/ciphers': 1.3.0
@@ -5319,7 +5250,7 @@ snapshots:
       '@walletconnect/window-metadata': 1.0.1
       blakejs: 1.2.1
       detect-browser: 5.3.0
-      ox: 0.9.3(typescript@5.9.3)(zod@4.5.4)
+      ox: 0.9.3(typescript@5.9.3)(zod@4.6.4)
       uint8arrays: 3.1.1
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -5353,13 +5284,13 @@ snapshots:
       '@walletconnect/window-getters': 1.0.1
       tslib: 1.14.1
 
-  '@xstate/react@6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.32.6)':
+  '@xstate/react@6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.0)':
     dependencies:
       react: 19.3.0
       use-isomorphic-layout-effect: 1.2.1(@types/react@19.3.0)(react@19.3.0)
-      use-sync-external-store: 1.6.0(react@19.3.0)
+      use-sync-external-store: 1.7.0(react@19.3.0)
     optionalDependencies:
-      xstate: 5.32.6
+      xstate: 5.33.0
     transitivePeerDependencies:
       - '@types/react'
 
@@ -6014,10 +5945,10 @@ snapshots:
 
   '@zag-js/utils@1.43.3': {}
 
-  abitype@1.3.0(typescript@5.9.3)(zod@4.5.4):
+  abitype@1.3.0(typescript@5.9.3)(zod@4.6.4):
     optionalDependencies:
       typescript: 5.9.3
-      zod: 4.5.4
+      zod: 4.6.4
 
   accepts@2.0.0:
     dependencies:
@@ -6027,7 +5958,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.6
+      fast-uri: 3.1.7
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -6050,7 +5981,7 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  argue-cli@3.1.0: {}
+  argue-cli@3.2.0: {}
 
   aria-query@5.3.0:
     dependencies:
@@ -6060,7 +5991,7 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  ast-v8-to-istanbul@1.0.5:
+  ast-v8-to-istanbul@1.0.6:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       estree-walker: 3.0.3
@@ -6070,7 +6001,7 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  bidi-js@1.0.3:
+  bidi-js@1.1.0:
     dependencies:
       require-from-string: 2.0.2
 
@@ -6080,11 +6011,11 @@ snapshots:
 
   blakejs@1.2.1: {}
 
-  body-parser@2.3.0(supports-color@7.2.0):
+  body-parser@2.3.0:
     dependencies:
       bytes: 3.1.2
       content-type: 2.1.0
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       on-finished: 2.4.1
@@ -6128,7 +6059,7 @@ snapshots:
       camelcase: 9.0.0
       map-obj: 6.0.0
       quick-lru: 7.3.0
-      type-fest: 5.8.0
+      type-fest: 5.9.0
 
   camelcase@5.3.1: {}
 
@@ -6183,7 +6114,7 @@ snapshots:
   conventional-commits-parser@7.1.2:
     dependencies:
       '@simple-libs/stream-utils': 2.0.0
-      argue-cli: 3.1.0
+      argue-cli: 3.2.0
 
   cookie-es@1.2.3: {}
 
@@ -6198,9 +6129,9 @@ snapshots:
       object-assign: 4.1.1
       vary: 1.1.2
 
-  cosmiconfig-typescript-loader@6.3.0(@types/node@26.4.0)(cosmiconfig@9.0.2(typescript@5.9.3))(typescript@5.9.3):
+  cosmiconfig-typescript-loader@6.3.0(@types/node@26.5.1)(cosmiconfig@9.0.2(typescript@5.9.3))(typescript@5.9.3):
     dependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.5.1
       cosmiconfig: 9.0.2(typescript@5.9.3)
       jiti: 2.6.1
       typescript: 5.9.3
@@ -6240,11 +6171,9 @@ snapshots:
 
   dayjs@1.11.23: {}
 
-  debug@4.4.3(supports-color@7.2.0):
+  debug@4.4.3:
     dependencies:
       ms: 2.1.3
-    optionalDependencies:
-      supports-color: 7.2.0
 
   decamelize@1.2.0: {}
 
@@ -6294,14 +6223,14 @@ snapshots:
     dependencies:
       once: 1.4.0
 
-  enhanced-resolve@5.24.5:
+  enhanced-resolve@5.25.1:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.3.3
 
   entities@4.5.0: {}
 
-  entities@8.0.0: {}
+  entities@8.1.0: {}
 
   env-paths@2.2.1: {}
 
@@ -6346,20 +6275,20 @@ snapshots:
 
   expect-type@1.4.0: {}
 
-  express@5.2.1(supports-color@7.2.0):
+  express@5.2.1:
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0(supports-color@7.2.0)
+      body-parser: 2.3.0
       content-disposition: 1.1.0
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
-      finalhandler: 2.1.1(supports-color@7.2.0)
+      finalhandler: 2.1.1
       fresh: 2.0.0
       http-errors: 2.0.1
       merge-descriptors: 2.0.0
@@ -6370,9 +6299,9 @@ snapshots:
       proxy-addr: 2.0.7
       qs: 6.16.0
       range-parser: 1.3.0
-      router: 2.2.0(supports-color@7.2.0)
-      send: 1.2.1(supports-color@7.2.0)
-      serve-static: 2.2.1(supports-color@7.2.0)
+      router: 2.2.0
+      send: 1.2.1
+      serve-static: 2.2.1
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
@@ -6385,7 +6314,7 @@ snapshots:
 
   fast-safe-stringify@2.1.1: {}
 
-  fast-uri@3.1.6: {}
+  fast-uri@3.1.7: {}
 
   fd-package-json@2.0.0:
     dependencies:
@@ -6395,9 +6324,9 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
-  finalhandler@2.1.1(supports-color@7.2.0):
+  finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -6481,9 +6410,6 @@ snapshots:
       ufo: 1.6.4
       uncrypto: 0.1.3
 
-  has-flag@4.0.0:
-    optional: true
-
   has-symbols@1.1.0: {}
 
   hasown@2.0.4:
@@ -6547,7 +6473,7 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@6.2.10: {}
+  jose@6.2.12: {}
 
   joycon@3.1.1: {}
 
@@ -6564,7 +6490,7 @@ snapshots:
       '@asamuzakjp/css-color': 6.0.7
       '@asamuzakjp/dom-selector': 8.3.2
       '@bramus/specificity': 2.4.2
-      '@csstools/css-syntax-patches-for-csstree': 1.1.10(css-tree@3.2.1)
+      '@csstools/css-syntax-patches-for-csstree': 1.1.13(css-tree@3.2.1)
       '@exodus/bytes': 1.15.1(@noble/hashes@1.8.0)
       css-tree: 3.2.1
       data-urls: 7.0.0(@noble/hashes@1.8.0)
@@ -6576,11 +6502,11 @@ snapshots:
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 6.0.2
-      undici: 8.10.0
+      undici: 8.10.2
       w3c-xmlserializer: 5.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
-      whatwg-url: 17.1.0(@noble/hashes@1.8.0)
+      whatwg-url: 17.1.1(@noble/hashes@1.8.0)
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
@@ -6610,8 +6536,8 @@ snapshots:
       strip-json-comments: 5.0.3
       tinyglobby: 0.2.17
       unbash: 4.0.11
-      yaml: 2.9.0
-      zod: 4.5.4
+      yaml: 2.9.1
+      zod: 4.6.4
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -6723,7 +6649,7 @@ snapshots:
       string-argv: 0.3.2
       tinyexec: 1.3.1
     optionalDependencies:
-      yaml: 2.9.0
+      yaml: 2.9.1
 
   lit-element@4.2.2:
     dependencies:
@@ -6755,7 +6681,7 @@ snapshots:
 
   lru-cache@11.5.2: {}
 
-  lucide-react@1.44.0(react@19.3.0):
+  lucide-react@1.45.0(react@19.3.0):
     dependencies:
       react: 19.3.0
 
@@ -6771,7 +6697,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  magicast@0.5.4:
+  magicast@0.5.5:
     dependencies:
       '@babel/parser': 7.29.8
       '@babel/types': 7.29.8
@@ -6779,7 +6705,7 @@ snapshots:
 
   map-obj@6.0.0: {}
 
-  markdown-it@14.3.1:
+  markdown-it@14.3.2:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
@@ -6818,7 +6744,7 @@ snapshots:
 
   multiformats@9.9.0: {}
 
-  nanoid@3.3.18: {}
+  nanoid@3.3.19: {}
 
   negotiator@1.1.0:
     dependencies:
@@ -6834,7 +6760,7 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  obug@2.1.4: {}
+  obug@2.2.1: {}
 
   ofetch@1.5.1:
     dependencies:
@@ -6864,7 +6790,7 @@ snapshots:
 
   openapi-typescript-helpers@0.1.0: {}
 
-  ox@0.9.3(typescript@5.9.3)(zod@4.5.4):
+  ox@0.9.3(typescript@5.9.3)(zod@4.6.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -6872,7 +6798,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.3.0(typescript@5.9.3)(zod@4.5.4)
+      abitype: 1.3.0(typescript@5.9.3)(zod@4.6.4)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -6950,7 +6876,7 @@ snapshots:
 
   parse5@8.0.1:
     dependencies:
-      entities: 8.0.0
+      entities: 8.1.0
 
   parseurl@1.3.3: {}
 
@@ -7026,7 +6952,7 @@ snapshots:
 
   postcss@8.5.28:
     dependencies:
-      nanoid: 3.3.18
+      nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -7049,7 +6975,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.2
-      '@types/node': 26.4.0
+      '@types/node': 26.5.1
       long: 5.3.2
 
   proxy-addr@2.0.7:
@@ -7150,7 +7076,7 @@ snapshots:
     dependencies:
       dts-resolver: 3.0.0(oxc-resolver@11.24.2)
       get-tsconfig: 5.0.0-beta.6
-      obug: 2.1.4
+      obug: 2.2.1
       rolldown: 1.2.8
       yuku-ast: 0.9.5
       yuku-codegen: 0.9.5
@@ -7181,9 +7107,9 @@ snapshots:
       '@rolldown/binding-win32-arm64-msvc': 1.2.8
       '@rolldown/binding-win32-x64-msvc': 1.2.8
 
-  router@2.2.0(supports-color@7.2.0):
+  router@2.2.0:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -7205,9 +7131,9 @@ snapshots:
 
   semver@7.8.5: {}
 
-  send@1.2.1(supports-color@7.2.0):
+  send@1.2.1:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -7221,12 +7147,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  serve-static@2.2.1(supports-color@7.2.0):
+  serve-static@2.2.1:
     dependencies:
       encodeurl: 2.0.0
       escape-html: 1.0.3
       parseurl: 1.3.3
-      send: 1.2.1(supports-color@7.2.0)
+      send: 1.2.1
     transitivePeerDependencies:
       - supports-color
 
@@ -7317,11 +7243,6 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  supports-color@7.2.0:
-    dependencies:
-      has-flag: 4.0.0
-    optional: true
-
   symbol-tree@3.2.4: {}
 
   tagged-tag@1.0.0: {}
@@ -7351,17 +7272,17 @@ snapshots:
 
   tinyrainbow@3.1.1: {}
 
-  tldts-core@7.4.11: {}
+  tldts-core@7.4.12: {}
 
-  tldts@7.4.11:
+  tldts@7.4.12:
     dependencies:
-      tldts-core: 7.4.11
+      tldts-core: 7.4.12
 
   toidentifier@1.0.1: {}
 
   tough-cookie@6.0.2:
     dependencies:
-      tldts: 7.4.11
+      tldts: 7.4.12
 
   tr46@6.0.0:
     dependencies:
@@ -7376,7 +7297,7 @@ snapshots:
       empathic: 2.0.1
       hookable: 6.1.1
       import-without-cache: 0.4.0
-      obug: 2.1.4
+      obug: 2.2.1
       picomatch: 4.0.7
       rolldown: 1.2.8
       rolldown-plugin-dts: 0.28.5(oxc-resolver@11.24.2)(rolldown@1.2.8)(typescript@5.9.3)
@@ -7401,7 +7322,7 @@ snapshots:
 
   tweetnacl@1.0.3: {}
 
-  type-fest@5.8.0:
+  type-fest@5.9.0:
     dependencies:
       tagged-tag: 1.0.0
 
@@ -7415,10 +7336,10 @@ snapshots:
     dependencies:
       '@gerrit0/mini-shiki': 3.23.0
       lunr: 2.3.9
-      markdown-it: 14.3.1
+      markdown-it: 14.3.2
       minimatch: 10.2.6
       typescript: 5.9.3
-      yaml: 2.9.0
+      yaml: 2.9.1
 
   typescript-lru-cache@2.0.0: {}
 
@@ -7443,9 +7364,9 @@ snapshots:
 
   undici-types@7.24.6: {}
 
-  undici-types@8.3.0: {}
+  undici-types@8.9.0: {}
 
-  undici@8.10.0: {}
+  undici@8.10.2: {}
 
   universalify@2.0.1: {}
 
@@ -7472,7 +7393,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  use-sync-external-store@1.6.0(react@19.3.0):
+  use-sync-external-store@1.7.0(react@19.3.0):
     dependencies:
       react: 19.3.0
 
@@ -7484,7 +7405,7 @@ snapshots:
 
   verkit@0.4.0: {}
 
-  vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0):
+  vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -7492,29 +7413,52 @@ snapshots:
       rolldown: 1.2.8
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.5.1
       fsevents: 2.3.3
       jiti: 2.7.0
-      yaml: 2.9.0
+      yaml: 2.9.1
 
-  vitest@5.0.0(@types/node@26.4.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)):
+  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0))
+      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
       magic-string: 1.3.1
-      obug: 2.1.4
+      obug: 2.2.1
       picomatch: 4.0.7
       std-env: 4.2.0
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.3.0(@types/node@26.4.0)(jiti@2.7.0)(yaml@2.9.0)
+      vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
-      '@types/node': 26.4.0
+      '@types/node': 26.5.1
+      '@vitest/coverage-v8': 5.0.0(vitest@5.0.0)
+      jsdom: 30.0.1(@noble/hashes@1.8.0)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@26.5.1)):
+    dependencies:
+      '@types/chai': 5.2.3
+      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1))
+      chai: 6.2.2
+      es-module-lexer: 2.3.2
+      expect-type: 1.4.0
+      magic-string: 1.3.1
+      obug: 2.2.1
+      picomatch: 4.0.7
+      std-env: 4.2.0
+      tinybench: 6.1.4
+      tinyexec: 1.3.0
+      tinyglobby: 0.2.17
+      vite: 8.3.0(@types/node@26.5.1)(jiti@2.7.0)(yaml@2.9.1)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 26.5.1
       '@vitest/coverage-v8': 5.0.0(vitest@5.0.0)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
@@ -7538,7 +7482,7 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  whatwg-url@17.1.0(@noble/hashes@1.8.0):
+  whatwg-url@17.1.1(@noble/hashes@1.8.0):
     dependencies:
       '@exodus/bytes': 1.15.1(@noble/hashes@1.8.0)
       tr46: 6.0.0
@@ -7579,13 +7523,13 @@ snapshots:
 
   xmlchars@2.2.0: {}
 
-  xstate@5.32.6: {}
+  xstate@5.33.0: {}
 
   y18n@4.0.3: {}
 
   y18n@5.0.8: {}
 
-  yaml@2.9.0: {}
+  yaml@2.9.1: {}
 
   yargs-parser@18.1.3:
     dependencies:
@@ -7668,10 +7612,10 @@ snapshots:
       '@yuku-parser/binding-win32-arm64': 0.9.5
       '@yuku-parser/binding-win32-x64': 0.9.5
 
-  zod@4.5.4: {}
+  zod@4.6.4: {}
 
-  zustand@5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0)):
+  zustand@5.0.15(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0)):
     optionalDependencies:
       '@types/react': 19.3.0
       react: 19.3.0
-      use-sync-external-store: 1.6.0(react@19.3.0)
+      use-sync-external-store: 1.7.0(react@19.3.0)
