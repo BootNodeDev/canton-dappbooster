@@ -3,8 +3,9 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
-// biome-ignore lint/style/noRestrictedImports: this file defines the @ alias, so it cannot use it.
-import { parseEnv } from './src/utils/env'
+// The native config loader adds no extension of its own, and this file defines the @ alias.
+// biome-ignore lint/style/noRestrictedImports: see above; both halves of this specifier are forced.
+import { parseEnv } from './src/utils/env.ts'
 
 // The empty prefix loads every key in the root `.env`, so only what `parseEnv` returns may be
 // defined back, never the loaded object.
