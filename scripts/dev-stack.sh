@@ -27,15 +27,15 @@
 #
 # [dir] is the LocalNet directory, and every menu action uses it.
 #
-# What `up` starts (in order; Docker must already be running):
-#   1. LocalNet containers           (canton-barebones start)
-#   2. Builds and deploys the vesting DAR (name derived from daml.yaml)
-#   3. wallet-service                -> http://localhost:3010  (background)
-#   4. Bootstraps the vesting operator and its factory
-#   5. dApp frontend dev server      -> http://localhost:3012  (background)
+# Flags, for `up` only and never both at once:
+#   --json    one JSON object per line on stdout, the human log on stderr. A step
+#             opens with 'start' and closes with 'ok' or 'error'; the run itself
+#             closes with 'done', so the stream never stops without saying why
+#   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
-# `down` reverses 5 and 3 (kills both background processes) and stops the
-# LocalNet, keeping its volumes.
+# `up` runs numbered steps, ending with wallet-service on 3010 and the dApp dev server
+# on 3012 in the background; the `step` calls in up() are the list. `down` kills both of
+# those and stops the LocalNet, keeping its volumes.
 
 set -euo pipefail
 
@@ -58,9 +58,88 @@ DAML_DIR="dapp/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
-log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
-die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+# Flags are pulled out before the positional arguments, so `up --json <dir>` and
+# `up <dir> --json` both work.
+JSON_MODE=0
+QUIET_MODE=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --json)  JSON_MODE=1 ;;
+    --quiet) QUIET_MODE=1 ;;
+    *)       ARGS+=("$arg") ;;
+  esac
+done
+set -- ${ARGS[@]+"${ARGS[@]}"}
+
+# Four sinks: fd 3 always shows, fd 5 is the chatter --quiet drops, fd 4 is the machine
+# stream, and fd 1 is what child processes inherit. --json moves every human byte to
+# stderr so nothing but JSON reaches stdout; --quiet drops the child output instead.
+exec 3>&1 4>&1
+if [ "$JSON_MODE" = 1 ]; then exec 3>&2 1>&2; fi
+exec 5>&3
+if [ "$QUIET_MODE" = 1 ]; then exec 5>/dev/null 1>/dev/null; fi
+
+if [ -t 3 ]; then
+  HUMAN_TTY=1
+  P_STEP=$'\033[1;36m==>\033[0m' P_WARN=$'\033[1;33m[!]\033[0m' P_ERR=$'\033[1;31m[x]\033[0m'
+else
+  HUMAN_TTY=0
+  P_STEP='==>' P_WARN='[!]' P_ERR='[x]'
+fi
+
+log()  { printf '%s %s\n' "$P_STEP" "$*" >&5; }
+say()  { printf '%s %s\n' "$P_STEP" "$*" >&3; }
+warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
+# The one human line outside the fd scheme: an error belongs on stderr in every mode.
+die()  { json_event error "$*"; printf '%s %s\n' "$P_ERR" "$*" >&2; exit 1; }
+
+# Keep in step with the `step` calls in up(), which are the list.
+STEP_TOTAL=10
+STEP_INDEX=0
+STEP_NAME=stack
+STEP_START=$SECONDS
+
+json_event() { # json_event <status> [message]
+  [ "$JSON_MODE" = 1 ] || return 0
+  local message
+  printf '{"step":"%s","index":%d,"total":%d,"status":"%s","elapsed":%d' \
+    "$STEP_NAME" "$STEP_INDEX" "$STEP_TOTAL" "$1" "$((SECONDS - STEP_START))" >&4
+  if [ -n "${2:-}" ]; then
+    message="${2//\\/\\\\}"
+    printf ',"message":"%s"' "${message//\"/\\\"}" >&4
+  fi
+  printf '}\n' >&4
+}
+
+step() { # step <name> <human text>
+  [ "$STEP_INDEX" -eq 0 ] || json_event ok
+  STEP_INDEX=$((STEP_INDEX + 1))
+  STEP_NAME="$1"
+  STEP_START=$SECONDS
+  log "[$STEP_INDEX/$STEP_TOTAL] $2"
+  json_event start
+}
+
+# A budgeted wait looks the same as a hang, so it counts out loud. On a terminal the
+# counter rewrites one line; piped, it prints every 30s so the log stays readable.
+TICK_LAST=0
+
+tick() { # tick <label> <elapsed> <timeout>
+  if [ "$HUMAN_TTY" = 1 ]; then
+    printf '\r    %s %ds / %ds' "$1" "$2" "$3" >&5
+  # Measured against the last line printed, never against divisibility: a probe that
+  # costs several seconds skips over whichever multiples it likes.
+  elif [ "$(($2 - TICK_LAST))" -ge 30 ]; then
+    TICK_LAST="$2"
+    printf '    %s %ds / %ds\n' "$1" "$2" "$3" >&5
+  fi
+}
+
+tick_end() {
+  TICK_LAST=0
+  if [ "$HUMAN_TTY" = 1 ]; then printf '\r\033[2K' >&5; fi
+}
 
 # A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
 case "$DAR_NAME" in
@@ -84,6 +163,13 @@ case "$ACTION" in
     ;;
 esac
 
+if [ "$JSON_MODE" = 1 ] || [ "$QUIET_MODE" = 1 ]; then
+  [ "$ACTION" = up ] || die "--json and --quiet only apply to 'up'."
+  if [ "$JSON_MODE$QUIET_MODE" = 11 ]; then
+    die "--json and --quiet cannot be combined; --json already keeps the human log off stdout."
+  fi
+fi
+
 LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
 # A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
 LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
@@ -92,10 +178,13 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   local timeout="$1" file="$2" pattern="$3" label="$4" i
   for ((i = 0; i < timeout; i++)); do
     if [ -f "$file" ] && grep -qiE "$pattern" "$file" 2>/dev/null; then
+      tick_end
       return 0
     fi
+    tick "$label" "$i" "$timeout"
     sleep 1
   done
+  tick_end
   warn "$label did not report ready within ${timeout}s (check $file)"
   return 1
 }
@@ -105,16 +194,19 @@ wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
 # apart from something unrelated holding the same port. Budgets are wall-clock, not
 # iterations: a socket that accepts TCP without answering costs the full -m per probe.
 wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
-  local timeout="$1" url="$2" label="$3" mode="$4" deadline code
-  deadline=$((SECONDS + timeout))
+  local timeout="$1" url="$2" label="$3" mode="$4" start deadline code
+  start=$SECONDS
+  deadline=$((start + timeout))
   while [ "$SECONDS" -lt "$deadline" ]; do
     code="$(curl -s -o /dev/null -m 2 -w '%{http_code}' "$url" 2>/dev/null || true)"
     case "$mode" in
-      any) [ "$code" != "000" ] && return 0 ;;
-      ok) [ "${code:0:1}" = 2 ] && return 0 ;;
-    esac
+      any) [ "$code" != "000" ] ;;
+      ok) [ "${code:0:1}" = 2 ] ;;
+    esac && { tick_end; return 0; }
+    tick "$label" "$((SECONDS - start))" "$timeout"
     sleep 1
   done
+  tick_end
   warn "$label did not answer at $url within ${timeout}s"
   return 1
 }
@@ -130,7 +222,7 @@ localnet() { # localnet <start|stop|reset|status|logs> [args…]
 
 install_deps() { # one root pnpm install links every workspace
   log "Installing workspace dependencies (root pnpm install)..."
-  pnpm install
+  pnpm install || die "pnpm install failed."
   log "Workspaces installed and linked."
 }
 
@@ -172,8 +264,9 @@ start_wallet_service() {
   if lsof -nP -iTCP:3010 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3010 already in use; skipping wallet-service."
   else
-    log "Starting wallet-service -> http://localhost:3010"
-    nohup pnpm exec canton-wallet-service >"$WS_LOG" 2>&1 &
+    # 3>&- 4>&- or the two dups above outlive the script in this child, holding a
+    # reader's pipe open long after `up` has returned.
+    nohup pnpm exec canton-wallet-service >"$WS_LOG" 2>&1 3>&- 4>&- &
     echo $! >"$WS_PID"
   fi
 
@@ -185,7 +278,10 @@ start_wallet_service() {
 }
 
 up() {
+  local stack_start=$SECONDS total
   mkdir -p "$RUN_DIR"
+
+  step preflight "Checking Docker, dpm and the workspace dependencies..."
 
   # A fresh clone may have no deps yet; one root install links every workspace.
   if [ ! -d node_modules ]; then
@@ -203,6 +299,7 @@ up() {
 
   # ./.env is wallet-service's whole configuration, the mint recipe and the DAR
   # upload token. Minting is offline, so this needs nothing running.
+  step env "Preparing .env and the wallet-service token..."
   [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
 
   # After the copy, because mint-token.mjs reads the recipe from .env; before the source
@@ -238,46 +335,55 @@ up() {
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
-  log "Preparing the LocalNet config in $LOCALNET_DIR..."
+  step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
   node scripts/localnet-config.mjs "$LOCALNET_DIR" \
     || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
-  # 1. LocalNet. `canton-barebones start` is `docker compose up -d`, so it returns as
-  # soon as the containers exist; Splice takes minutes more to answer, and the DAR
-  # upload below would die on a refused connection without this wait.
-  log "Starting the LocalNet from $LOCALNET_DIR..."
+  # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
+  # containers exist; Splice takes minutes more to answer, and the DAR upload below
+  # would die on a refused connection without the wait that follows.
+  step localnet "Starting the LocalNet from $LOCALNET_DIR..."
   localnet start || die "LocalNet did not start."
-  log "Waiting for the app-user JSON API on $JSON_API_URL..."
+
+  step json-api "Waiting for the app-user JSON API on $JSON_API_URL..."
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
-  # 2. Build + deploy the DAR, which needs the participant but not wallet-service. The build
-  # fetches the Splice DARs amulet-vesting data-depends on the first time, and after a Splice bump.
-  log "Building the $DAR_NAME DAR..."
-  pnpm run build-dar
-  log "Deploying $DAR_PATH to Canton..."
-  pnpm run deploy-dar -- "$DAR_PATH"
+  # The build fetches the Splice DARs amulet-vesting data-depends on the first time,
+  # and after a Splice bump. Neither step needs wallet-service, only the participant.
+  step build-dar "Building the $DAR_NAME DAR..."
+  pnpm run build-dar || die "The $DAR_NAME build failed."
 
-  # 3. wallet-service (3010)
+  step deploy-dar "Deploying $DAR_PATH to Canton..."
+  pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
+
+  step wallet-service "Starting wallet-service -> http://localhost:3010"
   start_wallet_service
 
-  # 4. Bootstrap, which goes through wallet-service's /rpc
-  log "Bootstrapping the vesting operator and factory..."
-  pnpm run bootstrap
+  # Bootstrap goes through wallet-service's /rpc.
+  step bootstrap "Bootstrapping the vesting operator and factory..."
+  pnpm run bootstrap || die "Bootstrapping the vesting operator and factory failed."
 
-  # 5. dApp frontend dev server (3012)
+  step dapp "Starting dApp frontend dev server -> http://localhost:3012"
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3012 already in use; skipping dApp dev server."
   else
-    log "Starting dApp frontend dev server -> http://localhost:3012"
-    nohup pnpm run app:dev >"$DAPP_LOG" 2>&1 &
+    nohup pnpm run app:dev >"$DAPP_LOG" 2>&1 3>&- 4>&- &
     echo $! >"$DAPP_PID"
     wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
   fi
 
-  echo
-  log "Stack is up:"
-  cat <<EOF
+  json_event ok
+  total=$((SECONDS - stack_start))
+  # The run as a whole, in the shape of a step. 'done' rather than a tenth 'ok', so
+  # counting the ok events still counts steps.
+  STEP_NAME=stack STEP_START=$stack_start
+  json_event done
+
+  # Shown even under --quiet: it is the one thing that run was for.
+  printf '\n' >&3
+  say "$(printf 'Stack is up in %dm%02ds:' "$((total / 60))" "$((total % 60))")"
+  cat >&3 <<EOF
    wallet-service          http://localhost:3010   (log: $WS_LOG)
    dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
    app-user wallet UI      http://wallet.localhost:2000
@@ -288,7 +394,7 @@ up() {
    SV UI                   http://sv.localhost:4000
    PostgreSQL              localhost:5432
 EOF
-  echo "   Run a CIP-0103 browser wallet from its own repo (it serves on http://localhost:3011)"
+  echo "   Run a CIP-0103 browser wallet from its own repo (it serves on http://localhost:3011)" >&3
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>
@@ -297,21 +403,32 @@ stop_pidfile() { # stop_pidfile <pidfile> <label>
     pid="$(cat "$pidfile" 2>/dev/null || true)"
     if [ -n "${pid:-}" ] && kill -0 "$pid" 2>/dev/null; then
       log "Stopping $label (pid $pid)"
-      # kill the dev-server process group so child vite dies too
+      # pnpm forwards SIGTERM to what it spawned, so one kill reaches vite two levels down.
       kill "$pid" 2>/dev/null || true
-      pkill -P "$pid" 2>/dev/null || true
     fi
     rm -f "$pidfile"
   fi
 }
 
+# Catches a listener no pidfile knows about, left by a crashed `up` or a dev server
+# started by hand. The cwd match is what keeps another checkout's stack alone.
+stop_port() { # stop_port <port> <label>
+  local port="$1" label="$2" pid cwd
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+    case "$cwd" in "$ROOT_DIR" | "$ROOT_DIR"/*) ;; *) continue ;; esac
+    log "Freeing port $port from a stray $label (pid $pid)"
+    kill "$pid" 2>/dev/null || true
+  done
+}
+
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
-  # Belt-and-suspenders: kill any stray vite on our port.
-  pkill -f "vite --host localhost --port 3012" 2>/dev/null || true
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
+  stop_port 3010 "wallet-service"
+  stop_port 3012 "dApp dev server"
 
   # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
   # survives; drop them with 'canton-barebones reset'. Docker itself is left
