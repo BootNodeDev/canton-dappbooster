@@ -41,11 +41,11 @@ describe('parseEnv', () => {
     },
   )
 
-  // The deployed spelling: `fetch` resolves it against the page, so it is same-origin.
+  // Still accepted, for a deployment that puts wallet-service behind the app's own origin.
   it('accepts a same-origin path as the rpc url', () => {
-    expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/api/rpc' })).toEqual({
+    expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/rpc' })).toEqual({
       ...DEFAULTS,
-      VITE_WALLET_RPC_URL: '/api/rpc',
+      VITE_WALLET_RPC_URL: '/rpc',
     })
   })
 
@@ -56,7 +56,7 @@ describe('parseEnv', () => {
     '/\\/evil.example/rpc',
     '/\t/evil.example/rpc',
     '/\n/evil.example/rpc',
-    'api/rpc',
+    'rpc',
     'javascript:alert(1)',
   ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
     expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)

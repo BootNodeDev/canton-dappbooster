@@ -97,11 +97,11 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // wallet-service refuses with a 200 carrying `error`, /api/rpc with a status and the same
-  // member, so the reason survives either way.
+  // wallet-service refuses with a 200 carrying `error`, the proxy in front of it with a status
+  // and the same member, so the reason survives either way.
   it.each([
     ['a 200 from wallet-service', true, 200],
-    ['a 403 from the forwarding function', false, 403],
+    ['a 403 carrying the same member', false, 403],
   ])('surfaces the reason behind %s', async (_case, ok, status) => {
     vi.stubGlobal('fetch', async () => ({
       ok,
