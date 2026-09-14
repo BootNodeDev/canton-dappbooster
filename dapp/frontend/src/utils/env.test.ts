@@ -41,26 +41,13 @@ describe('parseEnv', () => {
     },
   )
 
-  // Still accepted, for a deployment that puts wallet-service behind the app's own origin.
-  it('accepts a same-origin path as the rpc url', () => {
-    expect(parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL: '/rpc' })).toEqual({
-      ...DEFAULTS,
-      VITE_WALLET_RPC_URL: '/rpc',
-    })
-  })
-
-  // Leading-slash spellings the URL parser still resolves to somebody else's origin.
-  it.each([
-    '//evil.example/rpc',
-    '/\\evil.example/rpc',
-    '/\\/evil.example/rpc',
-    '/\t/evil.example/rpc',
-    '/\n/evil.example/rpc',
-    'rpc',
-    'javascript:alert(1)',
-  ])('rejects %j as the rpc url', (VITE_WALLET_RPC_URL) => {
-    expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
-  })
+  // The browser calls wallet-service directly, so a path has nothing to resolve against.
+  it.each(['/rpc', '//evil.example/rpc', 'rpc', 'javascript:alert(1)'])(
+    'rejects %j as the rpc url',
+    (VITE_WALLET_RPC_URL) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
+    },
+  )
 
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
