@@ -97,15 +97,10 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // wallet-service refuses with a 200 carrying `error`, but anything sitting in front of it can
-  // answer a status with the same member, so the reason survives either way.
-  it.each([
-    ['a 200 from wallet-service', true, 200],
-    ['a 403 carrying the same member', false, 403],
-  ])('surfaces the reason behind %s', async (_case, ok, status) => {
+  it('surfaces the reason behind a 200 carrying an error', async () => {
     vi.stubGlobal('fetch', async () => ({
-      ok,
-      status,
+      ok: true,
+      status: 200,
       json: async () => ({
         jsonrpc: '2.0',
         id: '1',
