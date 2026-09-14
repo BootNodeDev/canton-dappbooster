@@ -3,6 +3,7 @@
 
 import type { DisclosedContract } from '@/backend/wallet'
 import { WALLET_RPC_URL } from '@/utils/config'
+import { errorText } from '@/utils/errorText'
 
 // tap is a pure builder: it composes a command and submits nothing, so this mints no coin.
 type TapResult = {
@@ -28,11 +29,15 @@ const byTemplate = (disclosures: DisclosedContract[], entity: string): Disclosed
 // wallet-service refuses with a 200 carrying `error`, which no status would report.
 // The bound is the poll's: without it a service that accepts and never answers stacks calls.
 const rpc = async (method: string, params: Record<string, unknown>): Promise<unknown> => {
+  // A timeout, a refused origin and a stopped service all reach the toast as the browser worded
+  // them, naming nothing the user could act on.
   const response = await fetch(WALLET_RPC_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: '1', method, params }),
     signal: AbortSignal.timeout(15_000),
+  }).catch((error: unknown) => {
+    throw new Error(`wallet-service unreachable for ${method}: ${errorText(error)}`)
   })
   const body = (await response.json().catch(() => undefined)) as RpcBody | undefined
   const reason = body?.error?.message
