@@ -1,5 +1,7 @@
 # Canton dAppBooster
 
+![Static Badge](https://img.shields.io/badge/dApp-Booster-green?style=flat&color=%238b46a4) ![GitHub top language](https://img.shields.io/github/languages/top/bootnodedev/canton-dappbooster) ![GitHub branch status](https://img.shields.io/github/checks-status/bootnodedev/canton-dappbooster/main) ![GitHub License](https://img.shields.io/github/license/bootnodedev/canton-dappbooster)
+
 Local Canton development stack.
 
 ## Requirements
@@ -9,31 +11,49 @@ Local Canton development stack.
 - Docker
 - dpm (DAML SDK 3.4.11)
 
-## Initial setup
+## Installation
+
+Run the install script and follow the on-screen instructions.
 
 ```bash
-pnpm i
+pnpm dlx dappbooster --canton
 ```
 
-## Starting the stack
+A more detailed step-by-step installation guide is available below.
 
-The easiest way is using the `dev-stack` script.
+## Starting the dev stack
+
+Once Canton dAppBooster is installed, the easiest way to start the development stack is using the `dev-stack` script. It allows you to install, bring up and tear down everything you need in a simple way.
 
 ```bash
 ./scripts/dev-stack.sh
 ```
 
-**Note:** The LocalNet runs from `.canton-localnet`.
+---
 
-To run it from another folder you can use this:
+## Additional notes
+
+- The demo app runs on http://localhost:3012/ by default.
+- A compatible CIP-0103 wallet (like the [Carpincho development wallet](https://github.com/BootNodeDev/carpincho-wallet)) is required to connect to the demo app. Point the wallet at http://localhost:3010/rpc when asked. You'll need at least 2 accounts in the wallet to explore the demo's features in full.
+- Technical documentation available at https://docs.dappbooster.cc
+
+---
+
+## Installing and booting up the dev stack manually, step by step
+
+### Clone the repo
 
 ```bash
-./scripts/dev-stack.sh ~/path-to-your-folder
+git clone git@github.com:BootNodeDev/canton-dappbooster.git <project-name>
 ```
 
-## Starting the stack, step by step
+### Install
 
-### Docker
+```bash
+pnpm i
+```
+
+### Run Docker
 
 ```bash
 open -a Docker
@@ -116,11 +136,6 @@ pnpm run bootstrap
 Start the Vesting demo app.
 
 ```bash
+# runs on http://localhost:3012 by default
 pnpm run app:dev
 ```
-
-App runs on http://localhost:3012 by default.
-
-A compatible CIP-0103 wallet (like the [Carpincho development wallet](https://github.com/BootNodeDev/carpincho-wallet)) is required to connect to the demo.
-
-Point the wallet at http://localhost:3010/rpc, create at least 2 accounts, connect and try [the demo](https://demo.dappbooster.cc/).
