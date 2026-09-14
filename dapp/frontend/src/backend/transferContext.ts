@@ -25,7 +25,7 @@ const AMULET_RULES = ':Splice.AmuletRules:AmuletRules'
 const byTemplate = (disclosures: DisclosedContract[], entity: string): DisclosedContract[] =>
   disclosures.filter((disclosure) => disclosure.templateId.endsWith(entity))
 
-// wallet-service refuses with a 200 carrying `error`, the proxy in front of it with a status.
+// wallet-service refuses with a 200 carrying `error`, so the body is read before the status.
 const rpc = async (method: string, params: Record<string, unknown>): Promise<unknown> => {
   const response = await fetch(WALLET_RPC_URL, {
     method: 'POST',

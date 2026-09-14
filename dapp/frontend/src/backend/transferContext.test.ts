@@ -97,8 +97,8 @@ describe('fetchTransferContext', () => {
     await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
   })
 
-  // wallet-service refuses with a 200 carrying `error`, the proxy in front of it with a status
-  // and the same member, so the reason survives either way.
+  // wallet-service refuses with a 200 carrying `error`, but anything sitting in front of it can
+  // answer a status with the same member, so the reason survives either way.
   it.each([
     ['a 200 from wallet-service', true, 200],
     ['a 403 carrying the same member', false, 403],
@@ -109,11 +109,11 @@ describe('fetchTransferContext', () => {
       json: async () => ({
         jsonrpc: '2.0',
         id: '1',
-        error: { code: -32601, message: 'Method not forwarded: amulet.tap' },
+        error: { code: -32601, message: 'Method not found: amulet.tap' },
       }),
     }))
 
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/Method not forwarded/)
+    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/Method not found/)
   })
 
   it('names the status rather than letting an html error page fail as a parse error', async () => {
