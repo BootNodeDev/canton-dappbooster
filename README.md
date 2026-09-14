@@ -5,7 +5,7 @@ Local Canton development stack.
 ## Requirements
 
 - Node 24 (>=24.15.0)
-- pnpm 11.22.0
+- pnpm
 - Docker
 - dpm (DAML SDK 3.4.11)
 
