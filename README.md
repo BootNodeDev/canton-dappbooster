@@ -19,7 +19,7 @@ Run the install script and follow the on-screen instructions.
 pnpm dlx dappbooster --canton
 ```
 
-A more detailed step-by-step installation guide is available below.
+A more detailed step-by-step installation guide is available [below](https://github.com/BootNodeDev/canton-dappbooster#installing-and-booting-up-the-dev-stack-manually-step-by-step).
 
 ## Starting the dev stack
 
