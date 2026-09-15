@@ -61,7 +61,12 @@ export const AppShell = (): React.JSX.Element => {
           {configError !== undefined && (
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <h1 className="text-base font-bold text-danger">{card.title}</h1>
-              <p className="max-w-lg text-sm text-fg-muted">{card.body ?? configError}</p>
+              {card.body !== undefined && (
+                <p className="max-w-lg text-sm text-fg-muted">{card.body}</p>
+              )}
+              {networkStatus !== 'wrong' && (
+                <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
+              )}
             </Card>
           )}
           {configPending && <Loading />}
