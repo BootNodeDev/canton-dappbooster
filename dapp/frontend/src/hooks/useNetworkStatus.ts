@@ -8,11 +8,12 @@ const PENDING_MS = 3_000
 
 const RECHECK_MS = 30_000
 
-type Verdict = { party: string; status: NetworkStatus }
+type Verdict = { networkId: string | undefined; party: string; status: NetworkStatus }
 
 export const useNetworkStatus = (
   ledgerApi: LedgerApi,
   partyId: string | undefined,
+  networkId: string | undefined,
 ): NetworkStatus | undefined => {
   const [verdict, setVerdict] = useState<Verdict | undefined>(undefined)
 
@@ -36,7 +37,7 @@ export const useNetworkStatus = (
           const status = networkStatus(wallet, app)
           if (!cancelled && seq === started) {
             answered ||= status !== 'unknown'
-            setVerdict({ party: partyId, status })
+            setVerdict({ networkId, party: partyId, status })
           }
         },
         // Either read failing says nothing about the network: a wallet-service that is down, or a
@@ -45,7 +46,9 @@ export const useNetworkStatus = (
         () => {
           if (!cancelled && seq === started) {
             setVerdict((prior) =>
-              prior?.party === partyId ? prior : { party: partyId, status: 'unknown' },
+              prior?.party === partyId && prior.networkId === networkId
+                ? prior
+                : { networkId, party: partyId, status: 'unknown' },
             )
           }
         },
@@ -74,7 +77,9 @@ export const useNetworkStatus = (
       clearTimeout(timer)
       window.removeEventListener('focus', check)
     }
-  }, [ledgerApi, partyId])
+  }, [ledgerApi, networkId, partyId])
 
-  return verdict !== undefined && verdict.party === partyId ? verdict.status : undefined
+  return verdict !== undefined && verdict.party === partyId && verdict.networkId === networkId
+    ? verdict.status
+    : undefined
 }

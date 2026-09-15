@@ -29,7 +29,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const hasParty = party !== undefined
   const partyId = party?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
-  const networkStatus = useNetworkStatus(ledgerApi, partyId)
+  const networkStatus = useNetworkStatus(ledgerApi, partyId, party?.networkId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)
