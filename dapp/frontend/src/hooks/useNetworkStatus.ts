@@ -26,33 +26,45 @@ export const useNetworkStatus = (
     // of order, so only the last one started is allowed to write.
     let started = 0
     let misses = 1
+    let inFlight = false
     let timer: ReturnType<typeof setTimeout>
 
     const check = (): void => {
       const seq = ++started
+      inFlight = true
 
-      void Promise.all([walletSynchronizers(ledgerApi, partyId), fetchAppNetwork(partyId)]).then(
-        ([wallet, app]) => {
-          const status = networkStatus(wallet, app)
-          misses = status === 'unknown' ? misses + 1 : 0
-          if (!cancelled && seq === started) {
-            setVerdict({ networkId, party: partyId, status })
-          }
-        },
-        // Either read failing says nothing about the network: a wallet-service that is down, or a
-        // wallet that has just locked, is not a wrong network. The last answer stands, and where
-        // there is none the caller is told the check came back empty rather than left waiting.
-        () => {
-          misses += 1
-          if (!cancelled && seq === started) {
-            setVerdict((prior) =>
-              prior?.party === partyId && prior.networkId === networkId
-                ? prior
-                : { networkId, party: partyId, status: 'unknown' },
-            )
-          }
-        },
-      )
+      void Promise.all([walletSynchronizers(ledgerApi, partyId), fetchAppNetwork(partyId)])
+        .then(
+          ([wallet, app]) => {
+            const status = networkStatus(wallet, app)
+            misses = status === 'unknown' ? misses + 1 : 0
+            if (!cancelled && seq === started) {
+              setVerdict({ networkId, party: partyId, status })
+            }
+          },
+          // Either read failing says nothing about the network: a wallet-service that is down, or a
+          // wallet that has just locked, is not a wrong network. The last answer stands, and where
+          // there is none the caller is told the check came back empty rather than left waiting.
+          () => {
+            misses += 1
+            if (!cancelled && seq === started) {
+              setVerdict((prior) =>
+                prior?.party === partyId && prior.networkId === networkId
+                  ? prior
+                  : { networkId, party: partyId, status: 'unknown' },
+              )
+            }
+          },
+        )
+        .finally(() => {
+          inFlight = false
+        })
+    }
+
+    const checkOnFocus = (): void => {
+      if (!inFlight) {
+        check()
+      }
     }
 
     // Rescheduled from the timer rather than from the answer, so a read that never settles cannot
@@ -72,12 +84,12 @@ export const useNetworkStatus = (
     // Switching networks means using the wallet, which takes focus, so coming back to the page is
     // when a switch has just happened. `visibilitychange` misses it: an extension popup draws over
     // the tab rather than hiding it.
-    window.addEventListener('focus', check)
+    window.addEventListener('focus', checkOnFocus)
 
     return () => {
       cancelled = true
       clearTimeout(timer)
-      window.removeEventListener('focus', check)
+      window.removeEventListener('focus', checkOnFocus)
     }
   }, [ledgerApi, networkId, partyId])
 

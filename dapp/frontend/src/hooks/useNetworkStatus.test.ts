@@ -136,8 +136,39 @@ describe('useNetworkStatus', () => {
       await vi.advanceTimersByTimeAsync(60_000)
     })
 
-    // Slow alone would fit two reads into that minute; the fast retry fits five.
     expect(reads.started - settled).toBeGreaterThan(2)
+  })
+
+  it('starts no second read while a check is already out', async () => {
+    reads.wallet = () => new Promise(() => undefined)
+    reads.app = () => new Promise(() => undefined)
+
+    const render = mount([])
+    await render()
+    const onMount = reads.started
+
+    for (let event = 0; event < 5; event += 1) {
+      await act(async () => {
+        window.dispatchEvent(new Event('focus'))
+      })
+    }
+
+    expect(reads.started).toBe(onMount)
+  })
+
+  it('reads again on focus once the check in flight has answered', async () => {
+    reads.wallet = () => Promise.resolve([APP])
+    reads.app = () => Promise.resolve(APP)
+
+    const render = mount([])
+    await render()
+    const onMount = reads.started
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    expect(reads.started).toBe(onMount + 1)
   })
 
   it('reports the new network once the switch reads back', async () => {
