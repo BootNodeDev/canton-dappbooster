@@ -57,6 +57,83 @@ describe('useNetworkStatus', () => {
     vi.useRealTimers()
   })
 
+  it('answers nothing until the first check settles', async () => {
+    reads.wallet = () => new Promise(() => undefined)
+    reads.app = () => new Promise(() => undefined)
+
+    const seen: (string | undefined)[] = []
+    const render = mount(seen)
+    await render()
+
+    expect(seen).toEqual([undefined])
+  })
+
+  it.each([
+    ['ok', [APP]],
+    ['wrong', [OTHER]],
+  ])('reports %s', async (expected, wallet) => {
+    reads.wallet = () => Promise.resolve(wallet)
+    reads.app = () => Promise.resolve(APP)
+
+    const seen: (string | undefined)[] = []
+    const render = mount(seen)
+    await render()
+
+    expect(seen.at(-1)).toBe(expected)
+  })
+
+  it('reports unknown when the first read fails', async () => {
+    reads.wallet = () => Promise.reject(new Error('down'))
+    reads.app = () => Promise.reject(new Error('down'))
+
+    const seen: (string | undefined)[] = []
+    const render = mount(seen)
+    await render()
+
+    expect(seen.at(-1)).toBe('unknown')
+  })
+
+  it('keeps the last answer when a later read fails', async () => {
+    let call = 0
+    reads.wallet = () => {
+      call += 1
+      return call === 1 ? Promise.resolve([OTHER]) : Promise.reject(new Error('down'))
+    }
+    reads.app = () => Promise.resolve(APP)
+
+    const seen: (string | undefined)[] = []
+    const render = mount(seen)
+    await render()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000)
+    })
+
+    expect(seen.at(-1)).toBe('wrong')
+  })
+
+  it('stops reading once unmounted', async () => {
+    reads.wallet = () => Promise.resolve([APP])
+    reads.app = () => Promise.resolve(APP)
+
+    const render = mount([])
+    await render()
+
+    await act(async () => {
+      for (const root of roots) {
+        root.unmount()
+      }
+    })
+    roots.length = 0
+    const onUnmount = reads.started
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000)
+    })
+
+    expect(reads.started).toBe(onUnmount)
+  })
+
   it('drops the verdict when the wallet switches network', async () => {
     let call = 0
     reads.wallet = () => {
