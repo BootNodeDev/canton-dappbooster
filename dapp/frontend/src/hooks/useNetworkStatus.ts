@@ -25,8 +25,7 @@ export const useNetworkStatus = (
     // Two checks can be in flight at once — a focus landing mid-interval — and they can answer out
     // of order, so only the last one started is allowed to write.
     let started = 0
-    let answered = false
-    let delay = PENDING_MS
+    let misses = 1
     let timer: ReturnType<typeof setTimeout>
 
     const check = (): void => {
@@ -35,7 +34,7 @@ export const useNetworkStatus = (
       void Promise.all([walletSynchronizers(ledgerApi, partyId), fetchAppNetwork(partyId)]).then(
         ([wallet, app]) => {
           const status = networkStatus(wallet, app)
-          answered ||= status !== 'unknown'
+          misses = status === 'unknown' ? misses + 1 : 0
           if (!cancelled && seq === started) {
             setVerdict({ networkId, party: partyId, status })
           }
@@ -44,6 +43,7 @@ export const useNetworkStatus = (
         // wallet that has just locked, is not a wrong network. The last answer stands, and where
         // there is none the caller is told the check came back empty rather than left waiting.
         () => {
+          misses += 1
           if (!cancelled && seq === started) {
             setVerdict((prior) =>
               prior?.party === partyId && prior.networkId === networkId
@@ -58,11 +58,13 @@ export const useNetworkStatus = (
     // Rescheduled from the timer rather than from the answer, so a read that never settles cannot
     // stop the poll.
     const schedule = (): void => {
-      timer = setTimeout(() => {
-        check()
-        delay = answered ? RECHECK_MS : Math.min(delay * 2, RECHECK_MS)
-        schedule()
-      }, delay)
+      timer = setTimeout(
+        () => {
+          check()
+          schedule()
+        },
+        misses === 0 ? RECHECK_MS : Math.min(PENDING_MS * 2 ** (misses - 1), RECHECK_MS),
+      )
     }
 
     check()

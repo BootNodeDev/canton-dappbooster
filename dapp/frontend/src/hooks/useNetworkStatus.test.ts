@@ -113,6 +113,33 @@ describe('useNetworkStatus', () => {
     expect(reads.started).toBe(armed)
   })
 
+  it('returns to the fast retry when a definite answer regresses to unknown', async () => {
+    let call = 0
+    reads.wallet = () => {
+      call += 1
+      return Promise.resolve(call === 1 ? [APP] : [])
+    }
+    reads.app = () => Promise.resolve(APP)
+
+    const seen: (string | undefined)[] = []
+    const render = mount(seen)
+    await render()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000)
+    })
+
+    expect(seen.at(-1)).toBe('unknown')
+
+    const settled = reads.started
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+
+    // Slow alone would fit two reads into that minute; the fast retry fits five.
+    expect(reads.started - settled).toBeGreaterThan(2)
+  })
+
   it('reports the new network once the switch reads back', async () => {
     let call = 0
     reads.wallet = () => {
