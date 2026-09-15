@@ -49,6 +49,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       (config) => {
         if (!cancelled) {
           setDeployment(config)
+          setConfigError(undefined)
         }
       },
       (err: unknown) => {
