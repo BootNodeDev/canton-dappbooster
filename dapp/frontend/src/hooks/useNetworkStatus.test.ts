@@ -78,6 +78,41 @@ describe('useNetworkStatus', () => {
     expect(seen.at(-1)).toBe('unknown')
   })
 
+  it('settles the poll on an answer a later check superseded', async () => {
+    let releaseFirst: ((ids: string[]) => void) | undefined
+    let call = 0
+    reads.wallet = () => {
+      call += 1
+      if (call === 1) {
+        return new Promise((resolve) => {
+          releaseFirst = resolve
+        })
+      }
+      return new Promise(() => undefined)
+    }
+    reads.app = () => Promise.resolve(APP)
+
+    const render = mount([])
+    await render()
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    await act(async () => {
+      releaseFirst?.([APP])
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000)
+    })
+    const armed = reads.started
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25_000)
+    })
+
+    expect(reads.started).toBe(armed)
+  })
+
   it('reports the new network once the switch reads back', async () => {
     let call = 0
     reads.wallet = () => {

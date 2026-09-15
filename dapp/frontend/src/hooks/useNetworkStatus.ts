@@ -35,8 +35,8 @@ export const useNetworkStatus = (
       void Promise.all([walletSynchronizers(ledgerApi, partyId), fetchAppNetwork(partyId)]).then(
         ([wallet, app]) => {
           const status = networkStatus(wallet, app)
+          answered ||= status !== 'unknown'
           if (!cancelled && seq === started) {
-            answered ||= status !== 'unknown'
             setVerdict({ networkId, party: partyId, status })
           }
         },
