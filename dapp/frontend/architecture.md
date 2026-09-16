@@ -14,7 +14,7 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off wallet-service's `amulet.tap`, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
+| `src/hooks/` | `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
@@ -233,7 +233,7 @@ position, the filter loudly with `INVALID_FIELD`.
 config.ts ────────────┐
                       ├─▶ Backend ──────────▶ useBackend ──▶ useVestingStore ──▶ components
 CantonConnectProvider ┤                                                            ▲
-                      └─▶ useParty ───────────────────────────────────────────────┘
+                      └─▶ useAccount ─────────────────────────────────────────────┘
 ```
 
 `Backend` ([`src/providers/Backend.tsx`](src/providers/Backend.tsx)) is the
@@ -260,11 +260,10 @@ whichever button took over, and only then: a focus move nobody asked for on firs
 worse than the problem.
 
 The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
-kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `useParty`
-([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none. Nothing else reaches
-for a `canton-connect` hook except `ConnectFace` and the error toast, both of which need `isPending`
-off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
+kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `canton-connect`'s
+`useAccount` reports the connected account wherever the UI needs one. `TopBar/AccountMenu` stands
+the party hint in as a display name for the wallets that report none. `ConnectFace` and the error
+toast are the other `canton-connect` consumers, both for `isPending` off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
 `WalletButton`, whose disconnect face is a plain button: the connected side here is a dropdown,
 `TopBar/AccountMenu`, holding the copyable party id, the network the session is on, and the
 disconnect. Everything short of that is `ConnectFace`, so an attempt started from the top bar can be
