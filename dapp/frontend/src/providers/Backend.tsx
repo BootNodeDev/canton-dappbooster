@@ -13,13 +13,10 @@ import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
 import type { RegistryInstrument } from '@/backend/registry'
 import type { VestingBackend } from '@/backend/VestingBackend'
-import { useWrongNetwork } from '@/hooks/useWrongNetwork'
+import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 import { errorText } from '@/utils/errorText'
+import type { NetworkStatus } from '@/utils/network'
 
-// `backend` is undefined until a deployment is loaded and the wallet reports a party; both are
-// needed to reach the ledger, so pages render a connect placeholder rather than empty data. The
-// deployment is read through that same party, hence `configPending`: it only ever stands for a
-// connected session still resolving, so a page with no backend can only mean no party.
 export interface BackendState {
   backend: VestingBackend | undefined
   configError: string | undefined
@@ -27,15 +24,11 @@ export interface BackendState {
   // The one instrument this deployment vests, which is what tells the token catalogue which of its
   // rows the app can act on. Undefined until the deployment is read.
   instrument: RegistryInstrument | undefined
+  networkStatus: NetworkStatus | undefined
   retryConfig: () => void
   sessionPending: boolean
-  wrongNetwork: boolean
 }
 
-// canton-connect cannot say whether a restore is still in flight: its status sits at `idle` both
-// before `sdk.init()` resolves and forever after when there was no session to restore. So a page
-// waits this long for a party to appear before concluding there is none, which is what stops the
-// connect card flashing on every reload.
 const SESSION_GRACE_MS = 1500
 
 const BackendContext = createContext<BackendState | undefined>(undefined)
@@ -48,15 +41,12 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const generation = useRef(0)
   const { execute } = useExecute()
   const { ledgerApi } = useLedger()
-  // A restored-but-locked session reports `connected` with no party, so the party is the gate: it
-  // is what every read filters on and every submit acts as. Only its existence, though: the backend
-  // takes the acting party per call, so depending on the object would rebuild the backend and
-  // re-read the ACS whenever the wallet re-pushes the same account.
+
   const { party } = useParty()
   const hasParty = party !== undefined
   const partyId = party?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
-  const wrongNetwork = useWrongNetwork(ledgerApi, partyId)
+  const networkStatus = useNetworkStatus(ledgerApi, partyId, party?.networkId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)
@@ -76,6 +66,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       (config) => {
         if (generation.current === attempt) {
           setDeployment(config)
+          setConfigError(undefined)
         }
       },
       (err: unknown) => {
@@ -110,8 +101,6 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     }
   }, [partyId, loadConfig])
 
-  // Its own memo, because the grace timer below flips a purely visual flag: sharing one would mint a
-  // new backend identity mid-session and re-run every read that keys off it.
   const backend = useMemo(
     () =>
       deployment === undefined || !hasParty
@@ -134,9 +123,9 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       configPending: hasParty && deployment === undefined && configError === undefined,
       configError,
       instrument,
+      networkStatus,
       retryConfig: loadConfig,
       sessionPending: checkingSession && !hasParty,
-      wrongNetwork,
     }),
     [
       backend,
@@ -146,7 +135,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       hasParty,
       instrument,
       loadConfig,
-      wrongNetwork,
+      networkStatus,
     ],
   )
 

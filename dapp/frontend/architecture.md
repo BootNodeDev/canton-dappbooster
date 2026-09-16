@@ -14,7 +14,7 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `registry.ts`, which asks the canton-token-forge registry for the instrument, the `InstrumentConfig` disclosure and the network it sits on, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state and the vested instrument alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: the vested instrument's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useWrongNetwork` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
+| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads `REGISTRY_URL` and the other literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, `tokens.tsx`, the artwork and wording this deployment gives the instrument it vests, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
@@ -116,9 +116,10 @@ wallet's own participant is connected to.
 
 The rule in [`src/utils/network.ts`](src/utils/network.ts) is membership rather than equality,
 because a participant can be connected to several synchronizers and reaching the app's one is what
-decides whether a write lands. A missing side is not a mismatch, or the strip would warn about a read
-that has not come back yet. `party.networkId` is not what is compared: CIP-0103 only recommends a
-CAIP-2 label, so two wallets may spell one network differently.
+decides whether a write lands. It answers `ok`, `wrong` or `unknown`, and the third is the point: a
+missing side is not a mismatch, or the strip would warn about a read that has not come back yet, but
+it is not a match either, and a boolean had to call it one. `party.networkId` is not what is
+compared: CIP-0103 only recommends a CAIP-2 label, so two wallets may spell one network differently.
 
 The rule reports a verdict and not the ids behind it, because **the strip names the wallet's network
 and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
@@ -135,32 +136,62 @@ non-compliant wallet gets there — the spec makes `networkId` required on an ac
 canton-connect's own comment says the fallback exists for `createMockAdapter`. It can mislabel the
 sentence but never decides whether the strip appears, which is what keeps it acceptable.
 
-[`useWrongNetwork`](src/hooks/useWrongNetwork.ts) is what keeps it current, and it polls because a
+[`useNetworkStatus`](src/hooks/useNetworkStatus.ts) is what keeps it current, and it polls because a
 wallet-side switch reaches the app through nothing at all: CIP-0103 defines no network-change event
 and the SDK pushes accounts only. So it re-reads on three triggers — the party changing, the page
-regaining focus, and every 30 seconds. Focus is the one that catches a switch as it happens, since
-switching networks means using the wallet and the wallet takes focus; `visibilitychange` misses it,
-because an extension popup draws over the tab rather than hiding it. The interval is the backstop for
-a switch made in a window the user never comes back from. A failed read is silent and leaves the last
-answer standing, because a registry that is down, or a wallet that has just locked, is not a wrong
-network.
+regaining focus, and a timer. Focus is the one that catches a switch as it happens, since switching
+networks means using the wallet and the wallet takes focus; `visibilitychange` misses it, because an
+extension popup draws over the tab rather than hiding it. The timer is the backstop for a switch made
+in a window the user never comes back from. A failed read is silent and leaves the last answer
+standing, because a registry that is down, or a wallet that has just locked, is not a wrong network.
 
-Only the wallet's side is on that poll. The registry serves one deployment for as long as it is up,
-so the app's side is read once and kept, and every later check is a single read of the wallet's
-participant. Two of those checks can still be in flight at once (a focus landing mid-interval), so
-each carries a sequence number and only the last one started may write. The verdict carries the
-party it was read for too, or the previous party's answer would be shown against the new one's
-network for as long as the first read for that party takes.
+The timer starts fast and slows down. The registry is its own process and comes up after the
+LocalNet, so a tab opened early is asking something that is not answering yet: the first retry is 3
+seconds away and each further one doubles — 3, 6, 12, 24 — up to the same 30 seconds every later
+check runs at. The doubling is what keeps a registry that is down from being asked twice every 3
+seconds for as long as the tab is open. What picks the delay is a count of checks since the last
+definite answer, so an answer settles the poll at 30 seconds wherever it lands, even where a later
+check has already superseded it, and a check that stops answering starts the ramp over rather than
+leaving the app on two reads a minute. It reschedules from the timer rather than from the answer, or
+a read that never settles would stop the poll.
+
+Focus is the one trigger that can be skipped: a focus event while a check is out would only duplicate
+it, and a user moving between the wallet and the tab produces a run of them. The timer is never
+skipped, for the same reason it reschedules from itself.
+
+Both sides are on that poll, including the app's. The registry serves one deployment for as long as
+it is up, so keeping the synchronizer it stamped for the rest of the session was tempting, but a
+LocalNet reset gives the same registry a new one and a cached id would outlive it, leaving the app
+sure of a network that no longer exists. Several checks can be in flight at once — a focus landing
+mid-interval, or a retry starting while a registry call runs down its 15 second timeout — so each
+carries a sequence number and only the last one started may write. The verdict carries the party and
+the network id it was read against too. Without the party, the previous party's answer would be shown
+against the new one's network for as long as the first read for that party takes; without the network
+id, a verdict of `wrong` would survive the switch that fixed it and name the network the user had
+just arrived on as the one to leave.
 [`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,
 and nothing dismisses it, because only the wallet can put it right.
+
+No verdict at all is its own answer, and the hook returns nothing rather than `unknown` until the
+first check settles. Otherwise every load would open with an amber strip announcing that the network
+cannot be determined, for the half second the two reads take, on a network that turns out to be
+fine. A read that rejects with no verdict behind it does record `unknown`, which is what puts the
+strip up on a LocalNet whose SV has not opened a round yet; one that rejects with a verdict behind it
+still leaves that verdict standing.
 
 The verdict also decides what the page itself says. On the wrong network `config.ts` finds no
 operator on the ledger the wallet reaches, so it throws its `run pnpm run bootstrap` advice and
 [`AppShell`](src/components/AppShell.tsx) would fill the page with it. That message names a symptom:
-the deployment is there, the wallet is not looking at it. So where the verdict stands, the card
-carries the network instead and the advice is held back for the case it was written for, a ledger
-that really has no deployment, where its Try again is worth offering, which is why that button is
-shown only off the wrong network.
+the deployment is there, the wallet is not looking at it. So the card has one heading per verdict.
+`wrong` carries the network, and the advice is held back for `ok`, the case it was written for, a
+ledger that really has no deployment. `unknown` gets a third heading rather than either, because the
+app cannot yet tell which of the two it is looking at and both would be a guess.
+
+Only `wrong` holds the advice back, though, and the heading is the whole of what the verdict decides.
+Everywhere else the card still carries what `config.ts` threw and its Try again with it, because that
+is the sentence naming something the reader can do and retrying is what there is to do about it. On
+the wrong network the read failed for a reason retrying cannot change, and the wallet is where the
+fix is.
 
 ## Creating a grant takes one approval
 

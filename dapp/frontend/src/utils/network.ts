@@ -1,13 +1,14 @@
-// A participant can be connected to several synchronizers, so the wallet's side is a list and the
-// rule is membership rather than equality: the app's network being one of them is what lets a write
-// reach it. Either side can be missing, since both are read rather than configured, and a missing
-// side is not a mismatch — the strip would warn about a read that has not landed.
+export type NetworkStatus = 'ok' | 'unknown' | 'wrong'
 
-// Ids, not labels: two wallets may spell one network differently.
-export const wrongNetwork = (wallet: readonly string[], app: string | undefined): boolean =>
-  app !== undefined && wallet.length > 0 && !wallet.includes(app)
+export const networkStatus = (
+  wallet: readonly string[],
+  app: string | undefined,
+): NetworkStatus => {
+  if (app === undefined || wallet.length === 0) {
+    return 'unknown'
+  }
+  return wallet.includes(app) ? 'ok' : 'wrong'
+}
 
-// CAIP-2 is `namespace:reference`, and the namespace is `canton` for every network this app can be
-// pointed at, so it tells a reader nothing. Anything without one is shown whole.
 export const networkLabel = (networkId: string): string =>
   networkId.slice(networkId.indexOf(':') + 1) || networkId
