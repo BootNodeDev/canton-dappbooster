@@ -3,11 +3,11 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useExecute } from '#src/hooks/useExecute'
+import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import { testParty } from '#src/testing/party'
-import type { Party, WalletSdk } from '#src/types'
+import type { Account, WalletSdk } from '#src/types'
 
-const party = testParty('alice::1220ab')
+const party = testAccount('alice::1220ab')
 
 const executed: PrepareExecuteAndWaitResult = {
   tx: {
@@ -19,7 +19,7 @@ const executed: PrepareExecuteAndWaitResult = {
 
 const liveSession = (
   prepareExecuteAndWait: WalletSdk['prepareExecuteAndWait'],
-  connectedParty: Party | undefined,
+  connectedAccount: Account | undefined,
 ) => {
   const sdk: Partial<WalletSdk> = {
     prepareExecuteAndWait,
@@ -29,7 +29,7 @@ const liveSession = (
 
   return {
     wrapper: ({ children }: { children: ReactNode }) => (
-      <FakeSessionProvider party={connectedParty} sdk={sdk} status="connected">
+      <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
         {children}
       </FakeSessionProvider>
     ),

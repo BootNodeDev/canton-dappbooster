@@ -35,7 +35,7 @@ export interface MockAccount {
 /**
  * Wiring for {@link createMockAdapter}. `id` defaults to `'mock'`, which is the provider id
  * `createAutoPicker('mock')` matches; `accounts` defaults to one generated account and treats the
- * first entry as primary; omitting `networkId` lets `CantonConnectConfig.networkId` apply instead.
+ * first entry as primary; `networkId` defaults to `canton:local`.
  *
  * @example
  * const options: CreateMockAdapterOptions = { id: 'mock', accounts: [{ partyId }] }
@@ -67,6 +67,8 @@ const MOCK_ACCOUNT_STATUS: dappAPI.WalletStatus = 'allocated'
 const MOCK_SIGNING_PROVIDER_ID: dappAPI.SigningProviderId = 'mock'
 // Obviously fake, not '' — a presence check downstream shouldn't mistake this for real.
 const MOCK_PUBLIC_KEY: dappAPI.PublicKey = 'mock-public-key'
+// The entry type requires one, so the mock reports it rather than leaving a consumer to default it.
+const MOCK_NETWORK_ID: dappAPI.NetworkId = 'canton:local'
 
 /** The single mock account `createMockAdapter` reports when the caller supplies none. */
 const defaultAccounts = (providerId: ProviderId): MockAccount[] => [
@@ -78,19 +80,17 @@ const toAccount = (
   account: MockAccount,
   primary: dappAPI.Primary,
   networkId: dappAPI.NetworkId | undefined,
-): Account =>
-  ({
-    primary,
-    partyId: account.partyId,
-    status: MOCK_ACCOUNT_STATUS,
-    hint: account.name ?? account.partyId,
-    publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
-    // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
-    namespace: account.partyId.split('::')[1] ?? account.partyId,
-    signingProviderId: MOCK_SIGNING_PROVIDER_ID,
-    // A mock has no network of its own — omitting this lets toParty's config fallback apply.
-    ...(networkId === undefined ? {} : { networkId }),
-  }) as Account
+): Account => ({
+  primary,
+  partyId: account.partyId,
+  status: MOCK_ACCOUNT_STATUS,
+  hint: account.name ?? account.partyId,
+  publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
+  // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
+  namespace: account.partyId.split('::')[1] ?? account.partyId,
+  networkId: networkId ?? MOCK_NETWORK_ID,
+  signingProviderId: MOCK_SIGNING_PROVIDER_ID,
+})
 
 /**
  * The adapter `createMockAdapter` returns: it announces itself like an installed wallet and

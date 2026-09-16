@@ -52,20 +52,20 @@ export interface UsePartyTypeResult {
 export const usePartyType = (): UsePartyTypeResult => {
   // Guards without `call`: a stateless query needs no pending/error renders around it.
   const { connection, sdk, status, isLocked } = useWalletCall()
-  const party = useSelector(connection, (snapshot) => snapshot.context.party)
+  const account = useSelector(connection, (snapshot) => snapshot.context.account)
 
   const readPartyType = useCallback(async (): Promise<PartyType> => {
     assertUsable(status, isLocked)
 
-    if (party === undefined) {
+    if (account === undefined) {
       throw new Error('wallet reports no usable party - allocate one in the wallet')
     }
 
     const participantNamespace = await readParticipantNamespace(sdk)
 
     // Canton's rule, not a wallet's: a local party shares the participant's namespace.
-    return party.namespace === participantNamespace ? 'local' : 'external'
-  }, [isLocked, party, sdk, status])
+    return account.namespace === participantNamespace ? 'local' : 'external'
+  }, [account, isLocked, sdk, status])
 
-  return { readPartyType, isReady: status === 'connected' && !isLocked && party !== undefined }
+  return { readPartyType, isReady: status === 'connected' && !isLocked && account !== undefined }
 }

@@ -4,8 +4,8 @@
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ConnectCancelledError } from '#src/connectError'
+import { useAccount } from '#src/hooks/useAccount'
 import { useConnect } from '#src/hooks/useConnect'
-import { useParty } from '#src/hooks/useParty'
 import { clearDiscoveryStorage, persistRestorableSession } from '#src/testing/discoveryStorage'
 import { createFakeWallet } from '#src/testing/fakeWallet'
 import { renderSession } from '#src/testing/renderSession'
@@ -56,7 +56,7 @@ describe('CantonConnectProvider restored sessions', () => {
 
     const { result } = renderSession(() => useSession())
 
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
 
     // A status() read cannot report a locked session: the wallet gates `isConnected` and the
     // presence of `session` on the same lookup. A lock only ever arrives as a push.
@@ -68,7 +68,7 @@ describe('CantonConnectProvider restored sessions', () => {
     expect(result.current.status).toBe('connected')
     // A wallet that will not serve requests has no party to offer, and this push cannot be told
     // apart from a wallet-side disconnect.
-    expect(result.current.party).toBeUndefined()
+    expect(result.current.account).toBeUndefined()
 
     act(() => {
       pushUnlock(wallet)
@@ -77,7 +77,7 @@ describe('CantonConnectProvider restored sessions', () => {
     await waitFor(() => expect(result.current.isLocked).toBe(false))
     // The session outlived the lock, so the unlock push is heard and the party is read again
     // without the user reconnecting.
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
 
     wallet.dispose()
   })
@@ -106,7 +106,7 @@ describe('CantonConnectProvider restored sessions', () => {
     // The wallet was asked and answered authenticated, so the party is back with no unlock push.
     expect(connectSpy).toHaveBeenCalled()
     await waitFor(() => expect(result.current.isLocked).toBe(false))
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
 
     wallet.dispose()
   })
@@ -118,7 +118,7 @@ describe('CantonConnectProvider restored sessions', () => {
 
     const { result } = renderSession(() => useSession())
 
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
 
     const connectSpy = vi.spyOn(result.current.sdk, 'connect')
 
@@ -129,12 +129,12 @@ describe('CantonConnectProvider restored sessions', () => {
     // The wallet change went to the wallet, answered with the same session: the party in hand.
     expect(connectSpy).toHaveBeenCalled()
     expect(result.current.status).toBe('connected')
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
 
     wallet.dispose()
   })
 
-  it('keeps delivering events to useParty() after a throwing picker leaves a restored session standing', async () => {
+  it('keeps delivering events to useAccount() after a throwing picker leaves a restored session standing', async () => {
     persistRestorableSession('browser:ext:wallet-a')
 
     // Restore's internal check, our own restore check, and the post-failure probe all see the same
@@ -146,12 +146,12 @@ describe('CantonConnectProvider restored sessions', () => {
       accounts: [{ partyId: 'alice::1220ab', primary: true }],
     })
 
-    const { result } = renderSession(() => ({ connect: useConnect(), party: useParty() }), {
+    const { result } = renderSession(() => ({ connect: useConnect(), account: useAccount() }), {
       walletPicker: throwingPicker,
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
-    expect(result.current.party.status).toBe('connected')
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('alice::1220ab'))
+    expect(result.current.account.status).toBe('connected')
 
     // The attempt throws before the client is swapped, so the actor's own status read finds the
     // session still live and hands it back: the machine lands in `session` again and connect()
@@ -161,7 +161,7 @@ describe('CantonConnectProvider restored sessions', () => {
       await result.current.connect.connect()
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('alice::1220ab'))
 
     act(() => {
       wallet.push('accountsChanged', [
@@ -175,7 +175,7 @@ describe('CantonConnectProvider restored sessions', () => {
       ])
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('bob::9931cd'))
 
     wallet.dispose()
   })

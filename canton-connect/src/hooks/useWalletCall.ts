@@ -57,7 +57,7 @@ export const useWalletCall = (): UseWalletCallResult => {
   const { connection } = useCantonConnectContext()
 
   const sdk = useSelector(connection, (snapshot) => snapshot.context.sdk)
-  const partyId = useSelector(connection, (snapshot) => snapshot.context.party?.partyId)
+  const partyId = useSelector(connection, (snapshot) => snapshot.context.account?.partyId)
   const status = useSelector(connection, toConnectionStatus)
   const isLocked = useSelector(connection, (snapshot) => snapshot.hasTag('unauthenticated'))
 

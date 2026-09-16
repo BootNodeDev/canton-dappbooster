@@ -4,10 +4,10 @@ import { CantonConnectContext } from '#src/CantonConnectProvider'
 import { type ConnectionActorRef, connectionMachine } from '#src/machine/connectionMachine'
 import { connectionInput } from '#src/testing/connectionInput'
 import type {
+  Account,
   CantonConnectConfig,
   CantonConnectContextValue,
   ConnectionStatus,
-  Party,
   WalletSdk,
 } from '#src/types'
 
@@ -58,7 +58,7 @@ const toStateValue = ({ isLocked, readingAccounts, status }: SessionShape): Stat
 /** Starts a real `connectionMachine` actor rehydrated at the given `SessionShape`. */
 const startSession = (
   shape: SessionShape,
-  party: Party | undefined,
+  account: Account | undefined,
   connectError: Error | undefined,
   sdk: WalletSdk,
 ): ConnectionActorRef => {
@@ -70,8 +70,8 @@ const startSession = (
       ...input,
       sdk,
       lastConnectError: connectError,
-      // The machine clears it on leaving `session`, so a party outside one cannot be published.
-      party: shape.status === 'connected' ? party : undefined,
+      // The machine clears it on leaving `session`, so an account outside one cannot be published.
+      account: shape.status === 'connected' ? account : undefined,
     },
   })
 
@@ -79,17 +79,17 @@ const startSession = (
 }
 
 /**
- * Props for {@link FakeSessionProvider}. `status` starts the session mid-flight and `party` is
+ * Props for {@link FakeSessionProvider}. `status` starts the session mid-flight and `account` is
  * what a connect resolves to; `readingAccounts` reaches the pending face over a live session, and
  * `sdk` drives a hook's own pending, error and `reset()`, never what a wallet returns.
  *
  * @category Components
  */
 export interface FakeSessionProviderProps {
+  account?: Account
   children: ReactNode
   connectError?: Error
   isLocked?: boolean
-  party?: Party
   readingAccounts?: boolean
   sdk?: Partial<WalletSdk>
   status?: ConnectionStatus
@@ -105,7 +105,7 @@ export interface FakeSessionProviderProps {
  *
  * @example
  * render(
- *   <FakeSessionProvider status="connected" party={party}>
+ *   <FakeSessionProvider status="connected" account={account}>
  *     <ConnectButton />
  *   </FakeSessionProvider>,
  * )
@@ -113,10 +113,10 @@ export interface FakeSessionProviderProps {
  * @category Components
  */
 export const FakeSessionProvider = ({
+  account,
   children,
   connectError,
   isLocked = false,
-  party,
   readingAccounts = false,
   sdk = NO_SDK,
   status: initialStatus = 'disconnected',
@@ -127,8 +127,8 @@ export const FakeSessionProvider = ({
   // it can name is a state a test can ask for, in one step and with no actor to drive.
   const connection = useMemo(
     () =>
-      startSession({ isLocked, readingAccounts, status }, party, connectError, refusingSdk(sdk)),
-    [connectError, isLocked, party, readingAccounts, sdk, status],
+      startSession({ isLocked, readingAccounts, status }, account, connectError, refusingSdk(sdk)),
+    [account, connectError, isLocked, readingAccounts, sdk, status],
   )
 
   useEffect(() => () => connection.stop(), [connection])

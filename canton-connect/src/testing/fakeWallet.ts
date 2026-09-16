@@ -16,7 +16,7 @@ const FAKE_WALLET_STATUS: Wallet['status'] = 'allocated'
 
 /**
  * One account the fake wallet reports from `listAccounts`. Mark exactly one `primary`: that is the
- * entry `selectPrimaryAccount` resolves to `Party`.
+ * entry `getPrimaryAccount` resolves to.
  *
  * @category Utilities
  */
@@ -28,7 +28,7 @@ export interface FakeWalletAccount {
   networkId?: string
 }
 
-// Reports a network the way a real wallet does; toParty's config fallback is covered by
+// Reports a network the way a real wallet does; the config fallback is covered by
 // createMockAdapter, which legitimately has none.
 /** Shapes one `FakeWalletAccount` into the `Wallet` object `listAccounts` reports. */
 const toWallet = (account: FakeWalletAccount): Wallet => ({

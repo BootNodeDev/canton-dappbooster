@@ -1,5 +1,5 @@
 // CantonConnectProvider owns the wallet connection lifecycle and publishes the actor that holds
-// it. Hooks (useConnect, useParty, useSignMessage, etc.) select their own slice off that actor.
+// it. Hooks (useConnect, useAccount, useSignMessage, etc.) select their own slice off that actor.
 
 import { DappSDK } from '@canton-network/dapp-sdk'
 import { createContext, type JSX, type ReactNode, useCallback, useContext, useMemo } from 'react'

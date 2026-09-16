@@ -5,15 +5,15 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useSignMessage } from '#src/hooks/useSignMessage'
+import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import { testParty } from '#src/testing/party'
-import type { Party, WalletSdk } from '#src/types'
+import type { Account, WalletSdk } from '#src/types'
 
-const party = testParty('alice::1220ab')
+const party = testAccount('alice::1220ab')
 
-const liveSession = (sdk: Partial<WalletSdk>, connectedParty: Party | undefined) => ({
+const liveSession = (sdk: Partial<WalletSdk>, connectedAccount: Account | undefined) => ({
   wrapper: ({ children }: { children: ReactNode }) => (
-    <FakeSessionProvider party={connectedParty} sdk={sdk} status="connected">
+    <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
       {children}
     </FakeSessionProvider>
   ),

@@ -39,7 +39,7 @@ export type WalletSdk = Pick<
  * tearing down; keep connect disabled until it settles, so a new connect never overlaps it.
  *
  * @example
- * const { status } = useParty()
+ * const { status } = useAccount()
  * if (status === 'idle') return null
  * return status === 'disconnected' ? <ConnectButton /> : <App />
  *
@@ -59,15 +59,6 @@ export type ConnectionStatus =
  * @category Types
  */
 export type PartyType = 'local' | 'external'
-
-/**
- * One account the connected wallet reports: a party plus its key, signing provider and network.
- * Only `dapp-sdk`'s schema calls it a wallet, and CIP-0103 makes that schema binding from v1.0.0.
- * Until then the CIP text is what binds, and it says account.
- *
- * @category Types
- */
-export type Account = Wallet
 
 // The account entry as dapp-sdk 1.5.1 declares it.
 type PinnedAccount = {
@@ -90,24 +81,18 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type Assert<T extends true> = T
 
 // Exists to fail typecheck when an SDK bump changes the account entry, rather than let the new
-// shape reach the hooks unnoticed.
-type _AccountPinned = Assert<Exact<Account, PinnedAccount>>
+// shape reach the hooks unnoticed. `Account` is defined through it so it cannot go unused:
+// `dapp/frontend` compiles this source under `noUnusedLocals`, where a dangling type is an error.
+type AccountPinned = Assert<Exact<Wallet, PinnedAccount>>
 
 /**
- * The connected account, normalized from the wallet's CIP-0103 account entry. `networkId` falls
- * back to `CantonConnectConfig.networkId` where the wallet reports none. `namespace` and
- * `signingProviderId` come through as reported; CIP-0103 names no `signingProviderId` values.
+ * One account the connected wallet reports: a party plus its key, signing provider and network.
+ * Only `dapp-sdk`'s schema calls it a wallet, and CIP-0103 makes that schema binding from v1.0.0.
+ * Until then the CIP text is what binds, and it says account.
  *
  * @category Types
  */
-export interface Party {
-  partyId: string
-  networkId: string
-  namespace: string
-  signingProviderId: string
-  name?: string
-  publicKey?: string
-}
+export type Account = AccountPinned extends true ? Wallet : never
 
 /**
  * Wiring for `CantonConnectProvider`. From `appName` alone a local dev app works: `canton:local` as
@@ -165,7 +150,7 @@ export interface TxStatusSnapshot {
  * @example
  * import type { ConnectionSubscription } from '#src/types'
  *
- * const partyOf = (connection: ConnectionSubscription) => connection.getSnapshot().context.party
+ * const accountOf = (connection: ConnectionSubscription) => connection.getSnapshot().context.account
  *
  * @category Types
  */

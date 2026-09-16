@@ -4,11 +4,11 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { type LedgerApiParams, useLedger } from '#src/hooks/useLedger'
+import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import { testParty } from '#src/testing/party'
 import type { WalletSdk } from '#src/types'
 
-const party = testParty('alice::1220ab')
+const account = testAccount('alice::1220ab')
 const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties' }
 
 describe('useLedger', () => {
@@ -18,7 +18,7 @@ describe('useLedger', () => {
     const sdk = { ledgerApi }
     const { result } = renderHook(() => useLedger(), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <FakeSessionProvider party={party} sdk={sdk} status="connected">
+        <FakeSessionProvider account={account} sdk={sdk} status="connected">
           {children}
         </FakeSessionProvider>
       ),

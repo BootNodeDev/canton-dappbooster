@@ -22,8 +22,6 @@ export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecu
 export { useExecute } from '#src/hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
 export { useLedger } from '#src/hooks/useLedger'
-export type { UsePartyResult } from '#src/hooks/useParty'
-export { useParty } from '#src/hooks/useParty'
 export type { UsePartyTypeResult } from '#src/hooks/usePartyType'
 export { usePartyType } from '#src/hooks/usePartyType'
 export type { UseSignMessageResult } from '#src/hooks/useSignMessage'
@@ -41,7 +39,6 @@ export type {
   CantonConnectContextValue,
   ConnectionStatus,
   ConnectionSubscription,
-  Party,
   PartyType,
   TxStatusSnapshot,
   WalletSdk,
