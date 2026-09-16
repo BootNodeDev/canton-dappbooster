@@ -8,9 +8,12 @@
 // canton-connect — wagmi-style React hooks for connecting Canton dApps
 // to CIP-0103 wallets. See README.md for the design rationale.
 
+export { isUsableAccount } from '#src/accounts'
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConnectProvider'
 export { ConnectCancelledError } from '#src/connectError'
+export type { UseAccountResult } from '#src/hooks/useAccount'
+export { useAccount } from '#src/hooks/useAccount'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
 export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
