@@ -3,13 +3,14 @@ import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
 import { formatFigureFull } from '@/utils/format'
 import { MIN_GRANT_AMOUNT, meetsRelockFloor } from '@/utils/schedule'
 import { toast } from '@/utils/toast'
-import { AMT } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
 interface ClaimProps {
   available: string
@@ -31,6 +32,9 @@ export const Claim = ({
 }: ClaimProps): React.JSX.Element => {
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Only the confirm button is disabled while a submission is in flight, so the dialog can still be
+  // dismissed over the wallet prompt; the toast still fires, because the claim did land.
+  const onScreen = useOnScreen()
 
   // Recomputed from `available` rather than stored from the last keystroke: it drops each second
   // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
@@ -42,7 +46,7 @@ export const Claim = ({
     amountError !== undefined
       ? AMOUNT_ERROR_TEXT[amountError]
       : !floorOk && isPositive(raw)
-        ? `Remainder must be 0 or at least ${MIN_GRANT_AMOUNT} AMT (re-lock floor).`
+        ? `Remainder must be 0 or at least ${MIN_GRANT_AMOUNT} DBT (re-lock floor).`
         : undefined
 
   const valid = amountError === undefined && isPositive(raw) && floorOk
@@ -56,8 +60,10 @@ export const Claim = ({
       await onConfirm(raw)
       // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
       // tooltip to recover the digits from.
-      toast.success(`Claimed ${formatFigureFull(raw)} ${AMT.symbol}`)
-      onClose()
+      toast.success(`Claimed ${formatFigureFull(raw)} ${DBT.symbol}`)
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {
@@ -74,7 +80,7 @@ export const Claim = ({
         id="claim-amount"
         label="Available to claim"
         onChange={(next) => setRaw(next)}
-        token={AMT}
+        token={DBT}
         usdValue="Not Available"
         value={raw}
       />

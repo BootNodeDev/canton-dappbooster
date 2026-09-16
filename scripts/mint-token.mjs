@@ -79,6 +79,8 @@ const main = () => {
   )
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// See scripts/bootstrap-vesting.mjs: neither a percent-encoded import.meta.url nor
+// a realpath-resolved import.meta.filename compares equal to argv[1] on every path.
+if (import.meta.main) {
   main()
 }

@@ -1,12 +1,14 @@
 // The deployment the bootstrap left on the ledger, read back through the wallet rather than carried
-// in a file: every bootstrap run mints a fresh operator and factory, and a stale copy of either
-// shows as an empty dashboard with no error.
+// in a file: a stale copy of the operator or the factory shows as an empty dashboard with no error.
 
 import type { LedgerApiParams } from '@bootnodedev/canton-connect'
+import { fetchInstrument } from '@/backend/registry'
 
 export type Deployment = {
+  admin: string
   factoryBlob: string
   factoryCid: string
+  instrumentId: string
   pkg: string
   synchronizerId?: string
 }
@@ -14,8 +16,11 @@ export type Deployment = {
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 
 // A filter takes the package-name reference, never the id it resolves to.
-const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
-const OPERATOR_HINT = 'vesting-operator-'
+const FACTORY = '#vesting:Vesting:VestingFactory'
+// Canton mints `<hint>::<fingerprint>`, so the separator belongs to the prefix: without it a
+// `vesting-operator-<stamp>::ns` party from a bootstrap predating the stable hint matches too, and
+// the app runs on that run's factory while bootstrap configures the registry for this one.
+const OPERATOR_HINT = 'vesting-operator::'
 
 const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)
 
@@ -32,9 +37,10 @@ type ActiveContract = {
 }
 
 // The bootstrap grants this user `CanActAs` on each operator it creates, so its rights are the
-// operator list. Reading the ledger's parties instead would also return everyone else's on a shared
-// participant. The hint carries the run's timestamp, so the last one sorted is the newest.
-const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
+// operator list, where reading the ledger's parties would also return everyone else's. Sorted only
+// so that a shared participant, where the hint can resolve under two namespaces, picks one of them
+// on every load rather than whichever came first.
+const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   const { user } = await call<{ user?: { id?: string } }>(ledgerApi, {
     requestMethod: 'get',
     resource: '/v2/authenticated-user',
@@ -57,7 +63,7 @@ const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
 }
 
 export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deployment> => {
-  const operator = await newestOperator(ledgerApi)
+  const [operator, instrument] = await Promise.all([operatorParty(ledgerApi), fetchInstrument()])
   const { offset } = await call<{ offset?: string | number }>(ledgerApi, {
     requestMethod: 'get',
     resource: '/v2/state/ledger-end',
@@ -100,8 +106,10 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
     throw advice('the factory came back with no package id')
   }
   return {
+    admin: instrument.admin,
     factoryBlob: created.createdEventBlob,
     factoryCid: created.contractId,
+    instrumentId: instrument.instrumentId,
     pkg,
     ...(factory?.synchronizerId === undefined ? {} : { synchronizerId: factory.synchronizerId }),
   }

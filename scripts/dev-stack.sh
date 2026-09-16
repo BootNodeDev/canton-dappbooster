@@ -20,8 +20,8 @@
 #   ./scripts/dev-stack.sh menu [dir]  # same as above
 #   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (pnpm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
-#   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, wallet-service, bootstrap, dApp)
-#   ./scripts/dev-stack.sh down [dir]  # stop wallet-service + the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DARs, wallet-service, bootstrap, registry, dApp)
+#   ./scripts/dev-stack.sh down [dir]  # stop the dApp dev server, the token registry and wallet-service, stop the LocalNet
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -33,9 +33,9 @@
 #             closes with 'done', so the stream never stops without saying why
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
-# `up` runs numbered steps, ending with wallet-service on 3010 and the dApp dev server
-# on 3012 in the background; the `step` calls in up() are the list. `down` kills both of
-# those and stops the LocalNet, keeping its volumes.
+# `up` runs numbered steps, ending with wallet-service on 3010, the token registry on
+# 3013 and the dApp dev server on 3012 in the background; the `step` calls in up() are
+# the list. `down` kills those three and stops the LocalNet, keeping its volumes.
 
 set -euo pipefail
 
@@ -49,14 +49,42 @@ DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
 WS_LOG="$RUN_DIR/wallet-service.log"
 WS_PID="$RUN_DIR/wallet-service.pid"
+REGISTRY_LOG="$RUN_DIR/registry.log"
+REGISTRY_PID="$RUN_DIR/registry.pid"
+BOOTSTRAP_LOG="$RUN_DIR/bootstrap.log"
+
+# The registry variables bootstrap prints and this script reads back. LEDGER_API_TOKEN
+# is deliberately absent: bootstrap never sees the bearer, so it is supplied here from
+# .env instead. scripts/bootstrap-vesting.test.mjs holds the two lists together.
+REGISTRY_ENV_KEYS=(
+  LEDGER_API_URL
+  ADMIN_PARTY
+  INSTRUMENT_CONFIG_TEMPLATE_ID
+  PREAPPROVAL_TEMPLATE_ID
+  LOCKED_TOKEN_TEMPLATE_ID
+  TRANSFER_INSTRUCTION_TEMPLATE_ID
+  ALLOCATION_TEMPLATE_ID
+  PORT
+)
+
+# The registry's own options, which bootstrap knows nothing about. Passed through from the
+# environment or from .env when set, because the registry's dotenv is pointed at /dev/null
+# below and this is otherwise the one part of its configuration nothing can reach. CORS_ORIGINS
+# is the one that bites: it defaults to http://localhost:3012 exactly, so opening the dApp on
+# 127.0.0.1 instead is a different origin and every registry read is blocked.
+REGISTRY_OPTION_KEYS=(
+  CORS_ORIGINS
+  DIRECT_TRANSFER_MARGIN_MS
+  LEDGER_USER_ID
+  SHUTDOWN_TIMEOUT_MS
+)
 
 # Resolved in up(), once ./.env has been read.
 JSON_API_URL=""
 
-# Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="dapp/daml"
-DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
-DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
+# Vendored binaries, not built here. canton-token-forge goes first: vesting
+# data-depends on it. See vendor/PROVENANCE.md.
+VENDOR_DARS=(vendor/canton-token-forge.dar vendor/vesting.dar)
 
 # Flags are pulled out before the positional arguments, so `up --json <dir>` and
 # `up <dir> --json` both work.
@@ -141,11 +169,6 @@ tick_end() {
   if [ "$HUMAN_TTY" = 1 ]; then printf '\r\033[2K' >&5; fi
 }
 
-# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
-case "$DAR_NAME" in
-  -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
-esac
-
 ACTION="${1:-menu}"
 LOCALNET_ARG="${2:-}"
 
@@ -208,6 +231,18 @@ wait_for_http() { # wait_for_http <seconds> <url> <label> <any|ok>
   done
   tick_end
   warn "$label did not answer at $url within ${timeout}s"
+  return 1
+}
+
+# `kill` returns before the process has released its socket, so a restart needs this
+# between the stop and the next bind.
+wait_for_port_free() { # wait_for_port_free <seconds> <port>
+  local timeout="$1" port="$2" deadline
+  deadline=$((SECONDS + timeout))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1 || return 0
+    sleep 1
+  done
   return 1
 }
 
@@ -277,11 +312,90 @@ start_wallet_service() {
     || die "wallet-service is not answering on 3010 (log: $WS_LOG)."
 }
 
+# Read one KEY=value line out of the block bootstrap printed, dropping the single
+# quotes the template ids carry for the paste-into-a-.env case. Keys come from
+# REGISTRY_ENV_KEYS and nowhere else, so the sed pattern is never caller data.
+read_bootstrap_env() { # read_bootstrap_env <key>
+  local value
+  value="$(sed -n "s/^$1=//p" "$BOOTSTRAP_LOG" | tail -n1)"
+  value="${value#\'}"
+  printf '%s' "${value%\'}"
+}
+
+# The port has one definition, in scripts/bootstrap-vesting.mjs, and reaches this
+# script only in the block bootstrap prints. 3013 is the fallback for a `down` that
+# never saw one.
+registry_port() {
+  local port=''
+  if [ -f "$BOOTSTRAP_LOG" ]; then
+    port="$(read_bootstrap_env PORT)"
+  fi
+  printf '%s' "${port:-3013}"
+}
+
+# Scoped to the port on purpose: matching the registry's path alone would also kill
+# one a developer is running on another port, from this checkout or another.
+kill_registry_on_port() { # kill_registry_on_port <port>
+  local port="$1" pid
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+    if ps -p "$pid" -o args= 2>/dev/null | grep -q 'canton-token-forge/registry/dist'; then
+      kill "$pid" 2>/dev/null || true
+    fi
+  done
+}
+
+# The registry ships from BootNodeDev/canton-token-forge as a git dependency and runs
+# on the host. It is read-only and takes the same bearer the DAR upload does, so no
+# new secret is introduced.
+start_registry() {
+  local key value port
+  local -a registry_env=()
+  for key in "${REGISTRY_ENV_KEYS[@]}"; do
+    value="$(read_bootstrap_env "$key")"
+    [ -n "$value" ] || die "bootstrap printed no $key; cannot configure the registry (log: $BOOTSTRAP_LOG)"
+    registry_env+=("$key=$value")
+  done
+  # Set-but-empty is passed through rather than dropped: for CORS_ORIGINS it is the only way to ask
+  # for no allowed origin at all, where dropping it hands the registry its own localhost default.
+  for key in "${REGISTRY_OPTION_KEYS[@]}"; do
+    [ -n "${!key+set}" ] || continue
+    registry_env+=("$key=${!key}")
+  done
+  port="$(read_bootstrap_env PORT)"
+
+  # Restarted rather than skipped: a leftover registry was configured by an earlier run and
+  # still answers /readyz, so a reset that moved the admin party would go unnoticed.
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    log "Port $port in use; restarting the token registry."
+    stop_pidfile "$REGISTRY_PID" "token registry"
+    kill_registry_on_port "$port"
+    # Comfortably past the registry's own SHUTDOWN_TIMEOUT_MS, which is 8s by
+    # default: a shorter budget reports a draining registry as a foreign process.
+    wait_for_port_free 20 "$port" \
+      || die "Port $port is still held after 20s; free it, then run 'up'. A token registry draining an in-flight request takes up to SHUTDOWN_TIMEOUT_MS (8s by default)."
+  fi
+
+  log "Starting the token registry -> http://localhost:$port"
+  # The bearer goes in the environment rather than through `env`'s argv, where `ps`
+  # would show it to every local user for the life of the process.
+  # DOTENV_CONFIG_PATH points the registry's `import 'dotenv/config'` at an empty file:
+  # its cwd is the repo root, so it would otherwise read all of wallet-service's .env
+  # into itself, the CANTON_AUTH_SECRET signing key included, for no purpose.
+  LEDGER_API_TOKEN="$CANTON_BACKEND_TOKEN" \
+    nohup env DOTENV_CONFIG_PATH=/dev/null "${registry_env[@]}" pnpm exec canton-token-forge-registry >"$REGISTRY_LOG" 2>&1 &
+  echo $! >"$REGISTRY_PID"
+
+  # /readyz rather than /healthz: it reads the ledger end, so a 2xx proves the
+  # registry can reach the participant and not merely that something holds the port.
+  wait_for_http 60 "http://localhost:$port/readyz" "token registry" ok \
+    || die "The token registry is not ready on $port (log: $REGISTRY_LOG)."
+}
+
 up() {
   local stack_start=$SECONDS total
   mkdir -p "$RUN_DIR"
 
-  step preflight "Checking Docker, dpm and the workspace dependencies..."
+  step preflight "Checking Docker and the workspace dependencies..."
 
   # A fresh clone may have no deps yet; one root install links every workspace.
   if [ ! -d node_modules ]; then
@@ -291,11 +405,6 @@ up() {
   # Docker must already be running (start it via 'docker-up', the app, or your CLI).
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
-
-  # The DAR build needs dpm; check here so a missing SDK fails before the
-  # containers come up rather than after.
-  command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH. Install the DAML SDK (3.4.11), then run 'up'."
 
   # ./.env is wallet-service's whole configuration, the mint recipe and the DAR
   # upload token. Minting is offline, so this needs nothing running.
@@ -329,8 +438,20 @@ up() {
   # matching deploy-dar.sh and mint-token.mjs; nothing is exported, because each step
   # reads .env for itself and only the mint recipe would travel.
   local preset_json_api_url="${CANTON_JSON_API_URL:-}"
+  # The same rule for the registry's own options, which `source` would otherwise overwrite with the
+  # file's, against what REGISTRY_OPTION_KEYS says about where they come from.
+  local -a preset_registry_options=()
+  local option
+  for option in "${REGISTRY_OPTION_KEYS[@]}"; do
+    if [ -n "${!option+set}" ]; then
+      preset_registry_options+=("$option=${!option}")
+    fi
+  done
   # shellcheck disable=SC1091
   source .env
+  for option in ${preset_registry_options[@]+"${preset_registry_options[@]}"}; do
+    export "${option?}"
+  done
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
@@ -349,20 +470,29 @@ up() {
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
-  # The build fetches the Splice DARs amulet-vesting data-depends on the first time,
-  # and after a Splice bump. Neither step needs wallet-service, only the participant.
-  step build-dar "Building the $DAR_NAME DAR..."
-  pnpm run build-dar || die "The $DAR_NAME build failed."
-
-  step deploy-dar "Deploying $DAR_PATH to Canton..."
-  pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
+  # The vendored DARs need the participant but not wallet-service.
+  step deploy-dar "Deploying the vendored DARs to Canton..."
+  local dar
+  for dar in "${VENDOR_DARS[@]}"; do
+    log "Deploying $dar to Canton..."
+    pnpm run deploy-dar -- "$dar" || die "Uploading $dar to Canton failed."
+  done
 
   step wallet-service "Starting wallet-service -> http://localhost:3010"
   start_wallet_service
 
-  # Bootstrap goes through wallet-service's /rpc.
-  step bootstrap "Bootstrapping the vesting operator and factory..."
-  pnpm run bootstrap || die "Bootstrapping the vesting operator and factory failed."
+  # Bootstrap goes through wallet-service's /rpc. Its stdout is teed rather than
+  # swallowed: the registry's whole non-secret configuration is in it, and a manual run
+  # still wants to read the block. `set -o pipefail` is on, so a failing bootstrap still
+  # fails here.
+  # The URL is passed explicitly, which bootstrap's own --env-file loses to: otherwise a
+  # caller override moves the upload and the probe but not what the registry points at.
+  step bootstrap "Bootstrapping the vesting operator, factory and DBT instrument..."
+  CANTON_JSON_API_URL="$JSON_API_URL" pnpm run bootstrap | tee "$BOOTSTRAP_LOG"
+
+  # The registry needs the admin party bootstrap just created, and prints its own port.
+  step registry "Starting the token registry..."
+  start_registry
 
   step dapp "Starting dApp frontend dev server -> http://localhost:3012"
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
@@ -385,6 +515,7 @@ up() {
   say "$(printf 'Stack is up in %dm%02ds:' "$((total / 60))" "$((total % 60))")"
   cat >&3 <<EOF
    wallet-service          http://localhost:3010   (log: $WS_LOG)
+   token registry          http://localhost:3013   (log: $REGISTRY_LOG)
    dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
    app-user wallet UI      http://wallet.localhost:2000
    app-user JSON API       $JSON_API_URL
@@ -425,6 +556,8 @@ stop_port() { # stop_port <port> <label>
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
+  stop_pidfile "$REGISTRY_PID" "token registry"
+  kill_registry_on_port "$(registry_port)"
   stop_pidfile "$WS_PID" "wallet-service"
   pkill -f "canton-wallet-service" 2>/dev/null || true
   stop_port 3010 "wallet-service"
@@ -441,9 +574,9 @@ down() {
   fi
 
   echo
-  log "Dev-server ports 3010-3012:"
-  if lsof -nP -iTCP:3010-3012 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010-3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3010-3013:"
+  if lsof -nP -iTCP:3010-3013 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3010-3013 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (all free)"
   fi
@@ -461,8 +594,8 @@ menu() {
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start LocalNet, deploy DAR, wallet-service, bootstrap, dApp"
-    "stop wallet-service + dApp dev server, stop the LocalNet"
+    "start LocalNet, deploy DARs, wallet-service, bootstrap, registry, dApp"
+    "stop dApp dev server, token registry, wallet-service, stop the LocalNet"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -533,9 +666,9 @@ status() {
   else
     echo "   (docker daemon not running)"
   fi
-  log "Dev-server ports 3010-3012:"
-  if lsof -nP -iTCP:3010-3012 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3010-3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3010-3013:"
+  if lsof -nP -iTCP:3010-3013 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3010-3013 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (none)"
   fi

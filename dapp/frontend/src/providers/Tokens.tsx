@@ -1,6 +1,7 @@
 import {
   type Instrument,
   type InstrumentBalance,
+  type InstrumentId,
   mergeTokens,
   type PartialToken,
   readInstruments,
@@ -19,12 +20,13 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { RegistryInstrument } from '@/backend/registry'
 import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { addAmounts, subtractAmounts } from '@/utils/amount'
 import { type AssetListEntry, readAssetList } from '@/utils/assetList'
 import { ASSET_LIST_NETWORK, ASSET_LIST_URL, REGISTRY_URL } from '@/utils/config'
-import { AMT, isAmulet, tokenLogo } from '@/utils/tokens'
+import { DBT, tokenLogo } from '@/utils/tokens'
 
 const fromCurated = (entries: readonly AssetListEntry[]): readonly PartialToken[] =>
   entries.map(({ instrumentId, logoUrl, symbol }) => ({
@@ -36,22 +38,33 @@ const fromCurated = (entries: readonly AssetListEntry[]): readonly PartialToken[
 const fromRegistries = (instruments: readonly Instrument[]): readonly PartialToken[] =>
   instruments.map(({ instrumentId, name, symbol }) => ({ instrumentId, name, symbol }))
 
-const fromApp = (rows: readonly PartialToken[]): readonly PartialToken[] =>
+// A shared participant can hold another admin's instrument under the same id, so both halves of
+// the pair are compared. Nothing matches until the deployment is read.
+const isVested = (id: InstrumentId, instrument: RegistryInstrument | undefined): boolean =>
+  instrument !== undefined && id.admin === instrument.admin && id.id === instrument.instrumentId
+
+// The registry's metadata carries no artwork, so the one instrument this app vests gets its mark
+// here; every other row keeps whatever its own source gave it.
+const fromApp = (
+  rows: readonly PartialToken[],
+  instrument: RegistryInstrument | undefined,
+): readonly PartialToken[] =>
   rows
-    .filter(({ instrumentId }) => isAmulet(instrumentId))
-    .map(({ instrumentId }) => ({ instrumentId, logo: AMT.logo }))
+    .filter(({ instrumentId }) => isVested(instrumentId, instrument))
+    .map(({ instrumentId }) => ({ instrumentId, logo: DBT.logo }))
 
 // The figures this app can act on, which are not the ledger's: what is free to fund a grant is the
-// balance, and coin a pending grant pledged joins the escrowed coin as locked. The three still sum
-// to everything held, so the row hides nothing.
+// balance, and a holding a pending grant reserves joins the escrowed one as locked. The three still
+// sum to everything held, so the row hides nothing.
 const fromVesting = (
   held: readonly InstrumentBalance[],
   free: string | undefined,
+  instrument: RegistryInstrument | undefined,
 ): readonly PartialToken[] =>
   free === undefined
     ? []
     : held
-        .filter(({ instrumentId }) => isAmulet(instrumentId))
+        .filter(({ instrumentId }) => isVested(instrumentId, instrument))
         .map(({ balance, instrumentId, locked }) => ({
           balance: free,
           instrumentId,
@@ -79,7 +92,7 @@ const FiguresContext = createContext<TokenFigures | undefined>(undefined)
 
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const { error: holdingsError, holdings, refetch: refetchHoldings } = useHoldings()
-  const { backend } = useBackend()
+  const { backend, instrument } = useBackend()
   const { party } = useParty()
   const partyId = party?.partyId
   const [instruments, setInstruments] = useState<readonly Instrument[]>([])
@@ -167,12 +180,16 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
       fromRegistries(instruments),
       held,
     ]
-    const rows = mergeTokens([...sources, fromApp(sources.flat()), fromVesting(held, free)])
+    const rows = mergeTokens([
+      ...sources,
+      fromApp(sources.flat(), instrument),
+      fromVesting(held, free, instrument),
+    ])
     // The read enumerates every holding, so once it answers, a token missing from it is one the
     // party holds none of rather than one nobody asked about.
     if (holdings === undefined) return rows
     return rows.map((row) => (row.balance === undefined ? { ...row, balance: '0' } : row))
-  }, [curated, free, holdings, instruments])
+  }, [curated, free, holdings, instrument, instruments])
 
   return (
     <FiguresContext.Provider value={figures}>

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { encodeSchedule } from '@/backend/commands'
+import type { AcsRow } from '@/backend/VestingBackend'
 import {
-  amuletValue,
   claimChain,
   composeNote,
   lastUpdateOffset,
+  matchesInstrument,
+  reservedToken,
   rowToClaim,
   rowToGrant,
   rowToPendingGrant,
+  selectHoldings,
   splitNote,
+  tokenValue,
   updatesToClaims,
 } from '@/backend/VestingBackend'
 
@@ -16,6 +20,8 @@ const linearEncoded = encodeSchedule({
   cliff: '2026-01-01T00:00:00Z',
   curve: { kind: 'linear', start: '2026-01-01T00:00:00Z', end: '2027-01-01T00:00:00Z' },
 })
+
+const INSTRUMENT = { admin: 'admin::1', instrumentId: 'DBT' }
 
 const row = (contractId: string, arg: Record<string, unknown>) => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
@@ -170,7 +176,7 @@ const claimUpdate = (
         events: [
           {
             ExercisedEvent: {
-              choice: 'AmuletVestingContract_Withdraw',
+              choice: 'VestingContract_Withdraw',
               choiceArgument: { withdrawAmount: amount },
               contractId: replaces,
             },
@@ -178,7 +184,10 @@ const claimUpdate = (
           {
             CreatedEvent: {
               contractId: successor,
+              templateId: 'pkg1:Vesting:VestingContract',
               createArgument: {
+                admin: 'admin::1',
+                instrumentId: 'DBT',
                 provider: 'OP',
                 creator: 'funder',
                 receiver: 'receiver',
@@ -195,9 +204,50 @@ const claimUpdate = (
   },
 })
 
+// The resolved id LedgerBackend spells its own commands with, which is where this comes from.
+const SUCCESSOR = 'pkg1:Vesting:VestingContract'
+
 describe('updatesToClaims', () => {
+  // A withdraw pays the receiver as well as replacing the grant, so its transaction carries a
+  // `Token` create the receiver is an informee of. Its payload is `{admin, instrumentId, amount}`,
+  // which the instrument filter accepts, so picking the first create rather than the successor's
+  // own template threw on the `totalAmount` it has no field for and lost the whole history.
+  it('skips the holding the withdraw paid out, even when it comes first', () => {
+    const { update } = claimUpdate(7, 'c1', 'c2', '250', '250')
+    const paidOut = {
+      CreatedEvent: {
+        contractId: 'paid-out',
+        templateId: 'tfpkg:Canton.TokenForge.Token:Token',
+        createArgument: { admin: 'admin::1', instrumentId: 'DBT', amount: '250' },
+      },
+    }
+    const { events, ...value } = update.Transaction.value
+    const withHolding = {
+      update: { Transaction: { value: { ...value, events: [events[0], paidOut, events[1]] } } },
+    }
+
+    const [record] = updatesToClaims([withHolding], INSTRUMENT, SUCCESSOR)
+
+    expect(record?.grant.id).toBe('c2')
+  })
+
+  // A grant created before the package was upgraded is still its own successor, so the match is on
+  // module and entity rather than on the whole resolved id.
+  it('accepts a successor created under another version of the package', () => {
+    const [record] = updatesToClaims(
+      [claimUpdate(7, 'c1', 'c2', '250', '250')],
+      INSTRUMENT,
+      'otherpkg:Vesting:VestingContract',
+    )
+    expect(record?.grant.id).toBe('c2')
+  })
+
   it('carries the id the claim consumed alongside the successor it created', () => {
-    const [record] = updatesToClaims([claimUpdate(7, 'c1', 'c2', '250', '250')])
+    const [record] = updatesToClaims(
+      [claimUpdate(7, 'c1', 'c2', '250', '250')],
+      INSTRUMENT,
+      SUCCESSOR,
+    )
     expect(record?.replaces).toBe('c1')
     expect(record?.grant.id).toBe('c2')
     expect(record?.amount).toBe('250')
@@ -219,21 +269,25 @@ describe('updatesToClaims', () => {
         },
       },
     }
-    expect(updatesToClaims([orphan])).toEqual([])
+    expect(updatesToClaims([orphan], INSTRUMENT, SUCCESSOR)).toEqual([])
   })
 
   it('ignores anything that is not an array of transactions', () => {
-    expect(updatesToClaims(undefined)).toEqual([])
-    expect(updatesToClaims([{}])).toEqual([])
+    expect(updatesToClaims(undefined, INSTRUMENT, SUCCESSOR)).toEqual([])
+    expect(updatesToClaims([{}], INSTRUMENT, SUCCESSOR)).toEqual([])
   })
 })
 
 describe('claimChain', () => {
-  const records = updatesToClaims([
-    claimUpdate(7, 'c1', 'c2', '250', '250'),
-    claimUpdate(9, 'c2', 'c3', '500', '250'),
-    claimUpdate(11, 'other1', 'other2', '10', '10'),
-  ])
+  const records = updatesToClaims(
+    [
+      claimUpdate(7, 'c1', 'c2', '250', '250'),
+      claimUpdate(9, 'c2', 'c3', '500', '250'),
+      claimUpdate(11, 'other1', 'other2', '10', '10'),
+    ],
+    INSTRUMENT,
+    SUCCESSOR,
+  )
 
   it('walks a grant back through the contracts its own claims replaced, newest first', () => {
     expect(claimChain(records, 'c3').map((r) => r.grant.id)).toEqual(['c3', 'c2'])
@@ -264,14 +318,94 @@ describe('lastUpdateOffset', () => {
   })
 })
 
-describe('amuletValue', () => {
-  const amulet = (initialAmount: string) => row('a1', { amount: { initialAmount } })
+const tokenRow = (contractId: string, amount: string, overrides: Record<string, unknown> = {}) =>
+  ({
+    contractEntry: {
+      JsActiveContract: {
+        createdEvent: {
+          contractId,
+          createArgument: { admin: 'admin::1', instrumentId: 'DBT', amount, ...overrides },
+        },
+      },
+    },
+  }) as AcsRow
 
-  it('is the face amount, which is what a transfer credits an input at', () => {
-    expect(amuletValue(amulet('100.0000000000'))).toBe('100.0000000000')
+describe('tokenValue', () => {
+  it('reads the holding amount off the payload', () => {
+    expect(tokenValue(tokenRow('t1', '1000.5'))).toBe('1000.5')
   })
 
-  it('reads a row it cannot decode as nothing, so a balance never blanks', () => {
-    expect(amuletValue(row('a1', {}))).toBe('0')
+  // Lenient where the mappers throw: this feeds a balance, and one odd row must not blank it.
+  it('reads a row carrying no amount as zero', () => {
+    expect(tokenValue({} as AcsRow)).toBe('0')
+  })
+})
+
+describe('matchesInstrument', () => {
+  it('accepts a holding of the deployment’s own instrument', () => {
+    expect(matchesInstrument(tokenRow('t1', '1'), INSTRUMENT)).toBe(true)
+  })
+
+  it('rejects the same instrument id under another admin', () => {
+    expect(matchesInstrument(tokenRow('t1', '1', { admin: 'other::1' }), INSTRUMENT)).toBe(false)
+  })
+
+  it('rejects another instrument of the same admin', () => {
+    expect(matchesInstrument(tokenRow('t1', '1', { instrumentId: 'OTHER' }), INSTRUMENT)).toBe(
+      false,
+    )
+  })
+})
+
+describe('reservedToken', () => {
+  it('reads the holding a pending grant’s Accept will consume', () => {
+    const pending = {
+      contractEntry: {
+        JsActiveContract: {
+          createdEvent: {
+            contractId: 'p1',
+            createArgument: { tokenCid: 't1' },
+          },
+        },
+      },
+    } as AcsRow
+    expect(reservedToken(pending)).toBe('t1')
+  })
+
+  it('reads a row naming none as undefined', () => {
+    expect(reservedToken({} as AcsRow)).toBeUndefined()
+  })
+})
+
+describe('selectHoldings', () => {
+  // Largest first, so the factory splits the fewest inputs: the receiver carries one disclosure
+  // whatever is picked, since the split leaves a single holding behind.
+  it('takes the largest holdings first and stops once they cover the total', () => {
+    const rows = [tokenRow('small', '100'), tokenRow('big', '900'), tokenRow('mid', '400')]
+    expect(selectHoldings(rows, '1000')?.map((row) => tokenValue(row))).toEqual(['900', '400'])
+  })
+
+  it('takes one holding when one covers the total', () => {
+    const rows = [tokenRow('big', '900'), tokenRow('small', '100')]
+    expect(selectHoldings(rows, '500')?.map((row) => tokenValue(row))).toEqual(['900'])
+  })
+
+  it('takes everything when the total needs everything', () => {
+    const rows = [tokenRow('a', '600'), tokenRow('b', '400')]
+    expect(selectHoldings(rows, '1000')).toHaveLength(2)
+  })
+
+  it('returns undefined rather than an under-covering set', () => {
+    expect(selectHoldings([tokenRow('a', '600')], '1000')).toBeUndefined()
+  })
+
+  it('returns undefined when there is nothing to select from', () => {
+    expect(selectHoldings([], '1')).toBeUndefined()
+  })
+
+  it('returns undefined for a non-positive total rather than an empty set', () => {
+    const rows = [tokenRow('a', '600')]
+    expect(selectHoldings(rows, '0')).toBeUndefined()
+    expect(selectHoldings(rows, '-1')).toBeUndefined()
   })
 })

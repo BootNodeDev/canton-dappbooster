@@ -6,6 +6,12 @@
   "engines": {
     "node": ">=24.15.0"
   },
+  "imports": {
+    "#api/*": {
+      "types": "./api/*.ts",
+      "default": "./api/*"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

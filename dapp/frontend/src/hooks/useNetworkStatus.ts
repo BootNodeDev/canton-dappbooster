@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LedgerApi } from '@/backend/config'
+import { fetchAppNetwork } from '@/backend/registry'
 import { walletSynchronizers } from '@/backend/synchronizer'
-import { fetchAppNetwork } from '@/backend/transferContext'
 import { type NetworkStatus, networkStatus } from '@/utils/network'
 
 const PENDING_MS = 3_000

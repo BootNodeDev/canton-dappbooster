@@ -2,8 +2,9 @@
 // transport details. The mappers below turn active-contract rows into those domain types.
 
 import { decodeSchedule } from '@/backend/commands'
+import type { RegistryInstrument } from '@/backend/registry'
 import type { Grant, PartyId, PendingGrant, VestedClaim } from '@/store/types'
-import { isAmount } from '@/utils/amount'
+import { addAmounts, compareAmounts, isAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
 export interface VestingView {
@@ -21,9 +22,10 @@ export interface CreateVestInput {
   totalAmount: string
 }
 
-// One `AmuletVestingContract_Withdraw` off the ledger: the amount and ledger time from the transaction, plus the
-// two contract ids it sits between. `replaces` is what the claim consumed and `grant` what it
-// created, so a caller can walk a grant's ancestry rather than match on fields two grants can share.
+// One `VestingContract_Withdraw` off the ledger: the amount and ledger time from the
+// transaction, plus the two contract ids it sits between. `replaces` is what the claim consumed
+// and `grant` what it created, so a caller can walk a grant's ancestry rather than match on
+// fields two grants can share.
 export interface ClaimRecord {
   amount: string
   at: string
@@ -35,10 +37,12 @@ export interface VestingBackend {
   accept(args: { receiver: string; pendingCid: string }): Promise<void>
   balanceOf(partyId: string): Promise<string>
   cancel(args: { creator: string; contractCid: string }): Promise<void>
+  cancelProposal(args: { proposer: string; pendingCid: string }): Promise<void>
   claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]>
   claimResidual(args: { receiver: string; claimCid: string; amount: string }): Promise<void>
   createVesting(args: CreateVestInput): Promise<void>
-  tap(partyId: string): Promise<void>
+  rejectProposal(args: { receiver: string; pendingCid: string }): Promise<void>
+  tap(args: { amount: string; party: string }): Promise<void>
   viewAs(partyId: string): Promise<VestingView>
   withdraw(args: { receiver: string; contractCid: string; amount: string }): Promise<void>
 }
@@ -182,7 +186,11 @@ type UpdateEntry = {
       value?: {
         effectiveAt?: string
         events?: {
-          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          CreatedEvent?: {
+            contractId?: string
+            createArgument?: Record<string, unknown>
+            templateId?: string
+          }
           ExercisedEvent?: {
             choice?: string
             choiceArgument?: Record<string, unknown>
@@ -201,14 +209,28 @@ export const lastUpdateOffset = (updates: unknown): number | undefined => {
   return entries.at(-1)?.update?.Transaction?.value?.offset
 }
 
-export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
-  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
+export const updatesToClaims = (
+  updates: unknown,
+  instrument: RegistryInstrument,
+  successorTemplateId: string,
+): ClaimRecord[] => {
+  // Module and entity rather than the whole id, so a grant created under an earlier version of the
+  // package still joins its own chain; taken from the caller's resolved id rather than spelled here
+  // a third time, so a Daml rename cannot leave this one behind.
+  const entity = successorTemplateId.slice(successorTemplateId.indexOf(':'))
+  return (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
     const transaction = entry.update?.Transaction?.value
     const events = transaction?.events ?? []
     const claim = events.find(
-      (event) => event.ExercisedEvent?.choice === 'AmuletVestingContract_Withdraw',
+      (event) => event.ExercisedEvent?.choice === 'VestingContract_Withdraw',
     )?.ExercisedEvent
-    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
+    // The successor contract, picked by template rather than by being the first create: a withdraw
+    // also creates the receiver's `Token`, whose payload carries the same flat admin/instrumentId
+    // pair, so the instrument filter below cannot tell the two apart and `rowToGrant` would throw on
+    // the missing `totalAmount` rather than skip the event.
+    const created = events.find((event) =>
+      event.CreatedEvent?.templateId?.endsWith(entity),
+    )?.CreatedEvent
     const amount = claim?.choiceArgument?.withdrawAmount
     const replaces = claim?.contractId
     if (
@@ -219,7 +241,11 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     ) {
       return []
     }
-    const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
+    const row: AcsRow = { contractEntry: { JsActiveContract: { createdEvent: created } } }
+    if (!matchesInstrument(row, instrument)) {
+      return []
+    }
+    const grant = rowToGrant(row)
     return grant === undefined
       ? []
       : [
@@ -231,28 +257,60 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
           },
         ]
   })
-
-type AmuletArg = { amount?: { initialAmount?: string }; dso?: string }
-
-// What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
-// `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
-// `Amulet_Expire`. Lenient where the mappers above throw: this feeds a balance, and one odd row
-// must not blank the field.
-export const amuletValue = (row: AcsRow): string => {
-  const { amount } = (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ??
-    {}) as AmuletArg
-  return amount?.initialAmount ?? '0'
 }
 
-// Read off a holding because a disclosure carries an opaque blob and no payload.
-export const amuletDso = (row: AcsRow): string | undefined =>
-  (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso
+type TokenArg = { admin?: string; amount?: string; instrumentId?: string }
 
-// The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
-// else may spend them while it is outstanding.
-export const pledgedAmulets = (row: AcsRow): string[] => {
-  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.amuletCids
-  return Array.isArray(cids) ? cids.map(String) : []
+const argOf = (row: AcsRow): Record<string, unknown> =>
+  row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ?? {}
+
+// What a holding is worth, which is the field itself: a token-forge Token does not decay, so there
+// is no decayed value to compute. Lenient where the mappers throw, because this feeds a balance and
+// one odd row must not blank the field.
+export const tokenValue = (row: AcsRow): string => {
+  const { amount } = argOf(row) as TokenArg
+  return typeof amount === 'string' ? amount : '0'
+}
+
+// A shared participant can hold another admin's instrument under the same id, so both halves of the
+// pair are compared.
+export const matchesInstrument = (row: AcsRow, instrument: RegistryInstrument): boolean => {
+  const { admin, instrumentId } = argOf(row) as TokenArg
+  return admin === instrument.admin && instrumentId === instrument.instrumentId
+}
+
+// The holding a pending grant reserves: the factory split it off at exactly the grant, and its
+// Accept consumes that one contract, so nothing else may spend it while the grant is outstanding.
+export const reservedToken = (row: AcsRow): string | undefined => {
+  const cid = argOf(row).tokenCid
+  return typeof cid === 'string' ? cid : undefined
+}
+
+// Whether a pending grant is one this party funded. A `Token` has no observers, so only the funder
+// can read the holding their own grant reserves, and the grants they received are nobody's to
+// reconcile from here.
+export const fundedBy = (row: AcsRow, party: string): boolean => argOf(row).proposer === party
+
+// Largest first, so the factory splits the fewest inputs. Not for the receiver's sake any more: the
+// split leaves one holding whatever is picked. Undefined rather than a partial set, so the caller
+// can report by how much the funder is short.
+export const selectHoldings = (rows: AcsRow[], total: string): AcsRow[] | undefined => {
+  // The empty set covers a non-positive total, and a grant submitted with no inputs aborts at
+  // Accept, leaving the receiver to decline it for nothing.
+  if (compareAmounts(total, '0') <= 0) {
+    return undefined
+  }
+  const ordered = [...rows].sort((a, b) => compareAmounts(tokenValue(b), tokenValue(a)))
+  const picked: AcsRow[] = []
+  let covered = '0'
+  for (const row of ordered) {
+    if (compareAmounts(covered, total) >= 0) {
+      break
+    }
+    picked.push(row)
+    covered = addAmounts(covered, tokenValue(row))
+  }
+  return compareAmounts(covered, total) >= 0 ? picked : undefined
 }
 
 export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {

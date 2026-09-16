@@ -3,6 +3,7 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import type { Grant } from '@/store/types'
 import { deriveGrant } from '@/store/useVestingStore'
 import { errorText } from '@/utils/errorText'
@@ -33,13 +34,18 @@ export const CancelGrant = ({
   // Recomputed each tick with `nowMs`, so a residual growing past the floor re-enables the button
   // on its own rather than sending a submission the contract will assert on.
   const floorOk = residualMeetsFloor(derived.claimable)
+  // Only the confirm button is disabled while a submission is in flight, so the dialog can still be
+  // dismissed over the wallet prompt; the toast still fires, because the cancel did land.
+  const onScreen = useOnScreen()
 
   const submit = async (): Promise<void> => {
     setSubmitting(true)
     try {
       await onConfirm()
       toast.success(successMessage)
-      onClose()
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {
@@ -63,7 +69,7 @@ export const CancelGrant = ({
         {!floorOk && (
           <FieldError
             id="cancel-residual-floor"
-            message={`The residual must be 0 or at least ${MIN_GRANT_AMOUNT} AMT. Cancel once more has vested, or let the receiver claim it down to zero.`}
+            message={`The residual must be 0 or at least ${MIN_GRANT_AMOUNT} DBT. Cancel once more has vested, or let the receiver claim it down to zero.`}
           />
         )}
         <Button

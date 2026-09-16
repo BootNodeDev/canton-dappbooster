@@ -82,6 +82,7 @@ export const Details = ({
         <div>
           <TokenInput
             {...funding}
+            aria-describedby="amount-reservation"
             className="w-full border-0 p-0"
             id="amount"
             label="Total amount"
@@ -89,6 +90,10 @@ export const Details = ({
             usdValue="N/A"
             value={amount}
           />
+          <p className="mt-1 text-xs text-fg-muted" id="amount-reservation">
+            An outstanding grant reserves exactly this amount; the rest of your balance stays
+            spendable. Cancel the grant from Pending to release it before the receiver accepts.
+          </p>
         </div>
       </div>
     </>

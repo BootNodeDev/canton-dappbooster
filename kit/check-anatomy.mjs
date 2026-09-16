@@ -16,7 +16,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import postcss from 'postcss'
 import ts from 'typescript'
-import { createGate, repoRoot } from '../scripts/lib/gate.mjs'
+import { createGate, repoRoot } from './gate.mjs'
 
 // A provider is here because ThemeProvider writes `data-theme` to <html>: it renders no markup, but
 // it does place a selector the theme keys on, so it owes an anatomy like any component.

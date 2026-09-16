@@ -30,7 +30,7 @@ import {
 import { addAmounts, isPositive } from '@/utils/amount'
 import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
-import { AMT } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
 interface GrantRow {
   derived: GrantDerived
@@ -79,6 +79,7 @@ export const Dashboard = (): React.JSX.Element => {
   const grants = useVestingStore((s) => s.grants)
   const claims = useVestingStore((s) => s.claims)
   const loading = useVestingStore((s) => s.loading)
+  const busy = useVestingStore((s) => s.busy)
   const withdraw = useVestingStore((s) => s.withdraw)
   const claimResidual = useVestingStore((s) => s.claimResidual)
   const cancel = useVestingStore((s) => s.cancel)
@@ -208,6 +209,7 @@ export const Dashboard = (): React.JSX.Element => {
               className={cn(grant.id === justClaimed && HIGHLIGHT)}
               onClaim={openClaim}
               onCancel={setCancelTarget}
+              busy={busy.get(grant.id)}
             />
           ))}
         </div>
@@ -220,7 +222,7 @@ export const Dashboard = (): React.JSX.Element => {
             <span className="font-mono text-xs text-fg-muted">
               {isPositive(residualClaimable) && (
                 <>
-                  <CompactAmount value={residualClaimable} /> {AMT.symbol} claimable
+                  <CompactAmount value={residualClaimable} /> {DBT.symbol} claimable
                 </>
               )}
             </span>
@@ -247,7 +249,11 @@ export const Dashboard = (): React.JSX.Element => {
                     className="text-lg font-semibold text-success"
                   />
                 </div>
-                <Button size="sm" onClick={() => openResidual(claim)}>
+                <Button
+                  size="sm"
+                  onClick={() => openResidual(claim)}
+                  pending={busy.get(claim.id) !== undefined}
+                >
                   Claim
                 </Button>
               </div>
@@ -259,7 +265,7 @@ export const Dashboard = (): React.JSX.Element => {
       {claimTarget !== null && (
         <Claim
           onClose={() => setClaimTarget(null)}
-          title={claimTarget.kind === 'grant' ? 'Claim vested AMT' : 'Claim residual'}
+          title={claimTarget.kind === 'grant' ? 'Claim vested DBT' : 'Claim residual'}
           available={claimTarget.available}
           backing={claimTarget.backing}
           onConfirm={onConfirmClaim}
@@ -271,7 +277,7 @@ export const Dashboard = (): React.JSX.Element => {
           onClose={() => setCancelTarget(null)}
           grant={cancelTarget}
           nowMs={nowMs}
-          description={`Vested-but-unclaimed AMT is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
+          description={`Vested-but-unclaimed DBT is set aside as a residual claim for ${partyHint(cancelTarget.receiver)}.`}
           successMessage="Grant cancelled; earned residual set aside for the receiver"
           onConfirm={() => cancel(backend, partyId, cancelTarget.id)}
         />

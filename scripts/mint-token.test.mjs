@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -57,5 +59,30 @@ describe('Canton token generation', () => {
     assert.match(output, /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/)
     assert.match(output, /CANTON_BACKEND_TOKEN=/)
     assert.match(output, /wallet LocalNet settings/)
+  })
+
+  it('still runs when invoked through a symlinked path', () => {
+    // Scenario: a checkout reached through a symlink (macOS /tmp, a linked repo).
+    // The main-module guard is the same idiom bootstrap-vesting.mjs uses, and
+    // comparing argv[1] against a realpathed path made it false and exit 0 mutely.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mint-token-'))
+    const linkedScripts = path.join(tmpDir, 'scripts')
+    fs.symlinkSync(__dirname, linkedScripts, 'dir')
+
+    try {
+      const output = execFileSync(process.execPath, [path.join(linkedScripts, 'mint-token.mjs')], {
+        cwd: tmpDir,
+        env: {
+          ...process.env,
+          CANTON_AUTH_AUDIENCE: 'https://canton.network.global',
+          CANTON_AUTH_SECRET: 'unsafe',
+        },
+        encoding: 'utf8',
+      })
+
+      assert.match(output, /CANTON_BACKEND_TOKEN=/)
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
   })
 })

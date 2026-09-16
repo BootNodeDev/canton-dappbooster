@@ -1,9 +1,9 @@
 import { InfoTip } from '@/components/InfoTip'
 import { formatFigureCompact, formatFigureFull, isCompacted } from '@/utils/format'
-import { AMT } from '@/utils/tokens'
+import { DBT } from '@/utils/tokens'
 
-// An Amulet figure, abbreviated past 10,000 with the exact one still reachable. Carries no unit and
-// no mark, so it suits a line that already spells out AMT; `AmountDisplay` wraps it for the rest.
+// A token figure, abbreviated past 10,000 with the exact one still reachable. Carries no unit and
+// no mark, so it suits a line that already spells out DBT; `AmountDisplay` wraps it for the rest.
 // `plain` drops the tooltip for a caller that cannot legally nest its trigger, which is a button:
 // the exact figure then reaches a reader by ear only, and its unit comes from the caller's own text.
 export const CompactAmount = ({
@@ -26,7 +26,7 @@ export const CompactAmount = ({
       </>
     )
   }
-  const labelled = `${exact} ${AMT.symbol}`
+  const labelled = `${exact} ${DBT.symbol}`
   return (
     <>
       <InfoTip label={labelled}>

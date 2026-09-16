@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type LedgerApi, loadBackendConfig } from '@/backend/config'
 
-const OPERATOR = 'vesting-operator-1700000000001::ns'
-const OLDER = 'vesting-operator-1600000000000::ns'
+const OPERATOR = 'vesting-operator::ns'
+// What a bootstrap predating the stable hint left behind. A different party, whose factory is not
+// the one the registry is now configured for.
+const LEGACY = 'vesting-operator-1700000000001::ns'
 
 const factoryRow = (
   createdEvent: Record<string, unknown>,
@@ -16,7 +18,7 @@ const factoryRow = (
 const created = {
   contractId: '00cid',
   createdEventBlob: 'YmxvYg==',
-  templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
+  templateId: 'abc123:Vesting:VestingFactory',
 }
 
 // The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
@@ -33,7 +35,7 @@ const ledger = (
     if (resource.endsWith('/rights')) {
       return {
         rights: overrides.rights ?? [
-          { kind: { CanActAs: { value: { party: OLDER } } } },
+          { kind: { CanActAs: { value: { party: LEGACY } } } },
           { kind: { CanActAs: { value: { party: OPERATOR } } } },
           { kind: { ParticipantAdmin: { value: {} } } },
         ],
@@ -50,15 +52,44 @@ const ledger = (
   return { ledgerApi, filteredParty: () => filteredParty }
 }
 
+const ADMIN = 'instrument-admin-1700000000000::ns'
+
+// loadBackendConfig now reads the instrument off the registry as well as the factory off the
+// ledger, so every case needs the happy registry unless it is about the registry failing.
+beforeEach(() => {
+  vi.stubGlobal('fetch', async (url: string) => ({
+    ok: true,
+    status: 200,
+    json: async () =>
+      String(url).endsWith('/instruments')
+        ? { instruments: [{ id: 'DBT' }] }
+        : { adminId: ADMIN, supportedApis: {} },
+  }))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('loadBackendConfig', () => {
   it('returns the deployment it reads back, synchronizer id included', async () => {
     const { ledgerApi } = ledger()
     await expect(loadBackendConfig(ledgerApi)).resolves.toEqual({
+      admin: ADMIN,
       factoryBlob: 'YmxvYg==',
       factoryCid: '00cid',
+      instrumentId: 'DBT',
       pkg: 'abc123',
       synchronizerId: 'sync::1',
     })
+  })
+
+  // The pair comes from the registry because nothing on the ledger carries it: the factory is this
+  // repo's own operator, the instrument admin is a third party.
+  it('carries the registry’s instrument into the deployment', async () => {
+    const { ledgerApi } = ledger()
+    const deployment = await loadBackendConfig(ledgerApi)
+    expect([deployment.admin, deployment.instrumentId]).toEqual([ADMIN, 'DBT'])
   })
 
   it('omits the synchronizer id when the row carries none', async () => {
@@ -66,11 +97,17 @@ describe('loadBackendConfig', () => {
     await expect(loadBackendConfig(ledgerApi)).resolves.not.toHaveProperty('synchronizerId')
   })
 
-  // Every run leaves its operator behind, so the newest is the one whose factory the config means.
-  it('reads as the newest operator among the rights', async () => {
+  it('reads as the operator allocated under the bootstrap hint', async () => {
     const { ledgerApi, filteredParty } = ledger()
     await loadBackendConfig(ledgerApi)
     expect(filteredParty()).toBe(OPERATOR)
+  })
+
+  // The stamped spelling is a prefix of nothing the current bootstrap creates, and adopting it would
+  // point the app at that run's factory while the registry serves this run's admin.
+  it('does not adopt a stamped operator from an earlier bootstrap', async () => {
+    const { ledgerApi } = ledger({ rights: [{ kind: { CanActAs: { value: { party: LEGACY } } } }] })
+    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no vesting operator/)
   })
 
   it('names the bootstrap script when no operator was ever created', async () => {
