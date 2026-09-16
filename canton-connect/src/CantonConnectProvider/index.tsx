@@ -95,7 +95,6 @@ export const CantonConnectProvider = ({
     // A consumer's own picker owns its lifecycle, and guardedConnect would borrow window.open
     // watching for a popup that never opens.
     guardPicker: config.walletPicker === undefined,
-    networkId,
   })
 
   const resetConnectError = useCallback(

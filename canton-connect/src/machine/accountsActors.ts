@@ -1,31 +1,23 @@
-import type { AccountsChangedEvent, DappSDK, Wallet } from '@canton-network/dapp-sdk'
+import type { AccountsChangedEvent, DappSDK } from '@canton-network/dapp-sdk'
 import { type EventObject, fromCallback, fromPromise } from 'xstate'
-import type { WalletAccounts } from '#src/machine/accountsMachine'
-import { selectPrimaryAccount, selectUsableAccounts, toParty } from '#src/walletAccount'
+import { getPrimaryAccount } from '#src/accounts'
+import type { Account } from '#src/types'
 
-/** Input shared by `readAccounts` and `accountsEvents`: the sdk slice plus the network id. */
+/** Input shared by `readPrimaryAccount` and `accountsEvents`: the sdk slice they call. */
 export type AccountsInput = {
   sdk: Pick<DappSDK, 'listAccounts' | 'onAccountsChanged' | 'removeOnAccountsChanged'>
-  networkId: string
 }
 
-/** Narrows a raw wallet-account list to the primary usable party, or none. */
-const toWalletAccounts = (accounts: Wallet[], networkId: string): WalletAccounts => {
-  const primary = selectPrimaryAccount(selectUsableAccounts(accounts))
-
-  return { party: primary === undefined ? undefined : toParty(primary, networkId) }
-}
-
-/** Reads the wallet's account list once and resolves the primary usable party. */
-export const readAccounts = fromPromise<WalletAccounts, AccountsInput>(
-  async ({ input: { sdk, networkId } }) => toWalletAccounts(await sdk.listAccounts(), networkId),
+/** Reads the wallet's account list once and resolves the one it flags primary. */
+export const readPrimaryAccount = fromPromise<Account | undefined, AccountsInput>(
+  async ({ input: { sdk } }) => getPrimaryAccount(await sdk.listAccounts()),
 )
 
 /** Forwards the wallet's own account-change pushes into the machine as `accounts.changed`. */
 export const accountsEvents = fromCallback<EventObject, AccountsInput>(
-  ({ sendBack, input: { sdk, networkId } }) => {
+  ({ sendBack, input: { sdk } }) => {
     const listener = (accounts: AccountsChangedEvent) => {
-      sendBack({ type: 'accounts.changed', accounts: toWalletAccounts(accounts, networkId) })
+      sendBack({ type: 'accounts.changed', account: getPrimaryAccount(accounts) })
     }
 
     void sdk.onAccountsChanged(listener).catch(() => {})

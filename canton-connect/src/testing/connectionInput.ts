@@ -39,6 +39,5 @@ export const connectionInput = (
   createSdk: () => ({ ...unstubbed, ...sdk }),
   initOptions: {},
   guardPicker: false,
-  networkId: 'canton:local',
   ...overrides,
 })
