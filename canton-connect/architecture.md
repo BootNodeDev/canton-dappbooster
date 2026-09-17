@@ -26,7 +26,6 @@ src/
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
-  accounts.ts               isUsableAccount, getPrimaryAccount
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
   index.ts                  public exports
 ```

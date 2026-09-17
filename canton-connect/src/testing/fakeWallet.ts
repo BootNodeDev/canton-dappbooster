@@ -16,7 +16,7 @@ const FAKE_WALLET_STATUS: Wallet['status'] = 'allocated'
 
 /**
  * One account the fake wallet reports from `listAccounts`. Mark exactly one `primary`: that is the
- * entry `getPrimaryAccount` resolves to.
+ * entry the session reports.
  *
  * @category Utilities
  */

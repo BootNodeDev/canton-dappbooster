@@ -12,7 +12,6 @@ The hook names follow wagmi, so a developer arriving from it knows which one to 
 | `useAccount().chain`, `.chainId` | `useAccount().account.networkId` | The wallet reports the network per account, so it travels with the account rather than beside it. |
 | `useAccount().addresses`, `.connector` | none | Not exposed yet. |
 | none | `useWalletStatus().isLocked` | Connected-but-locked is a CIP-0103 state. |
-| none | `isUsableAccount(account)` | A wallet can flag an account that cannot transact, and it is never substituted; a wagmi account can always act. |
 | `status: 'connected'` implies an address | `isConnected` with `account` still `undefined` | The primary is the user's choice in the wallet, so where the wallet flags none there is nothing to report. |
 | none | `usePartyType().readPartyType()`, resolving `'local'` or `'external'` | Canton parties come in two kinds and the reference gateway refuses `signMessage` for a local one; wagmi has one kind of account. |
 | `useWriteContract` then `useWaitForTransactionReceipt` | `useExecute().execute`, resolving after execution | The wallet submits and waits; one call covers both. |

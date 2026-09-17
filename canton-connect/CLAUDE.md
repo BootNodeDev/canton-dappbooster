@@ -71,8 +71,8 @@ and walk all five:
 
 ## Layout
 
-- `machine/` holds the lifecycle: both machines and their actors. `connectError`, `guardedConnect`,
-  `accounts` and `types` stay flat at `src/`, and a new leaf module joins them; no `utils/`.
+- `machine/` holds the lifecycle: both machines and their actors. `connectError`, `guardedConnect`
+  and `types` stay flat at `src/`, and a new leaf module joins them; no `utils/`.
 - `CantonConnectProvider/` is the provider plus the bridges it composes. It renders only
   `<Context.Provider>`, so the root's component-authoring rules do not apply to it.
 - `mock/` is source, not a double: the barrel exports `createMockAdapter`, so `testing/` cannot

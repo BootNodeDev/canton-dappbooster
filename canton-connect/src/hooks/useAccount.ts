@@ -5,7 +5,7 @@ import type { Account, ConnectionStatus } from '#src/types'
 
 /**
  * Return shape of {@link useAccount}. `account` is the one the wallet flags primary, never
- * substituted, so ask {@link isUsableAccount} before acting as it; it changes under a live session.
+ * substituted, and it changes under a live session.
  *
  * @category Hooks
  */
