@@ -4,7 +4,7 @@
 #
 # The same sequence as README.md, in one command. The CIP-0103 wallet lives
 # outside this repository and is run from there; this script brings up
-# everything the wallet talks to: the LocalNet and the dApp.
+# everything the wallet talks to: the LocalNet, the Wallet Gateway and the dApp.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in the root
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -20,8 +20,8 @@
 #   ./scripts/dev-stack.sh menu [dir]  # same as above
 #   ./scripts/dev-stack.sh install     # install + link every workspace from the repo root (pnpm install)
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
-#   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, bootstrap, dApp)
-#   ./scripts/dev-stack.sh down [dir]  # stop the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, bootstrap, gateway, dApp)
+#   ./scripts/dev-stack.sh down [dir]  # stop the gateway + the dApp dev server, stop the LocalNet
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -33,9 +33,9 @@
 #             closes with 'done', so the stream never stops without saying why
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
-# `up` runs numbered steps, ending with the dApp dev server on 3012 in the background;
-# the `step` calls in up() are the list. `down` kills it and stops the LocalNet, keeping
-# its volumes.
+# `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
+# on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
+# stops the LocalNet, keeping its volumes.
 
 set -euo pipefail
 
@@ -47,6 +47,8 @@ cd "$ROOT_DIR"
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
+GW_LOG="$RUN_DIR/wallet-gateway.log"
+GW_PID="$RUN_DIR/wallet-gateway.pid"
 
 # Resolved in up(), once ./.env has been read.
 JSON_API_URL=""
@@ -93,7 +95,7 @@ warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
 die()  { json_event error "$*"; printf '%s %s\n' "$P_ERR" "$*" >&2; exit 1; }
 
 # Keep in step with the `step` calls in up(), which are the list.
-STEP_TOTAL=9
+STEP_TOTAL=10
 STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
@@ -255,6 +257,24 @@ docker_down() { # macOS only — quit Docker Desktop
     || warn "Could not quit Docker Desktop (already closed?)"
 }
 
+# The Wallet Gateway ships from canton-network/wallet and runs on the host. Its config
+# names the app-user participant, so it needs the LocalNet answering before it starts.
+start_wallet_gateway() {
+  if lsof -nP -iTCP:3030 -sTCP:LISTEN >/dev/null 2>&1; then
+    warn "Port 3030 already in use; skipping the Wallet Gateway."
+  else
+    # 3>&- 4>&- or the two dups above outlive the script in this child, holding a
+    # reader's pipe open long after `up` has returned.
+    nohup pnpm run wallet-gateway >"$GW_LOG" 2>&1 3>&- 4>&- &
+    echo $! >"$GW_PID"
+  fi
+
+  # Any answer on the UI root proves the server is listening; the dApp API is a POST-only
+  # JSON-RPC path and has no probe a GET can read.
+  wait_for_http 60 "http://localhost:3030/" "Wallet Gateway" any \
+    || die "The Wallet Gateway is not answering on 3030 (log: $GW_LOG)."
+}
+
 up() {
   local stack_start=$SECONDS total
   mkdir -p "$RUN_DIR"
@@ -338,6 +358,9 @@ up() {
   step bootstrap "Bootstrapping the vesting operator and factory..."
   pnpm run bootstrap || die "Bootstrapping the vesting operator and factory failed."
 
+  step wallet-gateway "Starting the Wallet Gateway -> http://localhost:3030"
+  start_wallet_gateway
+
   step dapp "Starting dApp frontend dev server -> http://localhost:3012"
   if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
     warn "Port 3012 already in use; skipping dApp dev server."
@@ -359,6 +382,7 @@ up() {
   say "$(printf 'Stack is up in %dm%02ds:' "$((total / 60))" "$((total % 60))")"
   cat >&3 <<EOF
    dApp frontend           http://localhost:3012   (log: $DAPP_LOG)
+   Wallet Gateway          http://localhost:3030   (log: $GW_LOG)
    app-user wallet UI      http://wallet.localhost:2000
    app-user JSON API       $JSON_API_URL
    app-user Ledger API     grpc://localhost:2901
@@ -399,6 +423,8 @@ down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
   stop_port 3012 "dApp dev server"
+  stop_pidfile "$GW_PID" "Wallet Gateway"
+  stop_port 3030 "Wallet Gateway"
 
   # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
   # survives; drop them with 'canton-barebones reset'. Docker itself is left
@@ -411,9 +437,9 @@ down() {
   fi
 
   echo
-  log "Dev-server port 3012:"
-  if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3012 and 3030:"
+  if lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (all free)"
   fi
@@ -431,8 +457,8 @@ menu() {
     "install + link every workspace"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
-    "start LocalNet, deploy DAR, bootstrap, dApp"
-    "stop the dApp dev server, stop the LocalNet"
+    "start LocalNet, deploy DAR, bootstrap, gateway, dApp"
+    "stop the gateway + dApp dev server, stop the LocalNet"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -503,9 +529,9 @@ status() {
   else
     echo "   (docker daemon not running)"
   fi
-  log "Dev-server port 3012:"
-  if lsof -nP -iTCP:3012 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3012 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  log "Dev-server ports 3012 and 3030:"
+  if lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
     echo "   (none)"
   fi

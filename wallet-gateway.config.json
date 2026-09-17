@@ -1,0 +1,74 @@
+{
+  "kernel": {
+    "id": "canton-dappbooster",
+    "clientType": "remote"
+  },
+  "logging": {
+    "level": "info",
+    "format": "pretty"
+  },
+  "server": {
+    "port": 3030,
+    "dappPath": "/api/v0/dapp",
+    "userPath": "/api/v0/user",
+    "allowedOrigins": "*",
+    "requestSizeLimit": "5mb",
+    "requestRateLimit": 10000,
+    "trustProxy": false,
+    "admin": "sub",
+    "signingWorker": {
+      "pollInterval": 5000
+    }
+  },
+  "store": {
+    "connection": {
+      "type": "sqlite",
+      "database": ".wallet-gateway/store.sqlite"
+    }
+  },
+  "signingStore": {
+    "connection": {
+      "type": "sqlite",
+      "database": ".wallet-gateway/signing-store.sqlite"
+    }
+  },
+  "bootstrap": {
+    "idps": [
+      {
+        "id": "localnet",
+        "type": "self_signed",
+        "issuer": "unsafe-auth"
+      }
+    ],
+    "networks": [
+      {
+        "id": "canton:localnet",
+        "name": "Canton LocalNet",
+        "description": "The app-user participant from the Splice LocalNet",
+        "identityProviderId": "localnet",
+        "auth": {
+          "method": "self_signed",
+          "issuer": "unsafe-auth",
+          "audience": "https://canton.network.global",
+          "scope": "daml_ledger_api",
+          "clientId": "ledger-api-user",
+          "clientSecret": "unsafe"
+        },
+        "adminAuth": {
+          "method": "self_signed",
+          "issuer": "unsafe-auth",
+          "audience": "https://canton.network.global",
+          "scope": "daml_ledger_api",
+          "clientId": "ledger-api-user",
+          "clientSecret": "unsafe"
+        },
+        "ledgerApi": {
+          "baseUrl": "http://127.0.0.1:2975"
+        }
+      }
+    ]
+  },
+  "hashingScheme": {
+    "version": "HASHING_SCHEME_VERSION_V3"
+  }
+}

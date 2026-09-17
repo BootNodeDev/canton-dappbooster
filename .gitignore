@@ -12,6 +12,9 @@ typedoc/
 # canton-barebones: its scaffolded config, the Splice checkout and the runtime env
 .canton-localnet/
 
+# wallet-gateway: its sqlite wallet and signing stores
+.wallet-gateway/
+
 # env
 .env
 .env.local
