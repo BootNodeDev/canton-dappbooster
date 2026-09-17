@@ -103,26 +103,36 @@ devDependency whose config `scripts/dev-stack.sh` scaffolds into the gitignored
 - All source code in English regardless of conversation language.
 - TypeScript preferred over JavaScript across Node subprojects.
 - **No semicolons** in TypeScript / JavaScript across the repo.
-- **Comments are terse and explain *why*, not *what*.** One sentence, wrapped to the line width.
-  Two only if one genuinely cannot carry it; never more. Do not restate what the code already says
-  or narrate steps. If the code needs a paragraph to be understood, simplify the code instead.
+- **Name it, do not caption it.** A function, variable or type that needs a comment to be understood
+  gets renamed or split instead. The name is the documentation.
+- **A comment is only for what the code cannot carry**: a hack, a workaround, an outside constraint
+  (browser bug, protocol quirk, an ordering that matters), a deliberate *omission*, or a rejected
+  alternative. Nothing else earns one.
+- **One line, hard cap**, on the line it applies to and not in a block above the function. Needing a
+  second line means the code is wrong or the prose belongs in an `.md`.
+- **No narration.** Never restate what the code says, walk through steps, or explain how a
+  dependency behaves. A file carrying more comment than code is a bad file.
+- **Tests document themselves through their names.** A test needing a comment needs a better name.
 - **Never annotate members one by one.** No per-property comments on a type, interface, enum, or
   object literal. A member whose name and type do not explain it gets renamed or retyped, not
   captioned. A section header grouping a block of tokens or exports is not a member comment and
   stays allowed.
 - **CSS carries no comments at all, with one exception: a section separator** naming the block that
   follows (`/* Account popover */`, `/* Token chips */`, `/* Colour roles */`). Nothing else, not
-  even the why-exception below: a stylesheet workaround or ordering constraint is recorded in the
+  even the exception above: a stylesheet workaround or ordering constraint is recorded in the
   nearest `CLAUDE.md`, where the next author looks before editing, and not in a comment they will
   delete.
-- Outside CSS, the only exception is something the code cannot carry: a hack, a workaround, a
-  non-obvious external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate
-  *omission*, or a rejected alternative. Comment that, one line, on the line it applies to. Before
-  deleting a comment, check the code still carries the fact — an absence and a road not taken never
-  do.
-- JSDoc is exempt from the line cap but not from terseness: say what the symbol does, and when a
+- **Where the prose goes instead**: how a subsystem behaves in the nearest `architecture.md`, a rule
+  about how to write the code in the nearest `CLAUDE.md`. Both outlive a comment.
+- **Fix a comment you touch.** Find one breaking these rules in a file the current task already
+  changes and fix it in the same change: delete it where the code carries the fact, cut it to one
+  line where it does not, or move the prose to the nearest `.md`. Before deleting, check the code
+  still carries the fact — an absence and a road not taken never do. In any other file, name it in
+  your report and leave it alone; a repo-wide sweep is its own commit.
+- JSDoc is exempt from the one-line cap but not from terseness: say what the symbol does, and when a
   caller could reasonably pick a different export, say which. Never restate the type, never
-  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage.
+  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage, and the
+  Doc blocks table below caps the rest.
 - Lint and formatting are centralized in the root `biome.json`. Add project-specific rules under `overrides` keyed by path; do not create per-subproject Biome configs.
 
 ## File & Folder Organization
