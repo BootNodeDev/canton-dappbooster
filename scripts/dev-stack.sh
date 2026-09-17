@@ -268,9 +268,8 @@ start_wallet_gateway() {
     echo $! >"$GW_PID"
   fi
 
-  # Any answer on the UI root proves the server is listening; the dApp API is a POST-only
-  # JSON-RPC path and has no probe a GET can read.
-  wait_for_http 60 "http://localhost:3030/" "Wallet Gateway" any \
+  # 2xx on the UI root, so something unrelated holding 3030 fails too; the dApp API is POST-only.
+  wait_for_http 60 "http://localhost:3030/" "Wallet Gateway" ok \
     || die "The Wallet Gateway is not answering on 3030 (log: $GW_LOG)."
 }
 

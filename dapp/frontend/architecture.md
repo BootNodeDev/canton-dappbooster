@@ -89,8 +89,8 @@ consume. Every Amulet is DSO-signed, so it is the same party by construction.
 A write fails at the participant when the wallet submits to a network the app's contracts do not
 live on, because the `AmuletRules` and mining round ids do not exist on the ledger the wallet
 reaches. Both sides of that are read.
-[`transferContext.ts`](src/backend/transferContext.ts) carries `fetchAppNetwork`, which taps and
-returns only the `synchronizerId` the tap stamped on the disclosures, the network the app's
+[`transferContext.ts`](src/backend/transferContext.ts) carries `fetchAppNetwork`, which reads
+`/v0/amulet-rules` from Scan and returns only the `domain_id` on that answer, the network the app's
 contracts are on. Its own export rather than a field on the transfer context: that builder waits for
 an `AmuletRules` and an open mining round both, and the SV opens the first round minutes after a
 LocalNet start, while the id sits on the rules alone.
@@ -136,8 +136,8 @@ in a window the user never comes back from. A failed read is silent and leaves t
 standing, because a host that is down, or a wallet that has just locked, is not a wrong
 network.
 
-The timer starts fast and slows down. Scan answers the network read straight away, but the round
-read waits on the SV, so the first retry is 3 seconds away and each further one
+The timer starts fast and slows down. Either side can be missing when the first check runs — Scan,
+or the wallet's own participant — so the first retry is 3 seconds away and each further one
 doubles — 3, 6, 12, 24 — up to the same 30 seconds every later check runs at. The doubling is what
 keeps a host that is down from being asked twice every 3 seconds for as long as the tab is
 open. What picks the delay is a count of checks since the last definite answer, so an answer settles
