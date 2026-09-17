@@ -34,7 +34,7 @@ Once Canton dAppBooster is installed, the easiest way to start the development s
 ## Additional notes
 
 - The demo app runs on http://localhost:3012/ by default.
-- Select Wallet Gateway form the picker when connecting and enter `unsafe` as the client secret.
+- Select Wallet Gateway from the picker when connecting and enter `unsafe` as the client secret.
 - Wallet Gateway runs on http://localhost:3030 by default. You'll need at least 2 parties in it to explore the demo's features in full. **Create parties with `wallet-kernel` as the signing provider.**
 - Technical documentation available at https://docs.dappbooster.cc
 
