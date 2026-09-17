@@ -15,6 +15,8 @@ allowBuilds:
   protobufjs: true
   secp256k1: true
 
+# Added by pnpm when the Wallet Gateway went in: those versions were published the same day and
+# the minimum-release-age policy refuses them. Drop an entry once its version has aged past it.
 minimumReleaseAgeExclude:
   - '@canton-network/core-ledger-client-types@1.12.2'
   - '@canton-network/core-ledger-client@1.12.2'

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "app:dev": "pnpm -C dapp/frontend run dev",
-    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting.mjs",
+    "bootstrap": "node scripts/bootstrap-vesting.mjs",
     "build-dar": "pnpm -C dapp/daml run build",
     "build": "pnpm -r run --if-present build",
     "check:anatomy": "node kit/check-anatomy.mjs",

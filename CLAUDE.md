@@ -380,7 +380,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
   subject in. `deploy-dar` is the one exception and pays for it with an explicit `[ "$1" = "--" ] &&
   shift`, which is what lets it take `-- <dar>`.
-- Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
+- Local ports: the dApp dev server on 3012 and the Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` and the `.env.example` defaults together.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` carries no `@canton-network/*` overrides. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
 - **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
