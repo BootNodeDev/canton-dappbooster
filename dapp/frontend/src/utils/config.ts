@@ -6,6 +6,9 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 
 export const WALLET_RPC_URL: string = import.meta.env.VITE_WALLET_RPC_URL
 
+// The gateway's dApp JSON-RPC path, not its UI origin: the adapter talks to /api/v0/dapp.
+export const WALLET_GATEWAY_URL: string = import.meta.env.VITE_WALLET_GATEWAY_URL
+
 export const REGISTRY_URL = '/registry'
 
 // The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.

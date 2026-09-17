@@ -44,7 +44,13 @@ const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
   }
   const { rights } = await call<{
     rights?: { kind?: { CanActAs?: { value?: { party?: string } } } }[]
-  }>(ledgerApi, { requestMethod: 'get', resource: `/v2/users/${user.id}/rights` })
+    // The route is named as a template with the id in `path`: a gateway allowlists the resource
+    // against the ledger API's own route list, and one with the id written in matches nothing.
+  }>(ledgerApi, {
+    requestMethod: 'get',
+    resource: '/v2/users/{user-id}/rights',
+    path: { 'user-id': user.id },
+  })
   const operator = (rights ?? [])
     .map((right) => right.kind?.CanActAs?.value?.party)
     .filter((party): party is string => party?.startsWith(OPERATOR_HINT) === true)

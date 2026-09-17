@@ -3,6 +3,7 @@ import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
   VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
@@ -22,7 +23,7 @@ describe('parseEnv', () => {
 
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
-  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_RPC_URL'])(
+  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_GATEWAY_URL', 'VITE_WALLET_RPC_URL'])(
     'names %s and rejects an empty value',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
@@ -41,11 +42,20 @@ describe('parseEnv', () => {
     },
   )
 
-  // The browser calls wallet-service directly, so a path has nothing to resolve against.
+  // The browser calls both hosts directly, so a path has nothing to resolve against.
   it.each(['/rpc', '//evil.example/rpc', 'rpc', 'javascript:alert(1)'])(
     'rejects %j as the rpc url',
     (VITE_WALLET_RPC_URL) => {
       expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_RPC_URL })).toThrow(/VITE_WALLET_RPC_URL/)
+    },
+  )
+
+  it.each(['/api/v0/dapp', '//evil.example/api/v0/dapp', 'javascript:alert(1)'])(
+    'rejects %j as the gateway url',
+    (VITE_WALLET_GATEWAY_URL) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_GATEWAY_URL })).toThrow(
+        /VITE_WALLET_GATEWAY_URL/,
+      )
     },
   )
 
