@@ -80,15 +80,13 @@ type PinnedAccount = {
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type Assert<T extends true> = T
 
-// Exists to fail typecheck when an SDK bump changes the account entry, rather than let the new
-// shape reach the hooks unnoticed. `Account` is defined through it so it cannot go unused:
-// `dapp/frontend` compiles this source under `noUnusedLocals`, where a dangling type is an error.
+// Fails typecheck when an SDK bump changes the account entry. `Account` is defined through it so
+// it cannot go unused, which `dapp/frontend`'s `noUnusedLocals` would reject.
 type AccountPinned = Assert<Exact<Wallet, PinnedAccount>>
 
 /**
  * One account the connected wallet reports: a party plus its key, signing provider and network.
- * Only `dapp-sdk`'s schema calls it a wallet, and CIP-0103 makes that schema binding from v1.0.0.
- * Until then the CIP text is what binds, and it says account.
+ * `dapp-sdk` calls this type `Wallet`; CIP-0103's own text says account.
  *
  * @category Types
  */
