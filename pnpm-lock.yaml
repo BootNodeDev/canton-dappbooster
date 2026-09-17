@@ -335,7 +335,7 @@ importers:
         specifier: ^0.4.0
         version: link:../../canton-theme
       '@canton-network/dapp-sdk':
-        specifier: ^1.5.1
+        specifier: 1.5.1
         version: 1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.5.4))(@walletconnect/types@2.24.0)(supports-color@8.1.1)
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8

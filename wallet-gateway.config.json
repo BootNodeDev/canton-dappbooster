@@ -11,7 +11,7 @@
     "port": 3030,
     "dappPath": "/api/v0/dapp",
     "userPath": "/api/v0/user",
-    "allowedOrigins": "*",
+    "allowedOrigins": ["http://localhost:3012"],
     "requestSizeLimit": "5mb",
     "requestRateLimit": 10000,
     "trustProxy": false,

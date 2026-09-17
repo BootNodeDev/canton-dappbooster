@@ -2,9 +2,8 @@
 #
 # dev-stack.sh — start or stop the local Canton dApp stack.
 #
-# The same sequence as README.md, in one command. The CIP-0103 wallet lives
-# outside this repository and is run from there; this script brings up
-# everything the wallet talks to: the LocalNet, the Wallet Gateway and the dApp.
+# The same sequence as README.md, in one command: the LocalNet, the DAR, the
+# vesting bootstrap, the Wallet Gateway and the dApp.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in the root
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -391,7 +390,7 @@ up() {
    SV UI                   http://sv.localhost:4000
    PostgreSQL              localhost:5432
 EOF
-  echo "   Run a CIP-0103 wallet from its own repo to connect to the dApp" >&3
+  echo "   Log in to the Wallet Gateway with client secret 'unsafe', then connect the dApp" >&3
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>

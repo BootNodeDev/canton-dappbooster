@@ -21,7 +21,7 @@
     "@bootnodedev/canton-connect": "^0.4.0",
     "@bootnodedev/canton-dappbooster": "^0.4.0",
     "@bootnodedev/canton-theme": "^0.4.0",
-    "@canton-network/dapp-sdk": "^1.5.1",
+    "@canton-network/dapp-sdk": "1.5.1",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
     "@walletconnect/sign-client": "^2.23.9",
