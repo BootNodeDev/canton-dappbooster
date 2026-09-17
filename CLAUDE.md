@@ -63,6 +63,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
+| Wallet | @canton-network/wallet-gateway-remote | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in root devDependencies, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `wallet-gateway.config.json`. `dapp/frontend` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
@@ -89,10 +90,13 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
-One thing the loop needs is not a subproject but a dependency. The LocalNet ships from
+Two things the loop needs are not subprojects but dependencies. The LocalNet ships from
 [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is a pinned
 devDependency whose config `scripts/dev-stack.sh` scaffolds into the gitignored
-`.canton-localnet/` and drives there over `pnpm exec`.
+`.canton-localnet/` and drives there over `pnpm exec`. The wallet ships from
+[canton-network/wallet](https://github.com/canton-network/wallet) as
+`@canton-network/wallet-gateway-remote`, installs from npm as a root devDependency, and
+`scripts/dev-stack.sh` runs it on port 3030 through `pnpm run wallet-gateway`.
 
 ## Code Style
 
@@ -379,7 +383,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   how it reached npm. `dapp/frontend` also lists it in `dependencies` on the same range: pnpm and
   npm auto-install peers, yarn does not, and a consumer can turn that off. It can go back to
   optional once upstream moves that import behind a dynamic one.
-- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild` and `protobufjs`. Anything else is blocked until it is added.
+- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, and the three the Wallet Gateway compiles natively — `better-sqlite3`, `cbor-extract` and `secp256k1`. Anything else is blocked until it is added.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
 ## `kit/` and the consumer scaffold
@@ -613,6 +617,16 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 - Do not modify CI/CD pipelines without team review.
 - Do not skip tests or linting to make a build pass.
 - Do not bypass the husky hooks (`--no-verify`) unless the user explicitly asks.
+- **`wallet-gateway.config.json` is committed, unlike the LocalNet's.** It is ours rather than a
+  tool's template, it is three dozen lines, and the LocalNet values in it are the published unsafe
+  ones (`unsafe` as the signing secret, `https://canton.network.global` as the audience). Its two
+  SQLite stores land in the gitignored `.wallet-gateway/`, which the `wallet-gateway` script creates
+  because better-sqlite3 refuses a database in a directory that does not exist.
+- **A `ledgerApi` route names its path segments as a template, with the values in `path`.**
+  `/v2/users/{user-id}/rights` plus `path: { 'user-id': id }`, never `/v2/users/${id}/rights`. The
+  gateway allowlists the resource against the ledger API's own route list, so an interpolated id
+  matches nothing and comes back as `Unsupported get resource`. wallet-service passed anything
+  through, which is why this only surfaced on the move.
 - **Never touch the root `README.md` unless explicitly told to in that request.** No
   doc-sync sweep, no "update docs in the same commit" rule and no `update-docs` run
   authorizes editing it. Subproject READMEs are not covered by this.

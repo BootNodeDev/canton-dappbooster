@@ -46,6 +46,11 @@ Missing is a hard error surfaced by `AppShell`, not a fallback: without a packag
 nothing to query and without the blob there is no factory to disclose. It needs a session to read
 through, so it resolves after connect rather than before.
 
+The rights read names its route as `/v2/users/{user-id}/rights` with the id in `path`, not written
+into the string. The Wallet Gateway allowlists the resource against the ledger API's own route list,
+so an interpolated id matches nothing and comes back as `Unsupported get resource`. The rule is
+under Ledger reads in [`CLAUDE.md`](CLAUDE.md).
+
 ## What a write has to carry
 
 Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the

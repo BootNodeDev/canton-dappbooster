@@ -34,7 +34,7 @@ Once Canton dAppBooster is installed, the easiest way to start the development s
 ## Additional notes
 
 - The demo app runs on http://localhost:3012/ by default.
-- A compatible CIP-0103 wallet is required to connect to the demo app. You'll need at least 2 accounts in the wallet to explore the demo's features in full.
+- The Wallet Gateway is the wallet, and `dev-stack.sh up` starts it on http://localhost:3030. Open it, pick **Canton LocalNet**, and enter `unsafe` as the client secret. You'll need at least 2 parties in it to explore the demo's features in full.
 - Writes are currently broken. They need the `AmuletRules` and open mining round disclosures, which the app still fetches from the removed wallet-service. Reads work.
 - Technical documentation available at https://docs.dappbooster.cc
 
@@ -113,6 +113,15 @@ pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-*.dar
 ```
 
 **Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
+
+### Wallet Gateway
+
+Start the [Wallet Gateway](https://github.com/canton-network/wallet), which is the wallet the dApp
+connects to.
+
+```bash
+pnpm run wallet-gateway
+```
 
 ### Bootstrap
 
