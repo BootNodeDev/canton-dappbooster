@@ -1,4 +1,5 @@
 import type { DisclosedContract } from '@/backend/wallet'
+import { now } from '@/utils/clock'
 import { SCAN_API_URL } from '@/utils/config'
 import { errorText } from '@/utils/errorText'
 
@@ -58,11 +59,11 @@ const disclose = (contract: ScanContract): DisclosedContract => ({
 })
 
 const liveRound = (rounds: RoundsResult): ScanContract | undefined => {
-  const now = Date.now()
+  const opened = now()
   return Object.values(rounds.open_mining_rounds ?? {})
     .map((entry) => entry.contract)
     .filter((contract) => contract !== undefined)
-    .filter((contract) => Date.parse(contract.payload?.opensAt ?? '') <= now)
+    .filter((contract) => Date.parse(contract.payload?.opensAt ?? '') <= opened)
     .sort((a, b) => Number(a.payload?.round?.number) - Number(b.payload?.round?.number))
     .at(-1)
 }

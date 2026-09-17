@@ -8,8 +8,7 @@
 //
 // Run with the local stack up and the DAR deployed.
 
-// loadEnvFile never overrides an already-set variable, so a caller-exported value wins on its
-// own, the same precedence deploy-dar.sh spells out by hand.
+// A caller-exported value wins over .env, the same precedence deploy-dar.sh spells out by hand.
 try {
   process.loadEnvFile(new URL('../.env', import.meta.url))
 } catch {
@@ -39,8 +38,7 @@ const ledger = async (requestMethod, resource, body, query) => {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   const text = await response.text()
-  // Status before parse: an error page from a still-starting participant would otherwise
-  // surface as a JSON syntax error instead of the failure.
+  // Status before parse: an error page would otherwise surface as a JSON syntax error.
   if (!response.ok) {
     throw new Error(
       `${requestMethod} ${resource} failed: HTTP ${response.status} ${text.slice(0, 400)}`,
