@@ -99,7 +99,7 @@ function Dapp() {
     return <p>Wallet locked. Unlock it to continue.</p>
   }
 
-  // ... your dApp: party.partyId, signMessage(text), execute(params), ledgerApi(params)
+  // ... your dApp: account.partyId, signMessage(text), execute(params), ledgerApi(params)
 }
 ```
 
