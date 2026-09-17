@@ -1,13 +1,13 @@
 export interface Env {
   VITE_EXPLORER_URL: string
+  VITE_SCAN_API_URL: string
   VITE_WALLET_GATEWAY_URL: string
-  VITE_WALLET_RPC_URL: string
 }
 
 const DEFAULTS: Env = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_SCAN_API_URL: 'http://scan.localhost:4000/api/scan',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
-  VITE_WALLET_RPC_URL: 'http://localhost:3010/rpc',
 }
 
 const isHttpUrl = (value: string): boolean => {
@@ -18,7 +18,6 @@ const isHttpUrl = (value: string): boolean => {
   }
 }
 
-// Reads one env key and validates it
 const read = (
   values: Record<string, unknown>,
   key: keyof Env,
@@ -32,7 +31,6 @@ const read = (
   return value
 }
 
-// Validates the build's environment
 export const parseEnv = (source: unknown): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')
@@ -41,7 +39,7 @@ export const parseEnv = (source: unknown): Env => {
 
   return {
     VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
+    VITE_SCAN_API_URL: read(values, 'VITE_SCAN_API_URL', isHttpUrl, 'an http(s) url'),
     VITE_WALLET_GATEWAY_URL: read(values, 'VITE_WALLET_GATEWAY_URL', isHttpUrl, 'an http(s) url'),
-    VITE_WALLET_RPC_URL: read(values, 'VITE_WALLET_RPC_URL', isHttpUrl, 'an http(s) url'),
   }
 }
