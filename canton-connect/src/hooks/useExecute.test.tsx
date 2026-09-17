@@ -63,7 +63,7 @@ describe('useExecute', () => {
     expect(prepareExecuteAndWait).toHaveBeenCalledWith({ commands: [], actAs: ['bob::1220cd'] })
   })
 
-  it('refuses a submit over a session that reports no party', async () => {
+  it('refuses a submit over a session that reports no account', async () => {
     const prepareExecuteAndWait = vi
       .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
@@ -71,7 +71,7 @@ describe('useExecute', () => {
 
     await act(async () => {
       await expect(result.current.execute({ commands: [] })).rejects.toThrow(
-        'wallet reports no usable party',
+        'wallet reports no primary account',
       )
     })
 

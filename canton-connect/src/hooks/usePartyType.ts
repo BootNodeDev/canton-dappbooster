@@ -58,7 +58,7 @@ export const usePartyType = (): UsePartyTypeResult => {
     assertUsable(status, isLocked)
 
     if (account === undefined) {
-      throw new Error('wallet reports no usable party - allocate one in the wallet')
+      throw new Error('wallet reports no primary account - select or add one in the wallet')
     }
 
     const participantNamespace = await readParticipantNamespace(sdk)

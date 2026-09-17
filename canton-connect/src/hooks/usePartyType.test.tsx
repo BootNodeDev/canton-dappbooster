@@ -71,14 +71,16 @@ describe('usePartyType', () => {
     })
   })
 
-  it('refuses over a session that reports no party, without asking the ledger', async () => {
+  it('refuses over a session that reports no account, without asking the ledger', async () => {
     const ledgerApi = answering({ participantId: 'participant::1220ab' })
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, undefined))
 
     expect(result.current.isReady).toBe(false)
 
     await act(async () => {
-      await expect(result.current.readPartyType()).rejects.toThrow('wallet reports no usable party')
+      await expect(result.current.readPartyType()).rejects.toThrow(
+        'wallet reports no primary account',
+      )
     })
 
     expect(ledgerApi).not.toHaveBeenCalled()

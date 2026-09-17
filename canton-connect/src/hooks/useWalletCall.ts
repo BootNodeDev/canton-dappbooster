@@ -25,10 +25,10 @@ export const assertUsable = (status: ConnectionStatus, isLocked: boolean): void 
   }
 }
 
-/** Throws when the session reports no party, which a connected one can. */
+/** Throws when the session reports no account, which a connected one can. */
 function assertPartyId(partyId: string | undefined): asserts partyId is string {
   if (partyId === undefined) {
-    throw new Error('wallet reports no usable party - allocate one in the wallet')
+    throw new Error('wallet reports no primary account - select or add one in the wallet')
   }
 }
 

@@ -97,7 +97,7 @@ describe('useSignMessage', () => {
     expect(result.current.error).toBeUndefined()
   })
 
-  it('refuses a signature over a session that reports no party', async () => {
+  it('refuses a signature over a session that reports no account', async () => {
     const signMessage = vi
       .fn<DappSdkMethods['signMessage']>()
       .mockResolvedValue({ signature: 'sig' })
@@ -105,7 +105,7 @@ describe('useSignMessage', () => {
 
     await act(async () => {
       await expect(result.current.signMessage('hello')).rejects.toThrow(
-        'wallet reports no usable party',
+        'wallet reports no primary account',
       )
     })
 
