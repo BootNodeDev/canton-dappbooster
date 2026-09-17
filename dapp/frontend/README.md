@@ -41,7 +41,8 @@ It works on LocalNet and devnet, where the choice exists, and refuses until the 
 first mining round, roughly ten minutes after a fresh start.
 
 Connect with a CIP-0103 wallet — the Wallet Gateway on http://localhost:3030 is the one the dev
-stack starts. The party it reports is the one you act as, and the session is restored on reload by
+stack starts. Create its parties with the `wallet-kernel` signing provider; a `participant` one
+has its Amulets merged out from under a pending grant (see the root README). The party it reports is the one you act as, and the session is restored on reload by
 the wallet itself. Changing the wallet's primary party changes the party the dApp acts as. Its
 three env knobs — the explorer party ids link to, the gateway's dApp API, and Scan's API — default
 to the local stack and are set in the repo root's `.env`; see the root

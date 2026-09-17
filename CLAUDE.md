@@ -627,6 +627,14 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 - Do not modify CI/CD pipelines without team review.
 - Do not skip tests or linting to make a build pass.
 - Do not bypass the husky hooks (`--no-verify`) unless the user explicitly asks.
+- **A party the dApp acts as is created with the gateway's `wallet-kernel` signing provider, never
+  `participant`.** The validator installs a `WalletAppInstall` for a participant-hosted party and
+  its automation then merges that party's Amulets, archiving the one a grant pledges: the proposal
+  keeps a dead `amuletCids` and `AmuletVestingProposal_Accept` fails with `Rejected transaction is
+  referring to inactive contracts`. Measured on a LocalNet: a participant party's split Amulet was
+  archived 79 seconds after it was created, by a transaction with no `commandId`; a `wallet-kernel`
+  party got no install and kept both Amulets. The bootstrap operator is exempt — it holds no
+  Amulets and only signs the factory.
 - **`wallet-gateway.config.json` is committed, unlike the LocalNet's.** It is ours rather than a
   tool's template, it is three dozen lines, and the LocalNet values in it are the published unsafe
   ones (`unsafe` as the signing secret, `https://canton.network.global` as the audience). Its two
