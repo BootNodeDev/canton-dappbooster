@@ -34,7 +34,8 @@ Once Canton dAppBooster is installed, the easiest way to start the development s
 ## Additional notes
 
 - The demo app runs on http://localhost:3012/ by default.
-- A compatible CIP-0103 wallet (like the [Carpincho development wallet](https://github.com/BootNodeDev/carpincho-wallet)) is required to connect to the demo app. Point the wallet at http://localhost:3010/rpc when asked. You'll need at least 2 accounts in the wallet to explore the demo's features in full.
+- A compatible CIP-0103 wallet is required to connect to the demo app. You'll need at least 2 accounts in the wallet to explore the demo's features in full.
+- Writes are currently broken. They need the `AmuletRules` and open mining round disclosures, which the app still fetches from the removed wallet-service. Reads work.
 - Technical documentation available at https://docs.dappbooster.cc
 
 ---
@@ -113,17 +114,9 @@ pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-*.dar
 
 **Note:** The step is only needed the first time. Run again if the Daml source changes or if LocalNet is reset.
 
-### Wallet service
-
-Start [wallet-service](https://github.com/BootNodeDev/canton-wallet-service).
-
-```bash
-pnpm exec canton-wallet-service
-```
-
 ### Bootstrap
 
-Needs both LocalNet and wallet-service up and running.
+Needs LocalNet up and running.
 
 ```bash
 pnpm run bootstrap

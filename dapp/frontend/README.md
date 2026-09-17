@@ -17,8 +17,8 @@ placeholder. See the root [README](../../README.md) for the wider stack.
 
 ## Run
 
-The app needs a Canton LocalNet, wallet-service on port 3010 and the vesting DAR deployed
-before it renders anything; the root [README](../../README.md) is the whole bring-up. Once
+The app needs a Canton LocalNet and the vesting DAR deployed before it renders anything;
+the root [README](../../README.md) is the whole bring-up. Once
 that is up, from the repo root (one `pnpm install` links every workspace):
 
 ```bash
@@ -35,13 +35,16 @@ factory through an active-contracts read that returns its explicit-disclosure pa
 which a grant cannot be created. Re-running it supersedes the last one, on any ledger.
 
 Funding a grant takes Amulet, and the account menu has a faucet for it: **Tap Amulet** taps
-100 AMT into the connected party. It works on LocalNet and devnet, where the choice exists, and
-refuses until the SV has opened the first mining round, roughly ten minutes after a fresh start.
+100 AMT into the connected party.
 
-Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
+> Every write, the faucet included, is currently broken. They all need the `AmuletRules` and
+> open mining round disclosures, which `src/backend/transferContext.ts` still fetches over
+> JSON-RPC from `VITE_WALLET_RPC_URL`, and nothing serves that endpoint any more. Reads work.
+
+Connect with a CIP-0103 wallet; the party it reports is the one you act as, and
 the session is restored on reload by the wallet itself. Changing the wallet's primary
 account changes the party the dApp acts as. Its two env knobs — the explorer party ids
-link to and the wallet-service endpoint it builds the Amulet disclosures from — default to
+link to and the JSON-RPC endpoint above — default to
 the local stack and are set in the repo root's `.env`; see the root
 [`.env.example`](../../.env.example).
 
