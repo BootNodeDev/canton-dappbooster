@@ -86,7 +86,7 @@ const toAccount = (
   status: MOCK_ACCOUNT_STATUS,
   hint: account.name ?? account.partyId,
   publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
-  // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
+  // namespace is the partyId's fingerprint segment, the real party-hint::fingerprint convention.
   namespace: account.partyId.split('::')[1] ?? account.partyId,
   networkId: networkId ?? MOCK_NETWORK_ID,
   signingProviderId: MOCK_SIGNING_PROVIDER_ID,
