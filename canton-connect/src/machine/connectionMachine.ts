@@ -18,7 +18,7 @@ import {
   restore,
   walletEvents,
 } from '#src/machine/connectionActors'
-import type { Account, ConnectionStatus, ConnectionSubscription, WalletSdk } from '#src/types'
+import type { Account, ConnectionStatus, ConnectionSubscription, DappSdkMethods } from '#src/types'
 
 // The SDK's disconnect awaits the wallet's answer with no deadline of its own, so this is the only
 // bound on how long `disconnecting` can last.
@@ -43,14 +43,14 @@ export type WalletStatusUpdate = Pick<StatusEvent, 'connection'>
  * @category Types
  */
 export type ConnectionInput = {
-  createSdk: () => WalletSdk
+  createSdk: () => DappSdkMethods
   initOptions: InitOptions
   guardPicker: boolean
 }
 
 /** What the machine carries beyond its input: the sdk it drives, the last failure, the account. */
 type ConnectionContext = ConnectionInput & {
-  sdk: WalletSdk
+  sdk: DappSdkMethods
   // The last attempt's failure, not the session's: it outlives `failure` on purpose, so a
   // session recovered afterwards can still say why the attempt before it failed.
   lastConnectError: unknown

@@ -6,11 +6,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { usePartyType } from '#src/hooks/usePartyType'
 import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import type { Account, WalletSdk } from '#src/types'
+import type { Account, DappSdkMethods } from '#src/types'
 
 const party = testAccount('alice::1220ab')
 
-const liveSession = (sdk: Partial<WalletSdk>, connectedAccount: Account | undefined) => ({
+const liveSession = (sdk: Partial<DappSdkMethods>, connectedAccount: Account | undefined) => ({
   wrapper: ({ children }: { children: ReactNode }) => (
     <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
       {children}
@@ -18,10 +18,10 @@ const liveSession = (sdk: Partial<WalletSdk>, connectedAccount: Account | undefi
   ),
 })
 
-type LedgerAnswer = Awaited<ReturnType<WalletSdk['ledgerApi']>>
+type LedgerAnswer = Awaited<ReturnType<DappSdkMethods['ledgerApi']>>
 
 const answering = (answer: LedgerAnswer) =>
-  vi.fn<WalletSdk['ledgerApi']>().mockResolvedValue(answer)
+  vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValue(answer)
 
 describe('usePartyType', () => {
   it('reads the participant id and calls a party under its namespace local', async () => {
@@ -52,7 +52,7 @@ describe('usePartyType', () => {
 
   it('hands a refusal back as the rejection it was', async () => {
     const refused = new Error('RPC error: -32601 - method not allowed')
-    const ledgerApi = vi.fn<WalletSdk['ledgerApi']>().mockRejectedValue(refused)
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(refused)
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
 
     await act(async () => {

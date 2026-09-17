@@ -8,22 +8,22 @@ import type {
   CantonConnectConfig,
   CantonConnectContextValue,
   ConnectionStatus,
-  WalletSdk,
+  DappSdkMethods,
 } from '#src/types'
 
 const CONFIG: CantonConnectConfig = { appName: 'fake-session' }
 
 // Module scope so an omitted prop keeps its identity across renders, which is what stops the
 // session from being rebuilt on every one.
-const NO_SDK: Partial<WalletSdk> = {}
+const NO_SDK: Partial<DappSdkMethods> = {}
 
 // Anything past the connect flow needs a real wallet; a canned answer would read as one. Safe as
 // machine context because a rehydrated snapshot carries no children, so no actor reaches for it.
 /** A `sdk` wrapper that throws naming the method for anything the test never stubbed. */
-const refusingSdk = (supplied: Partial<WalletSdk>): WalletSdk =>
-  new Proxy({} as WalletSdk, {
+const refusingSdk = (supplied: Partial<DappSdkMethods>): DappSdkMethods =>
+  new Proxy({} as DappSdkMethods, {
     get: (_, key) => {
-      const method = supplied[key as keyof WalletSdk]
+      const method = supplied[key as keyof DappSdkMethods]
 
       if (method === undefined) {
         throw new Error(`fake session has no sdk.${String(key)} — drive the real provider for that`)
@@ -60,7 +60,7 @@ const startSession = (
   shape: SessionShape,
   account: Account | undefined,
   connectError: Error | undefined,
-  sdk: WalletSdk,
+  sdk: DappSdkMethods,
 ): ConnectionActorRef => {
   const input = connectionInput({}, { createSdk: () => sdk })
 
@@ -91,7 +91,7 @@ export interface FakeSessionProviderProps {
   connectError?: Error
   isLocked?: boolean
   readingAccounts?: boolean
-  sdk?: Partial<WalletSdk>
+  sdk?: Partial<DappSdkMethods>
   status?: ConnectionStatus
 }
 

@@ -28,7 +28,7 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   `sdk.connect()` swaps it.
 - **The provider selects nothing.** It publishes the config, the actor and four actions; each hook
   selects its own slice. Never add a field a hook could select.
-- **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
+- **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `DappSdkMethods`
   narrows `DappSDK` to the methods this package calls.
 - **The machine owns the session; a hook owns what it asked for.** `sdk`, `party`, status and the
   last connect error are machine context, never React state. A call's result or in-flight flag

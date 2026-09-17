@@ -2,11 +2,11 @@ import { useSelector } from '@xstate/react'
 import { useCallback } from 'react'
 import type { CantonConnectProvider } from '#src/CantonConnectProvider'
 import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
-import type { PartyType, WalletSdk } from '#src/types'
+import type { DappSdkMethods, PartyType } from '#src/types'
 
 const namespaceOf = (id: string): string | undefined => /::(.+)$/.exec(id)?.[1]
 
-const readParticipantNamespace = async (sdk: WalletSdk): Promise<string> => {
+const readParticipantNamespace = async (sdk: DappSdkMethods): Promise<string> => {
   const answer = await sdk.ledgerApi({
     requestMethod: 'get',
     resource: '/v2/parties/participant-id',

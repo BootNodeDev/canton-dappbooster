@@ -1,14 +1,14 @@
 import type { TxChangedEvent } from '@canton-network/dapp-sdk'
 import { useSelector } from '@xstate/react'
 import { useEffect, useState } from 'react'
-import type { ConnectionSubscription, TxStatusSnapshot, WalletSdk } from '#src/types'
+import type { ConnectionSubscription, DappSdkMethods, TxStatusSnapshot } from '#src/types'
 
 // Transactions are orthogonal to the connection lifecycle, so they stay React state rather than
 // machine context: nothing about the session depends on the last command's fate. One listener per
 // `useExecute`, since it is the only consumer and every listener hears every tx.
 /** Tracks the SDK's `txChanged` pushes while a session is active, clearing on session end. */
 export const useTxFeed = (
-  sdk: WalletSdk,
+  sdk: DappSdkMethods,
   connection: ConnectionSubscription,
 ): TxStatusSnapshot | undefined => {
   const [lastTx, setLastTx] = useState<TxStatusSnapshot | undefined>(undefined)

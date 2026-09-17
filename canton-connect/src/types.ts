@@ -15,7 +15,7 @@ import type { ConnectionActorRef } from '#src/machine/connectionMachine'
  *
  * @category Types
  */
-export type WalletSdk = Pick<
+export type DappSdkMethods = Pick<
   DappSDK,
   | 'init'
   | 'connect'

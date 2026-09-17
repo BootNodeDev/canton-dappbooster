@@ -14,16 +14,16 @@ import { throwingPicker } from '#src/testing/throwingPicker'
 import { useSession } from '#src/testing/useSession'
 import { walletA } from '#src/testing/walletA'
 import { pushLock, pushUnlock } from '#src/testing/walletLock'
-import type { WalletSdk } from '#src/types'
+import type { DappSdkMethods } from '#src/types'
 
 let restoreOpen: (() => void) | undefined
 
 // Drives a connect to the point a close strands it: the window only gets a URL once the SDK opened
 // it.
 const strandOnClosedPicker = async (
-  result: { current: { sdk: WalletSdk; connect: () => Promise<void> } },
+  result: { current: { sdk: DappSdkMethods; connect: () => Promise<void> } },
   popup: StubPopup,
-): Promise<WalletSdk> => {
+): Promise<DappSdkMethods> => {
   const abandoned = result.current.sdk
 
   await act(async () => {

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { useExecute } from '#src/hooks/useExecute'
 import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import type { Account, WalletSdk } from '#src/types'
+import type { Account, DappSdkMethods } from '#src/types'
 
 const party = testAccount('alice::1220ab')
 
@@ -18,10 +18,10 @@ const executed: PrepareExecuteAndWaitResult = {
 }
 
 const liveSession = (
-  prepareExecuteAndWait: WalletSdk['prepareExecuteAndWait'],
+  prepareExecuteAndWait: DappSdkMethods['prepareExecuteAndWait'],
   connectedAccount: Account | undefined,
 ) => {
-  const sdk: Partial<WalletSdk> = {
+  const sdk: Partial<DappSdkMethods> = {
     prepareExecuteAndWait,
     onTxChanged: async () => undefined,
     removeOnTxChanged: async () => undefined,
@@ -39,7 +39,7 @@ const liveSession = (
 describe('useExecute', () => {
   it('fills actAs with the connected party when the caller sets none', async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, party))
 
@@ -52,7 +52,7 @@ describe('useExecute', () => {
 
   it("leaves a caller's own actAs alone", async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, party))
 
@@ -65,7 +65,7 @@ describe('useExecute', () => {
 
   it('refuses a submit over a session that reports no party', async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, undefined))
 

@@ -39,7 +39,7 @@ export type {
   CantonConnectContextValue,
   ConnectionStatus,
   ConnectionSubscription,
+  DappSdkMethods,
   PartyType,
   TxStatusSnapshot,
-  WalletSdk,
 } from '#src/types'

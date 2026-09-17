@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { type LedgerApiParams, useLedger } from '#src/hooks/useLedger'
 import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import type { WalletSdk } from '#src/types'
+import type { DappSdkMethods } from '#src/types'
 
 const account = testAccount('alice::1220ab')
 const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties' }
@@ -14,7 +14,7 @@ const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties'
 describe('useLedger', () => {
   it('passes the request to the sdk and hands its answer back untouched', async () => {
     const answer = { parties: [] }
-    const ledgerApi = vi.fn<WalletSdk['ledgerApi']>().mockResolvedValue(answer)
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValue(answer)
     const sdk = { ledgerApi }
     const { result } = renderHook(() => useLedger(), {
       wrapper: ({ children }: { children: ReactNode }) => (

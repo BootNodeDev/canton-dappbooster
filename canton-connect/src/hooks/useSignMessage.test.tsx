@@ -7,11 +7,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { useSignMessage } from '#src/hooks/useSignMessage'
 import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import type { Account, WalletSdk } from '#src/types'
+import type { Account, DappSdkMethods } from '#src/types'
 
 const party = testAccount('alice::1220ab')
 
-const liveSession = (sdk: Partial<WalletSdk>, connectedAccount: Account | undefined) => ({
+const liveSession = (sdk: Partial<DappSdkMethods>, connectedAccount: Account | undefined) => ({
   wrapper: ({ children }: { children: ReactNode }) => (
     <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
       {children}
@@ -21,7 +21,9 @@ const liveSession = (sdk: Partial<WalletSdk>, connectedAccount: Account | undefi
 
 describe('useSignMessage', () => {
   it('publishes the signature the wallet answered with', async () => {
-    const signMessage = vi.fn<WalletSdk['signMessage']>().mockResolvedValue({ signature: 'sig' })
+    const signMessage = vi
+      .fn<DappSdkMethods['signMessage']>()
+      .mockResolvedValue({ signature: 'sig' })
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))
 
     await act(async () => {
@@ -36,7 +38,7 @@ describe('useSignMessage', () => {
 
   it('captures the wallet refusal and rethrows it', async () => {
     const refused = new Error('user refused to sign')
-    const signMessage = vi.fn<WalletSdk['signMessage']>().mockRejectedValue(refused)
+    const signMessage = vi.fn<DappSdkMethods['signMessage']>().mockRejectedValue(refused)
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))
 
     await act(async () => {
@@ -50,7 +52,7 @@ describe('useSignMessage', () => {
 
   it('publishes a refusal that arrived as a JSON-RPC object as an Error', async () => {
     const rpcError = { code: 4001, message: 'user refused to sign' }
-    const signMessage = vi.fn<WalletSdk['signMessage']>().mockRejectedValue(rpcError)
+    const signMessage = vi.fn<DappSdkMethods['signMessage']>().mockRejectedValue(rpcError)
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))
 
     await act(async () => {
@@ -65,7 +67,7 @@ describe('useSignMessage', () => {
   it('forgets a signature, and a refusal, on reset', async () => {
     const refused = new Error('user refused to sign')
     const signMessage = vi
-      .fn<WalletSdk['signMessage']>()
+      .fn<DappSdkMethods['signMessage']>()
       .mockResolvedValueOnce({ signature: 'sig' })
       .mockRejectedValueOnce(refused)
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))
@@ -96,7 +98,9 @@ describe('useSignMessage', () => {
   })
 
   it('refuses a signature over a session that reports no party', async () => {
-    const signMessage = vi.fn<WalletSdk['signMessage']>().mockResolvedValue({ signature: 'sig' })
+    const signMessage = vi
+      .fn<DappSdkMethods['signMessage']>()
+      .mockResolvedValue({ signature: 'sig' })
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, undefined))
 
     await act(async () => {

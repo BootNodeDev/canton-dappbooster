@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
 import { toError } from '#src/connectError'
 import { toConnectionStatus } from '#src/machine/connectionMachine'
-import type { ConnectionStatus, ConnectionSubscription, WalletSdk } from '#src/types'
+import type { ConnectionStatus, ConnectionSubscription, DappSdkMethods } from '#src/types'
 
 /** The resting state, hoisted so a hook that never called keeps one identity across renders. */
 const IDLE = { isPending: false, error: undefined } as const
@@ -12,7 +12,7 @@ const IDLE = { isPending: false, error: undefined } as const
 type WalletCallState = { isPending: boolean; error: Error | undefined }
 
 /** What a caller hands `call`: the SDK client, and the id of the party the call acts as. */
-type WalletCallRun<T> = (sdk: WalletSdk, partyId: string) => Promise<T>
+type WalletCallRun<T> = (sdk: DappSdkMethods, partyId: string) => Promise<T>
 
 /** Throws when the wallet is disconnected or locked, the guard every SDK-calling hook shares. */
 export const assertUsable = (status: ConnectionStatus, isLocked: boolean): void => {
@@ -42,7 +42,7 @@ export interface UseWalletCallResult {
   error: Error | undefined
   reset: () => void
   connection: ConnectionSubscription
-  sdk: WalletSdk
+  sdk: DappSdkMethods
   status: ConnectionStatus
   isLocked: boolean
 }

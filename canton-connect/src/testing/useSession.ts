@@ -4,7 +4,7 @@ import { useAccount } from '#src/hooks/useAccount'
 import { useConnect } from '#src/hooks/useConnect'
 import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useWalletStatus } from '#src/hooks/useWalletStatus'
-import type { Account, ConnectionStatus, WalletSdk } from '#src/types'
+import type { Account, ConnectionStatus, DappSdkMethods } from '#src/types'
 
 /** Every slice of the session in one object, which is what the suites assert against. */
 type Session = {
@@ -16,7 +16,7 @@ type Session = {
   isPending: boolean
   account: Account | undefined
   reset: () => void
-  sdk: WalletSdk
+  sdk: DappSdkMethods
   status: ConnectionStatus
 }
 
