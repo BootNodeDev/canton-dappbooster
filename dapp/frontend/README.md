@@ -37,16 +37,14 @@ which a grant cannot be created. Re-running it supersedes the last one, on any l
 
 Funding a grant takes Amulet, and the account menu has a faucet for it: **Tap Amulet** taps
 100 AMT into the connected party.
-
-> Every write, the faucet included, is currently broken. They all need the `AmuletRules` and
-> open mining round disclosures, which `src/backend/transferContext.ts` still fetches over
-> JSON-RPC from `VITE_WALLET_RPC_URL`, and nothing serves that endpoint any more. Reads work.
+It works on LocalNet and devnet, where the choice exists, and refuses until the SV has opened the
+first mining round, roughly ten minutes after a fresh start.
 
 Connect with a CIP-0103 wallet — the Wallet Gateway on http://localhost:3030 is the one the dev
 stack starts. The party it reports is the one you act as, and the session is restored on reload by
 the wallet itself. Changing the wallet's primary party changes the party the dApp acts as. Its
-three env knobs — the explorer party ids link to, the gateway's dApp API, and the JSON-RPC endpoint
-above — default to the local stack and are set in the repo root's `.env`; see the root
+three env knobs — the explorer party ids link to, the gateway's dApp API, and Scan's API — default
+to the local stack and are set in the repo root's `.env`; see the root
 [`.env.example`](../../.env.example).
 
 ## How it fits together

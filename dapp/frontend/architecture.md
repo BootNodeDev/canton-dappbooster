@@ -12,7 +12,7 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off an `amulet.tap` JSON-RPC call, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off two Scan reads, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
@@ -55,31 +55,30 @@ under Ledger reads in [`CLAUDE.md`](CLAUDE.md).
 
 Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the
 newest open mining round — and both are DSO-signed, so no connected party is a stakeholder of
-either. [`transferContext.ts`](src/backend/transferContext.ts) asks a JSON-RPC host for one
-`amulet.tap`, whose `disclosedContracts` carry both, and returns the record and the two disclosures
-together, because a write needs both and sending one without the other fails at the participant
-rather than in the model. The record is flat: nesting the round under a `context` key fails
-preprocessing on a missing `openMiningRound`.
+either. [`transferContext.ts`](src/backend/transferContext.ts) reads both from Scan —
+`/v0/amulet-rules` and `/v0/open-and-issuing-mining-rounds`, each answer carrying a
+`created_event_blob` — and returns the record and the two disclosures together, because a write
+needs both and sending one without the other fails at the participant rather than in the model. The
+record is flat: nesting the round under a `context` key fails preprocessing on a missing
+`openMiningRound`.
 
-That call is a build-and-discard: `amulet.tap` returns the command it composed and submits nothing,
-so no coin is minted and the answer is only read for its disclosures. It replaced a pair of reads
-against Scan's unauthenticated API, which a browser cannot reach on devnet at all — the SV endpoints
-refuse the origin on the preflight and the validator's scan-proxy wants a bearer. Picking the round
-went with it: tap resolves the active one itself, and a LocalNet whose SV has not opened the first
-round yet fails the call, which is a wait rather than a bug.
+Scan lists every round it knows, including ones that have not opened, so picking the live one is the
+app's job: the newest whose `opensAt` has passed, since an older one closes sooner. A LocalNet whose
+SV has not opened the first round yet has none to name, which is a wait rather than a bug.
+
+This replaced a `amulet.tap` call to wallet-service, which built a command the app threw away and
+kept only for its disclosures. Scan was rejected at the time because the SV endpoints refuse a
+browser origin on devnet; against a LocalNet they answer with the app's origin on the preflight.
 
 The faucet in the account menu is the one place the app taps for real. `LedgerBackend.tap` builds
 `AmuletRules_DevNet_Tap` for `TAP_AMOUNT` out of the same record and the same two disclosures every
 other write already fetches, and the wallet signs it as the connected party, so the button costs no
-extra read. Composed here rather than forwarded: the service's own prepared tap carried a fixed
-amount, and this way `TAP_AMOUNT` is the app's to change. The choice exists on LocalNet and devnet
+extra read. `TAP_AMOUNT` is the app's to change. The choice exists on LocalNet and devnet
 only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
 moment not found`, which reaches the user as the failure toast.
 
-Where that call goes is `VITE_WALLET_RPC_URL`, and the browser makes it itself. **Nothing serves
-that endpoint today**: wallet-service was removed and no replacement has landed, so every write and
-the faucet fail on it while reads keep working. The value is read at build time, so changing it
-needs a redeploy.
+Where those calls go is `VITE_SCAN_API_URL`, and the browser makes them itself. The value is read
+at build time, so changing it needs a redeploy.
 
 The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
 opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
@@ -137,8 +136,8 @@ in a window the user never comes back from. A failed read is silent and leaves t
 standing, because a host that is down, or a wallet that has just locked, is not a wrong
 network.
 
-The timer starts fast and slows down. `amulet.tap` cannot answer until the SV opens the first mining
-round, minutes after a LocalNet start, so the first retry is 3 seconds away and each further one
+The timer starts fast and slows down. Scan answers the network read straight away, but the round
+read waits on the SV, so the first retry is 3 seconds away and each further one
 doubles — 3, 6, 12, 24 — up to the same 30 seconds every later check runs at. The doubling is what
 keeps a host that is down from being asked twice every 3 seconds for as long as the tab is
 open. What picks the delay is a count of checks since the last definite answer, so an answer settles

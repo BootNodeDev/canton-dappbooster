@@ -30,6 +30,7 @@ flowchart TD
   dar["amulet-vesting DAR"]
   scripts["scripts/<br/>DAR upload, bootstrap"]
 
+  fe -->|"AmuletRules + open mining round"| scan
   fe <-->|"CIP-0103 provider: reads, writes, session"| gw
   gw -->|"self-signed token, participant signing"| au
   scripts -->|"CANTON_BACKEND_TOKEN"| au
@@ -42,9 +43,8 @@ flowchart TD
 > through the wallet over CIP-0103, so the dApp only ever acts as the connected account and each
 > write is signed by the account's own key. One call is not a ledger path: an Amulet-moving choice
 > takes the current `AmuletRules` and open mining round as an argument, and no connected party is a
-> stakeholder of either. `transferContext.ts` still asks a JSON-RPC host at `VITE_WALLET_RPC_URL`
-> for them, and nothing answers there now that wallet-service is gone, so every write and the
-> faucet fail until that source is replaced. Reads are unaffected.
+> stakeholder of either. `transferContext.ts` reads both from Scan, at `VITE_SCAN_API_URL`, and the
+> browser makes those calls itself.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
