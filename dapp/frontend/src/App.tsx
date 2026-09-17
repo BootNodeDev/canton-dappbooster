@@ -10,10 +10,9 @@ import { WALLET_GATEWAY_URL } from '@/utils/config'
 
 const router = createBrowserRouter(routes)
 
-// Registered at init rather than typed into the SDK picker, because RemoteAdapter.restore()
-// matches the stored discovery URL against a registered rpcUrl and finds nothing otherwise.
 const connectConfig: CantonConnectConfig = {
   appName: 'Canton Vesting',
+  // `restore()` matches this url, so a session survives a reload only for a gateway registered here.
   additionalAdapters: [new RemoteAdapter({ name: 'Wallet Gateway', rpcUrl: WALLET_GATEWAY_URL })],
 }
 
