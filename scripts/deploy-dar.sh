@@ -24,8 +24,8 @@ if [ -f "$ROOT/.env" ]; then
 fi
 
 token="${preset_token:-${CANTON_BACKEND_TOKEN:-}}"
-# The same name .env and wallet-service use, so retargeting the participant moves the
-# upload with it rather than only moving wallet-service.
+# The same name .env and bootstrap-vesting.mjs use, so retargeting the participant moves
+# the upload with it rather than only moving one caller.
 json_api_url="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
 DAR_PATH="$1"

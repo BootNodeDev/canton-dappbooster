@@ -70,7 +70,7 @@ const main = () => {
     secret: env.CANTON_AUTH_SECRET,
   })
   process.stdout.write(`${token}\n\n`)
-  process.stdout.write('For wallet-service:\n')
+  process.stdout.write('For .env:\n')
   process.stdout.write(`  CANTON_BACKEND_TOKEN=${token}\n\n`)
   process.stdout.write('For the wallet LocalNet settings:\n')
   process.stdout.write('  Use this token as the LocalNet bearer token.\n')
