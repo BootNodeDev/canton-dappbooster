@@ -34,8 +34,8 @@ Once Canton dAppBooster is installed, the easiest way to start the development s
 ## Additional notes
 
 - The demo app runs on http://localhost:3012/ by default.
-- The Wallet Gateway is the wallet, and `dev-stack.sh up` starts it on http://localhost:3030. Open it, pick **Canton LocalNet**, and enter `unsafe` as the client secret. You'll need at least 2 parties in it to explore the demo's features in full.
-- **Create every party with the `wallet-kernel` signing provider, not `participant`.** A participant-hosted party gets a `WalletAppInstall`, and the validator's automation then merges its Amulets every minute or so. That archives the Amulet a grant pledges, and the receiver can never accept it. A `wallet-kernel` party holds its key in the gateway, gets no such install, and its Amulets are left alone.
+- Select Wallet Gateway form the picker when connecting and enter `unsafe` as the client secret.
+- Wallet Gateway runs on http://localhost:3030 by default. You'll need at least 2 parties in it to explore the demo's features in full. **Create parties with `wallet-kernel` as the signing provider.**
 - Technical documentation available at https://docs.dappbooster.cc
 
 ---
