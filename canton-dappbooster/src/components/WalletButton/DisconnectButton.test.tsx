@@ -1,4 +1,4 @@
-import { useParty } from '@bootnodedev/canton-connect'
+import { useAccount } from '@bootnodedev/canton-connect'
 import { FakeSessionProvider } from '@bootnodedev/canton-connect/testing'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
@@ -8,22 +8,26 @@ import { DisconnectButton } from '#src/components/WalletButton/DisconnectButton'
 
 const PARTY = 'nico::1220df946c5b01ad0f2d2b480f1f43b1d1f2e498f5a49c2f0b1cbb46'
 const NETWORK = 'canton:local'
-const party = {
+const account = {
+  primary: true,
   partyId: PARTY,
-  networkId: NETWORK,
+  status: 'allocated',
+  hint: PARTY.split('::')[0] ?? PARTY,
+  publicKey: 'test-public-key',
   namespace: PARTY.split('::')[1] ?? PARTY,
+  networkId: NETWORK,
   signingProviderId: 'test',
-}
+} as const
 
 // The button renders whatever the session says, so the session itself is what a disconnect asserts.
 const Session = (): ReactElement => {
-  const { isConnected } = useParty()
+  const { isConnected } = useAccount()
   return <span data-testid="session">{isConnected ? 'connected' : 'disconnected'}</span>
 }
 
 const renderInSession = (ui: ReactElement): ReturnType<typeof render> =>
   render(
-    <FakeSessionProvider party={party} status="connected">
+    <FakeSessionProvider account={account} status="connected">
       {ui}
       <Session />
     </FakeSessionProvider>,

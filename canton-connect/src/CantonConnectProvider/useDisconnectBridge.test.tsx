@@ -4,7 +4,7 @@ import { fromPromise } from 'xstate'
 import { useConnectBridge } from '#src/CantonConnectProvider/useConnectBridge'
 import { useDisconnectBridge } from '#src/CantonConnectProvider/useDisconnectBridge'
 import type { AccountsInput } from '#src/machine/accountsActors'
-import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
+import { accountsMachine } from '#src/machine/accountsMachine'
 import type {
   ConnectInput,
   DisconnectInput,
@@ -12,16 +12,19 @@ import type {
   RestoreInput,
 } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
-import { testParty } from '#src/testing/party'
+import { testAccount } from '#src/testing/account'
 import { pause } from '#src/testing/pause'
 import { startConnection } from '#src/testing/startConnection'
+import type { Account } from '#src/types'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = testParty('alice::1220ab')
+const account = testAccount('alice::1220ab')
 
 const accounts = accountsMachine.provide({
   actors: {
-    readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.resolve({ party })),
+    readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
+      Promise.resolve(account),
+    ),
   },
 })
 

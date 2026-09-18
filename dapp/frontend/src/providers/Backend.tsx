@@ -1,4 +1,4 @@
-import { useExecute, useLedger, useParty } from '@bootnodedev/canton-connect'
+import { useAccount, useExecute, useLedger } from '@bootnodedev/canton-connect'
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { type Deployment, loadBackendConfig } from '@/backend/config'
 import { LedgerBackend } from '@/backend/LedgerBackend'
@@ -25,11 +25,11 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const { execute } = useExecute()
   const { ledgerApi } = useLedger()
 
-  const { party } = useParty()
-  const hasParty = party !== undefined
-  const partyId = party?.partyId
+  const { account } = useAccount()
+  const hasParty = account !== undefined
+  const partyId = account?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
-  const networkStatus = useNetworkStatus(ledgerApi, partyId, party?.networkId)
+  const networkStatus = useNetworkStatus(ledgerApi, partyId, account?.networkId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)

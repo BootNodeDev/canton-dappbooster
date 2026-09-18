@@ -15,7 +15,7 @@ import { createMockAdapter } from '#src/mock/mockAdapter'
 // Not the './testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
 import { connectionInput } from '#src/testing/connectionInput'
 import { pause } from '#src/testing/pause'
-import type { WalletSdk } from '#src/types'
+import type { DappSdkMethods } from '#src/types'
 
 const pickerExploded = new Error('picker exploded')
 
@@ -30,7 +30,7 @@ const notAllowed = (method: string) => () => {
 }
 
 type TestSdk = Pick<
-  WalletSdk,
+  DappSdkMethods,
   'connect' | 'disconnect' | 'init' | 'onStatusChanged' | 'removeOnStatusChanged' | 'status'
 >
 

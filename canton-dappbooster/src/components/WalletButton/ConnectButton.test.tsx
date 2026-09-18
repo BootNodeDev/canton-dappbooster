@@ -1,4 +1,4 @@
-import { useParty } from '@bootnodedev/canton-connect'
+import { useAccount } from '@bootnodedev/canton-connect'
 import { FakeSessionProvider } from '@bootnodedev/canton-connect/testing'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { FormEvent, ReactElement } from 'react'
@@ -14,8 +14,8 @@ import {
 
 // The button keeps its own face through a connect, so the session itself is what a connect asserts.
 const Session = (): ReactElement => {
-  const { party } = useParty()
-  return <span data-testid="session">{party?.partyId ?? 'none'}</span>
+  const { account } = useAccount()
+  return <span data-testid="session">{account?.partyId ?? 'none'}</span>
 }
 
 const withSession = (ui: ReactElement): ReactElement => (

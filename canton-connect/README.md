@@ -61,7 +61,7 @@ be present whether or not you set `walletConnectProjectId`. Only the session is 
 import {
   CantonConnectProvider,
   useConnect,
-  useParty,
+  useAccount,
   useWalletStatus,
   useSignMessage,
   useExecute,
@@ -78,7 +78,7 @@ function App() {
 
 function Dapp() {
   const { connect, isPending, isConnected, error } = useConnect()
-  const { party } = useParty()
+  const { account } = useAccount()
   const { isLocked } = useWalletStatus()
   const { signMessage } = useSignMessage()
   const { execute } = useExecute()
@@ -99,7 +99,7 @@ function Dapp() {
     return <p>Wallet locked. Unlock it to continue.</p>
   }
 
-  // ... your dApp: party.partyId, signMessage(text), execute(params), ledgerApi(params)
+  // ... your dApp: account.partyId, signMessage(text), execute(params), ledgerApi(params)
 }
 ```
 
@@ -114,7 +114,7 @@ reports it is not authenticated; that is `isLocked`, and it happens after a succ
 reference gateway also refuses `signMessage` for a local party; `usePartyType().readPartyType()`
 tells local from external when you ask. The SDK's status carries one `isConnected` flag, so a lock
 and a wallet-side disconnect look the same
-here. `useLedger().isReady` covers both, and `useParty().party` is `undefined` for the duration:
+here. `useLedger().isReady` covers both, and `useAccount().account` is `undefined` for the duration:
 gate session content on the party, and use `isLocked` only to explain why it went away.
 
 ### Connecting through a Wallet Gateway
