@@ -4,26 +4,26 @@ import { CantonConnectContext } from '#src/CantonConnectProvider'
 import { type ConnectionActorRef, connectionMachine } from '#src/machine/connectionMachine'
 import { connectionInput } from '#src/testing/connectionInput'
 import type {
+  Account,
   CantonConnectConfig,
   CantonConnectContextValue,
   ConnectionStatus,
-  Party,
-  WalletSdk,
+  DappSdkMethods,
 } from '#src/types'
 
 const CONFIG: CantonConnectConfig = { appName: 'fake-session' }
 
 // Module scope so an omitted prop keeps its identity across renders, which is what stops the
 // session from being rebuilt on every one.
-const NO_SDK: Partial<WalletSdk> = {}
+const NO_SDK: Partial<DappSdkMethods> = {}
 
 // Anything past the connect flow needs a real wallet; a canned answer would read as one. Safe as
 // machine context because a rehydrated snapshot carries no children, so no actor reaches for it.
 /** A `sdk` wrapper that throws naming the method for anything the test never stubbed. */
-const refusingSdk = (supplied: Partial<WalletSdk>): WalletSdk =>
-  new Proxy({} as WalletSdk, {
+const refusingSdk = (supplied: Partial<DappSdkMethods>): DappSdkMethods =>
+  new Proxy({} as DappSdkMethods, {
     get: (_, key) => {
-      const method = supplied[key as keyof WalletSdk]
+      const method = supplied[key as keyof DappSdkMethods]
 
       if (method === undefined) {
         throw new Error(`fake session has no sdk.${String(key)} — drive the real provider for that`)
@@ -58,9 +58,9 @@ const toStateValue = ({ isLocked, readingAccounts, status }: SessionShape): Stat
 /** Starts a real `connectionMachine` actor rehydrated at the given `SessionShape`. */
 const startSession = (
   shape: SessionShape,
-  party: Party | undefined,
+  account: Account | undefined,
   connectError: Error | undefined,
-  sdk: WalletSdk,
+  sdk: DappSdkMethods,
 ): ConnectionActorRef => {
   const input = connectionInput({}, { createSdk: () => sdk })
 
@@ -70,8 +70,8 @@ const startSession = (
       ...input,
       sdk,
       lastConnectError: connectError,
-      // The machine clears it on leaving `session`, so a party outside one cannot be published.
-      party: shape.status === 'connected' ? party : undefined,
+      // The machine clears it on leaving `session`, so an account outside one cannot be published.
+      account: shape.status === 'connected' ? account : undefined,
     },
   })
 
@@ -79,19 +79,19 @@ const startSession = (
 }
 
 /**
- * Props for {@link FakeSessionProvider}. `status` starts the session mid-flight and `party` is
+ * Props for {@link FakeSessionProvider}. `status` starts the session mid-flight and `account` is
  * what a connect resolves to; `readingAccounts` reaches the pending face over a live session, and
  * `sdk` drives a hook's own pending, error and `reset()`, never what a wallet returns.
  *
  * @category Components
  */
 export interface FakeSessionProviderProps {
+  account?: Account
   children: ReactNode
   connectError?: Error
   isLocked?: boolean
-  party?: Party
   readingAccounts?: boolean
-  sdk?: Partial<WalletSdk>
+  sdk?: Partial<DappSdkMethods>
   status?: ConnectionStatus
 }
 
@@ -105,7 +105,7 @@ export interface FakeSessionProviderProps {
  *
  * @example
  * render(
- *   <FakeSessionProvider status="connected" party={party}>
+ *   <FakeSessionProvider status="connected" account={account}>
  *     <ConnectButton />
  *   </FakeSessionProvider>,
  * )
@@ -113,10 +113,10 @@ export interface FakeSessionProviderProps {
  * @category Components
  */
 export const FakeSessionProvider = ({
+  account,
   children,
   connectError,
   isLocked = false,
-  party,
   readingAccounts = false,
   sdk = NO_SDK,
   status: initialStatus = 'disconnected',
@@ -127,8 +127,8 @@ export const FakeSessionProvider = ({
   // it can name is a state a test can ask for, in one step and with no actor to drive.
   const connection = useMemo(
     () =>
-      startSession({ isLocked, readingAccounts, status }, party, connectError, refusingSdk(sdk)),
-    [connectError, isLocked, party, readingAccounts, sdk, status],
+      startSession({ isLocked, readingAccounts, status }, account, connectError, refusingSdk(sdk)),
+    [account, connectError, isLocked, readingAccounts, sdk, status],
   )
 
   useEffect(() => () => connection.stop(), [connection])

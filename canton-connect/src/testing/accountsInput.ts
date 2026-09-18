@@ -9,8 +9,6 @@ import { connectionInput } from '#src/testing/connectionInput'
  * @example
  * const actor = createActor(accountsMachine.provide({ actors }), { input: accountsInput() })
  */
-export const accountsInput = (sdk: Partial<DappSDK> = {}): AccountsInput => {
-  const { createSdk, networkId } = connectionInput(sdk)
-
-  return { sdk: createSdk(), networkId }
-}
+export const accountsInput = (sdk: Partial<DappSDK> = {}): AccountsInput => ({
+  sdk: connectionInput(sdk).createSdk(),
+})

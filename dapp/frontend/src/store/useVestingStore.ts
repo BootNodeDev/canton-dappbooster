@@ -1,7 +1,7 @@
+import { useAccount } from '@bootnodedev/canton-connect'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { CreateVestInput, VestingBackend } from '@/backend/VestingBackend'
-import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import type { Grant, PendingGrant, VestedClaim } from '@/store/types'
 import { isPositive, multiplyByFraction, subtractAmounts, toNumber } from '@/utils/amount'
@@ -222,8 +222,8 @@ export const useVesting = (): {
   sessionPending: boolean
 } => {
   const { backend, sessionPending } = useBackend()
-  const { party } = useParty()
-  const partyId = party?.partyId ?? ''
+  const { account } = useAccount()
+  const partyId = account?.partyId ?? ''
   const clear = useVestingStore((state) => state.clear)
   const refresh = useVestingStore((state) => state.refresh)
 

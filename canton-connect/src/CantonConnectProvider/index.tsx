@@ -1,5 +1,5 @@
 // CantonConnectProvider owns the wallet connection lifecycle and publishes the actor that holds
-// it. Hooks (useConnect, useParty, useSignMessage, etc.) select their own slice off that actor.
+// it. Hooks (useConnect, useAccount, useSignMessage, etc.) select their own slice off that actor.
 
 import { DappSDK } from '@canton-network/dapp-sdk'
 import { createContext, type JSX, type ReactNode, useCallback, useContext, useMemo } from 'react'
@@ -95,7 +95,6 @@ export const CantonConnectProvider = ({
     // A consumer's own picker owns its lifecycle, and guardedConnect would borrow window.open
     // watching for a popup that never opens.
     guardPicker: config.walletPicker === undefined,
-    networkId,
   })
 
   const resetConnectError = useCallback(

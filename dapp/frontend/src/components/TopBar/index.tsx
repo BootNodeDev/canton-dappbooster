@@ -1,10 +1,10 @@
+import { useAccount } from '@bootnodedev/canton-connect'
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
 import { ConnectFace } from '@/components/ConnectFace'
 import { Spinner } from '@/components/Spinner'
 import { AccountMenu } from '@/components/TopBar/AccountMenu'
 import { Logo } from '@/components/TopBar/Logo'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
-import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -15,12 +15,12 @@ const items = [
 ]
 
 export const TopBar = (): React.JSX.Element => {
-  const { party } = useParty()
+  const { account } = useAccount()
   const { sessionPending } = useBackend()
-  const wallet = party !== undefined ? <AccountMenu party={party} /> : <ConnectFace />
+  const wallet = account !== undefined ? <AccountMenu account={account} /> : <ConnectFace />
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
-    party === undefined ? 0 : pendingGrants.filter((p) => p.receiver === party.partyId).length
+    account === undefined ? 0 : pendingGrants.filter((p) => p.receiver === account.partyId).length
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/80 backdrop-blur-md">

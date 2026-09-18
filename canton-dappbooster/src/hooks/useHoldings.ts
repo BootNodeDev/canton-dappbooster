@@ -1,4 +1,4 @@
-import { type LedgerApiParams, useLedger, useParty } from '@bootnodedev/canton-connect'
+import { type LedgerApiParams, useAccount, useLedger } from '@bootnodedev/canton-connect'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { valueAt } from '#src/utils/json'
 import type { Holding } from '#src/utils/sumHoldings'
@@ -113,8 +113,8 @@ export interface UseHoldingsResult {
  */
 export const useHoldings = (): UseHoldingsResult => {
   const { ledgerApi, isReady } = useLedger()
-  const { party } = useParty()
-  const partyId = party?.partyId
+  const { account } = useAccount()
+  const partyId = account?.partyId
   const [state, setState] = useState<HoldingsState>(IDLE)
   // Only the newest read may report. Bumped on unmount too, so a read in flight then lands nowhere.
   const newest = useRef(0)

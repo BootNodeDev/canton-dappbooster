@@ -3,10 +3,10 @@ import type { ConnectionInput } from '#src/machine/connectionMachine'
 
 // Never settles rather than rejects: a test that stubbed no actor for the state it drives is left
 // where it put the machine, instead of a rejection walking it somewhere else.
-/** A `WalletSdk` method stand-in that returns a promise which never settles. */
+/** A `DappSdkMethods` method stand-in that returns a promise which never settles. */
 const pending = () => new Promise<never>(() => {})
 
-/** Every `WalletSdk` method left hanging, so a test only stubs the ones its path reaches. */
+/** Every `DappSdkMethods` method left hanging, so a test only stubs the ones its path reaches. */
 const unstubbed = {
   connect: pending,
   disconnect: pending,
@@ -25,7 +25,7 @@ const unstubbed = {
 }
 
 /**
- * Machine input for a test actor, over a double satisfying the `WalletSdk` the machine types.
+ * Machine input for a test actor, over a double satisfying the `DappSdkMethods` the machine types.
  * Whatever the double leaves out never settles, and every `createSdk()` hands back a fresh object,
  * as `new DappSDK` does — so a retirement changes `context.sdk` here too.
  *
@@ -39,6 +39,5 @@ export const connectionInput = (
   createSdk: () => ({ ...unstubbed, ...sdk }),
   initOptions: {},
   guardPicker: false,
-  networkId: 'canton:local',
   ...overrides,
 })

@@ -14,7 +14,7 @@ interfaces carry that, and every other decision hangs off them.
 |------|------|
 | `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off two Scan reads, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
-| `src/hooks/` | `useParty` narrows the `canton-connect` session to what the UI needs, `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
+| `src/hooks/` | `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
 | `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
 | `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
@@ -104,7 +104,7 @@ The rule in [`src/utils/network.ts`](src/utils/network.ts) is membership rather 
 because a participant can be connected to several synchronizers and reaching the app's one is what
 decides whether a write lands. It answers `ok`, `wrong` or `unknown`, and the third is the point: a
 missing side is not a mismatch, or the strip would warn about a read that has not come back yet, but
-it is not a match either, and a boolean had to call it one. `party.networkId` is not what is
+it is not a match either, and a boolean had to call it one. `account.networkId` is not what is
 compared: CIP-0103 only recommends a CAIP-2 label, so two wallets may spell one network differently.
 
 The rule reports a verdict and not the ids behind it, because **the strip names the wallet's network
@@ -119,12 +119,11 @@ to be on it is worse than one naming no target. Nothing checks either label agai
 to name, and no single source knows both sides — the wallet only knows the network it is on, and
 the app's side only its own.
 
-One thing to know about the label that is shown: `CantonConnectProvider` defaults `networkId` to
-`canton:local` where the wallet reports none, and nothing downstream can tell that default from a
-real answer, so a wallet quiet about its network reads as local wherever it actually is. Only a
-non-compliant wallet gets there — the spec makes `networkId` required on an account entry, and
-canton-connect's own comment says the fallback exists for `createMockAdapter`. It can mislabel the
-sentence but never decides whether the strip appears, which is what keeps it acceptable.
+One thing to know about the label that is shown: it is the wallet's own word, unmodified. Nothing
+fills a network in for an account reporting none, so a wallet quiet about its network labels the
+sentence with whatever it sent. Only a non-compliant wallet gets there, since the spec makes
+`networkId` required on an account entry. Either way the label never decides whether the strip
+appears, which is what keeps it acceptable.
 
 [`useNetworkStatus`](src/hooks/useNetworkStatus.ts) is what keeps it current, and it polls because a
 wallet-side switch reaches the app through nothing at all: CIP-0103 defines no network-change event
@@ -236,7 +235,7 @@ position, the filter loudly with `INVALID_FIELD`.
 config.ts ────────────┐
                       ├─▶ Backend ──────────▶ useBackend ──▶ useVestingStore ──▶ components
 CantonConnectProvider ┤                                                            ▲
-                      └─▶ useParty ───────────────────────────────────────────────┘
+                      └─▶ useAccount ─────────────────────────────────────────────┘
 ```
 
 `Backend` ([`src/providers/Backend.tsx`](src/providers/Backend.tsx)) is the
@@ -263,11 +262,10 @@ whichever button took over, and only then: a focus move nobody asked for on firs
 worse than the problem.
 
 The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
-kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `useParty`
-([`src/hooks/useParty.ts`](src/hooks/useParty.ts)) narrows it to the `PartyRef` the UI wants,
-standing the party hint in as a display name for the wallets that report none. Nothing else reaches
-for a `canton-connect` hook except `ConnectFace` and the error toast, both of which need `isPending`
-off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
+kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `canton-connect`'s
+`useAccount` reports the connected account wherever the UI needs one. `TopBar/AccountMenu` stands
+the party hint in as a display name for the wallets that report none. `ConnectFace` and the error
+toast are the other `canton-connect` consumers, both for `isPending` off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
 `WalletButton`, whose disconnect face is a plain button: the connected side here is a dropdown,
 `TopBar/AccountMenu`, holding the copyable party id, the network the session is on, and the
 disconnect. Everything short of that is `ConnectFace`, so an attempt started from the top bar can be
@@ -482,7 +480,7 @@ element.
 No id links out at the moment. `VITE_EXPLORER_URL` names the explorer and nothing else now that the
 transfer context has its own endpoint, and no `<Identifier>` is given an `href`, so nothing renders
 the kit's external-link affordance and `EXPLORER` is exported for a consumer that does not exist
-yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(party)}` again at the call
+yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(partyId)}` again at the call
 sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no
 canonical explorer, and the href stays a per-call-site decision the way the kit's own is optional.
 Counterparty ids go through one component:

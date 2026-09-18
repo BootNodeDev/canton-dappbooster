@@ -29,7 +29,7 @@ describe('CantonConnectProvider connect flow', () => {
     })
 
     // connect() resolves when the session lands; the accounts read follows it.
-    await waitFor(() => expect(result.current.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account?.partyId).toBe('alice::1220ab'))
     expect(result.current.status).toBe('connected')
 
     wallet.dispose()
@@ -48,7 +48,7 @@ describe('CantonConnectProvider connect flow', () => {
       await result.current.connect()
     })
 
-    expect(result.current.party?.partyId).toBe('alice::mock1220')
+    expect(result.current.account?.partyId).toBe('alice::mock1220')
     expect(result.current.status).toBe('connected')
   })
 
@@ -69,7 +69,7 @@ describe('CantonConnectProvider connect flow', () => {
       await result.current.connect()
     })
 
-    expect(result.current.party?.networkId).toBe('canton:devnet')
+    expect(result.current.account?.networkId).toBe('canton:devnet')
   })
 
   it('sets error and rejects connect() when the picker throws', async () => {

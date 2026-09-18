@@ -4,24 +4,24 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { usePartyType } from '#src/hooks/usePartyType'
+import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import { testParty } from '#src/testing/party'
-import type { Party, WalletSdk } from '#src/types'
+import type { Account, DappSdkMethods } from '#src/types'
 
-const party = testParty('alice::1220ab')
+const party = testAccount('alice::1220ab')
 
-const liveSession = (sdk: Partial<WalletSdk>, connectedParty: Party | undefined) => ({
+const liveSession = (sdk: Partial<DappSdkMethods>, connectedAccount: Account | undefined) => ({
   wrapper: ({ children }: { children: ReactNode }) => (
-    <FakeSessionProvider party={connectedParty} sdk={sdk} status="connected">
+    <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
       {children}
     </FakeSessionProvider>
   ),
 })
 
-type LedgerAnswer = Awaited<ReturnType<WalletSdk['ledgerApi']>>
+type LedgerAnswer = Awaited<ReturnType<DappSdkMethods['ledgerApi']>>
 
 const answering = (answer: LedgerAnswer) =>
-  vi.fn<WalletSdk['ledgerApi']>().mockResolvedValue(answer)
+  vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValue(answer)
 
 describe('usePartyType', () => {
   it('reads the participant id and calls a party under its namespace local', async () => {
@@ -52,7 +52,7 @@ describe('usePartyType', () => {
 
   it('hands a refusal back as the rejection it was', async () => {
     const refused = new Error('RPC error: -32601 - method not allowed')
-    const ledgerApi = vi.fn<WalletSdk['ledgerApi']>().mockRejectedValue(refused)
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(refused)
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
 
     await act(async () => {
@@ -71,14 +71,16 @@ describe('usePartyType', () => {
     })
   })
 
-  it('refuses over a session that reports no party, without asking the ledger', async () => {
+  it('refuses over a session that reports no account, without asking the ledger', async () => {
     const ledgerApi = answering({ participantId: 'participant::1220ab' })
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, undefined))
 
     expect(result.current.isReady).toBe(false)
 
     await act(async () => {
-      await expect(result.current.readPartyType()).rejects.toThrow('wallet reports no usable party')
+      await expect(result.current.readPartyType()).rejects.toThrow(
+        'wallet reports no primary account',
+      )
     })
 
     expect(ledgerApi).not.toHaveBeenCalled()

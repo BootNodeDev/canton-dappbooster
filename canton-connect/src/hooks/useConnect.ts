@@ -24,7 +24,7 @@ export interface UseConnectResult {
 /**
  * Connects the wallet and reports that transition. `connect` takes no argument: the picker chooses
  * the wallet, so there is no mode to pass. Gate a pending face on `isPending` and
- * session-dependent content on `useParty().party`, not on `isConnected`.
+ * session-dependent content on `useAccount().account`, not on `isConnected`.
  *
  * @throws with no {@link CantonConnectProvider} above it, as every hook here does.
  *

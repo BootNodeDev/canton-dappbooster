@@ -1,13 +1,13 @@
 import { Menu } from '@ark-ui/react/menu'
 import { Portal } from '@ark-ui/react/portal'
-import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import type { Account } from '@bootnodedev/canton-connect'
+import { partyHint, truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { DisconnectButton } from '@bootnodedev/canton-dappbooster/connect'
 import { ChevronDown, Droplet, Power } from 'lucide-react'
 import { TAP_AMOUNT } from '@/backend/commands'
 import type { VestingBackend } from '@/backend/VestingBackend'
 import { CopyButton } from '@/components/CopyButton'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
-import type { PartyRef } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
@@ -28,15 +28,15 @@ const triggerClass =
 const ruleClass = '-mx-4 border-border'
 
 interface AccountMenuProps {
-  party: PartyRef
+  account: Account
 }
 
-export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
+export const AccountMenu = ({ account }: AccountMenuProps): React.JSX.Element => {
   const { backend } = useBackend()
 
   const runTap = (ledger: VestingBackend): void => {
     toast.info(`Tapping ${TAP_AMOUNT} ${AMT.symbol}…`)
-    ledger.tap(party.partyId).then(
+    ledger.tap(account.partyId).then(
       () => toast.success(`${TAP_AMOUNT} ${AMT.symbol} tapped`),
       (err: unknown) => toast.error(errorText(err)),
     )
@@ -45,22 +45,22 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
   return (
     <Menu.Root positioning={{ placement: 'bottom-end', gutter: 6 }}>
       <Menu.Trigger className={cn(triggerClass, 'hover:border-border-strong hover:bg-muted')}>
-        <PartyAvatar partyId={party.partyId} />
-        {truncateIdentifier(party.partyId, TRUNCATE)}
+        <PartyAvatar partyId={account.partyId} />
+        {truncateIdentifier(account.partyId, TRUNCATE)}
         <ChevronDown size={14} />
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
           <Menu.Content className={cn(popoverClass, 'flex w-72 flex-col gap-4 rounded-xl p-4')}>
             <Menu.ItemGroup className="flex items-center gap-3">
-              <PartyAvatar partyId={party.partyId} size={40} />
+              <PartyAvatar partyId={account.partyId} size={40} />
               <div className="flex min-w-0 flex-col gap-0.5">
                 <Menu.ItemGroupLabel className="truncate text-sm font-semibold text-fg">
-                  {party.name}
+                  {account.hint || partyHint(account.partyId)}
                 </Menu.ItemGroupLabel>
                 <p className="flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
                   <code className="truncate font-mono">
-                    {truncateIdentifier(fingerprintOf(party.partyId), FINGERPRINT_TRUNCATE)}
+                    {truncateIdentifier(fingerprintOf(account.partyId), FINGERPRINT_TRUNCATE)}
                   </code>
                   <Menu.Item asChild closeOnSelect={false} value="copy-party-id">
                     <CopyButton
@@ -73,7 +73,7 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
                         }
                       }}
                       size={14}
-                      value={party.partyId}
+                      value={account.partyId}
                     />
                   </Menu.Item>
                 </p>
@@ -104,7 +104,7 @@ export const AccountMenu = ({ party }: AccountMenuProps): React.JSX.Element => {
               <p className="flex items-center gap-2 text-xs text-fg-muted">
                 <span className="size-1.5 rounded-full bg-success" />
                 <span className="sr-only">Connected to </span>
-                {party.networkId}
+                {account.networkId}
               </p>
               <Menu.Item asChild value="disconnect">
                 <DisconnectButton

@@ -24,7 +24,7 @@ stateDiagram-v2
     connecting --> retiring: picker closed, or cancelled
     retiring --> restoring: replacement booted
     retiring --> failure: replacement failed too
-    session --> disconnecting: disconnect, or cancelled during the party read
+    session --> disconnecting: disconnect, or cancelled during the account read
     disconnecting --> disconnected: settled, or 10 s silence
 ```
 
@@ -76,7 +76,7 @@ comment carries the why (a recovered session can still say why the attempt befor
 
 A user's own cancel records nothing either: `connect.cancel` takes the same route to `retiring`,
 and the abort xstate fires on the stopped actor is what closes the picker window. Once the wallet
-has approved, the read of the party still shows as connecting, but a session already stands, so a
+has approved, the account read still shows as connecting, but a session already stands, so a
 cancel there goes to `disconnecting` and ends it; `disconnected` answers the wait as a cancel.
 
 A picker close reaches the caller two ways. A close the watchdog catches records nothing:
@@ -97,6 +97,6 @@ stateDiagram-v2
     unavailable --> ready: accounts.changed
 ```
 
-A push wins from any state, an in-flight read included. `ready` may still carry no `party`, which is
-a wallet reporting no usable account. The parent mirrors the three states into
+A push wins from any state, an in-flight read included. `ready` may still carry no `account`, which
+is a wallet reporting no usable account. The parent mirrors the three states into
 `session.authenticated` through the invoke's `onSnapshot`.

@@ -11,7 +11,7 @@ for the SDK bug the guard works around.
 ```
 src/
   machine/
-    connectionMachine.ts    the lifecycle; owns the sdk, party, status and the last error
+    connectionMachine.ts    the lifecycle; owns the sdk, account, status and the last error
     connectionActors.ts     init / connect / restore / disconnect / walletEvents
     accountsMachine.ts      the account read, invoked inside session.authenticated
     accountsActors.ts       listAccounts reader and accountsChanged listener
@@ -26,8 +26,7 @@ src/
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
-  walletAccount.ts          account normalization and primary selection
-  types.ts                  Party, ConnectionStatus, CantonConnectConfig, WalletSdk, context value
+  types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
   index.ts                  public exports
 ```
 
@@ -62,14 +61,14 @@ flowchart LR
 
 ### The lifecycle: `machine/`
 
-One model of connecting, session, lock and disconnect, so the impossible combinations (a party with
-no live session, an error beside a live session) cannot be built. Three decisions carry the weight:
+One model of connecting, session, lock and disconnect, so the impossible combinations (an account
+with no live session, an error beside a live session) cannot be built. Three decisions carry the weight:
 
 - `idle` is not `disconnected`. `idle` means the boot restore has not answered; `disconnected` means
   it has, and there is nothing.
-- `party` is cleared on leaving `session.authenticated`, so a wallet that will not serve requests
+- `account` is cleared on leaving `session.authenticated`, so a wallet that will not serve requests
   publishes none. The session itself stays, which keeps the wallet listener alive: an unlock is
-  heard and the party is read again with no reconnect.
+  heard and the account is read again with no reconnect.
 - The account read is a child machine, so a failed read cannot end the session; only the promise
   carries the failure.
 
@@ -86,7 +85,7 @@ a wallet login can take as long as it takes; it ends when the wallet answers or 
 The context value is the config, the actor as `ConnectionSubscription` (`send` is unreachable
 through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
-itself. `useConnect`, `useDisconnect`, `useParty` and `useWalletStatus` read session state;
+itself. `useConnect`, `useDisconnect`, `useAccount` and `useWalletStatus` read session state;
 `useLedger`, `useExecute`, `useSignMessage` and `usePartyType` select a guard plus the sdk and
 call it directly, never entering the machine.
 
@@ -110,8 +109,8 @@ the guard closes the popup itself, off the abort xstate fires when it stops the 
 `buildAdditionalAdapters` assembles what `sdk.init` registers beyond the auto-discovered extensions:
 a `WalletConnectAdapter` when `walletConnectProjectId` is set, plus `config.additionalAdapters`. The
 init actor passes `defaultAdapters: []`, dropping the SDK's bundled `localhost:3030` dev gateway.
-`networkId` (default `'canton:local'`) is both the WalletConnect `chainId` and the fallback
-`Party.networkId` for a wallet that reports none.
+`networkId` (default `'canton:local'`) is the WalletConnect `chainId`. A wallet reporting no
+network on an account is not corrected: `Account` carries what it reported.
 
 ### Remote gateway
 
@@ -165,7 +164,7 @@ A party under the hosting participant's namespace is local, any other is externa
 because the reference gateway refuses `signMessage` for a local party. CIP-0103 has no field for
 it, so `usePartyType().readPartyType` derives it when the consumer asks, never in the machine: one
 `ledgerApi` read of the participant id (`GET /v2/parties/participant-id`, open to a `CanActAs`
-token), its namespace compared with `Party.namespace`, which arrives from the wallet unchanged, as
+token), its namespace compared with `Account.namespace`, which arrives from the wallet unchanged, as
 `signingProviderId` does. A failed read rejects; what follows is the consumer's call. `isLocal` on
 the parties endpoint means hosted here, external parties included, so it is not the signal.
 

@@ -1,10 +1,10 @@
 import { useSelector } from '@xstate/react'
 import { useCantonConnectContext } from '#src/CantonConnectProvider'
+import { useAccount } from '#src/hooks/useAccount'
 import { useConnect } from '#src/hooks/useConnect'
 import { useDisconnect } from '#src/hooks/useDisconnect'
-import { useParty } from '#src/hooks/useParty'
 import { useWalletStatus } from '#src/hooks/useWalletStatus'
-import type { ConnectionStatus, Party, WalletSdk } from '#src/types'
+import type { Account, ConnectionStatus, DappSdkMethods } from '#src/types'
 
 /** Every slice of the session in one object, which is what the suites assert against. */
 type Session = {
@@ -14,9 +14,9 @@ type Session = {
   error: Error | undefined
   isLocked: boolean
   isPending: boolean
-  party: Party | undefined
+  account: Account | undefined
   reset: () => void
-  sdk: WalletSdk
+  sdk: DappSdkMethods
   status: ConnectionStatus
 }
 
@@ -34,7 +34,7 @@ export const useSession = (): Session => {
 
   const { cancelConnect, connect, error, isPending, reset } = useConnect()
   const { disconnect } = useDisconnect()
-  const { party, status } = useParty()
+  const { account, status } = useAccount()
   const { isLocked } = useWalletStatus()
 
   const sdk = useSelector(connection, (snapshot) => snapshot.context.sdk)
@@ -46,7 +46,7 @@ export const useSession = (): Session => {
     error,
     isLocked,
     isPending,
-    party,
+    account,
     reset,
     sdk,
     status,

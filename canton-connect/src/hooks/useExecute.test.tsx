@@ -3,11 +3,11 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useExecute } from '#src/hooks/useExecute'
+import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
-import { testParty } from '#src/testing/party'
-import type { Party, WalletSdk } from '#src/types'
+import type { Account, DappSdkMethods } from '#src/types'
 
-const party = testParty('alice::1220ab')
+const party = testAccount('alice::1220ab')
 
 const executed: PrepareExecuteAndWaitResult = {
   tx: {
@@ -18,10 +18,10 @@ const executed: PrepareExecuteAndWaitResult = {
 }
 
 const liveSession = (
-  prepareExecuteAndWait: WalletSdk['prepareExecuteAndWait'],
-  connectedParty: Party | undefined,
+  prepareExecuteAndWait: DappSdkMethods['prepareExecuteAndWait'],
+  connectedAccount: Account | undefined,
 ) => {
-  const sdk: Partial<WalletSdk> = {
+  const sdk: Partial<DappSdkMethods> = {
     prepareExecuteAndWait,
     onTxChanged: async () => undefined,
     removeOnTxChanged: async () => undefined,
@@ -29,7 +29,7 @@ const liveSession = (
 
   return {
     wrapper: ({ children }: { children: ReactNode }) => (
-      <FakeSessionProvider party={connectedParty} sdk={sdk} status="connected">
+      <FakeSessionProvider account={connectedAccount} sdk={sdk} status="connected">
         {children}
       </FakeSessionProvider>
     ),
@@ -39,7 +39,7 @@ const liveSession = (
 describe('useExecute', () => {
   it('fills actAs with the connected party when the caller sets none', async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, party))
 
@@ -52,7 +52,7 @@ describe('useExecute', () => {
 
   it("leaves a caller's own actAs alone", async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, party))
 
@@ -63,15 +63,15 @@ describe('useExecute', () => {
     expect(prepareExecuteAndWait).toHaveBeenCalledWith({ commands: [], actAs: ['bob::1220cd'] })
   })
 
-  it('refuses a submit over a session that reports no party', async () => {
+  it('refuses a submit over a session that reports no account', async () => {
     const prepareExecuteAndWait = vi
-      .fn<WalletSdk['prepareExecuteAndWait']>()
+      .fn<DappSdkMethods['prepareExecuteAndWait']>()
       .mockResolvedValue(executed)
     const { result } = renderHook(() => useExecute(), liveSession(prepareExecuteAndWait, undefined))
 
     await act(async () => {
       await expect(result.current.execute({ commands: [] })).rejects.toThrow(
-        'wallet reports no usable party',
+        'wallet reports no primary account',
       )
     })
 

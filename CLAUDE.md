@@ -671,5 +671,5 @@ Before declaring monorepo-touching work done:
 
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [WalletConnect Sign Client](https://docs.walletconnect.com/api/sign/overview)
-- [CIP-0103 Canton wallet provider spec](https://github.com/digital-asset/canton/tree/main/community/app/src/pack/examples/04-canton-wallet)
+- [CIP-0103 dApp Standard](https://github.com/canton-foundation/cips/blob/main/cip-0103/cip-0103.md)
 - [Reown (WalletConnect cloud)](https://cloud.reown.com)

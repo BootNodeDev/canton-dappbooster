@@ -21,16 +21,16 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   `machine/connectionMachine.ts` is the authority, and no other module names a state. A state that
   answers an operation must carry its tag or the bridge waits forever: `waitFor` is unbounded here,
   and no clock will rescue it.
-- **A state's `exit` clears what that state alone justified.** `party` is cleared on leaving
+- **A state's `exit` clears what that state alone justified.** `account` is cleared on leaving
   `session.authenticated`, because a wallet that stops serving requests has none to offer, and a
   lock cannot be told from a wallet-side disconnect. `sdk` has no exit; nothing outlives it.
 - **Listeners register only inside a state's `invoke`.** `sdk.onX` binds to the current client and
   `sdk.connect()` swaps it.
 - **The provider selects nothing.** It publishes the config, the actor and four actions; each hook
   selects its own slice. Never add a field a hook could select.
-- **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `WalletSdk`
+- **Publish the narrowest type.** `ConnectionSubscription` puts `send` out of reach; `DappSdkMethods`
   narrows `DappSDK` to the methods this package calls.
-- **The machine owns the session; a hook owns what it asked for.** `sdk`, `party`, status and the
+- **The machine owns the session; a hook owns what it asked for.** `sdk`, `account`, status and the
   last connect error are machine context, never React state. A call's result or in-flight flag
   (`lastTx`, a signature) is React state: the session does not depend on it.
 - **Import the SDK's types.** A `param as Parameters<…>` cast is a duplicated type: import the real
@@ -71,8 +71,8 @@ and walk all five:
 
 ## Layout
 
-- `machine/` holds the lifecycle: both machines and their actors. `connectError`, `guardedConnect`,
-  `walletAccount` and `types` stay flat at `src/`, and a new leaf module joins them; no `utils/`.
+- `machine/` holds the lifecycle: both machines and their actors. `connectError`, `guardedConnect`
+  and `types` stay flat at `src/`, and a new leaf module joins them; no `utils/`.
 - `CantonConnectProvider/` is the provider plus the bridges it composes. It renders only
   `<Context.Provider>`, so the root's component-authoring rules do not apply to it.
 - `mock/` is source, not a double: the barrel exports `createMockAdapter`, so `testing/` cannot
