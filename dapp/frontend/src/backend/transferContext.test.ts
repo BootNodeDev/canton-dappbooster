@@ -1,193 +1,162 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fetchAppNetwork, fetchTransferContext } from '@/backend/transferContext'
 
-const disclosure = (templateId: string, contractId: string): Record<string, unknown> => ({
-  templateId,
-  contractId,
-  createdEventBlob: `blob-${contractId}`,
-  synchronizerId: 'global-domain::1220',
-})
+const PAST = '2020-01-01T00:00:00Z'
+const FUTURE = '2999-01-01T00:00:00Z'
 
-const RULES = disclosure('rulespkg:Splice.AmuletRules:AmuletRules', 'rules-cid')
-const ROUND = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-2')
-
-// Only the disclosures and `openRound` are kept; the command tap builds is discarded.
-const stubTap = (
-  disclosedContracts: unknown[],
-  openRound = 'round-2',
-): { calls: unknown[]; signals: (AbortSignal | undefined)[] } => {
-  const calls: unknown[] = []
-  const signals: (AbortSignal | undefined)[] = []
-  vi.stubGlobal('fetch', async (_url: string, init: { body: string; signal?: AbortSignal }) => {
-    calls.push(JSON.parse(init.body))
-    signals.push(init.signal)
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({
-        jsonrpc: '2.0',
-        id: '1',
-        result: {
-          commands: { ExerciseCommand: { choiceArgument: { openRound } } },
-          disclosedContracts,
-        },
-      }),
-    }
-  })
-  return { calls, signals }
+const RULES = {
+  contract_id: 'rules-cid',
+  created_event_blob: 'blob-rules-cid',
+  template_id: 'rulespkg:Splice.AmuletRules:AmuletRules',
 }
 
-describe('fetchTransferContext', () => {
-  it('keeps the AmuletRules and open mining round disclosures and drops the rest', async () => {
-    stubTap([
-      RULES,
-      ROUND,
-      disclosure('roundpkg:Splice.ExternalPartyConfigState:ExternalPartyConfigState', 'cfg'),
-    ])
+const round = (contractId: string, number: string, opensAt = PAST): Record<string, unknown> => ({
+  contract: {
+    contract_id: contractId,
+    created_event_blob: `blob-${contractId}`,
+    payload: { opensAt, round: { number } },
+    template_id: 'roundpkg:Splice.Round:OpenMiningRound',
+  },
+})
 
-    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext('funder::1')
+const stubScan = (
+  answers: Record<string, unknown>,
+): { paths: string[]; signals: (AbortSignal | undefined)[] } => {
+  const paths: string[] = []
+  const signals: (AbortSignal | undefined)[] = []
+  vi.stubGlobal('fetch', async (url: string, init: { signal?: AbortSignal }) => {
+    const path = Object.keys(answers).find((key) => url.endsWith(key))
+    if (path === undefined) {
+      throw new Error(`unstubbed ${url}`)
+    }
+    paths.push(path)
+    signals.push(init.signal)
+    return { ok: true, status: 200, json: async () => answers[path] }
+  })
+  return { paths, signals }
+}
+
+const withRules = (rules: unknown, rounds: unknown[]): Record<string, unknown> => ({
+  '/v0/amulet-rules': rules,
+  '/v0/open-and-issuing-mining-rounds': {
+    open_mining_rounds: Object.fromEntries(rounds.map((one, index) => [`k${index}`, one])),
+  },
+})
+
+const RULES_ANSWER = { amulet_rules_update: { contract: RULES, domain_id: 'global-domain::1220' } }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('fetchTransferContext', () => {
+  it('turns the two Scan answers into the context and its disclosures', async () => {
+    stubScan(withRules(RULES_ANSWER, [round('round-2', '2')]))
+
+    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext()
 
     expect(ctx).toEqual({
       amuletRules: 'rules-cid',
-      openMiningRound: 'round-2',
       featuredAppRight: null,
+      openMiningRound: 'round-2',
     })
     expect(disclosed).toEqual([
       {
-        templateId: 'rulespkg:Splice.AmuletRules:AmuletRules',
         contractId: 'rules-cid',
         createdEventBlob: 'blob-rules-cid',
+        templateId: 'rulespkg:Splice.AmuletRules:AmuletRules',
       },
       {
-        templateId: 'roundpkg:Splice.Round:OpenMiningRound',
         contractId: 'round-2',
         createdEventBlob: 'blob-round-2',
+        templateId: 'roundpkg:Splice.Round:OpenMiningRound',
       },
     ])
-    // The split exercises AmuletRules directly, so it needs the resolved id the filters skip.
     expect(rulesTemplateId).toBe('rulespkg:Splice.AmuletRules:AmuletRules')
   })
 
-  // The url is the build's, so only the request is asserted on here.
-  it('asks for a tap to the connected party', async () => {
-    const { calls } = stubTap([RULES, ROUND])
+  it('asks Scan for the rules and the rounds', async () => {
+    const { paths } = stubScan(withRules(RULES_ANSWER, [round('round-2', '2')]))
 
-    await fetchTransferContext('funder::1')
+    await fetchTransferContext()
 
-    expect(calls).toEqual([
-      {
-        jsonrpc: '2.0',
-        id: '1',
-        method: 'amulet.tap',
-        params: { receiver: 'funder::1' },
-      },
-    ])
+    expect([...paths].sort()).toEqual(['/v0/amulet-rules', '/v0/open-and-issuing-mining-rounds'])
   })
 
-  // The array is the registry's, so its order decides nothing: the command names the live round.
-  it('takes the round the command names rather than the first one disclosed', async () => {
-    const stale = disclosure('roundpkg:Splice.Round:OpenMiningRound', 'round-1')
+  it('skips a round Scan lists that has not opened yet', async () => {
+    stubScan(withRules(RULES_ANSWER, [round('round-2', '2'), round('round-3', '3', FUTURE)]))
 
-    stubTap([RULES, stale, ROUND], 'round-2')
+    const { ctx } = await fetchTransferContext()
 
-    const { ctx, disclosed } = await fetchTransferContext('funder::1')
+    expect(ctx.openMiningRound).toBe('round-2')
+  })
+
+  it('takes the newest open round, which closes latest, over the first listed', async () => {
+    stubScan(withRules(RULES_ANSWER, [round('round-1', '1'), round('round-2', '2')]))
+
+    const { ctx, disclosed } = await fetchTransferContext()
 
     expect(ctx.openMiningRound).toBe('round-2')
     expect(disclosed[1]?.contractId).toBe('round-2')
   })
 
-  it('rejects when either disclosure is missing', async () => {
-    stubTap([RULES])
+  it.each([
+    [
+      'no round has opened',
+      { amulet_rules_update: { contract: RULES } },
+      [round('r', '1', FUTURE)],
+    ],
+    ['Scan reports no rules', {}, [round('round-2', '2')]],
+  ])('rejects when %s', async (_case, rules, rounds) => {
+    stubScan(withRules(rules, rounds))
 
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/disclosed no AmuletRules/)
+    await expect(fetchTransferContext()).rejects.toThrow(/no AmuletRules and open mining round/)
   })
 
-  it('surfaces the reason behind a 200 carrying an error', async () => {
-    vi.stubGlobal('fetch', async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        jsonrpc: '2.0',
-        id: '1',
-        error: { code: -32601, message: 'Method not found: amulet.tap' },
-      }),
-    }))
-
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(/Method not found/)
-  })
-
-  // Without a signal a service that accepts and never answers leaves the call pending, and the
-  // 30-second network poll stacks more behind it. The duration itself is not observable.
   it('bounds the request with a signal that is live when it is sent', async () => {
-    const { signals } = stubTap([RULES, ROUND])
+    const { signals } = stubScan(withRules(RULES_ANSWER, [round('round-2', '2')]))
 
-    await fetchTransferContext('funder::1')
+    await fetchTransferContext()
 
     expect(signals[0]).toBeInstanceOf(AbortSignal)
     expect(signals[0]?.aborted).toBe(false)
   })
 
-  it('names wallet-service when the request is aborted', async () => {
+  it('names Scan when the request is aborted', async () => {
     vi.stubGlobal('fetch', async () => {
       throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
     })
 
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(
-      /wallet-service unreachable for amulet\.tap: .*aborted due to timeout/,
+    await expect(fetchTransferContext()).rejects.toThrow(
+      /Scan unreachable for .*: .*aborted due to timeout/,
     )
   })
 
   it('names the status rather than letting an html error page fail as a parse error', async () => {
-    vi.stubGlobal('fetch', async () => ({
-      ok: false,
-      status: 502,
-      json: async () => {
-        throw new SyntaxError('Unexpected token <')
-      },
-    }))
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 502 }))
 
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(
-      /wallet-service answered 502 for amulet.tap/,
-    )
-  })
-
-  // A 200 carrying neither member used to throw a bare TypeError naming nothing.
-  it('names the status when a 200 carries neither result nor error', async () => {
-    vi.stubGlobal('fetch', async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ jsonrpc: '2.0', id: '1' }),
-    }))
-
-    await expect(fetchTransferContext('funder::1')).rejects.toThrow(
-      /wallet-service answered 200 for amulet.tap/,
-    )
+    await expect(fetchTransferContext()).rejects.toThrow(/Scan answered 502/)
   })
 })
 
 describe('fetchAppNetwork', () => {
-  it('reads the network wallet-service stamped on the AmuletRules disclosure', async () => {
-    stubTap([RULES, ROUND])
+  it('reads the network off the AmuletRules answer', async () => {
+    stubScan({ '/v0/amulet-rules': RULES_ANSWER })
 
-    await expect(fetchAppNetwork('funder::1')).resolves.toBe('global-domain::1220')
+    await expect(fetchAppNetwork()).resolves.toBe('global-domain::1220')
   })
 
-  // The id sits on the rules alone, and the SV opens the first round minutes after a LocalNet
-  // start, so waiting for one the way `fetchTransferContext` must would answer nothing until then.
-  it('answers before the SV has opened a round', async () => {
-    stubTap([RULES])
+  it('answers without asking for a round, so it works before the SV opens one', async () => {
+    const { paths } = stubScan({ '/v0/amulet-rules': RULES_ANSWER })
 
-    await expect(fetchAppNetwork('funder::1')).resolves.toBe('global-domain::1220')
+    await fetchAppNetwork()
+
+    expect(paths).toEqual(['/v0/amulet-rules'])
   })
 
-  const { synchronizerId: _dropped, ...RULES_WITHOUT_NETWORK } = RULES
+  it('reports nothing when the answer carries no network', async () => {
+    stubScan({ '/v0/amulet-rules': { amulet_rules_update: { contract: RULES } } })
 
-  it.each([
-    ['no AmuletRules is disclosed', [ROUND]],
-    ['the disclosure carries no network', [RULES_WITHOUT_NETWORK]],
-  ])('reports nothing when %s', async (_case, disclosures) => {
-    stubTap(disclosures)
-
-    await expect(fetchAppNetwork('funder::1')).resolves.toBeUndefined()
+    await expect(fetchAppNetwork()).resolves.toBeUndefined()
   })
 })

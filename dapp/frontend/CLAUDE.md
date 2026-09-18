@@ -74,9 +74,11 @@ One implementation each, so a second one is a bug and not a choice:
 
 - **A read goes through `call` in [`backend/config.ts`](src/backend/config.ts),** which is the one
   place the untyped `ledgerApi` answer is cast. A second inline `as` is a duplicated type.
-- **A filter travels in `query`, never spelled into `resource` as a query string.** A wallet is free
-  to allowlist the resource against the ledger API's own route list, which a path carrying `?…`
-  misses. A route's own path segments still interpolate (`/v2/users/${id}/rights`).
+- **A filter travels in `query`, and a path segment in `path`; neither is spelled into `resource`.**
+  A wallet allowlists the resource against the ledger API's own route list, which neither a path
+  carrying `?…` nor one carrying a real id matches. The route is named as its template:
+  `resource: '/v2/users/{user-id}/rights'` with `path: { 'user-id': id }`. The Wallet Gateway
+  refuses the interpolated form with `Unsupported get resource`.
 
 ## Naming
 

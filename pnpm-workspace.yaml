@@ -9,5 +9,37 @@ packages:
   - dapp/frontend
 
 allowBuilds:
+  better-sqlite3: true
+  cbor-extract: true
   esbuild: true
   protobufjs: true
+  secp256k1: true
+
+# Added by pnpm when the Wallet Gateway went in: those versions were published the same day and
+# the minimum-release-age policy refuses them. Drop an entry once its version has aged past it.
+minimumReleaseAgeExclude:
+  - '@canton-network/core-ledger-client-types@1.12.2'
+  - '@canton-network/core-ledger-client@1.12.2'
+  - '@canton-network/core-ledger-proto@1.11.1'
+  - '@canton-network/core-rpc-errors@1.11.1'
+  - '@canton-network/core-rpc-transport@1.12.1'
+  - '@canton-network/core-signing-bitgo@1.2.1'
+  - '@canton-network/core-signing-blockdaemon@1.12.1'
+  - '@canton-network/core-signing-dfns@0.13.1'
+  - '@canton-network/core-signing-fireblocks@1.12.1'
+  - '@canton-network/core-signing-internal@1.13.2'
+  - '@canton-network/core-signing-lib@1.12.1'
+  - '@canton-network/core-signing-participant@1.12.2'
+  - '@canton-network/core-signing-securosys@0.4.1'
+  - '@canton-network/core-signing-store-sql@1.13.2'
+  - '@canton-network/core-splice-client@1.12.1'
+  - '@canton-network/core-token-standard@1.12.1'
+  - '@canton-network/core-tx-visualizer@1.11.1'
+  - '@canton-network/core-types@1.12.1'
+  - '@canton-network/core-wallet-auth@1.12.1'
+  - '@canton-network/core-wallet-dapp-rpc-client@1.12.1'
+  - '@canton-network/core-wallet-store-sql@1.13.2'
+  - '@canton-network/core-wallet-store@1.13.1'
+  - '@canton-network/core-wallet-ui-components@1.14.1'
+  - '@canton-network/core-wallet-user-rpc-client@1.13.1'
+  - '@canton-network/wallet-gateway-remote@1.11.3'

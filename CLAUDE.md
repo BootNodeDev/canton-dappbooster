@@ -12,9 +12,7 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`dapp/frontend/CLAUDE.md`](dapp/frontend/CLAUDE.md) — app layout and naming deltas; its seams are in [`dapp/frontend/architecture.md`](dapp/frontend/architecture.md)
 - `dapp/daml/` — see its `README.md`
 
-The dApp connects through any CIP-0103 browser wallet; no wallet lives in this monorepo. This stack
-was developed against Carpincho, which has its own repository at
-[github.com/BootNodeDev/carpincho-wallet](https://github.com/BootNodeDev/carpincho-wallet).
+The dApp connects through any CIP-0103 wallet; no wallet lives in this monorepo.
 
 For the system shape (data flow, components, ports), see [`architecture.md`](architecture.md).
 
@@ -65,19 +63,20 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
+| Wallet | @canton-network/wallet-gateway-remote | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in root devDependencies, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `wallet-gateway.config.json`. `dapp/frontend` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); standalone SVG assets are excluded |
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-dappbooster/`, `canton-theme/`, `dapp/frontend/`, `kit/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-wallet-service` is in `ignoreDependencies` because nothing runs it from a `package.json` script: `scripts/dev-stack.sh` and the README call `pnpm exec canton-wallet-service`, and knip does not read shell scripts. `postcss` is there for the reason under `kit/` and the consumer scaffold |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `postcss` is in `ignoreDependencies` for the reason under `kit/` and the consumer scaffold |
 | Doc reference + gate | typedoc | `kit/typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
 | Version lockstep check | `kit/check-versions.mjs` | `pnpm run check:versions` fails unless every declared range pointing at a library is `^<that library folder's version>`. `kit/check-versions.test.mjs` runs the same check inside `pnpm test`, and the PR job calls the script. Given a version argument it also requires the root and the three libraries to be on it, which is how the release workflow refuses a tag that disagrees with the manifests |
 | Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` is its build settings and nobody else's |
-| Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. Git-connected, production branch `main`, so a merge deploys and a branch gets a preview. The deploy is a static bundle, so `vercel.json` rewrites every path to `index.html`, and `VITE_WALLET_RPC_URL` names the deployed wallet-service |
+| Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `dapp/frontend`, so it reads `dapp/frontend/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root, because a production build resolves both libraries to their `dist` rather than their source. Git-connected, production branch `main`, so a merge deploys and a branch gets a preview. The deploy is a static bundle, so `vercel.json` rewrites every path to `index.html` |
 | CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (biome, typecheck+build+knip+docs, test, commitlint, gitleaks). `main` is protected: 1 approval + all checks green. `.github/workflows/release.yml` publishes to npm when a GitHub release is published; see Packaging And Publishing. `add-to-project` and `pr-assign` automate the board and PR assignee |
 | Dependency updates | Renovate | `renovate.json`: non-major updates batched weekly, no auto-merge; the `@canton-network/*` SDK graph is held for manual approval on the Dependency Dashboard |
 
@@ -91,39 +90,49 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
-Two things the loop needs are not subprojects but dependencies. wallet-service ships from
-[BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service),
-installs from npm as a root devDependency, and `scripts/dev-stack.sh` runs it on
-port 3010 through `pnpm exec canton-wallet-service`. The LocalNet ships from
+Two things the loop needs are not subprojects but dependencies. The LocalNet ships from
 [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones), is a pinned
 devDependency whose config `scripts/dev-stack.sh` scaffolds into the gitignored
-`.canton-localnet/` and drives there over `pnpm exec`.
+`.canton-localnet/` and drives there over `pnpm exec`. The wallet ships from
+[canton-network/wallet](https://github.com/canton-network/wallet) as
+`@canton-network/wallet-gateway-remote`, installs from npm as a root devDependency, and
+`scripts/dev-stack.sh` runs it on port 3030 through `pnpm run wallet-gateway`.
 
 ## Code Style
 
 - All source code in English regardless of conversation language.
 - TypeScript preferred over JavaScript across Node subprojects.
 - **No semicolons** in TypeScript / JavaScript across the repo.
-- **Comments are terse and explain *why*, not *what*.** One sentence, wrapped to the line width.
-  Two only if one genuinely cannot carry it; never more. Do not restate what the code already says
-  or narrate steps. If the code needs a paragraph to be understood, simplify the code instead.
+- **Name it, do not caption it.** A function, variable or type that needs a comment to be understood
+  gets renamed or split instead. The name is the documentation.
+- **A comment is only for what the code cannot carry**: a hack, a workaround, an outside constraint
+  (browser bug, protocol quirk, an ordering that matters), a deliberate *omission*, or a rejected
+  alternative. Nothing else earns one.
+- **One line, hard cap**, on the line it applies to and not in a block above the function. Needing a
+  second line means the code is wrong or the prose belongs in an `.md`.
+- **No narration.** Never restate what the code says, walk through steps, or explain how a
+  dependency behaves. A file carrying more comment than code is a bad file.
+- **Tests document themselves through their names.** A test needing a comment needs a better name.
 - **Never annotate members one by one.** No per-property comments on a type, interface, enum, or
   object literal. A member whose name and type do not explain it gets renamed or retyped, not
   captioned. A section header grouping a block of tokens or exports is not a member comment and
   stays allowed.
 - **CSS carries no comments at all, with one exception: a section separator** naming the block that
   follows (`/* Account popover */`, `/* Token chips */`, `/* Colour roles */`). Nothing else, not
-  even the why-exception below: a stylesheet workaround or ordering constraint is recorded in the
+  even the exception above: a stylesheet workaround or ordering constraint is recorded in the
   nearest `CLAUDE.md`, where the next author looks before editing, and not in a comment they will
   delete.
-- Outside CSS, the only exception is something the code cannot carry: a hack, a workaround, a
-  non-obvious external constraint (browser bug, protocol quirk, load-bearing ordering), a deliberate
-  *omission*, or a rejected alternative. Comment that, one line, on the line it applies to. Before
-  deleting a comment, check the code still carries the fact — an absence and a road not taken never
-  do.
-- JSDoc is exempt from the line cap but not from terseness: say what the symbol does, and when a
+- **Where the prose goes instead**: how a subsystem behaves in the nearest `architecture.md`, a rule
+  about how to write the code in the nearest `CLAUDE.md`. Both outlive a comment.
+- **Fix a comment you touch.** Find one breaking these rules in a file the current task already
+  changes and fix it in the same change: delete it where the code carries the fact, cut it to one
+  line where it does not, or move the prose to the nearest `.md`. Before deleting, check the code
+  still carries the fact — an absence and a road not taken never do. In any other file, name it in
+  your report and leave it alone; a repo-wide sweep is its own commit.
+- JSDoc is exempt from the one-line cap but not from terseness: say what the symbol does, and when a
   caller could reasonably pick a different export, say which. Never restate the type, never
-  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage.
+  inventory the fields. Every JSDoc block carries at least one `@example` showing real usage, and the
+  Doc blocks table below caps the rest.
 - Lint and formatting are centralized in the root `biome.json`. Add project-specific rules under `overrides` keyed by path; do not create per-subproject Biome configs.
 
 ## File & Folder Organization
@@ -359,11 +368,10 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   dApp cannot start without. Run it after the DAR is deployed. It writes no file: the dApp reads
   both back off the ledger once a wallet connects, so nothing can go stale between the two, and
   pointing the wallet at another participant is the whole of switching networks.
-- **One `.env`, at the root.** It is wallet-service's entire configuration, because the service
-  loads dotenv from the directory it starts in and `pnpm exec` starts it here; it also holds the
-  signing recipe `scripts/mint-token.mjs` reads and the token `scripts/deploy-dar.sh` sends. Both
-  scripts resolve `.env` from their own parent directory, which is what moving them into `scripts/`
-  repointed, so neither takes a path argument. Minting is offline: no container has to be up. The
+- **One `.env`, at the root.** It holds the signing recipe `scripts/mint-token.mjs` reads and the
+  token `scripts/deploy-dar.sh` and `scripts/bootstrap-vesting.mjs` send. All three
+  resolve `.env` from their own parent directory, which is what moving them into `scripts/`
+  repointed, so none takes a path argument. Minting is offline: no container has to be up. The
   dApp's `VITE_*` variables live there too: `dapp/frontend/vite.config.ts` calls `loadEnv` against
   the repo root with an empty prefix, so it reads every key in that file, `CANTON_AUTH_SECRET`
   included. Only what `parseEnv` returns may reach `define` — never the loaded object.
@@ -372,9 +380,9 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
   subject in. `deploy-dar` is the one exception and pays for it with an explicit `[ "$1" = "--" ] &&
   shift`, which is what lets it take `-- <dar>`.
-- Local ports are intentionally assigned in the `3010+` range (see table above). Do not change them without updating every subproject's defaults.
+- Local ports: the dApp dev server on 3012 and the Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` and the `.env.example` defaults together.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
-- The `@canton-network/wallet-sdk` pin left with wallet-service: its own repository holds that exact version, so `pnpm-workspace.yaml` carries no SDK overrides. Its `core-acs-reader` override does **not** travel here — pnpm applies `overrides` only in the root running the install, and a published package ships no lock file to read — so this repo resolves `core-acs-reader` on the SDK's own range and the root lock records 1.19.0, where the extracted repo pins 1.12.0. The loop was verified end to end on 1.18.1; the move to npm re-resolved it to 1.19.0. Renovate's `@canton-network/**` hold plus the lock file are what keep it there; re-resolve deliberately, not as a side effect. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
+- `pnpm-workspace.yaml` carries no `@canton-network/*` overrides. `canton-connect`'s `@canton-network/*` deps (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. Both its `core-types` and its `dapp-sdk` devDependencies are pinned exact, not caret: Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
 - **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
   `@canton-network/dapp-sdk` calls it optional.** The SDK's `peerDependenciesMeta` marks it
   optional but its `dist/index.js` imports it statically, so nothing that loads the SDK runs
@@ -385,7 +393,7 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
   how it reached npm. `dapp/frontend` also lists it in `dependencies` on the same range: pnpm and
   npm auto-install peers, yarn does not, and a consumer can turn that off. It can go back to
   optional once upstream moves that import behind a dynamic one.
-- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild` and `protobufjs`. Anything else is blocked until it is added.
+- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, and the three the Wallet Gateway compiles natively — `better-sqlite3`, `cbor-extract` and `secp256k1`. Anything else is blocked until it is added.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
 ## `kit/` and the consumer scaffold
@@ -619,6 +627,24 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
 - Do not modify CI/CD pipelines without team review.
 - Do not skip tests or linting to make a build pass.
 - Do not bypass the husky hooks (`--no-verify`) unless the user explicitly asks.
+- **A party the dApp acts as is created with the gateway's `wallet-kernel` signing provider, never
+  `participant`.** The validator installs a `WalletAppInstall` for a participant-hosted party and
+  its automation then merges that party's Amulets, archiving the one a grant pledges: the proposal
+  keeps a dead `amuletCids` and `AmuletVestingProposal_Accept` fails with `Rejected transaction is
+  referring to inactive contracts`. Measured on a LocalNet: a participant party's split Amulet was
+  archived 79 seconds after it was created, by a transaction with no `commandId`; a `wallet-kernel`
+  party got no install and kept both Amulets. The bootstrap operator is exempt — it holds no
+  Amulets and only signs the factory.
+- **`wallet-gateway.config.json` is committed, unlike the LocalNet's.** It is ours rather than a
+  tool's template, it is three dozen lines, and the LocalNet values in it are the published unsafe
+  ones (`unsafe` as the signing secret, `https://canton.network.global` as the audience). Its two
+  SQLite stores land in the gitignored `.wallet-gateway/`, which the `wallet-gateway` script creates
+  because better-sqlite3 refuses a database in a directory that does not exist.
+- **A `ledgerApi` route names its path segments as a template, with the values in `path`.**
+  `/v2/users/{user-id}/rights` plus `path: { 'user-id': id }`, never `/v2/users/${id}/rights`. The
+  gateway allowlists the resource against the ledger API's own route list, so an interpolated id
+  matches nothing and comes back as `Unsupported get resource`. wallet-service passed anything
+  through, which is why this only surfaced on the move.
 - **Never touch the root `README.md` unless explicitly told to in that request.** No
   doc-sync sweep, no "update docs in the same commit" rule and no `update-docs` run
   authorizes editing it. Subproject READMEs are not covered by this.
@@ -639,7 +665,7 @@ Before declaring monorepo-touching work done:
 - Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`, `pnpm run check:versions`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
-- For the full end-to-end loop (LocalNet up → wallet-service → DAR built → DAR deployed → bootstrap → wallet → dApp), follow [`README.md`](README.md).
+- For the full end-to-end loop (LocalNet up → DAR built → DAR deployed → bootstrap → wallet → dApp), follow [`README.md`](README.md).
 
 ## References
 

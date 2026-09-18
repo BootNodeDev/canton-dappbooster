@@ -17,16 +17,17 @@ placeholder. See the root [README](../../README.md) for the wider stack.
 
 ## Run
 
-The app needs a Canton LocalNet, wallet-service on port 3010 and the vesting DAR deployed
-before it renders anything; the root [README](../../README.md) is the whole bring-up. Once
-that is up, from the repo root (one `pnpm install` links every workspace):
+The app needs a Canton LocalNet, the Wallet Gateway and the vesting DAR deployed before it
+renders anything; the root [README](../../README.md) is the whole bring-up. Once that is up,
+from the repo root (one `pnpm install` links every workspace):
 
 ```bash
 pnpm run build-dar
 # use the appropriate version for amulet-vesting-*.dar
 pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-*.dar
-pnpm run bootstrap   # creates the operator and its factory
-pnpm run app:dev     # → http://localhost:3012
+pnpm run bootstrap        # creates the operator and its factory
+pnpm run wallet-gateway   # → http://localhost:3030
+pnpm run app:dev          # → http://localhost:3012
 ```
 
 The bootstrap writes nothing. It leaves the operator and the factory on the ledger, and the dApp
@@ -35,14 +36,16 @@ factory through an active-contracts read that returns its explicit-disclosure pa
 which a grant cannot be created. Re-running it supersedes the last one, on any ledger.
 
 Funding a grant takes Amulet, and the account menu has a faucet for it: **Tap Amulet** taps
-100 AMT into the connected party. It works on LocalNet and devnet, where the choice exists, and
-refuses until the SV has opened the first mining round, roughly ten minutes after a fresh start.
+100 AMT into the connected party.
+It works on LocalNet and devnet, where the choice exists, and refuses until the SV has opened the
+first mining round, roughly ten minutes after a fresh start.
 
-Connect with a CIP-0103 browser wallet; the party it reports is the one you act as, and
-the session is restored on reload by the wallet itself. Changing the wallet's primary
-account changes the party the dApp acts as. Its two env knobs — the explorer party ids
-link to and the wallet-service endpoint it builds the Amulet disclosures from — default to
-the local stack and are set in the repo root's `.env`; see the root
+Connect with a CIP-0103 wallet — the Wallet Gateway on http://localhost:3030 is the one the dev
+stack starts. Create its parties with the `wallet-kernel` signing provider; a `participant` one
+has its Amulets merged out from under a pending grant (see the root README). The party it reports is the one you act as, and the session is restored on reload by
+the wallet itself. Changing the wallet's primary party changes the party the dApp acts as. Its
+three env knobs — the explorer party ids link to, the gateway's dApp API, and Scan's API — default
+to the local stack and are set in the repo root's `.env`; see the root
 [`.env.example`](../../.env.example).
 
 ## How it fits together
