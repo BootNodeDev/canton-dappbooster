@@ -16,3 +16,7 @@ data-dependencies:
 # different LF target.
 build-options:
   - --target=2.1
+codegen:
+  js:
+    output-directory: daml.js
+    npm-scope: '@daml.js'
