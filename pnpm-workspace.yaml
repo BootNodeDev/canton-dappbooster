@@ -6,6 +6,7 @@ packages:
   - canton-dappbooster
   - canton-theme
   - dapp/daml
+  - dapp/daml/daml.js/*
   - dapp/frontend
 
 allowBuilds:
@@ -43,3 +44,6 @@ minimumReleaseAgeExclude:
   - '@canton-network/core-wallet-ui-components@1.14.1'
   - '@canton-network/core-wallet-user-rpc-client@1.13.1'
   - '@canton-network/wallet-gateway-remote@1.11.3'
+
+publicHoistPattern:
+  - '@daml/types'

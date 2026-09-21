@@ -85,6 +85,8 @@ export default defineConfig(({ mode }) => {
     // Without this a leftover `dapp/frontend/.env.local` is still loaded, silently losing to the
     // root for exactly the keys defined above.
     envDir,
+    // Linked workspace packages skip pre-bundling, and the generated bindings are CommonJS.
+    optimizeDeps: { include: ['@daml.js/amulet-vesting-0.0.2', '@daml.js/splice-amulet-0.1.22'] },
     plugins: [react(), tailwindcss(), localnetAssets(loaded)],
     resolve: {
       alias: {

@@ -320,6 +320,411 @@ importers:
 
   dapp/daml: {}
 
+  dapp/daml/daml.js/amulet-vesting-0.0.2:
+    dependencies:
+      '@daml.js/daml-prim-DA-Types-1.0.0':
+        specifier: file:../daml-prim-DA-Types-1.0.0
+        version: link:../daml-prim-DA-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-amulet-0.1.22':
+        specifier: file:../splice-amulet-0.1.22
+        version: link:../splice-amulet-0.1.22
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-DA-Exception-ArithmeticError-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-DA-Exception-AssertionFailed-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-DA-Exception-GeneralError-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-DA-Exception-PreconditionFailed-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-DA-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-GHC-Tuple-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-prim-GHC-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Date-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Internal-Down-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Logic-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Monoid-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-NonEmpty-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Random-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Semigroup-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Set-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Stack-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Time-Types-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/daml-stdlib-DA-Validation-Types-1.0.0:
+    dependencies:
+      '@daml.js/daml-stdlib-DA-NonEmpty-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-NonEmpty-Types-1.0.0
+        version: link:../daml-stdlib-DA-NonEmpty-Types-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/ghc-stdlib-DA-Internal-Template-1.0.0:
+    dependencies:
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-amulet-0.1.22:
+    dependencies:
+      '@daml.js/daml-prim-DA-Types-1.0.0':
+        specifier: file:../daml-prim-DA-Types-1.0.0
+        version: link:../daml-prim-DA-Types-1.0.0
+      '@daml.js/daml-stdlib-DA-Set-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-Set-Types-1.0.0
+        version: link:../daml-stdlib-DA-Set-Types-1.0.0
+      '@daml.js/daml-stdlib-DA-Time-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-Time-Types-1.0.0
+        version: link:../daml-stdlib-DA-Time-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-featured-app-v1-1.0.0':
+        specifier: file:../splice-api-featured-app-v1-1.0.0
+        version: link:../splice-api-featured-app-v1-1.0.0
+      '@daml.js/splice-api-featured-app-v2-1.0.0':
+        specifier: file:../splice-api-featured-app-v2-1.0.0
+        version: link:../splice-api-featured-app-v2-1.0.0
+      '@daml.js/splice-api-reward-assignment-v1-1.0.0':
+        specifier: file:../splice-api-reward-assignment-v1-1.0.0
+        version: link:../splice-api-reward-assignment-v1-1.0.0
+      '@daml.js/splice-api-token-allocation-instruction-v1-1.0.0':
+        specifier: file:../splice-api-token-allocation-instruction-v1-1.0.0
+        version: link:../splice-api-token-allocation-instruction-v1-1.0.0
+      '@daml.js/splice-api-token-allocation-instruction-v2-1.0.0':
+        specifier: file:../splice-api-token-allocation-instruction-v2-1.0.0
+        version: link:../splice-api-token-allocation-instruction-v2-1.0.0
+      '@daml.js/splice-api-token-allocation-v1-1.0.0':
+        specifier: file:../splice-api-token-allocation-v1-1.0.0
+        version: link:../splice-api-token-allocation-v1-1.0.0
+      '@daml.js/splice-api-token-allocation-v2-1.0.0':
+        specifier: file:../splice-api-token-allocation-v2-1.0.0
+        version: link:../splice-api-token-allocation-v2-1.0.0
+      '@daml.js/splice-api-token-holding-v1-1.0.0':
+        specifier: file:../splice-api-token-holding-v1-1.0.0
+        version: link:../splice-api-token-holding-v1-1.0.0
+      '@daml.js/splice-api-token-holding-v2-1.0.0':
+        specifier: file:../splice-api-token-holding-v2-1.0.0
+        version: link:../splice-api-token-holding-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@daml.js/splice-api-token-transfer-events-v2-1.0.0':
+        specifier: file:../splice-api-token-transfer-events-v2-1.0.0
+        version: link:../splice-api-token-transfer-events-v2-1.0.0
+      '@daml.js/splice-api-token-transfer-instruction-v1-1.0.0':
+        specifier: file:../splice-api-token-transfer-instruction-v1-1.0.0
+        version: link:../splice-api-token-transfer-instruction-v1-1.0.0
+      '@daml.js/splice-api-token-transfer-instruction-v2-1.0.0':
+        specifier: file:../splice-api-token-transfer-instruction-v2-1.0.0
+        version: link:../splice-api-token-transfer-instruction-v2-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-featured-app-v1-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-featured-app-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-reward-assignment-v1-1.0.0:
+    dependencies:
+      '@daml.js/daml-prim-DA-Types-1.0.0':
+        specifier: file:../daml-prim-DA-Types-1.0.0
+        version: link:../daml-prim-DA-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-instruction-v1-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-allocation-v1-1.0.0':
+        specifier: file:../splice-api-token-allocation-v1-1.0.0
+        version: link:../splice-api-token-allocation-v1-1.0.0
+      '@daml.js/splice-api-token-holding-v1-1.0.0':
+        specifier: file:../splice-api-token-holding-v1-1.0.0
+        version: link:../splice-api-token-holding-v1-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-instruction-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-allocation-v2-1.0.0':
+        specifier: file:../splice-api-token-allocation-v2-1.0.0
+        version: link:../splice-api-token-allocation-v2-1.0.0
+      '@daml.js/splice-api-token-holding-v2-1.0.0':
+        specifier: file:../splice-api-token-holding-v2-1.0.0
+        version: link:../splice-api-token-holding-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-request-v1-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-allocation-v1-1.0.0':
+        specifier: file:../splice-api-token-allocation-v1-1.0.0
+        version: link:../splice-api-token-allocation-v1-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-request-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-allocation-v2-1.0.0':
+        specifier: file:../splice-api-token-allocation-v2-1.0.0
+        version: link:../splice-api-token-allocation-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-v1-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-holding-v1-1.0.0':
+        specifier: file:../splice-api-token-holding-v1-1.0.0
+        version: link:../splice-api-token-holding-v1-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-allocation-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-holding-v2-1.0.0':
+        specifier: file:../splice-api-token-holding-v2-1.0.0
+        version: link:../splice-api-token-holding-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-holding-v1-1.0.0:
+    dependencies:
+      '@daml.js/daml-stdlib-DA-Time-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-Time-Types-1.0.0
+        version: link:../daml-stdlib-DA-Time-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-holding-v2-1.0.0:
+    dependencies:
+      '@daml.js/daml-stdlib-DA-Time-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-Time-Types-1.0.0
+        version: link:../daml-stdlib-DA-Time-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-metadata-v1-1.0.0:
+    dependencies:
+      '@daml.js/daml-stdlib-DA-Time-Types-1.0.0':
+        specifier: file:../daml-stdlib-DA-Time-Types-1.0.0
+        version: link:../daml-stdlib-DA-Time-Types-1.0.0
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-transfer-events-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-holding-v2-1.0.0':
+        specifier: file:../splice-api-token-holding-v2-1.0.0
+        version: link:../splice-api-token-holding-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-transfer-instruction-v1-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-holding-v1-1.0.0':
+        specifier: file:../splice-api-token-holding-v1-1.0.0
+        version: link:../splice-api-token-holding-v1-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
+  dapp/daml/daml.js/splice-api-token-transfer-instruction-v2-1.0.0:
+    dependencies:
+      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
+      '@daml.js/splice-api-token-holding-v2-1.0.0':
+        specifier: file:../splice-api-token-holding-v2-1.0.0
+        version: link:../splice-api-token-holding-v2-1.0.0
+      '@daml.js/splice-api-token-metadata-v1-1.0.0':
+        specifier: file:../splice-api-token-metadata-v1-1.0.0
+        version: link:../splice-api-token-metadata-v1-1.0.0
+      '@mojotech/json-type-validation':
+        specifier: ^3.1.0
+        version: 3.1.0
+
   dapp/frontend:
     dependencies:
       '@ark-ui/react':
@@ -337,6 +742,15 @@ importers:
       '@canton-network/dapp-sdk':
         specifier: 1.5.1
         version: 1.5.1(@walletconnect/sign-client@2.24.0(typescript@5.9.3)(zod@4.5.4))(@walletconnect/types@2.24.0)(supports-color@8.1.1)
+      '@daml.js/amulet-vesting-0.0.2':
+        specifier: workspace:*
+        version: link:../daml/daml.js/amulet-vesting-0.0.2
+      '@daml.js/splice-amulet-0.1.22':
+        specifier: workspace:*
+        version: link:../daml/daml.js/splice-amulet-0.1.22
+      '@daml/types':
+        specifier: 3.5.2
+        version: 3.5.2
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.3.0
