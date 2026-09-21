@@ -1,14 +1,11 @@
+import type { ContractId } from '@daml/types'
+import type { Splice } from '@daml.js/splice-amulet-0.1.22'
 import type { DisclosedContract } from '@/backend/wallet'
 import { now } from '@/utils/clock'
 import { SCAN_API_URL } from '@/utils/config'
 import { errorText } from '@/utils/errorText'
 
-// Flat, not nested under a `context` key: nesting fails preprocessing on the missing field.
-export type AppTransferContext = {
-  amuletRules: string
-  featuredAppRight: null
-  openMiningRound: string
-}
+export type AppTransferContext = Splice.AmuletRules.AppTransferContext
 
 type ScanContract = {
   contract_id: string
@@ -85,9 +82,9 @@ export const fetchTransferContext = async (): Promise<{
   }
   return {
     ctx: {
-      amuletRules: rulesContract.contract_id,
+      amuletRules: rulesContract.contract_id as ContractId<Splice.AmuletRules.AmuletRules>,
       featuredAppRight: null,
-      openMiningRound: round.contract_id,
+      openMiningRound: round.contract_id as ContractId<Splice.Round.OpenMiningRound>,
     },
     disclosed: [rulesContract, round].map(disclose),
     // The split exercises AmuletRules directly rather than through the factory.

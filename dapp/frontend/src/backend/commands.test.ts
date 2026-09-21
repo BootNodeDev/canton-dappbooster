@@ -1,3 +1,5 @@
+import type { ContractId } from '@daml/types'
+import type { Splice } from '@daml.js/splice-amulet-0.1.22'
 import { describe, expect, it } from 'vitest'
 import {
   buildAcceptCommand,
@@ -14,10 +16,12 @@ import type { AppTransferContext } from '@/backend/transferContext'
 import type { VestingSchedule } from '@/utils/schedule'
 
 const ctx: AppTransferContext = {
-  amuletRules: 'rules-cid',
-  openMiningRound: 'round-cid',
+  amuletRules: 'rules-cid' as ContractId<Splice.AmuletRules.AmuletRules>,
+  openMiningRound: 'round-cid' as ContractId<Splice.Round.OpenMiningRound>,
   featuredAppRight: null,
 }
+
+const amuletCids = ['a1', 'a2'] as ContractId<Splice.Amulet.Amulet>[]
 
 const linear: VestingSchedule = {
   cliff: '2026-01-01T00:00:00Z',
@@ -70,13 +74,6 @@ describe('decodeSchedule', () => {
   it('round-trips a milestone schedule', () => {
     expect(decodeSchedule(encodeSchedule(milestone))).toEqual(milestone)
   })
-
-  it('falls back to a degenerate linear curve on garbage input', () => {
-    expect(decodeSchedule(undefined)).toEqual({
-      cliff: '',
-      curve: { kind: 'linear', start: '', end: '' },
-    })
-  })
 })
 
 describe('command builders', () => {
@@ -86,7 +83,7 @@ describe('command builders', () => {
       receiver: 'B',
       totalAmount: '1000',
       schedule: linear,
-      amuletCids: ['a1', 'a2'],
+      amuletCids,
       note: 'Title\nbody',
     })
     expect(cmd).toEqual({

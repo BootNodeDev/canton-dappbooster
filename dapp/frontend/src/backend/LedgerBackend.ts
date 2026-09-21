@@ -1,4 +1,7 @@
+import { AmuletVesting } from '@daml.js/amulet-vesting-0.0.2'
+import { Splice } from '@daml.js/splice-amulet-0.1.22'
 import {
+  type AmuletId,
   buildAcceptCommand,
   buildCancelCommand,
   buildClaimResidualCommand,
@@ -29,11 +32,11 @@ import {
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
 import { addAmounts, canonicalAmount, compareAmounts } from '@/utils/amount'
 
+const { AmuletVestedClaim, AmuletVestingContract, AmuletVestingProposal } = AmuletVesting
+const { Amulet } = Splice.Amulet
+
 const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
   rows.map(mapper).filter((value): value is T => value !== undefined)
-
-const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
-const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
 
 const templateFilter = (
   party: string,
@@ -94,7 +97,7 @@ export class LedgerBackend implements VestingBackend {
     }
   }
 
-  // The resolved-id twin of `vesting()`: a command carries this spelling, a filter the other one.
+  // A command carries the resolved package id; a filter carries the generated package-name form.
   private tid(entity: string): string {
     return `${this.pkg}:AmuletVesting:${entity}`
   }
@@ -151,9 +154,9 @@ export class LedgerBackend implements VestingBackend {
   async viewAs(partyId: string): Promise<VestingView> {
     const offset = await this.ledgerEnd()
     const [pendingGrantRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, vesting('AmuletVestingProposal'), offset),
-      this.readAcs(partyId, vesting('AmuletVestingContract'), offset),
-      this.readAcs(partyId, vesting('AmuletVestedClaim'), offset),
+      this.readAcs(partyId, AmuletVestingProposal.templateId, offset),
+      this.readAcs(partyId, AmuletVestingContract.templateId, offset),
+      this.readAcs(partyId, AmuletVestedClaim.templateId, offset),
     ])
     return {
       pendingGrants: mapRows(pendingGrantRows, rowToPendingGrant),
@@ -169,7 +172,7 @@ export class LedgerBackend implements VestingBackend {
       receiver: args.receiver,
       totalAmount: args.totalAmount,
       schedule: args.schedule,
-      amuletCids: [escrow.contractId],
+      amuletCids: [escrow.contractId as AmuletId],
       note: composeNote(args.title, args.note),
     })
     await this.submit(args.proposer, command, [this.factory])
@@ -179,8 +182,8 @@ export class LedgerBackend implements VestingBackend {
   private async freeAmulets(owner: string): Promise<{ free: AcsRow[]; held: AcsRow[] }> {
     const offset = await this.ledgerEnd()
     const [held, pendingRows] = await Promise.all([
-      this.readAcs(owner, AMULET, offset),
-      this.readAcs(owner, vesting('AmuletVestingProposal'), offset),
+      this.readAcs(owner, Amulet.templateId, offset),
+      this.readAcs(owner, AmuletVestingProposal.templateId, offset),
     ])
     const pledged = new Set(pendingRows.flatMap(pledgedAmulets))
     return { free: held.filter((row) => !pledged.has(cidOf(row))), held }
@@ -215,7 +218,7 @@ export class LedgerBackend implements VestingBackend {
       owner,
       buildSplitCommand(rulesTemplateId, ctx.amuletRules, {
         amount,
-        amuletCids: free.map(cidOf),
+        amuletCids: free.map(cidOf) as AmuletId[],
         dso,
         openMiningRound: ctx.openMiningRound,
         owner,
@@ -225,7 +228,7 @@ export class LedgerBackend implements VestingBackend {
 
     const before = new Set(held.map(cidOf))
     const wanted = canonicalAmount(amount)
-    const after = await this.readAcs(owner, AMULET, await this.ledgerEnd(), true)
+    const after = await this.readAcs(owner, Amulet.templateId, await this.ledgerEnd(), true)
     const created = after.find(
       (row) => !before.has(cidOf(row)) && canonicalAmount(amuletValue(row)) === wanted,
     )
@@ -253,7 +256,7 @@ export class LedgerBackend implements VestingBackend {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
             eventFormat: {
               verbose: true,
-              ...templateFilter(partyId, vesting('AmuletVestingContract')),
+              ...templateFilter(partyId, AmuletVestingContract.templateId),
             },
           },
         },
@@ -279,7 +282,7 @@ export class LedgerBackend implements VestingBackend {
 
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
     const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.receiver, vesting('AmuletVestingProposal'), offset)
+    const rows = await this.readAcs(args.receiver, AmuletVestingProposal.templateId, offset)
     const wanted = new Set(
       rows.filter((row) => cidOf(row) === args.pendingCid).flatMap(pledgedAmulets),
     )

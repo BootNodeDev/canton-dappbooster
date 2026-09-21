@@ -1,10 +1,16 @@
 // The backend seam: the UI depends only on this interface and the domain types, never on DAML or
 // transport details. The mappers below turn active-contract rows into those domain types.
 
+import type { Optional, Serializable } from '@daml/types'
+import { AmuletVesting } from '@daml.js/amulet-vesting-0.0.2'
+import { Splice } from '@daml.js/splice-amulet-0.1.22'
 import { decodeSchedule } from '@/backend/commands'
-import type { Grant, PartyId, PendingGrant, VestedClaim } from '@/store/types'
+import type { Grant, PendingGrant, VestedClaim } from '@/store/types'
 import { isAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
+
+const { AmuletVestedClaim, AmuletVestingContract, AmuletVestingProposal } = AmuletVesting
+const withdrawChoice = AmuletVestingContract.AmuletVestingContract_Withdraw
 
 export interface VestingView {
   claims: VestedClaim[]
@@ -59,16 +65,15 @@ export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRe
   return chain
 }
 
-// ── Domain-mapping convention ──────────────────────────────────────────────────
-// On-ledger `note` is `"${title}\n${note}"`, decimals arrive as strings, and the curve as a
-// JSON-LF variant. A row missing its createArgument maps to undefined so it never crashes a view.
+// ── Row mapping ───────────────────────────────────────────────────────────────
+// A row missing its createArgument maps to undefined so it never crashes a view.
 
 export type AcsRow = {
   contractEntry?: {
     JsActiveContract?: {
       createdEvent?: {
         contractId?: string
-        createArgument?: Record<string, unknown>
+        createArgument?: unknown
         createdEventBlob?: string
         templateId?: string
       }
@@ -76,10 +81,9 @@ export type AcsRow = {
   }
 }
 
-// A Daml Numeric arrives as a string and is carried through unparsed, so ledger precision survives.
-// Throws rather than let a surprise here fold into what looks like a real zero balance downstream.
-const amountOf = (value: unknown, field: string, contractId: string): string => {
-  if (typeof value !== 'string' || !isAmount(value)) {
+// Throws rather than let an unparseable Numeric fold into what looks like a real zero downstream.
+const amountOf = (value: string, field: string, contractId: string): string => {
+  if (!isAmount(value)) {
     throw new Error(`Contract ${contractId} field '${field}' is not a Numeric string: ${value}`)
   }
   return value
@@ -93,10 +97,10 @@ export const composeNote = (title: string, note?: string): string =>
 
 // Split the on-ledger note back into title + note, on the first newline only.
 export const splitNote = (
-  rawNote: unknown,
+  rawNote: Optional<string>,
   contractId: string,
 ): { title: string; note?: string } => {
-  const text = typeof rawNote === 'string' ? rawNote : ''
+  const text = rawNote ?? ''
   const newlineAt = text.indexOf('\n')
   if (text === '') {
     return { title: `Vesting ${shortCid(contractId)}` }
@@ -109,68 +113,83 @@ export const splitNote = (
   return { title: title === '' ? `Vesting ${shortCid(contractId)}` : title, note }
 }
 
-// The fields every template carries alike; each mapper layers its own on top.
-type DecodedBase = {
-  arg: Record<string, unknown>
-  funder: PartyId
-  id: string
-  note?: string
-  provider: PartyId
-  receiver: PartyId
-  title: string
-}
+type DecodedRow<T> = { id: string; payload: T }
 
-const decodeBase = (row: AcsRow): DecodedBase | undefined => {
+const decodeRow = <T>(
+  row: AcsRow,
+  template: Serializable<T> & { templateId: string },
+): DecodedRow<T> | undefined => {
   const event = row.contractEntry?.JsActiveContract?.createdEvent
-  const arg = event?.createArgument
-  if (event?.contractId === undefined || arg === undefined) {
+  if (event?.contractId === undefined || event.createArgument === undefined) {
     return undefined
   }
-  const { title, note } = splitNote(arg.note, event.contractId)
-  return {
-    arg,
-    id: event.contractId,
-    title,
-    note,
-    provider: String(arg.provider ?? '') as PartyId,
-    // The pending grant names the funder `proposer`; once accepted it is the contract's `creator`.
-    funder: String(arg.creator ?? arg.proposer ?? '') as PartyId,
-    receiver: String(arg.receiver ?? '') as PartyId,
+  const decoded = template.decoder.run(event.createArgument)
+  if (!decoded.ok) {
+    throw new Error(
+      `Contract ${event.contractId} is not a ${template.templateId}: ${decoded.error.at} ${decoded.error.message}`,
+    )
   }
+  return { id: event.contractId, payload: decoded.result }
 }
 
 export const rowToPendingGrant = (row: AcsRow): PendingGrant | undefined => {
-  const base = decodeBase(row)
-  if (base === undefined) {
+  const decoded = decodeRow(row, AmuletVestingProposal)
+  if (decoded === undefined) {
     return undefined
   }
+  const { id, payload } = decoded
+  const { title, note } = splitNote(payload.note, id)
+
   return {
-    id: base.id,
-    title: base.title,
-    provider: base.provider,
-    proposer: base.funder,
-    receiver: base.receiver,
-    totalAmount: amountOf(base.arg.totalAmount, 'totalAmount', base.id),
-    schedule: decodeSchedule(base.arg.schedule),
-    note: base.note,
+    id,
+    title,
+    provider: payload.provider,
+    proposer: payload.proposer,
+    receiver: payload.receiver,
+    totalAmount: amountOf(payload.totalAmount, 'totalAmount', id),
+    schedule: decodeSchedule(payload.schedule),
+    note,
   }
 }
 
 export const rowToGrant = (row: AcsRow): Grant | undefined => {
-  const base = decodeBase(row)
-  if (base === undefined) {
+  const decoded = decodeRow(row, AmuletVestingContract)
+  if (decoded === undefined) {
     return undefined
   }
+  const { id, payload } = decoded
+  const { title, note } = splitNote(payload.note, id)
+
   return {
-    id: base.id,
-    title: base.title,
-    provider: base.provider,
-    creator: base.funder,
-    receiver: base.receiver,
-    totalAmount: amountOf(base.arg.totalAmount, 'totalAmount', base.id),
-    schedule: decodeSchedule(base.arg.schedule),
-    alreadyWithdrawn: amountOf(base.arg.alreadyWithdrawn, 'alreadyWithdrawn', base.id),
-    note: base.note,
+    id,
+    title,
+    provider: payload.provider,
+    creator: payload.creator,
+    receiver: payload.receiver,
+    totalAmount: amountOf(payload.totalAmount, 'totalAmount', id),
+    schedule: decodeSchedule(payload.schedule),
+    alreadyWithdrawn: amountOf(payload.alreadyWithdrawn, 'alreadyWithdrawn', id),
+    note,
+  }
+}
+
+export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
+  const decoded = decodeRow(row, AmuletVestedClaim)
+  if (decoded === undefined) {
+    return undefined
+  }
+  const { id, payload } = decoded
+  const { title, note } = splitNote(payload.note, id)
+
+  return {
+    id,
+    title,
+    provider: payload.provider,
+    creator: payload.creator,
+    receiver: payload.receiver,
+    amount: amountOf(payload.amount, 'amount', id),
+    withdrawn: amountOf(payload.withdrawn, 'withdrawn', id),
+    note,
   }
 }
 
@@ -182,10 +201,10 @@ type UpdateEntry = {
       value?: {
         effectiveAt?: string
         events?: {
-          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          CreatedEvent?: { contractId?: string; createArgument?: unknown }
           ExercisedEvent?: {
             choice?: string
-            choiceArgument?: Record<string, unknown>
+            choiceArgument?: unknown
             contractId?: string
           }
         }[]
@@ -201,73 +220,60 @@ export const lastUpdateOffset = (updates: unknown): number | undefined => {
   return entries.at(-1)?.update?.Transaction?.value?.offset
 }
 
-export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
-  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
-    const transaction = entry.update?.Transaction?.value
-    const events = transaction?.events ?? []
-    const claim = events.find(
-      (event) => event.ExercisedEvent?.choice === 'AmuletVestingContract_Withdraw',
-    )?.ExercisedEvent
-    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
-    const amount = claim?.choiceArgument?.withdrawAmount
-    const replaces = claim?.contractId
-    if (
-      created === undefined ||
-      transaction?.effectiveAt === undefined ||
-      amount === undefined ||
-      replaces === undefined
-    ) {
-      return []
-    }
-    const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
-    return grant === undefined
-      ? []
-      : [
-          {
-            amount: amountOf(amount, 'amount', grant.id),
-            at: transaction.effectiveAt,
-            grant,
-            replaces,
-          },
-        ]
-  })
+const updateToClaim = (entry: UpdateEntry): ClaimRecord[] => {
+  const transaction = entry.update?.Transaction?.value
+  const events = transaction?.events ?? []
 
-type AmuletArg = { amount?: { initialAmount?: string }; dso?: string }
+  const claim = events.find(
+    (event) => event.ExercisedEvent?.choice === withdrawChoice.choiceName,
+  )?.ExercisedEvent
+  const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
+  const replaces = claim?.contractId
+  if (
+    created === undefined ||
+    transaction?.effectiveAt === undefined ||
+    claim?.choiceArgument === undefined ||
+    replaces === undefined
+  ) {
+    return []
+  }
 
-// What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
-// `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
-// `Amulet_Expire`. Lenient where the mappers above throw: this feeds a balance, and one odd row
-// must not blank the field.
-export const amuletValue = (row: AcsRow): string => {
-  const { amount } = (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ??
-    {}) as AmuletArg
-  return amount?.initialAmount ?? '0'
+  const grant = rowToGrant({ contractEntry: { JsActiveContract: { createdEvent: created } } })
+  if (grant === undefined) {
+    return []
+  }
+  const { withdrawAmount } = withdrawChoice.argumentDecoder.runWithException(claim.choiceArgument)
+
+  return [
+    {
+      amount: amountOf(withdrawAmount, 'withdrawAmount', grant.id),
+      at: transaction.effectiveAt,
+      grant,
+      replaces,
+    },
+  ]
 }
 
+export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
+  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap(updateToClaim)
+
+// Lenient where the mappers above throw: this feeds a balance, and one odd row must not blank it.
+const amuletPayload = (row: AcsRow): Splice.Amulet.Amulet | undefined => {
+  const createArgument = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument
+  if (createArgument === undefined) {
+    return undefined
+  }
+  const decoded = Splice.Amulet.Amulet.decoder.run(createArgument)
+  return decoded.ok ? decoded.result : undefined
+}
+
+// Face value: Splice values an input at initialAmount, and only Amulet_Expire charges the fee.
+export const amuletValue = (row: AcsRow): string => amuletPayload(row)?.amount.initialAmount ?? '0'
+
 // Read off a holding because a disclosure carries an opaque blob and no payload.
-export const amuletDso = (row: AcsRow): string | undefined =>
-  (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso
+export const amuletDso = (row: AcsRow): string | undefined => amuletPayload(row)?.dso
 
 // The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
 // else may spend them while it is outstanding.
-export const pledgedAmulets = (row: AcsRow): string[] => {
-  const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.amuletCids
-  return Array.isArray(cids) ? cids.map(String) : []
-}
-
-export const rowToClaim = (row: AcsRow): VestedClaim | undefined => {
-  const base = decodeBase(row)
-  if (base === undefined) {
-    return undefined
-  }
-  return {
-    id: base.id,
-    title: base.title,
-    provider: base.provider,
-    creator: base.funder,
-    receiver: base.receiver,
-    amount: amountOf(base.arg.amount, 'amount', base.id),
-    withdrawn: amountOf(base.arg.withdrawn, 'withdrawn', base.id),
-    note: base.note,
-  }
-}
+export const pledgedAmulets = (row: AcsRow): string[] =>
+  decodeRow(row, AmuletVestingProposal)?.payload.amuletCids ?? []

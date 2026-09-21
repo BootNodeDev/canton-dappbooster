@@ -17,8 +17,53 @@ const linearEncoded = encodeSchedule({
   curve: { kind: 'linear', start: '2026-01-01T00:00:00Z', end: '2027-01-01T00:00:00Z' },
 })
 
+const ctx = { amuletRules: 'rules-cid', openMiningRound: 'round-cid', featuredAppRight: null }
+
 const row = (contractId: string, arg: Record<string, unknown>) => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
+})
+
+// The generated decoders read the whole payload, so a fixture carries every field the template has.
+const proposal = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  provider: 'OP',
+  proposer: 'funder',
+  receiver: 'receiver',
+  totalAmount: '1000',
+  schedule: linearEncoded,
+  amuletCids: ['amulet-1'],
+  note: null,
+  ...overrides,
+})
+
+const contract = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  provider: 'OP',
+  creator: 'funder',
+  receiver: 'receiver',
+  dso: 'dso::1',
+  totalAmount: '1000',
+  schedule: linearEncoded,
+  alreadyWithdrawn: '250',
+  lockedAmuletCid: 'locked-1',
+  note: null,
+  ...overrides,
+})
+
+const claim = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+  provider: 'OP',
+  creator: 'funder',
+  receiver: 'receiver',
+  dso: 'dso::1',
+  amount: '500',
+  withdrawn: '100',
+  lockedAmuletCid: 'locked-1',
+  note: null,
+  ...overrides,
+})
+
+const amulet = (initialAmount: string): Record<string, unknown> => ({
+  dso: 'dso::1',
+  owner: 'funder',
+  amount: { initialAmount, createdAt: { number: '1' }, ratePerRound: { rate: '0.0' } },
 })
 
 describe('splitNote / composeNote', () => {
@@ -47,14 +92,10 @@ describe('splitNote / composeNote', () => {
 describe('rowToPendingGrant', () => {
   it('maps proposer→proposer, receiver→receiver, decodes the schedule, splits the note', () => {
     const pendingGrant = rowToPendingGrant(
-      row('p1', {
-        provider: 'OP',
-        proposer: 'funder',
-        receiver: 'receiver',
-        totalAmount: '1000.0000000000',
-        schedule: linearEncoded,
-        note: 'Advisor grant\n24-month linear',
-      }),
+      row(
+        'p1',
+        proposal({ totalAmount: '1000.0000000000', note: 'Advisor grant\n24-month linear' }),
+      ),
     )
     expect(pendingGrant).toEqual({
       id: 'p1',
@@ -79,17 +120,7 @@ describe('rowToPendingGrant', () => {
 
 describe('rowToGrant', () => {
   it('maps a contract row, parsing alreadyWithdrawn and using creator as the funder', () => {
-    const grant = rowToGrant(
-      row('c1', {
-        provider: 'OP',
-        creator: 'funder',
-        receiver: 'receiver',
-        totalAmount: '1000',
-        alreadyWithdrawn: '250',
-        schedule: linearEncoded,
-        note: 'Core grant',
-      }),
-    )
+    const grant = rowToGrant(row('c1', contract({ note: 'Core grant' })))
     expect(grant?.id).toBe('c1')
     expect(grant?.title).toBe('Core grant')
     expect(grant?.creator).toBe('funder')
@@ -99,50 +130,27 @@ describe('rowToGrant', () => {
     expect(grant?.note).toBeUndefined()
   })
 
-  it('throws naming the field rather than folding a non-string amount to zero', () => {
-    expect(() =>
-      rowToGrant(
-        row('c2', {
-          provider: 'OP',
-          creator: 'funder',
-          receiver: 'receiver',
-          totalAmount: '1000',
-          alreadyWithdrawn: 250, // wrong shape: a Daml Numeric always arrives as a string
-          schedule: linearEncoded,
-        }),
-      ),
-    ).toThrow(/c2.*alreadyWithdrawn/)
+  it('throws naming the field the decoder rejected rather than folding it to zero', () => {
+    // A Daml Numeric always arrives as a string.
+    expect(() => rowToGrant(row('c2', contract({ alreadyWithdrawn: 250 })))).toThrow(
+      /c2.*alreadyWithdrawn/,
+    )
   })
 
-  it('throws on a string that is not a decimal, which would parse to zero downstream', () => {
-    expect(() =>
-      rowToGrant(
-        row('c3', {
-          provider: 'OP',
-          creator: 'funder',
-          receiver: 'receiver',
-          totalAmount: '1e3', // right shape, unparseable value
-          alreadyWithdrawn: '250',
-          schedule: linearEncoded,
-        }),
-      ),
-    ).toThrow(/c3.*totalAmount/)
+  it('throws naming the field the decoder let through as an unparseable decimal', () => {
+    expect(() => rowToGrant(row('c3', contract({ totalAmount: '1e3' })))).toThrow(/c3.*totalAmount/)
+  })
+
+  it('throws naming the template when the payload is missing a field altogether', () => {
+    const { lockedAmuletCid, ...incomplete } = contract()
+    expect(() => rowToGrant(row('c4', incomplete))).toThrow(/c4.*AmuletVestingContract/)
   })
 })
 
 describe('rowToClaim', () => {
   it('maps a residual claim row with amount + withdrawn', () => {
-    const claim = rowToClaim(
-      row('r1', {
-        provider: 'OP',
-        creator: 'funder',
-        receiver: 'receiver',
-        amount: '500',
-        withdrawn: '100',
-        note: 'Residual\nfrom cancelled grant',
-      }),
-    )
-    expect(claim).toEqual({
+    const residual = rowToClaim(row('r1', claim({ note: 'Residual\nfrom cancelled grant' })))
+    expect(residual).toEqual({
       id: 'r1',
       title: 'Residual',
       provider: 'OP',
@@ -171,22 +179,14 @@ const claimUpdate = (
           {
             ExercisedEvent: {
               choice: 'AmuletVestingContract_Withdraw',
-              choiceArgument: { withdrawAmount: amount },
+              choiceArgument: { withdrawAmount: amount, ctx },
               contractId: replaces,
             },
           },
           {
             CreatedEvent: {
               contractId: successor,
-              createArgument: {
-                provider: 'OP',
-                creator: 'funder',
-                receiver: 'receiver',
-                totalAmount: '1000',
-                alreadyWithdrawn: claimed,
-                schedule: linearEncoded,
-                note: 'Advisor grant',
-              },
+              createArgument: contract({ alreadyWithdrawn: claimed, note: 'Advisor grant' }),
             },
           },
         ],
@@ -265,10 +265,8 @@ describe('lastUpdateOffset', () => {
 })
 
 describe('amuletValue', () => {
-  const amulet = (initialAmount: string) => row('a1', { amount: { initialAmount } })
-
   it('is the face amount, which is what a transfer credits an input at', () => {
-    expect(amuletValue(amulet('100.0000000000'))).toBe('100.0000000000')
+    expect(amuletValue(row('a1', amulet('100.0000000000')))).toBe('100.0000000000')
   })
 
   it('reads a row it cannot decode as nothing, so a balance never blanks', () => {

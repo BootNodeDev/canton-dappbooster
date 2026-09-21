@@ -1,97 +1,88 @@
-// JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
-// unit-tested directly in commands.test.ts.
-
+import { type Choice, type ContractId, emptyMap } from '@daml/types'
+import { AmuletVesting } from '@daml.js/amulet-vesting-0.0.2'
+import { Splice } from '@daml.js/splice-amulet-0.1.22'
 import type { AppTransferContext } from '@/backend/transferContext'
+import type { LedgerCommand } from '@/backend/wallet'
 import { canonicalAmount } from '@/utils/amount'
 import type { VestingSchedule } from '@/utils/schedule'
 
-// ── Curve variant encoding ────────────────────────────────────────────────────
-// The one place the JSON-LF convention lives, mirrored by decodeSchedule: a variant is
-// `{tag, value}`, a `(Time, Decimal)` tuple `{_1, _2}`, Time an ISO-8601 string and Decimal a
-// string.
+const { AmuletVestedClaim, AmuletVestingContract, AmuletVestingFactory, AmuletVestingProposal } =
+  AmuletVesting
+const { AmuletRules } = Splice.AmuletRules
 
-type EncodedCurve =
-  | { tag: 'LinearVesting'; value: { end: string; start: string } }
-  | { tag: 'MilestoneVesting'; value: { points: { _1: string; _2: string }[] } }
+export type AmuletId = ContractId<Splice.Amulet.Amulet>
+type OpenRoundId = ContractId<Splice.Round.OpenMiningRound>
+type EncodedSchedule = AmuletVesting.Schedule.VestingSchedule
 
-export type EncodedSchedule = { cliff: string; curve: EncodedCurve }
+// ── Curve conversion ─────────────────────────────────────────────────────────
 
 export const encodeSchedule = (schedule: VestingSchedule): EncodedSchedule => {
   const curve = schedule.curve
   if (curve.kind === 'linear') {
     return {
-      curve: { tag: 'LinearVesting', value: { start: curve.start, end: curve.end } },
       cliff: schedule.cliff,
+      curve: { tag: 'LinearVesting', value: { start: curve.start, end: curve.end } },
     }
   }
   return {
+    cliff: schedule.cliff,
     curve: {
       tag: 'MilestoneVesting',
       value: {
         points: curve.points.map((point) => ({ _1: point.time, _2: String(point.fraction) })),
       },
     },
-    cliff: schedule.cliff,
   }
 }
 
-// Mirror of encodeSchedule. A missing or garbled payload yields a degenerate but well-typed
-// schedule rather than throwing inside a mapper.
-export const decodeSchedule = (raw: unknown): VestingSchedule => {
-  const record = (raw ?? {}) as { curve?: unknown; cliff?: unknown }
-  const cliff = typeof record.cliff === 'string' ? record.cliff : ''
-  const curve = (record.curve ?? {}) as { tag?: unknown; value?: unknown }
+export const decodeSchedule = (schedule: EncodedSchedule): VestingSchedule => {
+  const curve = schedule.curve
   if (curve.tag === 'MilestoneVesting') {
-    const value = (curve.value ?? {}) as { points?: unknown }
-    const points = Array.isArray(value.points) ? value.points : []
     return {
-      cliff,
+      cliff: schedule.cliff,
       curve: {
         kind: 'milestone',
-        points: points.map((point) => {
-          const tuple = (point ?? {}) as { _1?: unknown; _2?: unknown }
-          return { time: String(tuple._1 ?? ''), fraction: Number(tuple._2 ?? 0) }
-        }),
+        points: curve.value.points.map((point) => ({ time: point._1, fraction: Number(point._2) })),
       },
     }
   }
-  const value = (curve.value ?? {}) as { start?: unknown; end?: unknown }
   return {
-    cliff,
-    curve: {
-      kind: 'linear',
-      start: typeof value.start === 'string' ? value.start : '',
-      end: typeof value.end === 'string' ? value.end : '',
-    },
+    cliff: schedule.cliff,
+    curve: { kind: 'linear', start: curve.value.start, end: curve.value.end },
   }
 }
 
 // ── Command builders ────────────────────────────────────────────────────────
 
-type CreateVestingArgs = {
-  amuletCids: string[]
-  note?: string
-  proposer: string
-  receiver: string
-  schedule: VestingSchedule
-  totalAmount: string
-}
-
-const exercise = (
+const exercise = <T extends object, C, R, K>(
   templateId: string,
   contractId: string,
-  choice: string,
-  choiceArgument: Record<string, unknown>,
-) => ({ ExerciseCommand: { templateId, contractId, choice, choiceArgument } })
+  choice: Choice<T, C, R, K>,
+  argument: C,
+): LedgerCommand => ({
+  ExerciseCommand: {
+    templateId,
+    contractId,
+    choice: choice.choiceName,
+    // A choice argument is always a record; argumentEncode types its output as unknown.
+    choiceArgument: choice.argumentEncode(argument) as Record<string, unknown>,
+  },
+})
 
-// The only choice taking no transfer context: it moves no Amulet, it only records which of the
-// funder's holdings the eventual Accept will lock.
+// The only choice taking no transfer context: it moves no Amulet, only names what Accept will lock.
 export const buildCreateVestingCommand = (
   templateId: string,
   factoryCid: string,
-  args: CreateVestingArgs,
+  args: {
+    amuletCids: AmuletId[]
+    note?: string
+    proposer: string
+    receiver: string
+    schedule: VestingSchedule
+    totalAmount: string
+  },
 ) =>
-  exercise(templateId, factoryCid, 'AmuletVestingFactory_CreateVesting', {
+  exercise(templateId, factoryCid, AmuletVestingFactory.AmuletVestingFactory_CreateVesting, {
     proposer: args.proposer,
     receiver: args.receiver,
     totalAmount: canonicalAmount(args.totalAmount),
@@ -100,27 +91,28 @@ export const buildCreateVestingCommand = (
     note: args.note ?? null,
   })
 
-// The funder self-transfers `amount` out of its own holdings, so the grant can name an Amulet
-// nothing else has pledged. sender, provider and receiver are all the funder, which is what makes
-// the funder the only controller and keeps this a one-signature submission. Splice values an input
-// at its full `initialAmount` — the holding fee is charged only by `Amulet_Expire` — so an exact
-// split leaves the eventual Accept exactly covered, with no headroom to guess at.
+// Sender, provider and receiver are all the funder, which keeps this a one-signature submission.
 export const buildSplitCommand = (
   templateId: string,
   amuletRulesCid: string,
   args: {
     amount: string
-    amuletCids: string[]
+    amuletCids: AmuletId[]
     dso: string
-    openMiningRound: string
+    openMiningRound: OpenRoundId
     owner: string
   },
 ) =>
-  exercise(templateId, amuletRulesCid, 'AmuletRules_Transfer', {
+  exercise(templateId, amuletRulesCid, AmuletRules.AmuletRules_Transfer, {
     transfer: {
       sender: args.owner,
       provider: args.owner,
-      inputs: args.amuletCids.map((contractId) => ({ tag: 'InputAmulet', value: contractId })),
+      inputs: args.amuletCids.map(
+        (contractId): Splice.AmuletRules.TransferInput => ({
+          tag: 'InputAmulet',
+          value: contractId,
+        }),
+      ),
       outputs: [
         {
           receiver: args.owner,
@@ -132,15 +124,17 @@ export const buildSplitCommand = (
       ],
       beneficiaries: null,
     },
-    // Both maps are empty because the only input kind here is an Amulet; rewards and validator
-    // rights are what the other kinds need. `expectedDso` is not optional in practice:
-    // `checkExpectedDso` aborts when it is absent.
     context: {
       openMiningRound: args.openMiningRound,
-      issuingMiningRounds: [],
-      validatorRights: [],
+      // Empty because an Amulet is the only input kind; rewards and rights need the other two.
+      issuingMiningRounds: emptyMap<
+        Splice.Types.Round,
+        ContractId<Splice.Round.IssuingMiningRound>
+      >(),
+      validatorRights: emptyMap<string, ContractId<Splice.Amulet.ValidatorRight>>(),
       featuredAppRight: null,
     },
+    // Optional in the type only: checkExpectedDso aborts when it is absent.
     expectedDso: args.dso,
   })
 
@@ -151,9 +145,9 @@ export const TAP_AMOUNT = '100'
 export const buildTapCommand = (
   templateId: string,
   amuletRulesCid: string,
-  args: { openMiningRound: string; receiver: string },
+  args: { openMiningRound: OpenRoundId; receiver: string },
 ) =>
-  exercise(templateId, amuletRulesCid, 'AmuletRules_DevNet_Tap', {
+  exercise(templateId, amuletRulesCid, AmuletRules.AmuletRules_DevNet_Tap, {
     receiver: args.receiver,
     amount: TAP_AMOUNT,
     openRound: args.openMiningRound,
@@ -163,7 +157,7 @@ export const buildAcceptCommand = (
   templateId: string,
   pendingCid: string,
   ctx: AppTransferContext,
-) => exercise(templateId, pendingCid, 'AmuletVestingProposal_Accept', { ctx })
+) => exercise(templateId, pendingCid, AmuletVestingProposal.AmuletVestingProposal_Accept, { ctx })
 
 // No nowMicros: the choice reads on-ledger getTime.
 export const buildWithdrawCommand = (
@@ -172,7 +166,7 @@ export const buildWithdrawCommand = (
   withdrawAmount: string,
   ctx: AppTransferContext,
 ) =>
-  exercise(templateId, contractCid, 'AmuletVestingContract_Withdraw', {
+  exercise(templateId, contractCid, AmuletVestingContract.AmuletVestingContract_Withdraw, {
     withdrawAmount: canonicalAmount(withdrawAmount),
     ctx,
   })
@@ -181,7 +175,7 @@ export const buildCancelCommand = (
   templateId: string,
   contractCid: string,
   ctx: AppTransferContext,
-) => exercise(templateId, contractCid, 'AmuletVestingContract_Cancel', { ctx })
+) => exercise(templateId, contractCid, AmuletVestingContract.AmuletVestingContract_Cancel, { ctx })
 
 export const buildClaimResidualCommand = (
   templateId: string,
@@ -189,7 +183,7 @@ export const buildClaimResidualCommand = (
   withdrawAmount: string,
   ctx: AppTransferContext,
 ) =>
-  exercise(templateId, claimCid, 'AmuletVestedClaim_Withdraw', {
+  exercise(templateId, claimCid, AmuletVestedClaim.AmuletVestedClaim_Withdraw, {
     withdrawAmount: canonicalAmount(withdrawAmount),
     ctx,
   })

@@ -1,6 +1,7 @@
 // Read back off the ledger, not carried in a file: every bootstrap run mints a fresh pair.
 
 import type { LedgerApiParams } from '@bootnodedev/canton-connect'
+import { AmuletVesting } from '@daml.js/amulet-vesting-0.0.2'
 
 export type Deployment = {
   factoryBlob: string
@@ -12,7 +13,7 @@ export type Deployment = {
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 
 // A filter takes the package-name reference, never the id it resolves to.
-const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
+const FACTORY = AmuletVesting.AmuletVestingFactory.templateId
 const OPERATOR_HINT = 'vesting-operator-'
 
 const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)

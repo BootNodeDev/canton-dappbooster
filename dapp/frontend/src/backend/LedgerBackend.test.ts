@@ -53,17 +53,34 @@ const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
 })
 
-// A test passes `{}` for `extra` to make a row the split can find no DSO on.
+// The generated decoders read the whole payload, so a fixture carries every field the template has.
+const amuletPayload = (initialAmount: string): Record<string, unknown> => ({
+  dso: 'dso::1',
+  owner: 'funder::1',
+  amount: { initialAmount, createdAt: { number: '1' }, ratePerRound: { rate: '0.0' } },
+})
+
+const proposalPayload = (amuletCids: string[]): Record<string, unknown> => ({
+  provider: 'operator::1',
+  proposer: 'funder::1',
+  receiver: 'receiver::1',
+  totalAmount: '1000',
+  schedule: encodeSchedule(schedule),
+  amuletCids,
+  note: null,
+})
+
+// A test passes `{}` for `createArgument` to make a row the generated decoder rejects.
 const amuletRow = (
   contractId: string,
   initialAmount = '1000',
-  extra: object = { dso: 'dso::1' },
+  createArgument: Record<string, unknown> = amuletPayload(initialAmount),
 ): unknown => ({
   contractEntry: {
     JsActiveContract: {
       createdEvent: {
         contractId,
-        createArgument: { amount: { initialAmount }, ...extra },
+        createArgument,
         createdEventBlob: `blob-${contractId}`,
         templateId: 'amuletpkg:Splice.Amulet:Amulet',
       },
@@ -117,7 +134,10 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: num
   const exercise = submission.commands?.[0]?.ExerciseCommand
   if (exercise?.choice === 'AmuletVestingFactory_CreateVesting') {
     const { amuletCids } = exercise.choiceArgument as { amuletCids: string[] }
-    acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${amuletCids[0]}`, { amuletCids })]
+    acs[PENDING] = [
+      ...(acs[PENDING] ?? []),
+      row(`pending-for-${amuletCids[0]}`, proposalPayload(amuletCids)),
+    ]
     return
   }
   if (exercise?.choice !== 'AmuletRules_Transfer') {
@@ -244,7 +264,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend, submissions } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '1000')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', proposalPayload(['pledged']))],
       },
     })
 
@@ -260,7 +280,7 @@ describe('LedgerBackend.createVesting', () => {
     const { backend } = harness({
       acs: {
         [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '400')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [PENDING]: [row('p1', proposalPayload(['pledged']))],
       },
     })
 
@@ -329,10 +349,11 @@ describe('LedgerBackend.createVesting', () => {
     })
   })
 
-  it('refuses rather than sending an undefined expectedDso when no Amulet carries one', async () => {
+  // dso is a required field of the generated Amulet, so a row missing it decodes as nothing at all.
+  it('counts an Amulet the decoder rejects as nothing rather than funding a grant from it', async () => {
     const { backend } = harness({ acs: { [AMULET]: [amuletRow('am1', '1200', {})] } })
 
-    await expect(backend.createVesting(grant)).rejects.toThrow(/name no DSO party/)
+    await expect(backend.createVesting(grant)).rejects.toThrow(/only 0 AMT is free/)
   })
 })
 
@@ -501,9 +522,11 @@ describe('LedgerBackend.viewAs', () => {
             provider: 'operator::1',
             creator: 'funder::1',
             receiver: 'receiver::1',
+            dso: 'dso::1',
             totalAmount: '1000',
             alreadyWithdrawn: '250',
             schedule: encodeSchedule(schedule),
+            lockedAmuletCid: 'locked-1',
             note: 'Advisor grant',
           }),
         ],
