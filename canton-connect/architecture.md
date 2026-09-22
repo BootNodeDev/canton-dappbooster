@@ -165,7 +165,10 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
 - Active contracts go through `/v2/state/active-contracts-page`, not the streaming endpoint, which
   answers everything in one body and 413 past the participant's limit. The offset is read once and
   sent with every page: the participant refuses a page token issued at another offset, and one
-  offset is what makes the pages one snapshot.
+  offset is what makes the pages one snapshot. The endpoint exists from Canton 3.5, which every
+  Splice line runs; a 3.4 participant (`dpm sandbox`) has no paged read at all and the call fails
+  with the gateway's `Unsupported post resource`. There, `ledgerApi` on `/v2/state/active-contracts`
+  is the read, unpaged, and the exported types still fit its rows.
 - `party` defaults to the connected party and takes a list. Visibility stays the ledger's: a party
   the session's user cannot read as is refused by the participant, not filtered here.
 - Payloads and views are generics the caller names. The package knows the envelope, not the Daml
