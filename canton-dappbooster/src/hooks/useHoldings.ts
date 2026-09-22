@@ -1,4 +1,4 @@
-import { type LedgerApiParams, useAccount, useLedger } from '@bootnodedev/canton-connect'
+import { useAccount, useLedger } from '@bootnodedev/canton-connect'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { valueAt } from '#src/utils/json'
 import type { Holding } from '#src/utils/sumHoldings'
@@ -7,70 +7,17 @@ import type { Holding } from '#src/utils/sumHoldings'
 const HOLDING_INTERFACE = '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
 
 const holdingFromView = (view: unknown): Holding | undefined => {
-  const value = valueAt(view, 'viewValue')
-  const admin = valueAt(value, 'instrumentId', 'admin')
-  const id = valueAt(value, 'instrumentId', 'id')
-  const amount = valueAt(value, 'amount')
+  const admin = valueAt(view, 'instrumentId', 'admin')
+  const id = valueAt(view, 'instrumentId', 'id')
+  const amount = valueAt(view, 'amount')
 
   if (typeof admin !== 'string' || typeof id !== 'string' || typeof amount !== 'string') {
     return undefined
   }
 
-  const lock = valueAt(value, 'lock')
+  const lock = valueAt(view, 'lock')
 
   return { amount, instrumentId: { admin, id }, isLocked: lock !== null && lock !== undefined }
-}
-
-const holdingsFromAcsRows = (rows: unknown): readonly Holding[] => {
-  if (!Array.isArray(rows)) return []
-
-  return rows.flatMap((row) => {
-    const views = valueAt(
-      row,
-      'contractEntry',
-      'JsActiveContract',
-      'createdEvent',
-      'interfaceViews',
-    )
-    if (!Array.isArray(views)) return []
-    return views.flatMap((view) => holdingFromView(view) ?? [])
-  })
-}
-
-const acsRequest = (partyId: string, offset: string | number): LedgerApiParams => ({
-  requestMethod: 'post',
-  resource: '/v2/state/active-contracts',
-  body: {
-    filter: {
-      filtersByParty: {
-        [partyId]: {
-          cumulative: [
-            {
-              identifierFilter: {
-                InterfaceFilter: {
-                  value: { interfaceId: HOLDING_INTERFACE, includeInterfaceView: true },
-                },
-              },
-            },
-          ],
-        },
-      },
-    },
-    activeAtOffset: offset,
-    verbose: true,
-  },
-})
-
-const readPartyHoldings = async (
-  ledgerApi: (params: LedgerApiParams) => Promise<unknown>,
-  partyId: string,
-): Promise<readonly Holding[]> => {
-  const end = await ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
-  const offset = valueAt(end, 'offset')
-  if (typeof offset !== 'string' && typeof offset !== 'number') {
-    throw new Error('the ledger did not return an offset')
-  }
-  return holdingsFromAcsRows(await ledgerApi(acsRequest(partyId, offset)))
 }
 
 interface HoldingsState {
@@ -112,7 +59,7 @@ export interface UseHoldingsResult {
  * @category Hooks
  */
 export const useHoldings = (): UseHoldingsResult => {
-  const { ledgerApi, isReady } = useLedger()
+  const { activeContractsByInterface, isReady } = useLedger()
   const { account } = useAccount()
   const partyId = account?.partyId
   const [state, setState] = useState<HoldingsState>(IDLE)
@@ -127,15 +74,16 @@ export const useHoldings = (): UseHoldingsResult => {
     newest.current += 1
     const request = newest.current
     setState(LOADING)
-    readPartyHoldings(ledgerApi, partyId).then(
-      (holdings) => {
+    activeContractsByInterface({ interfaceId: HOLDING_INTERFACE, party: partyId }).then(
+      (contracts) => {
+        const holdings = contracts.flatMap((contract) => holdingFromView(contract.view) ?? [])
         if (request === newest.current) setState({ error: undefined, holdings, isLoading: false })
       },
       (err) => {
         if (request === newest.current) setState({ ...IDLE, error: toError(err) })
       },
     )
-  }, [isReady, ledgerApi, partyId])
+  }, [activeContractsByInterface, isReady, partyId])
 
   useEffect(() => {
     load()

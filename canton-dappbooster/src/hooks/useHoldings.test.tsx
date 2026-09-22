@@ -28,8 +28,17 @@ const view = (instrumentId: typeof amulet, amount: string, lock: unknown = null)
   viewValue: { owner: account.partyId, instrumentId, amount, lock },
 })
 
+// The decoder keys nothing on the id.
 const row = (...views: unknown[]) => ({
-  contractEntry: { JsActiveContract: { createdEvent: { interfaceViews: views } } },
+  contractEntry: {
+    JsActiveContract: {
+      createdEvent: {
+        contractId: '00aa',
+        templateId: 'pkg:Splice.Amulet:Amulet',
+        interfaceViews: views,
+      },
+    },
+  },
 })
 
 const session = (ledgerApi: LedgerApi, usable = true) => ({
@@ -72,7 +81,7 @@ describe('useHoldings', () => {
     const [, acs] = ledgerApi.mock.calls.map(([params]) => params)
     expect(acs.body).toMatchObject({
       activeAtOffset: 42,
-      filter: {
+      eventFormat: {
         filtersByParty: {
           [account.partyId]: {
             cumulative: [
