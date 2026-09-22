@@ -14,6 +14,7 @@ export type {
   ActiveContractsParams,
   DisclosedContract,
   InterfaceContract,
+  LedgerOffset,
 } from '#src/activeContracts'
 export { toDisclosedContract } from '#src/activeContracts'
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'
@@ -25,7 +26,11 @@ export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
 export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
 export { useDisconnect } from '#src/hooks/useDisconnect'
-export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecute'
+export type {
+  PrepareExecuteAndWaitResult,
+  PrepareExecuteParams,
+  UseExecuteResult,
+} from '#src/hooks/useExecute'
 export { useExecute } from '#src/hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
 export { useLedger } from '#src/hooks/useLedger'
@@ -39,6 +44,15 @@ export type { InitOptions } from '#src/machine/connectionActors'
 export type { ConnectionInput } from '#src/machine/connectionMachine'
 export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from '#src/mock/mockAdapter'
 export { createMockAdapter } from '#src/mock/mockAdapter'
+export type {
+  ArchivedLedgerEvent,
+  CreatedLedgerEvent,
+  ExercisedLedgerEvent,
+  LedgerEvent,
+  Transaction,
+  TransactionParams,
+  TransactionsParams,
+} from '#src/transactions'
 
 export type {
   Account,

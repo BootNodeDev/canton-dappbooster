@@ -13,15 +13,20 @@ import {
   offsetOf,
 } from '#src/activeContracts'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import {
+  decodeTransaction,
+  decodeTransactions,
+  type Transaction,
+  type TransactionParams,
+  type TransactionsParams,
+  transactionRequest,
+  transactionsRequest,
+} from '#src/transactions'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
  */
 export type { LedgerApiParams }
-
-type LedgerOffset = number | string
-
-type AcsRequest = (party: string, offset: LedgerOffset) => LedgerApiParams
 
 /**
  * Return shape of {@link useLedger}. Every call throws with no session; `isReady` says so
@@ -36,6 +41,8 @@ export interface UseLedgerResult {
   activeContractsByInterface: <View = unknown>(
     params: ActiveContractsByInterfaceParams,
   ) => Promise<InterfaceContract<View>[]>
+  transactions: (params: TransactionsParams) => Promise<Transaction[]>
+  transaction: (updateId: string, params?: TransactionParams) => Promise<Transaction>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
@@ -45,16 +52,13 @@ export interface UseLedgerResult {
  * anything else.
  *
  * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
- * party.
+ * party; `transaction` also when the update is not one the party sees.
  *
  * @example
- * const { activeContracts, activeContractsByInterface } = useLedger()
+ * const { activeContracts, transactions, transaction } = useLedger()
  * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
- * grants[0]?.payload.receiver
- * const holdings = await activeContractsByInterface<{ amount: string }>({
- *   interfaceId: '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding',
- * })
- * holdings[0]?.view.amount
+ * const history = await transactions({ templateId: '#my-app:Main:Grant' })
+ * const committed = await transaction(tx.payload.updateId)
  *
  * @category Hooks
  */
@@ -71,44 +75,76 @@ export const useLedger = (): UseLedgerResult => {
     [isLocked, sdk, status],
   )
 
-  const readAcs = useCallback(
-    async (party: string | undefined, request: AcsRequest): Promise<unknown> => {
+  const readAs = useCallback(
+    (party: string | undefined): string => {
       assertUsable(status, isLocked)
-      const readAs = party ?? partyId
-      assertPartyId(readAs)
+      const readingParty = party ?? partyId
+      assertPartyId(readingParty)
 
-      const offset = offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
-
-      return await sdk.ledgerApi(request(readAs, offset))
+      return readingParty
     },
-    [isLocked, partyId, sdk, status],
+    [isLocked, partyId, status],
+  )
+
+  const ledgerEnd = useCallback(
+    async (): Promise<number | string> => offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST)),
+    [sdk],
   )
 
   const activeContracts = useCallback(
-    async <Payload = unknown>(params: ActiveContractsParams): Promise<ActiveContract<Payload>[]> =>
-      decodeActiveContracts<Payload>(
-        await readAcs(params.party, (party, offset) =>
-          activeContractsRequest(party, offset, params),
-        ),
-      ),
-    [readAcs],
+    async <Payload = unknown>(
+      params: ActiveContractsParams,
+    ): Promise<ActiveContract<Payload>[]> => {
+      const party = readAs(params.party)
+      const rows = await sdk.ledgerApi(activeContractsRequest(party, await ledgerEnd(), params))
+
+      return decodeActiveContracts<Payload>(rows)
+    },
+    [ledgerEnd, readAs, sdk],
   )
 
   const activeContractsByInterface = useCallback(
     async <View = unknown>(
       params: ActiveContractsByInterfaceParams,
-    ): Promise<InterfaceContract<View>[]> =>
-      decodeInterfaceContracts<View>(
-        await readAcs(params.party, (party, offset) =>
-          activeContractsByInterfaceRequest(party, offset, params),
-        ),
-      ),
-    [readAcs],
+    ): Promise<InterfaceContract<View>[]> => {
+      const party = readAs(params.party)
+      const request = activeContractsByInterfaceRequest(party, await ledgerEnd(), params)
+
+      return decodeInterfaceContracts<View>(await sdk.ledgerApi(request))
+    },
+    [ledgerEnd, readAs, sdk],
+  )
+
+  const transactions = useCallback(
+    async (params: TransactionsParams): Promise<Transaction[]> => {
+      const party = readAs(params.party)
+      const endInclusive = params.endInclusive ?? (await ledgerEnd())
+
+      return decodeTransactions(
+        await sdk.ledgerApi(transactionsRequest(party, endInclusive, params)),
+      )
+    },
+    [ledgerEnd, readAs, sdk],
+  )
+
+  const transaction = useCallback(
+    async (updateId: string, params?: TransactionParams): Promise<Transaction> => {
+      const party = readAs(params?.party)
+      const committed = decodeTransaction(await sdk.ledgerApi(transactionRequest(party, updateId)))
+      if (committed === undefined) {
+        throw new Error(`update ${updateId} is not a transaction ${party} sees`)
+      }
+
+      return committed
+    },
+    [readAs, sdk],
   )
 
   return {
     activeContracts,
     activeContractsByInterface,
+    transactions,
+    transaction,
     ledgerApi,
     isReady: status === 'connected' && !isLocked,
   }

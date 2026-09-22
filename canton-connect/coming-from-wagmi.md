@@ -14,7 +14,9 @@ The hook names follow wagmi, so a developer arriving from it knows which one to 
 | none | `useWalletStatus().isLocked` | Connected-but-locked is a CIP-0103 state. |
 | `status: 'connected'` implies an address | `isConnected` with `account` still `undefined` | The primary is the user's choice in the wallet, so where the wallet flags none there is nothing to report. |
 | none | `usePartyType().readPartyType()`, resolving `'local'` or `'external'` | Canton parties come in two kinds and the reference gateway refuses `signMessage` for a local one; wagmi has one kind of account. |
-| `useWriteContract` then `useWaitForTransactionReceipt` | `useExecute().execute`, resolving after execution | The wallet submits and waits; one call covers both. |
+| `useWriteContract` then `useWaitForTransactionReceipt` | `useExecute().execute`, resolving after execution with the `updateId` | The wallet submits and waits; one call covers both. |
+| `useTransactionReceipt(hash).logs` | `useLedger().transaction(updateId).events` | The committed transaction's events, discriminated on `kind`; an exercised one carries the choice's argument and result. |
+| `useContractEvents`, `getLogs` | `useLedger().transactions({ templateId })` | One template's history a page at a time, from the ledger's start to its end unless told otherwise. |
 | none | `useExecute().lastTx` | The wallet pushes `pending`, `signed`, `executed`, `failed` as it goes; wagmi has no hook returning a stream. |
 | `useSignMessage().data`, a hex string | `useSignMessage().signature` | The name says the type. |
 | `useReadContract` | `useLedger().activeContracts<Payload>({ templateId })` | The connected party's contracts of one template at the ledger end, envelope unwrapped; the payload type is the dApp's to name, since only it knows its Daml model. |

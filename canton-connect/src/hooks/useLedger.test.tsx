@@ -158,6 +158,62 @@ describe('useLedger', () => {
     )
   })
 
+  it('reads transactions up to the ledger end unless told where to stop', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(result.current.transactions({ templateId: '#app:Main:Grant' })).resolves.toEqual(
+        [],
+      )
+      await expect(
+        result.current.transactions({ templateId: '#app:Main:Grant', endInclusive: 4 }),
+      ).resolves.toEqual([])
+    })
+
+    expect(ledgerApi).toHaveBeenCalledTimes(3)
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        resource: '/v2/updates',
+        body: expect.objectContaining({ beginExclusive: 0, endInclusive: 9 }),
+      }),
+    )
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ body: expect.objectContaining({ endInclusive: 4 }) }),
+    )
+  })
+
+  it('reads one transaction by id and refuses an update that is not one', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({
+        update: {
+          Transaction: { value: { updateId: 'u1', offset: 3, effectiveAt: 't', events: [] } },
+        },
+      })
+      .mockResolvedValueOnce({ update: { Reassignment: { value: {} } } })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(result.current.transaction('u1')).resolves.toMatchObject({ updateId: 'u1' })
+      await expect(result.current.transaction('u2')).rejects.toThrow('not a transaction')
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        resource: '/v2/updates/update-by-id',
+        body: expect.objectContaining({ updateId: 'u1' }),
+      }),
+    )
+  })
+
   it('refuses activeContracts when the session reports no party', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
     const { result } = renderLedger(ledgerApi, false)

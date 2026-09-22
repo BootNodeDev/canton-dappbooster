@@ -137,7 +137,7 @@ export interface CantonConnectConfig {
 export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
   commandId: TxChangedEvent['commandId']
-  payload?: unknown
+  payload?: Extract<TxChangedEvent, { payload: unknown }>['payload']
 }
 
 /**

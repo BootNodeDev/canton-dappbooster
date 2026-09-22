@@ -65,7 +65,12 @@ export interface ActiveContractsByInterfaceParams {
   party?: string
 }
 
-type LedgerOffset = number | string
+/**
+ * A ledger offset as `/v2/state/ledger-end` reports it, passed back unchanged.
+ *
+ * @category Types
+ */
+export type LedgerOffset = number | string
 
 type InterfaceView = { viewStatus?: { code?: number }; viewValue?: unknown }
 

@@ -37,4 +37,8 @@ declare const commands: import('@canton-network/dapp-sdk').PrepareExecuteParams[
 
 declare const activeContracts: import('#src/hooks/useLedger').UseLedgerResult['activeContracts']
 declare const activeContractsByInterface: import('#src/hooks/useLedger').UseLedgerResult['activeContractsByInterface']
+declare const transactions: import('#src/hooks/useLedger').UseLedgerResult['transactions']
+declare const transaction: import('#src/hooks/useLedger').UseLedgerResult['transaction']
+declare const lastPage: import('#src/transactions').Transaction[]
+declare const tx: import('@canton-network/dapp-sdk').PrepareExecuteAndWaitResult['tx']
 declare const execute: import('#src/hooks/useExecute').UseExecuteResult['execute']

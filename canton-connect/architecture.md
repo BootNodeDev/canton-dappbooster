@@ -25,6 +25,7 @@ src/
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   activeContracts.ts        active-contract reads: request builders, the page decoder, disclosure
+  transactions.ts           update reads: request builders and the event decoder
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -175,6 +176,16 @@ the create argument, since that view is the one shape all implementors share. A 
 view the ledger reports it could not compute (a non-zero `viewStatus`) is dropped rather than
 handed back without a value. A token list is the case: one `Holding` read covers every standard
 token.
+
+`transactions` and `transaction` are the same unwrapping over `/v2/updates` and
+`/v2/updates/update-by-id`, always in the ledger-effects shape, because the default shape drops
+the exercised events and a history or a command result is nothing without them. A transaction's
+events come back discriminated on `kind` (`created`, `exercised`, `archived`), a created one as
+the same `ActiveContract` the reads return. `transactions` is one page: it filters by template,
+defaults the range to the whole ledger up to its end, and the last `offset` is where the caller
+resumes. `transaction` reads by the `updateId` an `execute` resolves with, under a per-party
+wildcard filter so the caller sees every event of its own command; the any-party wildcard is
+admin-only on a participant and is not used.
 
 ### The party type
 
