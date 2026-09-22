@@ -160,37 +160,24 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 
 `query` holds query parameters, `body` the request body; neither goes into `resource`.
 
-`activeContracts` is the one read the package shapes itself, because every dApp repeats it: a
-`GET /v2/state/ledger-end`, then `POST /v2/state/active-contracts-page` at that offset until no
-`nextPageToken` comes back, filtered to one template and to the connected party unless `party`
-names one or several others the session's user may read as (a dApp reading its operator's factory
-does; an operator dashboard reading as every party it acts for does too). The offset is pinned on
-the first call and sent with every page, which the participant requires and which is what keeps
-the pages one snapshot. The streaming `/v2/state/active-contracts` answers everything in one body
-and 413 past the participant's limit, so it is not used. The envelope
-(`contractEntry.JsActiveContract.createdEvent`) is unwrapped into `ActiveContract<Payload>`; the
-payload stays whatever the caller names it, since the package knows no Daml model. The
-`createdEventBlob` is asked for only on `includeCreatedEventBlob`, and `toDisclosedContract` turns
-such a contract into the disclosure a command carries. Entries that are not active contracts, the
-incomplete (un)assignments, are dropped.
+The typed reads unwrap the envelope every dApp otherwise walks by hand. What the code cannot say:
 
-`activeContractsByInterface` is the same read with an `InterfaceFilter`: every contract
-implementing one interface, whatever its template, with the interface view as `view` in place of
-the create argument, since that view is the one shape all implementors share. A contract whose
-view the ledger reports it could not compute (a non-zero `viewStatus`) is dropped rather than
-handed back without a value. A token list is the case: one `Holding` read covers every standard
-token.
-
-`transactions` and `transaction` are the same unwrapping over `/v2/updates` and
-`/v2/updates/update-by-id`, always in the ledger-effects shape, because the default shape drops
-the exercised events and a history or a command result is nothing without them. A transaction's
-events come back discriminated on `kind` (`created`, `exercised`, `archived`), a created one as
-the same `ActiveContract` the reads return. `transactions` is one page: it filters by template,
-defaults the range to the whole ledger up to its end, and the last `offset` is where the caller
-resumes. A walk over several pages pins one `endInclusive` for all of them, read once through
-`ledgerEnd`, or a later page sees transactions an earlier one could not. `transaction` reads by the `updateId` an `execute` resolves with, under a per-party
-wildcard filter so the caller sees every event of its own command; the any-party wildcard is
-admin-only on a participant and is not used.
+- Active contracts go through `/v2/state/active-contracts-page`, not the streaming endpoint, which
+  answers everything in one body and 413 past the participant's limit. The offset is read once and
+  sent with every page: the participant refuses a page token issued at another offset, and one
+  offset is what makes the pages one snapshot.
+- `party` defaults to the connected party and takes a list. Visibility stays the ledger's: a party
+  the session's user cannot read as is refused by the participant, not filtered here.
+- Payloads and views are generics the caller names. The package knows the envelope, not the Daml
+  model.
+- A view with a non-zero `viewStatus` is one the ledger could not compute, so the contract is
+  dropped rather than returned without a value.
+- Transactions are always read in the ledger-effects shape: the default drops exercised events, and
+  a history or a command result is nothing without them.
+- `transactions` is one page; the caller resumes from the last `offset` and pins one `endInclusive`
+  across pages via `ledgerEnd`, or a later page sees what an earlier one could not.
+- `transaction` uses a per-party wildcard filter so the caller sees every event of its own command.
+  The any-party wildcard is admin-only on a participant.
 
 ### The party type
 
