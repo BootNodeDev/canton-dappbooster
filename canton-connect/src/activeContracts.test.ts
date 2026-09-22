@@ -5,6 +5,7 @@ import {
   decodeActiveContracts,
   decodeInterfaceContracts,
   offsetOf,
+  pageOf,
   toDisclosedContract,
 } from '#src/activeContracts'
 
@@ -35,14 +36,15 @@ describe('offsetOf', () => {
 })
 
 describe('activeContractsRequest', () => {
-  it('filters the party by template at the given offset, blob off unless asked', () => {
-    const request = activeContractsRequest('alice::1220', 7, { templateId: '#app:Main:Grant' })
+  it('asks for a page of one template as the party at the given offset, blob off unless asked', () => {
+    const request = activeContractsRequest(['alice::1220'], 7, { templateId: '#app:Main:Grant' })
 
     expect(request).toEqual({
       requestMethod: 'post',
-      resource: '/v2/state/active-contracts',
+      resource: '/v2/state/active-contracts-page',
       body: {
         activeAtOffset: 7,
+        maxPageSize: 200,
         eventFormat: {
           verbose: true,
           filtersByParty: {
@@ -63,8 +65,24 @@ describe('activeContractsRequest', () => {
     })
   })
 
+  it('forwards the page token and filters every party given', () => {
+    const request = activeContractsRequest(
+      ['alice::1220', 'bob::1220'],
+      7,
+      { templateId: '#t' },
+      'tok',
+    )
+
+    expect(request.body).toMatchObject({ pageToken: 'tok' })
+    expect(
+      Object.keys(
+        (request.body as { eventFormat: { filtersByParty: object } }).eventFormat.filtersByParty,
+      ),
+    ).toEqual(['alice::1220', 'bob::1220'])
+  })
+
   it('asks for the blob when told to', () => {
-    const request = activeContractsRequest('alice::1220', 7, {
+    const request = activeContractsRequest(['alice::1220'], 7, {
       templateId: '#app:Main:Grant',
       includeCreatedEventBlob: true,
     })
@@ -87,10 +105,11 @@ describe('activeContractsRequest', () => {
 
 describe('activeContractsByInterfaceRequest', () => {
   it('filters the party by interface and asks for the view', () => {
-    const request = activeContractsByInterfaceRequest('alice::1220', 7, {
+    const request = activeContractsByInterfaceRequest(['alice::1220'], 7, {
       interfaceId: '#token:Holding',
     })
 
+    expect(request.resource).toBe('/v2/state/active-contracts-page')
     expect(request.body).toMatchObject({
       activeAtOffset: 7,
       eventFormat: {
@@ -109,6 +128,22 @@ describe('activeContractsByInterfaceRequest', () => {
         },
       },
     })
+  })
+})
+
+describe('pageOf', () => {
+  it('hands back the page rows and the token for the next one', () => {
+    expect(pageOf({ activeContracts: [grant], activeAtOffset: 7, nextPageToken: 'tok' })).toEqual({
+      rows: [grant],
+      nextPageToken: 'tok',
+    })
+  })
+
+  it('reports the last page with no token, and nothing for an answer that is not a page', () => {
+    expect(pageOf({ activeContracts: [grant] }).nextPageToken).toBeUndefined()
+    expect(pageOf({ activeContracts: [], nextPageToken: '' }).nextPageToken).toBeUndefined()
+    expect(pageOf(undefined)).toEqual({ rows: [], nextPageToken: undefined })
+    expect(pageOf([grant])).toEqual({ rows: [], nextPageToken: undefined })
   })
 })
 

@@ -12,6 +12,8 @@ import {
   LEDGER_END_REQUEST,
   type LedgerOffset,
   offsetOf,
+  pageOf,
+  toParties,
 } from '#src/activeContracts'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 import {
@@ -78,12 +80,14 @@ export const useLedger = (): UseLedgerResult => {
   )
 
   const readAs = useCallback(
-    (party: string | undefined): string => {
+    (party: string | string[] | undefined): string[] => {
       assertUsable(status, isLocked)
-      const readingParty = party ?? partyId
-      assertPartyId(readingParty)
+      if (party !== undefined) {
+        return toParties(party)
+      }
+      assertPartyId(partyId)
 
-      return readingParty
+      return [partyId]
     },
     [isLocked, partyId, status],
   )
@@ -94,37 +98,60 @@ export const useLedger = (): UseLedgerResult => {
     return offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
   }, [isLocked, sdk, status])
 
+  // One offset for every page keeps them one snapshot.
+  const readAllPages = useCallback(
+    async (request: (offset: LedgerOffset, pageToken?: string) => LedgerApiParams) => {
+      const offset = await ledgerEnd()
+      const rows: unknown[] = []
+      let pageToken: string | undefined
+      do {
+        const page = pageOf(await sdk.ledgerApi(request(offset, pageToken)))
+        rows.push(...page.rows)
+        pageToken = page.nextPageToken
+      } while (pageToken !== undefined)
+
+      return rows
+    },
+    [ledgerEnd, sdk],
+  )
+
   const activeContracts = useCallback(
     async <Payload = unknown>(
       params: ActiveContractsParams,
     ): Promise<ActiveContract<Payload>[]> => {
-      const party = readAs(params.party)
-      const rows = await sdk.ledgerApi(activeContractsRequest(party, await ledgerEnd(), params))
+      const parties = readAs(params.party)
 
-      return decodeActiveContracts<Payload>(rows)
+      return decodeActiveContracts<Payload>(
+        await readAllPages((offset, token) =>
+          activeContractsRequest(parties, offset, params, token),
+        ),
+      )
     },
-    [ledgerEnd, readAs, sdk],
+    [readAllPages, readAs],
   )
 
   const activeContractsByInterface = useCallback(
     async <View = unknown>(
       params: ActiveContractsByInterfaceParams,
     ): Promise<InterfaceContract<View>[]> => {
-      const party = readAs(params.party)
-      const request = activeContractsByInterfaceRequest(party, await ledgerEnd(), params)
+      const parties = readAs(params.party)
 
-      return decodeInterfaceContracts<View>(await sdk.ledgerApi(request))
+      return decodeInterfaceContracts<View>(
+        await readAllPages((offset, token) =>
+          activeContractsByInterfaceRequest(parties, offset, params, token),
+        ),
+      )
     },
-    [ledgerEnd, readAs, sdk],
+    [readAllPages, readAs],
   )
 
   const transactions = useCallback(
     async (params: TransactionsParams): Promise<Transaction[]> => {
-      const party = readAs(params.party)
+      const parties = readAs(params.party)
       const endInclusive = params.endInclusive ?? (await ledgerEnd())
 
       return decodeTransactions(
-        await sdk.ledgerApi(transactionsRequest(party, endInclusive, params)),
+        await sdk.ledgerApi(transactionsRequest(parties, endInclusive, params)),
       )
     },
     [ledgerEnd, readAs, sdk],
@@ -132,10 +159,12 @@ export const useLedger = (): UseLedgerResult => {
 
   const transaction = useCallback(
     async (updateId: string, params?: TransactionParams): Promise<Transaction> => {
-      const party = readAs(params?.party)
-      const committed = decodeTransaction(await sdk.ledgerApi(transactionRequest(party, updateId)))
+      const parties = readAs(params?.party)
+      const committed = decodeTransaction(
+        await sdk.ledgerApi(transactionRequest(parties, updateId)),
+      )
       if (committed === undefined) {
-        throw new Error(`update ${updateId} is not a transaction ${party} sees`)
+        throw new Error(`update ${updateId} is not a transaction ${parties.join(', ')} sees`)
       }
 
       return committed

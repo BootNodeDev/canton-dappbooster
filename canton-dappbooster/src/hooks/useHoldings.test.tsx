@@ -57,7 +57,7 @@ const answering = (rows: LedgerAnswer) =>
   vi
     .fn<LedgerApi>()
     .mockImplementation(async (params) =>
-      params.resource === '/v2/state/ledger-end' ? { offset: 42 } : rows,
+      params.resource === '/v2/state/ledger-end' ? { offset: 42 } : { activeContracts: rows },
     )
 
 describe('useHoldings', () => {

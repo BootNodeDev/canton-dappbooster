@@ -43,19 +43,22 @@ describe('useLedger', () => {
     const ledgerApi = vi
       .fn<DappSdkMethods['ledgerApi']>()
       .mockResolvedValueOnce({ offset: 9 })
-      .mockResolvedValueOnce([
-        {
-          contractEntry: {
-            JsActiveContract: {
-              createdEvent: {
-                contractId: '00aa',
-                templateId: 'pkg:Main:Grant',
-                createArgument: { receiver: 'bob::1220' },
+      .mockResolvedValueOnce({
+        activeAtOffset: 9,
+        activeContracts: [
+          {
+            contractEntry: {
+              JsActiveContract: {
+                createdEvent: {
+                  contractId: '00aa',
+                  templateId: 'pkg:Main:Grant',
+                  createArgument: { receiver: 'bob::1220' },
+                },
               },
             },
           },
-        },
-      ])
+        ],
+      })
     const { result } = renderLedger(ledgerApi)
 
     await act(async () => {
@@ -79,7 +82,7 @@ describe('useLedger', () => {
     expect(ledgerApi).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        resource: '/v2/state/active-contracts',
+        resource: '/v2/state/active-contracts-page',
         body: expect.objectContaining({
           activeAtOffset: 9,
           eventFormat: expect.objectContaining({
@@ -94,7 +97,7 @@ describe('useLedger', () => {
     const ledgerApi = vi
       .fn<DappSdkMethods['ledgerApi']>()
       .mockResolvedValueOnce({ offset: 9 })
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({ activeContracts: [] })
     const { result } = renderLedger(ledgerApi, false)
 
     await act(async () => {
@@ -122,19 +125,21 @@ describe('useLedger', () => {
     const ledgerApi = vi
       .fn<DappSdkMethods['ledgerApi']>()
       .mockResolvedValueOnce({ offset: 9 })
-      .mockResolvedValueOnce([
-        {
-          contractEntry: {
-            JsActiveContract: {
-              createdEvent: {
-                contractId: '00aa',
-                templateId: 'pkg:Amulet',
-                interfaceViews: [{ viewStatus: { code: 0 }, viewValue: { amount: '3' } }],
+      .mockResolvedValueOnce({
+        activeContracts: [
+          {
+            contractEntry: {
+              JsActiveContract: {
+                createdEvent: {
+                  contractId: '00aa',
+                  templateId: 'pkg:Amulet',
+                  interfaceViews: [{ viewStatus: { code: 0 }, viewValue: { amount: '3' } }],
+                },
               },
             },
           },
-        },
-      ])
+        ],
+      })
     const { result } = renderLedger(ledgerApi)
 
     await act(async () => {
@@ -152,6 +157,71 @@ describe('useLedger', () => {
           activeAtOffset: 9,
           eventFormat: expect.objectContaining({
             filtersByParty: expect.objectContaining({ 'alice::1220ab': expect.anything() }),
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('gathers every page at the offset the first one was read at', async () => {
+    const row = (contractId: string) => ({
+      contractEntry: {
+        JsActiveContract: {
+          createdEvent: { contractId, templateId: 'pkg:Main:Grant', createArgument: {} },
+        },
+      },
+    })
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce({ activeContracts: [row('00aa')], nextPageToken: 'p2' })
+      .mockResolvedValueOnce({ activeContracts: [row('00bb')], nextPageToken: 'p3' })
+      .mockResolvedValueOnce({ activeContracts: [row('00cc')] })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      const contracts = await result.current.activeContracts({ templateId: '#app:Main:Grant' })
+      expect(contracts.map((one) => one.contractId)).toEqual(['00aa', '00bb', '00cc'])
+    })
+
+    expect(ledgerApi).toHaveBeenCalledTimes(4)
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        body: expect.objectContaining({ activeAtOffset: 9, pageToken: 'p2' }),
+      }),
+    )
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        body: expect.objectContaining({ activeAtOffset: 9, pageToken: 'p3' }),
+      }),
+    )
+  })
+
+  it('reads as several parties in one call', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce({ activeContracts: [] })
+    const { result } = renderLedger(ledgerApi, false)
+
+    await act(async () => {
+      await result.current.activeContracts({
+        templateId: '#app:Main:Grant',
+        party: ['operator::1220', 'alice::1220'],
+      })
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        body: expect.objectContaining({
+          eventFormat: expect.objectContaining({
+            filtersByParty: {
+              'operator::1220': expect.anything(),
+              'alice::1220': expect.anything(),
+            },
           }),
         }),
       }),

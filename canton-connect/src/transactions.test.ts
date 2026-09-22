@@ -37,7 +37,7 @@ const entry = (value: Record<string, unknown>) => ({ update: { Transaction: { va
 
 describe('transactionsRequest', () => {
   it('pages one template as the party, ledger effects, from the start to the given end', () => {
-    const request = transactionsRequest('alice::1220', 40, { templateId: '#app:Main:Grant' })
+    const request = transactionsRequest(['alice::1220'], 40, { templateId: '#app:Main:Grant' })
 
     expect(request).toEqual({
       requestMethod: 'post',
@@ -72,11 +72,21 @@ describe('transactionsRequest', () => {
   })
 
   it('resumes from the offset and caps the page as told', () => {
-    const request = transactionsRequest('alice::1220', 40, {
+    const request = transactionsRequest(['alice::1220', 'bob::1220'], 40, {
       templateId: '#app:Main:Grant',
       beginExclusive: 12,
       limit: 50,
     })
+    const format = (
+      request.body as {
+        updateFormat: { includeTransactions: { eventFormat: { filtersByParty: object } } }
+      }
+    ).updateFormat
+
+    expect(Object.keys(format.includeTransactions.eventFormat.filtersByParty)).toEqual([
+      'alice::1220',
+      'bob::1220',
+    ])
 
     expect(request.query).toEqual({ limit: 50, stream_idle_timeout_ms: 1000 })
     expect(request.body).toMatchObject({ beginExclusive: 12, endInclusive: 40 })
@@ -85,7 +95,7 @@ describe('transactionsRequest', () => {
 
 describe('transactionRequest', () => {
   it('asks for one update with everything the party sees', () => {
-    const request = transactionRequest('alice::1220', 'u1')
+    const request = transactionRequest(['alice::1220'], 'u1')
 
     expect(request).toMatchObject({
       resource: '/v2/updates/update-by-id',

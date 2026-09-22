@@ -161,9 +161,13 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 `query` holds query parameters, `body` the request body; neither goes into `resource`.
 
 `activeContracts` is the one read the package shapes itself, because every dApp repeats it: a
-`GET /v2/state/ledger-end`, then a `POST /v2/state/active-contracts` at that offset, filtered to
-one template and one party, the connected one unless `party` names another the session's user may
-read as (a dApp reading its operator's factory does). The envelope
+`GET /v2/state/ledger-end`, then `POST /v2/state/active-contracts-page` at that offset until no
+`nextPageToken` comes back, filtered to one template and to the connected party unless `party`
+names one or several others the session's user may read as (a dApp reading its operator's factory
+does; an operator dashboard reading as every party it acts for does too). The offset is pinned on
+the first call and sent with every page, which the participant requires and which is what keeps
+the pages one snapshot. The streaming `/v2/state/active-contracts` answers everything in one body
+and 413 past the participant's limit, so it is not used. The envelope
 (`contractEntry.JsActiveContract.createdEvent`) is unwrapped into `ActiveContract<Payload>`; the
 payload stays whatever the caller names it, since the package knows no Daml model. The
 `createdEventBlob` is asked for only on `includeCreatedEventBlob`, and `toDisclosedContract` turns

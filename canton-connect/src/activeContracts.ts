@@ -36,7 +36,7 @@ export interface ActiveContract<Payload = unknown> {
  */
 export interface ActiveContractsParams {
   templateId: string
-  party?: string
+  party?: string | string[]
   includeCreatedEventBlob?: boolean
 }
 
@@ -62,7 +62,7 @@ export interface InterfaceContract<View = unknown> {
  */
 export interface ActiveContractsByInterfaceParams {
   interfaceId: string
-  party?: string
+  party?: string | string[]
 }
 
 /**
@@ -102,39 +102,70 @@ export const offsetOf = (ledgerEnd: unknown): LedgerOffset => {
   return offset
 }
 
+// Capped by the participant; a larger ask only saves round trips.
+const ACS_PAGE_SIZE = 200
+
+export const toParties = (party: string | string[]): string[] =>
+  Array.isArray(party) ? party : [party]
+
+export const filtersByParty = (
+  parties: string[],
+  identifierFilter: Record<string, unknown>,
+): Record<string, unknown> =>
+  Object.fromEntries(parties.map((party) => [party, { cumulative: [{ identifierFilter }] }]))
+
 const acsRequest = (
-  party: string,
+  parties: string[],
   activeAtOffset: LedgerOffset,
   identifierFilter: Record<string, unknown>,
+  pageToken: string | undefined,
 ): LedgerApiParams => ({
   requestMethod: 'post',
-  resource: '/v2/state/active-contracts',
+  resource: '/v2/state/active-contracts-page',
   body: {
     activeAtOffset,
-    eventFormat: {
-      verbose: true,
-      filtersByParty: { [party]: { cumulative: [{ identifierFilter }] } },
-    },
+    maxPageSize: ACS_PAGE_SIZE,
+    eventFormat: { verbose: true, filtersByParty: filtersByParty(parties, identifierFilter) },
+    ...(pageToken === undefined ? {} : { pageToken }),
   },
 })
 
 export const activeContractsRequest = (
-  party: string,
+  parties: string[],
   activeAtOffset: LedgerOffset,
   { templateId, includeCreatedEventBlob = false }: ActiveContractsParams,
+  pageToken?: string,
 ): LedgerApiParams =>
-  acsRequest(party, activeAtOffset, {
-    TemplateFilter: { value: { templateId, includeCreatedEventBlob } },
-  })
+  acsRequest(
+    parties,
+    activeAtOffset,
+    { TemplateFilter: { value: { templateId, includeCreatedEventBlob } } },
+    pageToken,
+  )
 
 export const activeContractsByInterfaceRequest = (
-  party: string,
+  parties: string[],
   activeAtOffset: LedgerOffset,
   { interfaceId }: ActiveContractsByInterfaceParams,
+  pageToken?: string,
 ): LedgerApiParams =>
-  acsRequest(party, activeAtOffset, {
-    InterfaceFilter: { value: { interfaceId, includeInterfaceView: true } },
-  })
+  acsRequest(
+    parties,
+    activeAtOffset,
+    { InterfaceFilter: { value: { interfaceId, includeInterfaceView: true } } },
+    pageToken,
+  )
+
+type AcsPage = { activeContracts?: unknown; nextPageToken?: unknown }
+
+export const pageOf = (answer: unknown): { rows: unknown[]; nextPageToken: string | undefined } => {
+  const page = (answer ?? {}) as AcsPage
+  const token = page.nextPageToken
+  return {
+    rows: Array.isArray(page.activeContracts) ? page.activeContracts : [],
+    nextPageToken: typeof token === 'string' && token !== '' ? token : undefined,
+  }
+}
 
 const decodeRow = <Payload>(row: AcsRow): ActiveContract<Payload> | undefined => {
   const active = row.contractEntry?.JsActiveContract

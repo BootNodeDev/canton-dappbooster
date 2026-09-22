@@ -1,5 +1,5 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
-import type { ActiveContract, LedgerOffset } from '#src/activeContracts'
+import { type ActiveContract, filtersByParty, type LedgerOffset } from '#src/activeContracts'
 
 /**
  * A contract the transaction created, as an active-contracts read returns it.
@@ -68,7 +68,7 @@ export interface Transaction {
  */
 export interface TransactionsParams {
   templateId: string
-  party?: string
+  party?: string | string[]
   beginExclusive?: LedgerOffset
   endInclusive?: LedgerOffset
   limit?: number
@@ -83,7 +83,7 @@ export interface TransactionsParams {
  * @category Types
  */
 export interface TransactionParams {
-  party?: string
+  party?: string | string[]
 }
 
 const LEDGER_EFFECTS = 'TRANSACTION_SHAPE_LEDGER_EFFECTS'
@@ -92,20 +92,17 @@ const DEFAULT_LIMIT = 1000
 const STREAM_IDLE_MS = 1000
 
 const updateFormat = (
-  party: string,
+  parties: string[],
   identifierFilter: Record<string, unknown>,
 ): Record<string, unknown> => ({
   includeTransactions: {
     transactionShape: LEDGER_EFFECTS,
-    eventFormat: {
-      verbose: true,
-      filtersByParty: { [party]: { cumulative: [{ identifierFilter }] } },
-    },
+    eventFormat: { verbose: true, filtersByParty: filtersByParty(parties, identifierFilter) },
   },
 })
 
 export const transactionsRequest = (
-  party: string,
+  parties: string[],
   endInclusive: LedgerOffset,
   { templateId, beginExclusive = 0, limit = DEFAULT_LIMIT }: TransactionsParams,
 ): LedgerApiParams => ({
@@ -115,18 +112,18 @@ export const transactionsRequest = (
   body: {
     beginExclusive,
     endInclusive,
-    updateFormat: updateFormat(party, {
+    updateFormat: updateFormat(parties, {
       TemplateFilter: { value: { templateId, includeCreatedEventBlob: false } },
     }),
   },
 })
 
-export const transactionRequest = (party: string, updateId: string): LedgerApiParams => ({
+export const transactionRequest = (parties: string[], updateId: string): LedgerApiParams => ({
   requestMethod: 'post',
   resource: '/v2/updates/update-by-id',
   body: {
     updateId,
-    updateFormat: updateFormat(party, {
+    updateFormat: updateFormat(parties, {
       WildcardFilter: { value: { includeCreatedEventBlob: false } },
     }),
   },
