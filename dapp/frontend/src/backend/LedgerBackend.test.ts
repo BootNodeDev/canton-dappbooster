@@ -1,3 +1,4 @@
+import type { ActiveContract, ActiveContractsParams } from '@bootnodedev/canton-connect'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { encodeSchedule, TAP_AMOUNT } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
@@ -27,48 +28,25 @@ type Submission = {
   disclosedContracts?: DisclosedContract[]
 }
 
-// As much of the ACS query LedgerBackend builds as these tests read back, named once so the two
-// accessors below share it rather than each casting the body to its own shape.
-type PartyFilter = {
-  cumulative?: { identifierFilter?: { TemplateFilter?: { value?: { templateId?: string } } } }[]
-}
-
-type AcsQuery = {
-  activeAtOffset?: unknown
-  filter?: { filtersByParty?: Record<string, PartyFilter> }
-}
-
-type Read = { requestMethod: string; resource: string; body?: AcsQuery }
-
-const byParty = (read: Read): Record<string, PartyFilter> => read.body?.filter?.filtersByParty ?? {}
-
-// The template a read filters on, which is what a party-scoped ACS query is keyed by here.
-const filteredTemplate = (read: Read): string | undefined =>
-  Object.values(byParty(read))[0]?.cumulative?.[0]?.identifierFilter?.TemplateFilter?.value
-    ?.templateId
-
-const filteredParty = (read: Read): string | undefined => Object.keys(byParty(read))[0]
-
-const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
-  contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
+const contract = (contractId: string, payload: Record<string, unknown>): ActiveContract => ({
+  contractId,
+  templateId: '',
+  payload,
+  createdEventBlob: undefined,
+  synchronizerId: undefined,
 })
 
-// A test passes `{}` for `extra` to make a row the split can find no DSO on.
-const amuletRow = (
+// A test passes `{}` for `extra` to make a contract the split can find no DSO on.
+const amuletContract = (
   contractId: string,
   initialAmount = '1000',
   extra: object = { dso: 'dso::1' },
-): unknown => ({
-  contractEntry: {
-    JsActiveContract: {
-      createdEvent: {
-        contractId,
-        createArgument: { amount: { initialAmount }, ...extra },
-        createdEventBlob: `blob-${contractId}`,
-        templateId: 'amuletpkg:Splice.Amulet:Amulet',
-      },
-    },
-  },
+): ActiveContract => ({
+  contractId,
+  templateId: 'amuletpkg:Splice.Amulet:Amulet',
+  payload: { amount: { initialAmount }, ...extra },
+  createdEventBlob: `blob-${contractId}`,
+  synchronizerId: undefined,
 })
 
 const disclosedAmulet = (contractId: string): DisclosedContract => ({
@@ -104,20 +82,23 @@ vi.mock('@/backend/transferContext', () => ({
 // a split archives its inputs and puts the output plus any change in their place, and the factory
 // choice leaves a pending grant behind pledging what it was given. Without that second half every
 // later split would happily spend the Amulet an outstanding grant is waiting on.
-type AmuletFields = { contractId: string; createArgument: { amount: { initialAmount: string } } }
+type AmuletFields = { amount: { initialAmount: string } }
 
-const fields = (one: unknown): AmuletFields =>
-  (one as { contractEntry: { JsActiveContract: { createdEvent: AmuletFields } } }).contractEntry
-    .JsActiveContract.createdEvent
+const initialAmount = (one: ActiveContract): number =>
+  Number((one.payload as AmuletFields).amount.initialAmount)
 
-const initialAmount = (one: unknown): number =>
-  Number(fields(one).createArgument.amount.initialAmount)
-
-const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: number): void => {
+const settle = (
+  acs: Record<string, ActiveContract[]>,
+  submission: Submission,
+  nth: number,
+): void => {
   const exercise = submission.commands?.[0]?.ExerciseCommand
   if (exercise?.choice === 'AmuletVestingFactory_CreateVesting') {
     const { amuletCids } = exercise.choiceArgument as { amuletCids: string[] }
-    acs[PENDING] = [...(acs[PENDING] ?? []), row(`pending-for-${amuletCids[0]}`, { amuletCids })]
+    acs[PENDING] = [
+      ...(acs[PENDING] ?? []),
+      contract(`pending-for-${amuletCids[0]}`, { amuletCids }),
+    ]
     return
   }
   if (exercise?.choice !== 'AmuletRules_Transfer') {
@@ -130,35 +111,33 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: num
   const spent = new Set(transfer.inputs.map((input) => input.value))
   const amount = Number(transfer.outputs[0].amount)
   const before = acs[AMULET] ?? []
-  const consumed = before.filter((one) => spent.has(fields(one).contractId))
+  const consumed = before.filter((one) => spent.has(one.contractId))
   const change = consumed.reduce((total: number, one) => total + initialAmount(one), 0) - amount
   acs[AMULET] = [
-    ...before.filter((one) => !spent.has(fields(one).contractId)),
-    amuletRow(`split-${nth}`, transfer.outputs[0].amount),
-    ...(change > 0 ? [amuletRow(`change-${nth}`, String(change))] : []),
+    ...before.filter((one) => !spent.has(one.contractId)),
+    amuletContract(`split-${nth}`, transfer.outputs[0].amount),
+    ...(change > 0 ? [amuletContract(`change-${nth}`, String(change))] : []),
   ]
 }
 
 // The submission carries the synchronizer, so everything disclosed on one arrives stamped with it.
 const onSync = <T>(contracts: T[]): (T & { synchronizerId: string })[] =>
-  contracts.map((contract) => ({ ...contract, synchronizerId: 'sync::1' }))
+  contracts.map((one) => ({ ...one, synchronizerId: 'sync::1' }))
 
 const harness = (
   options: {
-    acs?: Record<string, unknown[]>
+    acs?: Record<string, ActiveContract[]>
     declines?: boolean
     deployment?: Deployment
-    ledgerEnd?: unknown
   } = {},
-): { backend: LedgerBackend; submissions: Submission[]; reads: Read[] } => {
+): { backend: LedgerBackend; submissions: Submission[]; acsCalls: ActiveContractsParams[] } => {
   const {
-    acs = { [AMULET]: [amuletRow('am1')] },
+    acs = { [AMULET]: [amuletContract('am1')] },
     declines = false,
-    ledgerEnd = { offset: 42 },
     deployment: config = deployment,
   } = options
   const submissions: Submission[] = []
-  const reads: Read[] = []
+  const acsCalls: ActiveContractsParams[] = []
   let settled = 0
   const wallet: WalletFns = {
     execute: async (params) => {
@@ -170,16 +149,15 @@ const harness = (
       settle(acs, submission, ++settled)
       return {}
     },
-    ledgerApi: async (params) => {
-      const read = params as Read
-      reads.push(read)
-      if (read.resource === '/v2/state/ledger-end') {
-        return ledgerEnd
-      }
-      return acs[filteredTemplate(read) ?? ''] ?? []
+    ledgerApi: async () => [],
+    activeContracts: async <Payload>(
+      params: ActiveContractsParams,
+    ): Promise<ActiveContract<Payload>[]> => {
+      acsCalls.push(params)
+      return (acs[params.templateId] ?? []) as ActiveContract<Payload>[]
     },
   }
-  return { backend: new LedgerBackend(config, wallet), submissions, reads }
+  return { backend: new LedgerBackend(config, wallet), submissions, acsCalls }
 }
 
 beforeEach(() => {
@@ -198,7 +176,7 @@ describe('LedgerBackend.createVesting', () => {
 
   it('splits the amount off first, then funds the grant from what the split produced', async () => {
     const { backend, submissions } = harness({
-      acs: { [AMULET]: [amuletRow('am1', '600'), amuletRow('am2', '900')] },
+      acs: { [AMULET]: [amuletContract('am1', '600'), amuletContract('am2', '900')] },
     })
 
     await backend.createVesting(grant)
@@ -243,8 +221,8 @@ describe('LedgerBackend.createVesting', () => {
   it('leaves out an Amulet an outstanding grant has already pledged', async () => {
     const { backend, submissions } = harness({
       acs: {
-        [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '1000')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [AMULET]: [amuletContract('pledged', '1000'), amuletContract('free', '1000')],
+        [PENDING]: [contract('p1', { amuletCids: ['pledged'] })],
       },
     })
 
@@ -259,8 +237,8 @@ describe('LedgerBackend.createVesting', () => {
   it('refuses when what is left unpledged cannot cover the grant', async () => {
     const { backend } = harness({
       acs: {
-        [AMULET]: [amuletRow('pledged', '1000'), amuletRow('free', '400')],
-        [PENDING]: [row('p1', { amuletCids: ['pledged'] })],
+        [AMULET]: [amuletContract('pledged', '1000'), amuletContract('free', '400')],
+        [PENDING]: [contract('p1', { amuletCids: ['pledged'] })],
       },
     })
 
@@ -319,7 +297,7 @@ describe('LedgerBackend.createVesting', () => {
   // A disclosure is an opaque blob, so the split reads the DSO off an Amulet it consumes.
   it('names the DSO the funder’s own Amulets are signed by', async () => {
     const { backend, submissions } = harness({
-      acs: { [AMULET]: [amuletRow('am1', '1200')] },
+      acs: { [AMULET]: [amuletContract('am1', '1200')] },
     })
 
     await backend.createVesting(grant)
@@ -330,7 +308,7 @@ describe('LedgerBackend.createVesting', () => {
   })
 
   it('refuses rather than sending an undefined expectedDso when no Amulet carries one', async () => {
-    const { backend } = harness({ acs: { [AMULET]: [amuletRow('am1', '1200', {})] } })
+    const { backend } = harness({ acs: { [AMULET]: [amuletContract('am1', '1200', {})] } })
 
     await expect(backend.createVesting(grant)).rejects.toThrow(/name no DSO party/)
   })
@@ -440,7 +418,7 @@ describe('LedgerBackend.accept', () => {
   })
 
   it('discloses the Amulet the grant names and nothing else it has ever stored', async () => {
-    const acs: Record<string, unknown[]> = { [AMULET]: [amuletRow('am1', '3000')] }
+    const acs: Record<string, ActiveContract[]> = { [AMULET]: [amuletContract('am1', '3000')] }
     const funder = harness({ acs })
     await funder.backend.createVesting(grant('First grant'))
     await funder.backend.createVesting(grant('Second grant'))
@@ -465,10 +443,10 @@ describe('LedgerBackend.accept', () => {
   })
 
   it('keeps the blobs of a live grant when a later one is declined in the wallet', async () => {
-    const acs: Record<string, unknown[]> = { [AMULET]: [amuletRow('am1', '2500')] }
+    const acs: Record<string, ActiveContract[]> = { [AMULET]: [amuletContract('am1', '2500')] }
     const first = harness({ acs })
     await first.backend.createVesting(grant('First grant'))
-    const declined = harness({ acs: { [AMULET]: [amuletRow('am9')] }, declines: true })
+    const declined = harness({ acs: { [AMULET]: [amuletContract('am9')] }, declines: true })
     await expect(declined.backend.createVesting(grant('Second grant'))).rejects.toThrow(/rejected/)
     const { backend, submissions } = harness({ acs })
 
@@ -481,23 +459,20 @@ describe('LedgerBackend.accept', () => {
 })
 
 describe('LedgerBackend.viewAs', () => {
-  it('reads all three templates as the connected party at one shared offset', async () => {
-    const { backend, reads } = harness()
+  it('reads all three templates as the connected party', async () => {
+    const { backend, acsCalls } = harness()
 
     await backend.viewAs('receiver::1')
 
-    expect(reads[0]?.resource).toBe('/v2/state/ledger-end')
-    const acsReads = reads.slice(1)
-    expect(acsReads.map(filteredTemplate)).toEqual([PENDING, CONTRACT, CLAIM])
-    expect(acsReads.map(filteredParty)).toEqual(['receiver::1', 'receiver::1', 'receiver::1'])
-    expect(acsReads.every((read) => read.body?.activeAtOffset === 42)).toBe(true)
+    expect(acsCalls.map((call) => call.templateId)).toEqual([PENDING, CONTRACT, CLAIM])
+    expect(acsCalls.every((call) => call.party === 'receiver::1')).toBe(true)
   })
 
-  it('maps the rows it gets back into the domain view', async () => {
+  it('maps the contracts it gets back into the domain view', async () => {
     const { backend } = harness({
       acs: {
         [CONTRACT]: [
-          row('c1', {
+          contract('c1', {
             provider: 'operator::1',
             creator: 'funder::1',
             receiver: 'receiver::1',
@@ -517,10 +492,5 @@ describe('LedgerBackend.viewAs', () => {
     expect(view.grants[0]?.creator).toBe('funder::1')
     expect(view.pendingGrants).toEqual([])
     expect(view.claims).toEqual([])
-  })
-
-  it('throws rather than querying at an undefined offset', async () => {
-    const { backend } = harness({ ledgerEnd: {} })
-    await expect(backend.viewAs('receiver::1')).rejects.toThrow(/did not return an offset/)
   })
 })

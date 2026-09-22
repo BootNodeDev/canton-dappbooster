@@ -1,59 +1,50 @@
+import type { ActiveContract, ActiveContractsParams } from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
-import { type LedgerApi, loadBackendConfig } from '@/backend/config'
+import { type ActiveContracts, type LedgerApi, loadBackendConfig } from '@/backend/config'
 
 const OPERATOR = 'vesting-operator-1700000000001::ns'
 const OLDER = 'vesting-operator-1600000000000::ns'
 
-const factoryRow = (
-  createdEvent: Record<string, unknown>,
-  synchronizerId?: string,
-): Record<string, unknown> => ({
-  contractEntry: {
-    JsActiveContract: { createdEvent, ...(synchronizerId ? { synchronizerId } : {}) },
-  },
+const factoryContract = (overrides: Partial<ActiveContract> = {}): ActiveContract => ({
+  contractId: '00cid',
+  templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
+  payload: {},
+  createdEventBlob: 'YmxvYg==',
+  synchronizerId: 'sync::1',
+  ...overrides,
 })
 
-const created = {
-  contractId: '00cid',
-  createdEventBlob: 'YmxvYg==',
-  templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
-}
-
-// The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
-// about. `acs` doubles as the record of which party the last filter named.
+// `params` records the last activeContracts call.
 const ledger = (
-  overrides: { rights?: unknown[]; acs?: unknown[]; user?: unknown } = {},
-): { ledgerApi: LedgerApi; filteredParty: () => string | undefined } => {
-  let filteredParty: string | undefined
+  overrides: { rights?: unknown[]; contracts?: ActiveContract[]; user?: unknown } = {},
+): { ledgerApi: LedgerApi; activeContracts: ActiveContracts; lastCall: () => unknown } => {
+  let lastCall: unknown
   const ledgerApi: LedgerApi = async (params) => {
     const resource = params.resource as string
     if (resource === '/v2/authenticated-user') {
       return overrides.user ?? { user: { id: 'user-1' } }
     }
-    if (resource.endsWith('/rights')) {
-      return {
-        rights: overrides.rights ?? [
-          { kind: { CanActAs: { value: { party: OLDER } } } },
-          { kind: { CanActAs: { value: { party: OPERATOR } } } },
-          { kind: { ParticipantAdmin: { value: {} } } },
-        ],
-      }
+    return {
+      rights: overrides.rights ?? [
+        { kind: { CanActAs: { value: { party: OLDER } } } },
+        { kind: { CanActAs: { value: { party: OPERATOR } } } },
+        { kind: { ParticipantAdmin: { value: {} } } },
+      ],
     }
-    if (resource === '/v2/state/ledger-end') {
-      return { offset: 42 }
-    }
-    const filter = (params.body as { filter?: { filtersByParty?: Record<string, unknown> } })
-      ?.filter
-    filteredParty = Object.keys(filter?.filtersByParty ?? {})[0]
-    return overrides.acs ?? [factoryRow(created, 'sync::1')]
   }
-  return { ledgerApi, filteredParty: () => filteredParty }
+  const activeContracts: ActiveContracts = async <Payload>(
+    params: ActiveContractsParams,
+  ): Promise<ActiveContract<Payload>[]> => {
+    lastCall = params
+    return (overrides.contracts ?? [factoryContract()]) as ActiveContract<Payload>[]
+  }
+  return { ledgerApi, activeContracts, lastCall: () => lastCall }
 }
 
 describe('loadBackendConfig', () => {
   it('returns the deployment it reads back, synchronizer id included', async () => {
-    const { ledgerApi } = ledger()
-    await expect(loadBackendConfig(ledgerApi)).resolves.toEqual({
+    const { ledgerApi, activeContracts } = ledger()
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).resolves.toEqual({
       factoryBlob: 'YmxvYg==',
       factoryCid: '00cid',
       pkg: 'abc123',
@@ -61,39 +52,55 @@ describe('loadBackendConfig', () => {
     })
   })
 
-  it('omits the synchronizer id when the row carries none', async () => {
-    const { ledgerApi } = ledger({ acs: [factoryRow(created)] })
-    await expect(loadBackendConfig(ledgerApi)).resolves.not.toHaveProperty('synchronizerId')
+  it('omits the synchronizer id when the contract carries none', async () => {
+    const { ledgerApi, activeContracts } = ledger({
+      contracts: [factoryContract({ synchronizerId: undefined })],
+    })
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).resolves.not.toHaveProperty(
+      'synchronizerId',
+    )
   })
 
   // Every run leaves its operator behind, so the newest is the one whose factory the config means.
   it('reads as the newest operator among the rights', async () => {
-    const { ledgerApi, filteredParty } = ledger()
-    await loadBackendConfig(ledgerApi)
-    expect(filteredParty()).toBe(OPERATOR)
+    const { ledgerApi, activeContracts, lastCall } = ledger()
+    await loadBackendConfig(ledgerApi, activeContracts)
+    expect(lastCall()).toEqual({
+      templateId: '#amulet-vesting:AmuletVesting:AmuletVestingFactory',
+      party: OPERATOR,
+      includeCreatedEventBlob: true,
+    })
   })
 
   it('names the bootstrap script when no operator was ever created', async () => {
-    const { ledgerApi } = ledger({ rights: [{ kind: { ParticipantAdmin: { value: {} } } }] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+    const { ledgerApi, activeContracts } = ledger({
+      rights: [{ kind: { ParticipantAdmin: { value: {} } } }],
+    })
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).rejects.toThrow(
       /no vesting operator.*pnpm run bootstrap/,
     )
   })
 
   // A factory with no blob cannot be disclosed, so it is as good as absent.
-  it('rejects a factory row that came back without its disclosure blob', async () => {
-    const { ledgerApi } = ledger({ acs: [factoryRow({ contractId: '00cid' })] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
+  it('rejects a factory contract that came back without its disclosure blob', async () => {
+    const { ledgerApi, activeContracts } = ledger({
+      contracts: [factoryContract({ createdEventBlob: undefined })],
+    })
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).rejects.toThrow(
+      /no factory disclosable/,
+    )
   })
 
   it('rejects an empty active-contracts read', async () => {
-    const { ledgerApi } = ledger({ acs: [] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
+    const { ledgerApi, activeContracts } = ledger({ contracts: [] })
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).rejects.toThrow(
+      /no factory disclosable/,
+    )
   })
 
   it('throws when the wallet reports no authenticated user', async () => {
-    const { ledgerApi } = ledger({ user: {} })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+    const { ledgerApi, activeContracts } = ledger({ user: {} })
+    await expect(loadBackendConfig(ledgerApi, activeContracts)).rejects.toThrow(
       /did not report an authenticated user/,
     )
   })

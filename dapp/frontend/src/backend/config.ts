@@ -1,6 +1,6 @@
 // Read back off the ledger, not carried in a file: every bootstrap run mints a fresh pair.
 
-import type { LedgerApiParams } from '@bootnodedev/canton-connect'
+import type { LedgerApiParams, UseLedgerResult } from '@bootnodedev/canton-connect'
 
 export type Deployment = {
   factoryBlob: string
@@ -10,6 +10,7 @@ export type Deployment = {
 }
 
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
+export type ActiveContracts = UseLedgerResult['activeContracts']
 
 // A filter takes the package-name reference, never the id it resolves to.
 const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
@@ -19,15 +20,6 @@ const advice = (reason: string): Error => new Error(`${reason} — run pnpm run 
 
 export const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Promise<T> =>
   (await ledgerApi(params)) as T
-
-type ActiveContract = {
-  contractEntry?: {
-    JsActiveContract?: {
-      createdEvent?: { contractId?: string; createdEventBlob?: string; templateId?: string }
-      synchronizerId?: string
-    }
-  }
-}
 
 // The hint carries the run's timestamp, so the last one sorted is the newest.
 const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
@@ -57,52 +49,29 @@ const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
   return operator
 }
 
-export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deployment> => {
+export const loadBackendConfig = async (
+  ledgerApi: LedgerApi,
+  activeContracts: ActiveContracts,
+): Promise<Deployment> => {
   const operator = await newestOperator(ledgerApi)
-  const { offset } = await call<{ offset?: string | number }>(ledgerApi, {
-    requestMethod: 'get',
-    resource: '/v2/state/ledger-end',
+  const contracts = await activeContracts({
+    templateId: FACTORY,
+    party: operator,
+    includeCreatedEventBlob: true,
   })
-  if (offset === undefined) {
-    throw new Error('the ledger did not return an offset')
-  }
-  const rows = await call<ActiveContract[]>(ledgerApi, {
-    requestMethod: 'post',
-    resource: '/v2/state/active-contracts',
-    body: {
-      filter: {
-        filtersByParty: {
-          [operator]: {
-            cumulative: [
-              {
-                identifierFilter: {
-                  TemplateFilter: { value: { templateId: FACTORY, includeCreatedEventBlob: true } },
-                },
-              },
-            ],
-          },
-        },
-      },
-      activeAtOffset: offset,
-      verbose: true,
-    },
-  })
-  // Without the blob a funder cannot disclose the factory, so such a row is no use.
-  const factory = (Array.isArray(rows) ? rows : [])
-    .map((row) => row.contractEntry?.JsActiveContract)
-    .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)
-  const created = factory?.createdEvent
-  if (created?.contractId === undefined || created.createdEventBlob === undefined) {
+  // Without the blob a funder cannot disclose the factory, so such a contract is no use.
+  const factory = contracts.find((contract) => contract.createdEventBlob !== undefined)
+  if (factory?.createdEventBlob === undefined) {
     throw advice(`no factory disclosable by ${operator}`)
   }
-  const pkg = created.templateId?.split(':')[0]
+  const pkg = factory.templateId.split(':')[0]
   if (pkg === undefined || pkg === '') {
     throw advice('the factory came back with no package id')
   }
   return {
-    factoryBlob: created.createdEventBlob,
-    factoryCid: created.contractId,
+    factoryBlob: factory.createdEventBlob,
+    factoryCid: factory.contractId,
     pkg,
-    ...(factory?.synchronizerId === undefined ? {} : { synchronizerId: factory.synchronizerId }),
+    ...(factory.synchronizerId === undefined ? {} : { synchronizerId: factory.synchronizerId }),
   }
 }

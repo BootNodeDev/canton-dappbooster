@@ -1,15 +1,18 @@
+import type { ActiveContract } from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
 import { encodeSchedule } from '@/backend/commands'
 import {
+  type AmuletPayload,
   amuletValue,
   claimChain,
   composeNote,
+  contractToClaim,
+  contractToGrant,
+  contractToPendingGrant,
   lastUpdateOffset,
-  rowToClaim,
-  rowToGrant,
-  rowToPendingGrant,
   splitNote,
   updatesToClaims,
+  type VestingPayload,
 } from '@/backend/VestingBackend'
 
 const linearEncoded = encodeSchedule({
@@ -17,8 +20,15 @@ const linearEncoded = encodeSchedule({
   curve: { kind: 'linear', start: '2026-01-01T00:00:00Z', end: '2027-01-01T00:00:00Z' },
 })
 
-const row = (contractId: string, arg: Record<string, unknown>) => ({
-  contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
+const contract = (
+  contractId: string,
+  payload: Record<string, unknown>,
+): ActiveContract<VestingPayload> => ({
+  contractId,
+  templateId: '',
+  payload,
+  createdEventBlob: undefined,
+  synchronizerId: undefined,
 })
 
 describe('splitNote / composeNote', () => {
@@ -44,10 +54,10 @@ describe('splitNote / composeNote', () => {
   })
 })
 
-describe('rowToPendingGrant', () => {
+describe('contractToPendingGrant', () => {
   it('maps proposer→proposer, receiver→receiver, decodes the schedule, splits the note', () => {
-    const pendingGrant = rowToPendingGrant(
-      row('p1', {
+    const pendingGrant = contractToPendingGrant(
+      contract('p1', {
         provider: 'OP',
         proposer: 'funder',
         receiver: 'receiver',
@@ -72,15 +82,22 @@ describe('rowToPendingGrant', () => {
     })
   })
 
-  it('returns undefined when the createArgument is absent', () => {
-    expect(rowToPendingGrant({})).toBeUndefined()
+  it('returns undefined when the payload is absent', () => {
+    const noPayload = {
+      contractId: 'p1',
+      templateId: '',
+      payload: undefined,
+      createdEventBlob: undefined,
+      synchronizerId: undefined,
+    } as unknown as Parameters<typeof contractToPendingGrant>[0]
+    expect(contractToPendingGrant(noPayload)).toBeUndefined()
   })
 })
 
-describe('rowToGrant', () => {
-  it('maps a contract row, parsing alreadyWithdrawn and using creator as the funder', () => {
-    const grant = rowToGrant(
-      row('c1', {
+describe('contractToGrant', () => {
+  it('maps a contract, parsing alreadyWithdrawn and using creator as the funder', () => {
+    const grant = contractToGrant(
+      contract('c1', {
         provider: 'OP',
         creator: 'funder',
         receiver: 'receiver',
@@ -101,8 +118,8 @@ describe('rowToGrant', () => {
 
   it('throws naming the field rather than folding a non-string amount to zero', () => {
     expect(() =>
-      rowToGrant(
-        row('c2', {
+      contractToGrant(
+        contract('c2', {
           provider: 'OP',
           creator: 'funder',
           receiver: 'receiver',
@@ -116,8 +133,8 @@ describe('rowToGrant', () => {
 
   it('throws on a string that is not a decimal, which would parse to zero downstream', () => {
     expect(() =>
-      rowToGrant(
-        row('c3', {
+      contractToGrant(
+        contract('c3', {
           provider: 'OP',
           creator: 'funder',
           receiver: 'receiver',
@@ -130,10 +147,10 @@ describe('rowToGrant', () => {
   })
 })
 
-describe('rowToClaim', () => {
-  it('maps a residual claim row with amount + withdrawn', () => {
-    const claim = rowToClaim(
-      row('r1', {
+describe('contractToClaim', () => {
+  it('maps a residual claim contract with amount + withdrawn', () => {
+    const claim = contractToClaim(
+      contract('r1', {
         provider: 'OP',
         creator: 'funder',
         receiver: 'receiver',
@@ -222,6 +239,25 @@ describe('updatesToClaims', () => {
     expect(updatesToClaims([orphan])).toEqual([])
   })
 
+  it('drops a transaction whose created event carries no contract id', () => {
+    const full = claimUpdate(7, 'c1', 'c2', '250', '250')
+    const events = full.update.Transaction.value.events
+    const orphan = {
+      update: {
+        Transaction: {
+          value: {
+            ...full.update.Transaction.value,
+            events: [
+              events[0],
+              { CreatedEvent: { ...events[1].CreatedEvent, contractId: undefined } },
+            ],
+          },
+        },
+      },
+    }
+    expect(updatesToClaims([orphan])).toEqual([])
+  })
+
   it('ignores anything that is not an array of transactions', () => {
     expect(updatesToClaims(undefined)).toEqual([])
     expect(updatesToClaims([{}])).toEqual([])
@@ -265,13 +301,19 @@ describe('lastUpdateOffset', () => {
 })
 
 describe('amuletValue', () => {
-  const amulet = (initialAmount: string) => row('a1', { amount: { initialAmount } })
+  const amulet = (initialAmount: string): ActiveContract<AmuletPayload> => ({
+    contractId: 'a1',
+    templateId: '',
+    payload: { amount: { initialAmount } },
+    createdEventBlob: undefined,
+    synchronizerId: undefined,
+  })
 
   it('is the face amount, which is what a transfer credits an input at', () => {
     expect(amuletValue(amulet('100.0000000000'))).toBe('100.0000000000')
   })
 
-  it('reads a row it cannot decode as nothing, so a balance never blanks', () => {
-    expect(amuletValue(row('a1', {}))).toBe('0')
+  it('reads a contract it cannot decode as nothing, so a balance never blanks', () => {
+    expect(amuletValue({ ...amulet('0'), payload: {} })).toBe('0')
   })
 })

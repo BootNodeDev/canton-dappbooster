@@ -1,7 +1,14 @@
-// The two wallet-session calls the backend needs, injected as plain functions so LedgerBackend stays
+// The wallet-session calls the backend needs, injected as plain functions so LedgerBackend stays
 // constructible outside React while the functions themselves come from canton-connect's hooks.
 
-import type { LedgerApiParams, PrepareExecuteParams } from '@bootnodedev/canton-connect'
+import type {
+  DisclosedContract,
+  LedgerApiParams,
+  PrepareExecuteParams,
+  UseLedgerResult,
+} from '@bootnodedev/canton-connect'
+
+export type { DisclosedContract }
 
 // JSON Ledger API v2 command — always an ExerciseCommand in this dApp.
 export type LedgerCommand = {
@@ -13,15 +20,8 @@ export type LedgerCommand = {
   }
 }
 
-// Explicitly-disclosed contract (JSON Ledger API v2 disclosedContracts entry).
-export type DisclosedContract = {
-  contractId: string
-  createdEventBlob: string
-  synchronizerId?: string
-  templateId: string
-}
-
 export type WalletFns = {
+  activeContracts: UseLedgerResult['activeContracts']
   execute: (params: PrepareExecuteParams) => Promise<unknown>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
 }

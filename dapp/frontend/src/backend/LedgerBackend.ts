@@ -1,3 +1,4 @@
+import { type ActiveContract, toDisclosedContract } from '@bootnodedev/canton-connect'
 import {
   buildAcceptCommand,
   buildCancelCommand,
@@ -10,50 +11,33 @@ import {
 import type { Deployment } from '@/backend/config'
 import { type AppTransferContext, fetchTransferContext } from '@/backend/transferContext'
 import {
-  type AcsRow,
+  type AmuletPayload,
   amuletDso,
   amuletValue,
   type ClaimRecord,
   type CreateVestInput,
   claimChain,
   composeNote,
+  contractToClaim,
+  contractToGrant,
+  contractToPendingGrant,
   lastUpdateOffset,
   pledgedAmulets,
-  rowToClaim,
-  rowToGrant,
-  rowToPendingGrant,
   updatesToClaims,
   type VestingBackend,
+  type VestingPayload,
   type VestingView,
 } from '@/backend/VestingBackend'
 import type { DisclosedContract, LedgerCommand, WalletFns } from '@/backend/wallet'
 import { addAmounts, canonicalAmount, compareAmounts } from '@/utils/amount'
 
-const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[] =>
-  rows.map(mapper).filter((value): value is T => value !== undefined)
+const mapContracts = <Payload, T>(
+  contracts: ActiveContract<Payload>[],
+  mapper: (contract: ActiveContract<Payload>) => T | undefined,
+): T[] => contracts.map(mapper).filter((value): value is T => value !== undefined)
 
 const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
 const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
-
-const templateFilter = (
-  party: string,
-  templateId: string,
-  includeCreatedEventBlob = false,
-): Record<string, unknown> => ({
-  filtersByParty: {
-    [party]: {
-      cumulative: [
-        {
-          identifierFilter: { TemplateFilter: { value: { templateId, includeCreatedEventBlob } } },
-        },
-      ],
-    },
-  },
-})
-
-const CLAIM_HISTORY_LIMIT = 1000
-const STREAM_IDLE_MS = 1000
-const CLAIM_HISTORY_PAGES = 20
 
 const AMULET_STORE_KEY = 'vesting.amuletDisclosures'
 
@@ -66,16 +50,17 @@ const storedAmulets = (): DisclosedContract[] => {
   }
 }
 
-const cidOf = (row: AcsRow): string =>
-  row.contractEntry?.JsActiveContract?.createdEvent?.contractId ?? ''
+const CLAIM_HISTORY_LIMIT = 1000
+const STREAM_IDLE_MS = 1000
+const CLAIM_HISTORY_PAGES = 20
 
-const rowToDisclosed = (row: AcsRow): DisclosedContract | undefined => {
-  const { contractId, createdEventBlob, templateId } =
-    row.contractEntry?.JsActiveContract?.createdEvent ?? {}
-  return contractId === undefined || createdEventBlob === undefined || templateId === undefined
-    ? undefined
-    : { templateId, contractId, createdEventBlob }
-}
+const templateFilter = (party: string, templateId: string): Record<string, unknown> => ({
+  filtersByParty: {
+    [party]: {
+      cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
+    },
+  },
+})
 
 export class LedgerBackend implements VestingBackend {
   private readonly wallet: WalletFns
@@ -110,24 +95,6 @@ export class LedgerBackend implements VestingBackend {
     return result.offset
   }
 
-  private async readAcs(
-    party: string,
-    templateId: string,
-    offset: string | number,
-    includeCreatedEventBlob = false,
-  ): Promise<AcsRow[]> {
-    const rows = await this.wallet.ledgerApi({
-      requestMethod: 'post',
-      resource: '/v2/state/active-contracts',
-      body: {
-        filter: templateFilter(party, templateId, includeCreatedEventBlob),
-        activeAtOffset: offset,
-        verbose: true,
-      },
-    })
-    return Array.isArray(rows) ? rows : []
-  }
-
   private submit(
     actAs: string,
     command: LedgerCommand,
@@ -149,16 +116,24 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
-    const offset = await this.ledgerEnd()
-    const [pendingGrantRows, contractRows, claimRows] = await Promise.all([
-      this.readAcs(partyId, vesting('AmuletVestingProposal'), offset),
-      this.readAcs(partyId, vesting('AmuletVestingContract'), offset),
-      this.readAcs(partyId, vesting('AmuletVestedClaim'), offset),
+    const [pendingGrantContracts, grantContracts, claimContracts] = await Promise.all([
+      this.wallet.activeContracts<VestingPayload>({
+        templateId: vesting('AmuletVestingProposal'),
+        party: partyId,
+      }),
+      this.wallet.activeContracts<VestingPayload>({
+        templateId: vesting('AmuletVestingContract'),
+        party: partyId,
+      }),
+      this.wallet.activeContracts<VestingPayload>({
+        templateId: vesting('AmuletVestedClaim'),
+        party: partyId,
+      }),
     ])
     return {
-      pendingGrants: mapRows(pendingGrantRows, rowToPendingGrant),
-      grants: mapRows(contractRows, rowToGrant),
-      claims: mapRows(claimRows, rowToClaim),
+      pendingGrants: mapContracts(pendingGrantContracts, contractToPendingGrant),
+      grants: mapContracts(grantContracts, contractToGrant),
+      claims: mapContracts(claimContracts, contractToClaim),
     }
   }
 
@@ -176,14 +151,18 @@ export class LedgerBackend implements VestingBackend {
     localStorage.setItem(AMULET_STORE_KEY, JSON.stringify([...storedAmulets(), escrow]))
   }
 
-  private async freeAmulets(owner: string): Promise<{ free: AcsRow[]; held: AcsRow[] }> {
-    const offset = await this.ledgerEnd()
-    const [held, pendingRows] = await Promise.all([
-      this.readAcs(owner, AMULET, offset),
-      this.readAcs(owner, vesting('AmuletVestingProposal'), offset),
+  private async freeAmulets(
+    owner: string,
+  ): Promise<{ free: ActiveContract<AmuletPayload>[]; held: ActiveContract<AmuletPayload>[] }> {
+    const [held, pendingContracts] = await Promise.all([
+      this.wallet.activeContracts<AmuletPayload>({ templateId: AMULET, party: owner }),
+      this.wallet.activeContracts<VestingPayload>({
+        templateId: vesting('AmuletVestingProposal'),
+        party: owner,
+      }),
     ])
-    const pledged = new Set(pendingRows.flatMap(pledgedAmulets))
-    return { free: held.filter((row) => !pledged.has(cidOf(row))), held }
+    const pledged = new Set(pendingContracts.flatMap(pledgedAmulets))
+    return { free: held.filter((contract) => !pledged.has(contract.contractId)), held }
   }
 
   private async submitWithContext(
@@ -215,7 +194,7 @@ export class LedgerBackend implements VestingBackend {
       owner,
       buildSplitCommand(rulesTemplateId, ctx.amuletRules, {
         amount,
-        amuletCids: free.map(cidOf),
+        amuletCids: free.map((contract) => contract.contractId),
         dso,
         openMiningRound: ctx.openMiningRound,
         owner,
@@ -223,17 +202,21 @@ export class LedgerBackend implements VestingBackend {
       disclosed,
     )
 
-    const before = new Set(held.map(cidOf))
+    const before = new Set(held.map((contract) => contract.contractId))
     const wanted = canonicalAmount(amount)
-    const after = await this.readAcs(owner, AMULET, await this.ledgerEnd(), true)
+    const after = await this.wallet.activeContracts<AmuletPayload>({
+      templateId: AMULET,
+      party: owner,
+      includeCreatedEventBlob: true,
+    })
     const created = after.find(
-      (row) => !before.has(cidOf(row)) && canonicalAmount(amuletValue(row)) === wanted,
+      (contract) =>
+        !before.has(contract.contractId) && canonicalAmount(amuletValue(contract)) === wanted,
     )
-    const disclosure = created === undefined ? undefined : rowToDisclosed(created)
-    if (disclosure === undefined) {
+    if (created === undefined) {
       throw new Error('the split produced no Amulet of the grant amount')
     }
-    return disclosure
+    return toDisclosedContract(created)
   }
 
   private readUpdates(
@@ -278,10 +261,14 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
-    const offset = await this.ledgerEnd()
-    const rows = await this.readAcs(args.receiver, vesting('AmuletVestingProposal'), offset)
+    const contracts = await this.wallet.activeContracts<VestingPayload>({
+      templateId: vesting('AmuletVestingProposal'),
+      party: args.receiver,
+    })
     const wanted = new Set(
-      rows.filter((row) => cidOf(row) === args.pendingCid).flatMap(pledgedAmulets),
+      contracts
+        .filter((contract) => contract.contractId === args.pendingCid)
+        .flatMap(pledgedAmulets),
     )
     const amulets = storedAmulets().filter((amulet) => wanted.has(amulet.contractId))
     if (wanted.size === 0 || amulets.length !== wanted.size) {

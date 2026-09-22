@@ -23,7 +23,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const [deployment, setDeployment] = useState<Deployment | undefined>(undefined)
   const [configError, setConfigError] = useState<string | undefined>(undefined)
   const { execute } = useExecute()
-  const { ledgerApi } = useLedger()
+  const { activeContracts, ledgerApi } = useLedger()
 
   const { account } = useAccount()
   const hasParty = account !== undefined
@@ -45,7 +45,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     }
     let cancelled = false
 
-    void loadBackendConfig(ledgerApi).then(
+    void loadBackendConfig(ledgerApi, activeContracts).then(
       (config) => {
         if (!cancelled) {
           setDeployment(config)
@@ -62,14 +62,14 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     return () => {
       cancelled = true
     }
-  }, [hasParty, ledgerApi])
+  }, [activeContracts, hasParty, ledgerApi])
 
   const backend = useMemo(
     () =>
       deployment === undefined || !hasParty
         ? undefined
-        : new LedgerBackend(deployment, { execute, ledgerApi }),
-    [deployment, execute, hasParty, ledgerApi],
+        : new LedgerBackend(deployment, { activeContracts, execute, ledgerApi }),
+    [activeContracts, deployment, execute, hasParty, ledgerApi],
   )
 
   const value = useMemo<BackendState>(
