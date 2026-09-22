@@ -40,7 +40,34 @@ export interface ActiveContractsParams {
   includeCreatedEventBlob?: boolean
 }
 
+/**
+ * A contract read by interface: `view` is the interface view, the one shape all implementors
+ * share.
+ *
+ * @category Types
+ */
+export interface InterfaceContract<View = unknown> {
+  contractId: string
+  templateId: string
+  view: View
+}
+
+/**
+ * One interface's contracts, as the connected party unless `party` says otherwise.
+ *
+ * @example
+ * await activeContractsByInterface({ interfaceId: '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding' })
+ *
+ * @category Types
+ */
+export interface ActiveContractsByInterfaceParams {
+  interfaceId: string
+  party?: string
+}
+
 type LedgerOffset = number | string
+
+type InterfaceView = { viewStatus?: { code?: number }; viewValue?: unknown }
 
 type AcsRow = {
   contractEntry?: {
@@ -50,6 +77,7 @@ type AcsRow = {
         templateId?: string
         createArgument?: unknown
         createdEventBlob?: string
+        interfaceViews?: InterfaceView[]
       }
       synchronizerId?: string
     }
@@ -69,10 +97,10 @@ export const offsetOf = (ledgerEnd: unknown): LedgerOffset => {
   return offset
 }
 
-export const activeContractsRequest = (
+const acsRequest = (
   party: string,
   activeAtOffset: LedgerOffset,
-  { templateId, includeCreatedEventBlob = false }: ActiveContractsParams,
+  identifierFilter: Record<string, unknown>,
 ): LedgerApiParams => ({
   requestMethod: 'post',
   resource: '/v2/state/active-contracts',
@@ -80,20 +108,28 @@ export const activeContractsRequest = (
     activeAtOffset,
     eventFormat: {
       verbose: true,
-      filtersByParty: {
-        [party]: {
-          cumulative: [
-            {
-              identifierFilter: {
-                TemplateFilter: { value: { templateId, includeCreatedEventBlob } },
-              },
-            },
-          ],
-        },
-      },
+      filtersByParty: { [party]: { cumulative: [{ identifierFilter }] } },
     },
   },
 })
+
+export const activeContractsRequest = (
+  party: string,
+  activeAtOffset: LedgerOffset,
+  { templateId, includeCreatedEventBlob = false }: ActiveContractsParams,
+): LedgerApiParams =>
+  acsRequest(party, activeAtOffset, {
+    TemplateFilter: { value: { templateId, includeCreatedEventBlob } },
+  })
+
+export const activeContractsByInterfaceRequest = (
+  party: string,
+  activeAtOffset: LedgerOffset,
+  { interfaceId }: ActiveContractsByInterfaceParams,
+): LedgerApiParams =>
+  acsRequest(party, activeAtOffset, {
+    InterfaceFilter: { value: { interfaceId, includeInterfaceView: true } },
+  })
 
 const decodeRow = <Payload>(row: AcsRow): ActiveContract<Payload> | undefined => {
   const active = row.contractEntry?.JsActiveContract
@@ -110,11 +146,33 @@ const decodeRow = <Payload>(row: AcsRow): ActiveContract<Payload> | undefined =>
   }
 }
 
+// A non-zero viewStatus means the ledger could not compute the view.
+const computedView = (view: InterfaceView): boolean =>
+  (view.viewStatus?.code ?? 0) === 0 && view.viewValue !== undefined
+
+const decodeInterfaceRow = <View>(row: AcsRow): InterfaceContract<View> | undefined => {
+  const event = row.contractEntry?.JsActiveContract?.createdEvent
+  const view = event?.interfaceViews?.find(computedView)
+  if (event?.contractId === undefined || event.templateId === undefined || view === undefined) {
+    return undefined
+  }
+  return {
+    contractId: event.contractId,
+    templateId: event.templateId,
+    view: view.viewValue as View,
+  }
+}
+
 const isPresent = <T>(value: T | undefined): value is T => value !== undefined
 
 // Incomplete (un)assignments have no JsActiveContract and are skipped.
 export const decodeActiveContracts = <Payload>(rows: unknown): ActiveContract<Payload>[] =>
   Array.isArray(rows) ? rows.map((row: AcsRow) => decodeRow<Payload>(row)).filter(isPresent) : []
+
+export const decodeInterfaceContracts = <View>(rows: unknown): InterfaceContract<View>[] =>
+  Array.isArray(rows)
+    ? rows.map((row: AcsRow) => decodeInterfaceRow<View>(row)).filter(isPresent)
+    : []
 
 /**
  * Turns a contract read with its blob into the disclosure a command carries.

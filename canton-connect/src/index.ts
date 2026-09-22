@@ -10,8 +10,10 @@
 
 export type {
   ActiveContract,
+  ActiveContractsByInterfaceParams,
   ActiveContractsParams,
   DisclosedContract,
+  InterfaceContract,
 } from '#src/activeContracts'
 export { toDisclosedContract } from '#src/activeContracts'
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'

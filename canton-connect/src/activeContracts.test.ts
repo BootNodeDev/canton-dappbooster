@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activeContractsByInterfaceRequest,
   activeContractsRequest,
   decodeActiveContracts,
+  decodeInterfaceContracts,
   offsetOf,
   toDisclosedContract,
 } from '#src/activeContracts'
@@ -80,6 +82,59 @@ describe('activeContractsRequest', () => {
         },
       },
     })
+  })
+})
+
+describe('activeContractsByInterfaceRequest', () => {
+  it('filters the party by interface and asks for the view', () => {
+    const request = activeContractsByInterfaceRequest('alice::1220', 7, {
+      interfaceId: '#token:Holding',
+    })
+
+    expect(request.body).toMatchObject({
+      activeAtOffset: 7,
+      eventFormat: {
+        filtersByParty: {
+          'alice::1220': {
+            cumulative: [
+              {
+                identifierFilter: {
+                  InterfaceFilter: {
+                    value: { interfaceId: '#token:Holding', includeInterfaceView: true },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+  })
+})
+
+describe('decodeInterfaceContracts', () => {
+  const holding = (contractId: string, ...interfaceViews: unknown[]) =>
+    row({ contractId, templateId: 'pkg:Amulet', createArgument: {}, interfaceViews })
+
+  it('hands back the computed view of each contract', () => {
+    const rows = [holding('00aa', { viewStatus: { code: 0 }, viewValue: { amount: '1' } })]
+
+    expect(decodeInterfaceContracts<{ amount: string }>(rows)).toEqual([
+      { contractId: '00aa', templateId: 'pkg:Amulet', view: { amount: '1' } },
+    ])
+  })
+
+  it('drops a contract whose view the ledger could not compute', () => {
+    const rows = [
+      holding('00aa', { viewStatus: { code: 3, message: 'boom' } }),
+      holding('00bb', { viewValue: { amount: '2' } }),
+    ]
+
+    expect(decodeInterfaceContracts(rows).map((one) => one.contractId)).toEqual(['00bb'])
+  })
+
+  it('drops a contract that carries no view at all', () => {
+    expect(decodeInterfaceContracts([holding('00aa'), grant])).toEqual([])
   })
 })
 

@@ -2,9 +2,13 @@ import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
 import {
   type ActiveContract,
+  type ActiveContractsByInterfaceParams,
   type ActiveContractsParams,
+  activeContractsByInterfaceRequest,
   activeContractsRequest,
   decodeActiveContracts,
+  decodeInterfaceContracts,
+  type InterfaceContract,
   LEDGER_END_REQUEST,
   offsetOf,
 } from '#src/activeContracts'
@@ -14,6 +18,10 @@ import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWallet
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
  */
 export type { LedgerApiParams }
+
+type LedgerOffset = number | string
+
+type AcsRequest = (party: string, offset: LedgerOffset) => LedgerApiParams
 
 /**
  * Return shape of {@link useLedger}. Every call throws with no session; `isReady` says so
@@ -25,6 +33,9 @@ export interface UseLedgerResult {
   activeContracts: <Payload = unknown>(
     params: ActiveContractsParams,
   ) => Promise<ActiveContract<Payload>[]>
+  activeContractsByInterface: <View = unknown>(
+    params: ActiveContractsByInterfaceParams,
+  ) => Promise<InterfaceContract<View>[]>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
@@ -37,10 +48,13 @@ export interface UseLedgerResult {
  * party.
  *
  * @example
- * const { activeContracts, ledgerApi } = useLedger()
+ * const { activeContracts, activeContractsByInterface } = useLedger()
  * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
  * grants[0]?.payload.receiver
- * await ledgerApi({ requestMethod: 'get', resource: '/v2/users/{user-id}/rights', path: { 'user-id': 'alice' } })
+ * const holdings = await activeContractsByInterface<{ amount: string }>({
+ *   interfaceId: '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding',
+ * })
+ * holdings[0]?.view.amount
  *
  * @category Hooks
  */
@@ -57,21 +71,45 @@ export const useLedger = (): UseLedgerResult => {
     [isLocked, sdk, status],
   )
 
-  const activeContracts = useCallback(
-    async <Payload = unknown>(
-      params: ActiveContractsParams,
-    ): Promise<ActiveContract<Payload>[]> => {
+  const readAcs = useCallback(
+    async (party: string | undefined, request: AcsRequest): Promise<unknown> => {
       assertUsable(status, isLocked)
-      const party = params.party ?? partyId
-      assertPartyId(party)
+      const readAs = party ?? partyId
+      assertPartyId(readAs)
 
       const offset = offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
-      const rows = await sdk.ledgerApi(activeContractsRequest(party, offset, params))
 
-      return decodeActiveContracts<Payload>(rows)
+      return await sdk.ledgerApi(request(readAs, offset))
     },
     [isLocked, partyId, sdk, status],
   )
 
-  return { activeContracts, ledgerApi, isReady: status === 'connected' && !isLocked }
+  const activeContracts = useCallback(
+    async <Payload = unknown>(params: ActiveContractsParams): Promise<ActiveContract<Payload>[]> =>
+      decodeActiveContracts<Payload>(
+        await readAcs(params.party, (party, offset) =>
+          activeContractsRequest(party, offset, params),
+        ),
+      ),
+    [readAcs],
+  )
+
+  const activeContractsByInterface = useCallback(
+    async <View = unknown>(
+      params: ActiveContractsByInterfaceParams,
+    ): Promise<InterfaceContract<View>[]> =>
+      decodeInterfaceContracts<View>(
+        await readAcs(params.party, (party, offset) =>
+          activeContractsByInterfaceRequest(party, offset, params),
+        ),
+      ),
+    [readAcs],
+  )
+
+  return {
+    activeContracts,
+    activeContractsByInterface,
+    ledgerApi,
+    isReady: status === 'connected' && !isLocked,
+  }
 }

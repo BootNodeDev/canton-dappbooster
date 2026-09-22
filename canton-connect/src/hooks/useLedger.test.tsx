@@ -118,6 +118,46 @@ describe('useLedger', () => {
     )
   })
 
+  it('reads an interface as the connected party and hands the views back', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce([
+        {
+          contractEntry: {
+            JsActiveContract: {
+              createdEvent: {
+                contractId: '00aa',
+                templateId: 'pkg:Amulet',
+                interfaceViews: [{ viewStatus: { code: 0 }, viewValue: { amount: '3' } }],
+              },
+            },
+          },
+        },
+      ])
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(
+        result.current.activeContractsByInterface<{ amount: string }>({
+          interfaceId: '#token:Holding',
+        }),
+      ).resolves.toEqual([{ contractId: '00aa', templateId: 'pkg:Amulet', view: { amount: '3' } }])
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        body: expect.objectContaining({
+          activeAtOffset: 9,
+          eventFormat: expect.objectContaining({
+            filtersByParty: expect.objectContaining({ 'alice::1220ab': expect.anything() }),
+          }),
+        }),
+      }),
+    )
+  })
+
   it('refuses activeContracts when the session reports no party', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
     const { result } = renderLedger(ledgerApi, false)

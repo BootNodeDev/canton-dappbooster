@@ -36,4 +36,5 @@ declare const commands: import('@canton-network/dapp-sdk').PrepareExecuteParams[
 /* Hook results a utility example composes with */
 
 declare const activeContracts: import('#src/hooks/useLedger').UseLedgerResult['activeContracts']
+declare const activeContractsByInterface: import('#src/hooks/useLedger').UseLedgerResult['activeContractsByInterface']
 declare const execute: import('#src/hooks/useExecute').UseExecuteResult['execute']

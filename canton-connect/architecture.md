@@ -169,6 +169,13 @@ payload stays whatever the caller names it, since the package knows no Daml mode
 such a contract into the disclosure a command carries. Entries that are not active contracts, the
 incomplete (un)assignments, are dropped.
 
+`activeContractsByInterface` is the same read with an `InterfaceFilter`: every contract
+implementing one interface, whatever its template, with the interface view as `view` in place of
+the create argument, since that view is the one shape all implementors share. A contract whose
+view the ledger reports it could not compute (a non-zero `viewStatus`) is dropped rather than
+handed back without a value. A token list is the case: one `Holding` read covers every standard
+token.
+
 ### The party type
 
 A party under the hosting participant's namespace is local, any other is external. A dApp cares
