@@ -112,7 +112,7 @@ the close, so do not gate on that.
 `signMessage`, `execute`, `activeContracts` and `ledgerApi` refuse with no session, and refuse again
 while the wallet reports it is not authenticated; that is `isLocked`, and it happens after a
 successful connect. `signMessage`, `execute` and `activeContracts` also refuse with no party, which
-`ledgerApi` does not need. The
+`ledgerApi` does not need and `activeContracts` waives when given a `party`. The
 reference gateway also refuses `signMessage` for a local party; `usePartyType().readPartyType()`
 tells local from external when you ask. The SDK's status carries one `isConnected` flag, so a lock
 and a wallet-side disconnect look the same

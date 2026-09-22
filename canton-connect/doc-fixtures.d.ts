@@ -10,6 +10,7 @@ type FixtureElement = import('react').ReactElement
 /* Session values a hook hands back */
 
 declare const partyId: string
+declare const operator: string
 declare const PARTY: string
 declare const account: import('#src/types').Account
 declare const error: Error | undefined

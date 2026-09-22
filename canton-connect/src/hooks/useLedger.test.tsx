@@ -90,6 +90,34 @@ describe('useLedger', () => {
     )
   })
 
+  it('reads as another party when told to, session party or not', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce([])
+    const { result } = renderLedger(ledgerApi, false)
+
+    await act(async () => {
+      await expect(
+        result.current.activeContracts({
+          templateId: '#app:Main:Factory',
+          party: 'operator::1220',
+        }),
+      ).resolves.toEqual([])
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        body: expect.objectContaining({
+          eventFormat: expect.objectContaining({
+            filtersByParty: expect.objectContaining({ 'operator::1220': expect.anything() }),
+          }),
+        }),
+      }),
+    )
+  })
+
   it('refuses activeContracts when the session reports no party', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
     const { result } = renderLedger(ledgerApi, false)

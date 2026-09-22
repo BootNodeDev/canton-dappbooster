@@ -161,7 +161,8 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 
 `activeContracts` is the one read the package shapes itself, because every dApp repeats it: a
 `GET /v2/state/ledger-end`, then a `POST /v2/state/active-contracts` at that offset, filtered to
-the connected party and one template. The envelope
+one template and one party, the connected one unless `party` names another the session's user may
+read as (a dApp reading its operator's factory does). The envelope
 (`contractEntry.JsActiveContract.createdEvent`) is unwrapped into `ActiveContract<Payload>`; the
 payload stays whatever the caller names it, since the package knows no Daml model. The
 `createdEventBlob` is asked for only on `includeCreatedEventBlob`, and `toDisclosedContract` turns

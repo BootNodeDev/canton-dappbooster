@@ -62,10 +62,11 @@ export const useLedger = (): UseLedgerResult => {
       params: ActiveContractsParams,
     ): Promise<ActiveContract<Payload>[]> => {
       assertUsable(status, isLocked)
-      assertPartyId(partyId)
+      const party = params.party ?? partyId
+      assertPartyId(party)
 
       const offset = offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
-      const rows = await sdk.ledgerApi(activeContractsRequest(partyId, offset, params))
+      const rows = await sdk.ledgerApi(activeContractsRequest(party, offset, params))
 
       return decodeActiveContracts<Payload>(rows)
     },

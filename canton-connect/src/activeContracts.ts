@@ -27,12 +27,13 @@ export interface ActiveContract<Payload = unknown> {
  * `includeCreatedEventBlob` only serves a disclosure.
  *
  * @example
- * await activeContracts({ templateId: '#my-app:Main:Factory', includeCreatedEventBlob: true })
+ * await activeContracts({ templateId: '#my-app:Main:Factory', party: operator, includeCreatedEventBlob: true })
  *
  * @category Types
  */
 export interface ActiveContractsParams {
   templateId: string
+  party?: string
   includeCreatedEventBlob?: boolean
 }
 
