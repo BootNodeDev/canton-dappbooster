@@ -189,7 +189,11 @@ type UpdateEntry = {
       value?: {
         effectiveAt?: string
         events?: {
-          CreatedEvent?: { contractId?: string; createArgument?: Record<string, unknown> }
+          CreatedEvent?: {
+            contractId?: string
+            createArgument?: Record<string, unknown>
+            templateId?: string
+          }
           ExercisedEvent?: {
             choice?: string
             choiceArgument?: Record<string, unknown>
@@ -220,6 +224,7 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     const replaces = claim?.contractId
     if (
       created?.contractId === undefined ||
+      created.templateId === undefined ||
       transaction?.effectiveAt === undefined ||
       amount === undefined ||
       replaces === undefined
@@ -228,7 +233,7 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
     }
     const grant = contractToGrant({
       contractId: created.contractId,
-      templateId: '',
+      templateId: created.templateId,
       payload: (created.createArgument ?? {}) as VestingPayload,
       createdEventBlob: undefined,
       synchronizerId: undefined,

@@ -195,6 +195,7 @@ const claimUpdate = (
           {
             CreatedEvent: {
               contractId: successor,
+              templateId: 'pkg:AmuletVesting:AmuletVestingContract',
               createArgument: {
                 provider: 'OP',
                 creator: 'funder',
