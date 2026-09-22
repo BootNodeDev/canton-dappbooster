@@ -82,7 +82,7 @@ function Dapp() {
   const { isLocked } = useWalletStatus()
   const { signMessage } = useSignMessage()
   const { execute } = useExecute()
-  const { ledgerApi } = useLedger()
+  const { activeContracts, ledgerApi } = useLedger()
 
   if (!isConnected) {
     return (
@@ -99,7 +99,8 @@ function Dapp() {
     return <p>Wallet locked. Unlock it to continue.</p>
   }
 
-  // ... your dApp: account.partyId, signMessage(text), execute(params), ledgerApi(params)
+  // ... your dApp: account.partyId, signMessage(text), execute(params),
+  // activeContracts<Payload>({ templateId }), ledgerApi(params)
 }
 ```
 
@@ -108,9 +109,10 @@ is what chooses the wallet. Dismissing it rejects with `ConnectCancelledError`, 
 `instanceof`, never by message. Whether `error` records it as well depends on which side saw
 the close, so do not gate on that.
 
-`signMessage`, `execute` and `ledgerApi` refuse with no session, and refuse again while the wallet
-reports it is not authenticated; that is `isLocked`, and it happens after a successful connect.
-`signMessage` and `execute` also refuse with no party, which `ledgerApi` does not need. The
+`signMessage`, `execute`, `activeContracts` and `ledgerApi` refuse with no session, and refuse again
+while the wallet reports it is not authenticated; that is `isLocked`, and it happens after a
+successful connect. `signMessage`, `execute` and `activeContracts` also refuse with no party, which
+`ledgerApi` does not need. The
 reference gateway also refuses `signMessage` for a local party; `usePartyType().readPartyType()`
 tells local from external when you ask. The SDK's status carries one `isConnected` flag, so a lock
 and a wallet-side disconnect look the same

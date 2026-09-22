@@ -16,9 +16,8 @@ const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecut
   params.actAs === undefined ? { ...params, actAs: [partyId] } : params
 
 /**
- * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
- * at submission, and throws when nothing is connected or no party is reported; `lastTx` follows
- * the wallet's own `txChanged` pushes, so it moves even while `execute` is still pending.
+ * Return shape of {@link useExecute}. `execute` resolves once executed, with the `updateId`
+ * `useLedger().transaction` reads back; `lastTx` follows the wallet's `txChanged` pushes.
  *
  * @category Hooks
  */
@@ -31,12 +30,10 @@ export interface UseExecuteResult {
 }
 
 /**
- * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
- * event. `actAs` defaults to the party `useAccount` reports, so a submit acts as the party the UI
- * shows rather than the wallet's own primary.
+ * Submits ledger commands as the party `useAccount` reports and tracks them in `lastTx`.
  *
- * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
- * connected or no party is reported. A command that fails throws too, and lands in `error`.
+ * @throws with no {@link CantonConnectProvider} above it, with no session or party, and when the
+ * command fails, which also lands in `error`.
  *
  * @example
  * const { execute, lastTx } = useExecute()

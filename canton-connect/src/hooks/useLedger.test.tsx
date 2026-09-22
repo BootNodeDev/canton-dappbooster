@@ -11,18 +11,24 @@ import type { DappSdkMethods } from '#src/types'
 const account = testAccount('alice::1220ab')
 const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties' }
 
+const renderLedger = (ledgerApi: DappSdkMethods['ledgerApi'], withAccount = true) =>
+  renderHook(() => useLedger(), {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <FakeSessionProvider
+        account={withAccount ? account : undefined}
+        sdk={{ ledgerApi }}
+        status="connected"
+      >
+        {children}
+      </FakeSessionProvider>
+    ),
+  })
+
 describe('useLedger', () => {
   it('passes the request to the sdk and hands its answer back untouched', async () => {
     const answer = { parties: [] }
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValue(answer)
-    const sdk = { ledgerApi }
-    const { result } = renderHook(() => useLedger(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <FakeSessionProvider account={account} sdk={sdk} status="connected">
-          {children}
-        </FakeSessionProvider>
-      ),
-    })
+    const { result } = renderLedger(ledgerApi)
 
     expect(result.current.isReady).toBe(true)
 
@@ -31,5 +37,66 @@ describe('useLedger', () => {
     })
 
     expect(ledgerApi).toHaveBeenCalledWith(request)
+  })
+
+  it("reads the ledger end, then the connected party's contracts at that offset", async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce([
+        {
+          contractEntry: {
+            JsActiveContract: {
+              createdEvent: {
+                contractId: '00aa',
+                templateId: 'pkg:Main:Grant',
+                createArgument: { receiver: 'bob::1220' },
+              },
+            },
+          },
+        },
+      ])
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(
+        result.current.activeContracts<{ receiver: string }>({ templateId: '#app:Main:Grant' }),
+      ).resolves.toEqual([
+        {
+          contractId: '00aa',
+          templateId: 'pkg:Main:Grant',
+          payload: { receiver: 'bob::1220' },
+          createdEventBlob: undefined,
+          synchronizerId: undefined,
+        },
+      ])
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(1, {
+      requestMethod: 'get',
+      resource: '/v2/state/ledger-end',
+    })
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        resource: '/v2/state/active-contracts',
+        body: expect.objectContaining({
+          activeAtOffset: 9,
+          eventFormat: expect.objectContaining({
+            filtersByParty: expect.objectContaining({ 'alice::1220ab': expect.anything() }),
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('refuses activeContracts when the session reports no party', async () => {
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
+    const { result } = renderLedger(ledgerApi, false)
+
+    await expect(result.current.activeContracts({ templateId: '#app:Main:Grant' })).rejects.toThrow(
+      'no primary account',
+    )
+    expect(ledgerApi).not.toHaveBeenCalled()
   })
 })

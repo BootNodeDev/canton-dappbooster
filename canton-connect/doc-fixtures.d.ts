@@ -31,3 +31,8 @@ declare const render: (ui: FixtureNode) => void
 /* Ledger command payloads, which are the app's rather than this package's */
 
 declare const commands: import('@canton-network/dapp-sdk').PrepareExecuteParams['commands']
+
+/* Hook results a utility example composes with */
+
+declare const activeContracts: import('#src/hooks/useLedger').UseLedgerResult['activeContracts']
+declare const execute: import('#src/hooks/useExecute').UseExecuteResult['execute']

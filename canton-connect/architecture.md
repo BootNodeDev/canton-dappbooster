@@ -21,9 +21,10 @@ src/
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
+  activeContracts.ts        active-contract reads: request builders, the page decoder, disclosure
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -157,6 +158,15 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 ```
 
 `query` holds query parameters, `body` the request body; neither goes into `resource`.
+
+`activeContracts` is the one read the package shapes itself, because every dApp repeats it: a
+`GET /v2/state/ledger-end`, then a `POST /v2/state/active-contracts` at that offset, filtered to
+the connected party and one template. The envelope
+(`contractEntry.JsActiveContract.createdEvent`) is unwrapped into `ActiveContract<Payload>`; the
+payload stays whatever the caller names it, since the package knows no Daml model. The
+`createdEventBlob` is asked for only on `includeCreatedEventBlob`, and `toDisclosedContract` turns
+such a contract into the disclosure a command carries. Entries that are not active contracts, the
+incomplete (un)assignments, are dropped.
 
 ### The party type
 

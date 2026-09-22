@@ -1,6 +1,14 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import {
+  type ActiveContract,
+  type ActiveContractsParams,
+  activeContractsRequest,
+  decodeActiveContracts,
+  LEDGER_END_REQUEST,
+  offsetOf,
+} from '#src/activeContracts'
+import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -8,36 +16,37 @@ import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 export type { LedgerApiParams }
 
 /**
- * Return shape of {@link useLedger}. `ledgerApi` throws when nothing is connected, which `isReady`
- * is there to check first.
+ * Return shape of {@link useLedger}. Every call throws with no session; `isReady` says so
+ * first.
  *
  * @category Hooks
  */
 export interface UseLedgerResult {
+  activeContracts: <Payload = unknown>(
+    params: ActiveContractsParams,
+  ) => Promise<ActiveContract<Payload>[]>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
 
 /**
- * Escape hatch for ledger reads `useExecute` and `useSignMessage` do not cover: the participant's
- * JSON API, passed through untyped.
+ * Ledger reads over the wallet session, envelope unwrapped; `ledgerApi` is the raw call for
+ * anything else.
  *
- * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
- * is connected, which `isReady` is there to check first.
+ * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
+ * party.
  *
  * @example
- * const { ledgerApi } = useLedger()
- * await ledgerApi({
- *   requestMethod: 'get',
- *   resource: '/v2/users/{user-id}/rights',
- *   path: { 'user-id': 'alice' },
- * })
+ * const { activeContracts, ledgerApi } = useLedger()
+ * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
+ * grants[0]?.payload.receiver
+ * await ledgerApi({ requestMethod: 'get', resource: '/v2/users/{user-id}/rights', path: { 'user-id': 'alice' } })
  *
  * @category Hooks
  */
 export const useLedger = (): UseLedgerResult => {
   // Guards without `call`: a stateless query needs no pending/error renders around it.
-  const { sdk, status, isLocked } = useWalletCall()
+  const { sdk, partyId, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {
@@ -48,5 +57,20 @@ export const useLedger = (): UseLedgerResult => {
     [isLocked, sdk, status],
   )
 
-  return { ledgerApi, isReady: status === 'connected' && !isLocked }
+  const activeContracts = useCallback(
+    async <Payload = unknown>(
+      params: ActiveContractsParams,
+    ): Promise<ActiveContract<Payload>[]> => {
+      assertUsable(status, isLocked)
+      assertPartyId(partyId)
+
+      const offset = offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
+      const rows = await sdk.ledgerApi(activeContractsRequest(partyId, offset, params))
+
+      return decodeActiveContracts<Payload>(rows)
+    },
+    [isLocked, partyId, sdk, status],
+  )
+
+  return { activeContracts, ledgerApi, isReady: status === 'connected' && !isLocked }
 }

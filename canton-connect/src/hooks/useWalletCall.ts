@@ -26,7 +26,7 @@ export const assertUsable = (status: ConnectionStatus, isLocked: boolean): void 
 }
 
 /** Throws when the session reports no account, which a connected one can. */
-function assertPartyId(partyId: string | undefined): asserts partyId is string {
+export function assertPartyId(partyId: string | undefined): asserts partyId is string {
   if (partyId === undefined) {
     throw new Error('wallet reports no primary account - select or add one in the wallet')
   }
@@ -43,6 +43,7 @@ export interface UseWalletCallResult {
   reset: () => void
   connection: ConnectionSubscription
   sdk: DappSdkMethods
+  partyId: string | undefined
   status: ConnectionStatus
   isLocked: boolean
 }
@@ -92,6 +93,7 @@ export const useWalletCall = (): UseWalletCallResult => {
     reset,
     connection,
     sdk,
+    partyId,
     status,
     isLocked,
   }
