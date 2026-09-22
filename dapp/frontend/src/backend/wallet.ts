@@ -3,8 +3,7 @@
 
 import type {
   DisclosedContract,
-  LedgerApiParams,
-  PrepareExecuteParams,
+  UseExecuteResult,
   UseLedgerResult,
 } from '@bootnodedev/canton-connect'
 
@@ -22,6 +21,7 @@ export type LedgerCommand = {
 
 export type WalletFns = {
   activeContracts: UseLedgerResult['activeContracts']
-  execute: (params: PrepareExecuteParams) => Promise<unknown>
-  ledgerApi: (params: LedgerApiParams) => Promise<unknown>
+  execute: UseExecuteResult['execute']
+  ledgerEnd: UseLedgerResult['ledgerEnd']
+  transactions: UseLedgerResult['transactions']
 }

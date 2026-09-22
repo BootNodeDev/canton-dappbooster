@@ -1,7 +1,12 @@
 // The backend seam: the UI depends only on this interface and the domain types, never on DAML or
 // transport details. The mappers below turn active contracts into those domain types.
 
-import type { ActiveContract } from '@bootnodedev/canton-connect'
+import type {
+  ActiveContract,
+  CreatedLedgerEvent,
+  ExercisedLedgerEvent,
+  Transaction,
+} from '@bootnodedev/canton-connect'
 import { decodeSchedule } from '@/backend/commands'
 import type { Grant, PartyId, PendingGrant, VestedClaim } from '@/store/types'
 import { isAmount } from '@/utils/amount'
@@ -181,63 +186,22 @@ export const contractToGrant = (contract: ActiveContract<VestingPayload>): Grant
   }
 }
 
-// A ledger-effects transaction, as `/v2/updates` returns it. Only the two events a claim produces
-// are read: the exercise carries the amount, the create carries which grant it left behind.
-type UpdateEntry = {
-  update?: {
-    Transaction?: {
-      value?: {
-        effectiveAt?: string
-        events?: {
-          CreatedEvent?: {
-            contractId?: string
-            createArgument?: Record<string, unknown>
-            templateId?: string
-          }
-          ExercisedEvent?: {
-            choice?: string
-            choiceArgument?: Record<string, unknown>
-            contractId?: string
-          }
-        }[]
-        offset?: number
-      }
-    }
-  }
-}
-
-// Where a page of updates ended, which is where the next one resumes.
-export const lastUpdateOffset = (updates: unknown): number | undefined => {
-  const entries = Array.isArray(updates) ? (updates as UpdateEntry[]) : []
-  return entries.at(-1)?.update?.Transaction?.value?.offset
-}
-
-export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
-  (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
-    const transaction = entry.update?.Transaction?.value
-    const events = transaction?.events ?? []
-    const claim = events.find(
-      (event) => event.ExercisedEvent?.choice === 'AmuletVestingContract_Withdraw',
-    )?.ExercisedEvent
-    const created = events.find((event) => event.CreatedEvent !== undefined)?.CreatedEvent
-    const amount = claim?.choiceArgument?.withdrawAmount
+// A withdraw exercise carries the amount; the create beside it is the successor grant.
+export const updatesToClaims = (transactions: Transaction[]): ClaimRecord[] =>
+  transactions.flatMap((transaction) => {
+    const claim = transaction.events.find(
+      (event): event is ExercisedLedgerEvent =>
+        event.kind === 'exercised' && event.choice === 'AmuletVestingContract_Withdraw',
+    )
+    const created = transaction.events.find(
+      (event): event is CreatedLedgerEvent => event.kind === 'created',
+    )
+    const amount = (claim?.argument as { withdrawAmount?: unknown } | undefined)?.withdrawAmount
     const replaces = claim?.contractId
-    if (
-      created?.contractId === undefined ||
-      created.templateId === undefined ||
-      transaction?.effectiveAt === undefined ||
-      amount === undefined ||
-      replaces === undefined
-    ) {
+    if (created === undefined || amount === undefined || replaces === undefined) {
       return []
     }
-    const grant = contractToGrant({
-      contractId: created.contractId,
-      templateId: created.templateId,
-      payload: (created.createArgument ?? {}) as VestingPayload,
-      createdEventBlob: undefined,
-      synchronizerId: undefined,
-    })
+    const grant = contractToGrant(created.contract as ActiveContract<VestingPayload>)
     return grant === undefined
       ? []
       : [

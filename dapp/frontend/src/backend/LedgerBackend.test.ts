@@ -1,4 +1,10 @@
-import type { ActiveContract, ActiveContractsParams } from '@bootnodedev/canton-connect'
+import type {
+  ActiveContract,
+  ActiveContractsParams,
+  PrepareExecuteAndWaitResult,
+  Transaction,
+  TransactionsParams,
+} from '@bootnodedev/canton-connect'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { encodeSchedule, TAP_AMOUNT } from '@/backend/commands'
 import type { Deployment } from '@/backend/config'
@@ -124,21 +130,38 @@ const settle = (
 const onSync = <T>(contracts: T[]): (T & { synchronizerId: string })[] =>
   contracts.map((one) => ({ ...one, synchronizerId: 'sync::1' }))
 
+const executedResult: PrepareExecuteAndWaitResult = {
+  tx: {
+    status: 'executed',
+    commandId: 'cmd-1',
+    payload: { updateId: 'upd-1', completionOffset: 0 },
+  },
+}
+
 const harness = (
   options: {
     acs?: Record<string, ActiveContract[]>
     declines?: boolean
     deployment?: Deployment
+    transactionPages?: Transaction[][]
   } = {},
-): { backend: LedgerBackend; submissions: Submission[]; acsCalls: ActiveContractsParams[] } => {
+): {
+  backend: LedgerBackend
+  submissions: Submission[]
+  acsCalls: ActiveContractsParams[]
+  transactionCalls: TransactionsParams[]
+} => {
   const {
     acs = { [AMULET]: [amuletContract('am1')] },
     declines = false,
     deployment: config = deployment,
+    transactionPages = [],
   } = options
   const submissions: Submission[] = []
   const acsCalls: ActiveContractsParams[] = []
+  const transactionCalls: TransactionsParams[] = []
   let settled = 0
+  let page = 0
   const wallet: WalletFns = {
     execute: async (params) => {
       if (declines) {
@@ -147,17 +170,21 @@ const harness = (
       const submission = params as Submission
       submissions.push(submission)
       settle(acs, submission, ++settled)
-      return {}
+      return executedResult
     },
-    ledgerApi: async () => [],
+    ledgerEnd: async () => 100,
     activeContracts: async <Payload>(
       params: ActiveContractsParams,
     ): Promise<ActiveContract<Payload>[]> => {
       acsCalls.push(params)
       return (acs[params.templateId] ?? []) as ActiveContract<Payload>[]
     },
+    transactions: async (params: TransactionsParams): Promise<Transaction[]> => {
+      transactionCalls.push(params)
+      return transactionPages[page++] ?? []
+    },
   }
-  return { backend: new LedgerBackend(config, wallet), submissions, acsCalls }
+  return { backend: new LedgerBackend(config, wallet), submissions, acsCalls, transactionCalls }
 }
 
 beforeEach(() => {
@@ -455,6 +482,91 @@ describe('LedgerBackend.accept', () => {
     expect(submissions[0]?.disclosedContracts).toEqual(
       onSync([...transferContext.disclosed, disclosedAmulet('split-1')]),
     )
+  })
+})
+
+describe('LedgerBackend.claimHistory', () => {
+  const filler = (offset: number): Transaction => ({
+    updateId: `filler-${offset}`,
+    offset,
+    effectiveAt: '2026-01-01T00:00:00Z',
+    synchronizerId: undefined,
+    events: [],
+  })
+
+  const claimTransaction = (
+    offset: number,
+    replaces: string,
+    successor: string,
+    amount: string,
+  ): Transaction => ({
+    updateId: `claim-${offset}`,
+    offset,
+    effectiveAt: '2026-03-01T00:00:00Z',
+    synchronizerId: undefined,
+    events: [
+      {
+        kind: 'exercised',
+        contractId: replaces,
+        templateId: CONTRACT,
+        choice: 'AmuletVestingContract_Withdraw',
+        argument: { withdrawAmount: amount },
+        result: undefined,
+        consuming: true,
+      },
+      {
+        kind: 'created',
+        contract: {
+          contractId: successor,
+          templateId: CONTRACT,
+          payload: {
+            provider: 'OP',
+            creator: 'funder::1',
+            receiver: 'receiver::1',
+            totalAmount: '1000',
+            alreadyWithdrawn: amount,
+            schedule: encodeSchedule(schedule),
+            note: 'Advisor grant',
+          },
+          createdEventBlob: undefined,
+          synchronizerId: undefined,
+        },
+      },
+    ],
+  })
+
+  it('pages at a fixed endInclusive, resuming from the last offset, and chains records across pages', async () => {
+    const firstPage = [
+      ...Array.from({ length: 999 }, (_, i) => filler(i + 1)),
+      claimTransaction(1000, 'c1', 'c2', '250'),
+    ]
+    const secondPage = [claimTransaction(1001, 'c2', 'c3', '500')]
+    const { backend, transactionCalls } = harness({
+      transactionPages: [firstPage, secondPage],
+    })
+
+    const records = await backend.claimHistory('receiver::1', 'c3')
+
+    expect(transactionCalls).toHaveLength(2)
+    expect(transactionCalls[0]).toMatchObject({
+      templateId: CONTRACT,
+      party: 'receiver::1',
+      beginExclusive: 0,
+      endInclusive: 100,
+    })
+    expect(transactionCalls[1]).toMatchObject({ beginExclusive: 1000, endInclusive: 100 })
+    expect(records.map((record) => record.grant.id)).toEqual(['c3', 'c2'])
+  })
+
+  it('stops after a page shorter than the limit', async () => {
+    const { backend, transactionCalls } = harness({
+      transactionPages: [[claimTransaction(5, 'c1', 'c2', '250')]],
+    })
+
+    const records = await backend.claimHistory('receiver::1', 'c2')
+
+    expect(transactionCalls).toHaveLength(1)
+    expect(records.map((record) => record.grant.id)).toEqual(['c2'])
   })
 })
 

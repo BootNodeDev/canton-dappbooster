@@ -21,7 +21,6 @@ import {
   contractToClaim,
   contractToGrant,
   contractToPendingGrant,
-  lastUpdateOffset,
   pledgedAmulets,
   updatesToClaims,
   type VestingBackend,
@@ -51,16 +50,7 @@ const storedAmulets = (): DisclosedContract[] => {
 }
 
 const CLAIM_HISTORY_LIMIT = 1000
-const STREAM_IDLE_MS = 1000
 const CLAIM_HISTORY_PAGES = 20
-
-const templateFilter = (party: string, templateId: string): Record<string, unknown> => ({
-  filtersByParty: {
-    [party]: {
-      cumulative: [{ identifierFilter: { TemplateFilter: { value: { templateId } } } }],
-    },
-  },
-})
 
 export class LedgerBackend implements VestingBackend {
   private readonly wallet: WalletFns
@@ -82,17 +72,6 @@ export class LedgerBackend implements VestingBackend {
   // The resolved-id twin of `vesting()`: a command carries this spelling, a filter the other one.
   private tid(entity: string): string {
     return `${this.pkg}:AmuletVesting:${entity}`
-  }
-
-  private async ledgerEnd(): Promise<string | number> {
-    const result = (await this.wallet.ledgerApi({
-      requestMethod: 'get',
-      resource: '/v2/state/ledger-end',
-    })) as { offset?: string | number }
-    if (result.offset === undefined) {
-      throw new Error('Ledger API did not return an offset')
-    }
-    return result.offset
   }
 
   private submit(
@@ -219,40 +198,22 @@ export class LedgerBackend implements VestingBackend {
     return toDisclosedContract(created)
   }
 
-  private readUpdates(
-    partyId: string,
-    beginExclusive: string | number,
-    endInclusive: string | number,
-  ): Promise<unknown> {
-    return this.wallet.ledgerApi({
-      requestMethod: 'post',
-      resource: '/v2/updates',
-      query: { limit: CLAIM_HISTORY_LIMIT, stream_idle_timeout_ms: STREAM_IDLE_MS },
-      body: {
-        beginExclusive,
-        endInclusive,
-        updateFormat: {
-          includeTransactions: {
-            transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
-            eventFormat: {
-              verbose: true,
-              ...templateFilter(partyId, vesting('AmuletVestingContract')),
-            },
-          },
-        },
-      },
-    })
-  }
-
+  // One endInclusive across pages keeps them one snapshot.
   async claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]> {
-    const endInclusive = await this.ledgerEnd()
+    const endInclusive = await this.wallet.ledgerEnd()
     const records: ClaimRecord[] = []
     let beginExclusive: string | number = 0
     for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
-      const updates = await this.readUpdates(partyId, beginExclusive, endInclusive)
-      records.push(...updatesToClaims(updates))
-      const last = lastUpdateOffset(updates)
-      if (!Array.isArray(updates) || updates.length < CLAIM_HISTORY_LIMIT || last === undefined) {
+      const transactions = await this.wallet.transactions({
+        templateId: vesting('AmuletVestingContract'),
+        party: partyId,
+        beginExclusive,
+        endInclusive,
+        limit: CLAIM_HISTORY_LIMIT,
+      })
+      records.push(...updatesToClaims(transactions))
+      const last = transactions.at(-1)?.offset
+      if (transactions.length < CLAIM_HISTORY_LIMIT || last === undefined) {
         break
       }
       beginExclusive = last

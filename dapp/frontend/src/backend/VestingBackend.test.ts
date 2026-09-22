@@ -1,4 +1,4 @@
-import type { ActiveContract } from '@bootnodedev/canton-connect'
+import type { ActiveContract, Transaction } from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
 import { encodeSchedule } from '@/backend/commands'
 import {
@@ -9,7 +9,6 @@ import {
   contractToClaim,
   contractToGrant,
   contractToPendingGrant,
-  lastUpdateOffset,
   splitNote,
   updatesToClaims,
   type VestingPayload,
@@ -172,104 +171,78 @@ describe('contractToClaim', () => {
   })
 })
 
-const claimUpdate = (
+const claimTransaction = (
   offset: number,
   replaces: string,
   successor: string,
   claimed: string,
   amount: string,
-) => ({
-  update: {
-    Transaction: {
-      value: {
-        effectiveAt: '2026-03-01T00:00:00Z',
-        offset,
-        events: [
-          {
-            ExercisedEvent: {
-              choice: 'AmuletVestingContract_Withdraw',
-              choiceArgument: { withdrawAmount: amount },
-              contractId: replaces,
-            },
-          },
-          {
-            CreatedEvent: {
-              contractId: successor,
-              templateId: 'pkg:AmuletVesting:AmuletVestingContract',
-              createArgument: {
-                provider: 'OP',
-                creator: 'funder',
-                receiver: 'receiver',
-                totalAmount: '1000',
-                alreadyWithdrawn: claimed,
-                schedule: linearEncoded,
-                note: 'Advisor grant',
-              },
-            },
-          },
-        ],
+): Transaction => ({
+  updateId: `upd-${offset}`,
+  offset,
+  effectiveAt: '2026-03-01T00:00:00Z',
+  synchronizerId: undefined,
+  events: [
+    {
+      kind: 'exercised',
+      contractId: replaces,
+      templateId: 'pkg:AmuletVesting:AmuletVestingContract',
+      choice: 'AmuletVestingContract_Withdraw',
+      argument: { withdrawAmount: amount },
+      result: undefined,
+      consuming: true,
+    },
+    {
+      kind: 'created',
+      contract: {
+        contractId: successor,
+        templateId: 'pkg:AmuletVesting:AmuletVestingContract',
+        payload: {
+          provider: 'OP',
+          creator: 'funder',
+          receiver: 'receiver',
+          totalAmount: '1000',
+          alreadyWithdrawn: claimed,
+          schedule: linearEncoded,
+          note: 'Advisor grant',
+        },
+        createdEventBlob: undefined,
+        synchronizerId: undefined,
       },
     },
-  },
+  ],
 })
 
 describe('updatesToClaims', () => {
   it('carries the id the claim consumed alongside the successor it created', () => {
-    const [record] = updatesToClaims([claimUpdate(7, 'c1', 'c2', '250', '250')])
+    const [record] = updatesToClaims([claimTransaction(7, 'c1', 'c2', '250', '250')])
     expect(record?.replaces).toBe('c1')
     expect(record?.grant.id).toBe('c2')
     expect(record?.amount).toBe('250')
   })
 
-  it('drops a transaction with no exercised contract id, which cannot be placed in a chain', () => {
-    const full = claimUpdate(7, 'c1', 'c2', '250', '250')
-    const events = full.update.Transaction.value.events
-    const orphan = {
-      update: {
-        Transaction: {
-          value: {
-            ...full.update.Transaction.value,
-            events: [
-              { ExercisedEvent: { ...events[0].ExercisedEvent, contractId: undefined } },
-              events[1],
-            ],
-          },
-        },
-      },
-    }
-    expect(updatesToClaims([orphan])).toEqual([])
+  it('drops a transaction with no withdraw exercise, which cannot be placed in a chain', () => {
+    const full = claimTransaction(7, 'c1', 'c2', '250', '250')
+    const noWithdraw = { ...full, events: [full.events[1]] }
+    expect(updatesToClaims([noWithdraw])).toEqual([])
   })
 
-  it('drops a transaction whose created event carries no contract id', () => {
-    const full = claimUpdate(7, 'c1', 'c2', '250', '250')
-    const events = full.update.Transaction.value.events
-    const orphan = {
-      update: {
-        Transaction: {
-          value: {
-            ...full.update.Transaction.value,
-            events: [
-              events[0],
-              { CreatedEvent: { ...events[1].CreatedEvent, contractId: undefined } },
-            ],
-          },
-        },
-      },
-    }
-    expect(updatesToClaims([orphan])).toEqual([])
+  it('drops a transaction with no created event', () => {
+    const full = claimTransaction(7, 'c1', 'c2', '250', '250')
+    const noCreate = { ...full, events: [full.events[0]] }
+    expect(updatesToClaims([noCreate])).toEqual([])
   })
 
-  it('ignores anything that is not an array of transactions', () => {
-    expect(updatesToClaims(undefined)).toEqual([])
-    expect(updatesToClaims([{}])).toEqual([])
+  it('is empty for no transactions', () => {
+    expect(updatesToClaims([])).toEqual([])
   })
 })
 
 describe('claimChain', () => {
   const records = updatesToClaims([
-    claimUpdate(7, 'c1', 'c2', '250', '250'),
-    claimUpdate(9, 'c2', 'c3', '500', '250'),
-    claimUpdate(11, 'other1', 'other2', '10', '10'),
+    claimTransaction(7, 'c1', 'c2', '250', '250'),
+    claimTransaction(9, 'c2', 'c3', '500', '250'),
+    claimTransaction(11, 'other1', 'other2', '10', '10'),
   ])
 
   it('walks a grant back through the contracts its own claims replaced, newest first', () => {
@@ -282,22 +255,6 @@ describe('claimChain', () => {
 
   it('is empty for a contract nothing has claimed from yet', () => {
     expect(claimChain(records, 'never-claimed')).toEqual([])
-  })
-})
-
-describe('lastUpdateOffset', () => {
-  it('reports the offset of the final entry, which is where the next page resumes', () => {
-    expect(
-      lastUpdateOffset([
-        claimUpdate(7, 'c1', 'c2', '250', '250'),
-        claimUpdate(9, 'c2', 'c3', '500', '250'),
-      ]),
-    ).toBe(9)
-  })
-
-  it('is undefined for an empty or non-array page, so paging stops', () => {
-    expect(lastUpdateOffset([])).toBeUndefined()
-    expect(lastUpdateOffset(undefined)).toBeUndefined()
   })
 })
 
