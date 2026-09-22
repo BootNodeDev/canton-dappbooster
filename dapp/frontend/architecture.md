@@ -31,16 +31,16 @@ for the thing it reaches rather than for that package, so re-pointing it at anot
 rename. Because the mappers that turn active-contract rows into domain types live behind this
 interface, no component knows the ledger exists.
 
-**`WalletFns`** ([`src/backend/wallet.ts`](src/backend/wallet.ts)) is the narrower one: the two
-session calls `LedgerBackend` makes, `execute` and `ledgerApi`, injected as plain functions rather
-than implemented by a class. They come straight from `canton-connect`'s `useExecute` and
-`useLedger`, which is why they are injected at all: hooks cannot be called from a class, and
-`LedgerBackend`'s unit tests need it constructible without React.
+**`WalletFns`** ([`src/backend/wallet.ts`](src/backend/wallet.ts)) is the narrower one: the
+session calls `LedgerBackend` makes, `execute`, `activeContracts`, `transactions` and `ledgerEnd`,
+injected as plain functions rather than implemented by a class. They come straight from
+`canton-connect`'s `useExecute` and `useLedger`, which is why they are injected at all: hooks cannot
+be called from a class, and `LedgerBackend`'s unit tests need it constructible without React.
 
 Both halves of the pairing are runtime state. The deployment comes from
-[`config.ts`](src/backend/config.ts), which reads it off the ledger through that same `ledgerApi`:
-the newest `vesting-operator-*` among the connected user's rights, then an active-contracts read as
-that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
+[`config.ts`](src/backend/config.ts), which reads it off the ledger through the same hooks: the
+newest `vesting-operator-*` among the connected user's rights via `ledgerApi`, then `activeContracts`
+as that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
 Nothing is configured, so nothing can go stale against the participant the wallet is pointed at.
 Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
 nothing to query and without the blob there is no factory to disclose. It needs a session to read
