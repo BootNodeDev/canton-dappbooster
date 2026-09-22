@@ -214,6 +214,20 @@ describe('useLedger', () => {
     )
   })
 
+  it('hands the ledger end back as the ledger reports it', async () => {
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValueOnce({ offset: 9 })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(result.current.ledgerEnd()).resolves.toBe(9)
+    })
+
+    expect(ledgerApi).toHaveBeenCalledWith({
+      requestMethod: 'get',
+      resource: '/v2/state/ledger-end',
+    })
+  })
+
   it('refuses activeContracts when the session reports no party', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
     const { result } = renderLedger(ledgerApi, false)

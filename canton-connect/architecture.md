@@ -183,7 +183,8 @@ the exercised events and a history or a command result is nothing without them. 
 events come back discriminated on `kind` (`created`, `exercised`, `archived`), a created one as
 the same `ActiveContract` the reads return. `transactions` is one page: it filters by template,
 defaults the range to the whole ledger up to its end, and the last `offset` is where the caller
-resumes. `transaction` reads by the `updateId` an `execute` resolves with, under a per-party
+resumes. A walk over several pages pins one `endInclusive` for all of them, read once through
+`ledgerEnd`, or a later page sees transactions an earlier one could not. `transaction` reads by the `updateId` an `execute` resolves with, under a per-party
 wildcard filter so the caller sees every event of its own command; the any-party wildcard is
 admin-only on a participant and is not used.
 

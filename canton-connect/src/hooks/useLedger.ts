@@ -10,6 +10,7 @@ import {
   decodeInterfaceContracts,
   type InterfaceContract,
   LEDGER_END_REQUEST,
+  type LedgerOffset,
   offsetOf,
 } from '#src/activeContracts'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
@@ -43,6 +44,7 @@ export interface UseLedgerResult {
   ) => Promise<InterfaceContract<View>[]>
   transactions: (params: TransactionsParams) => Promise<Transaction[]>
   transaction: (updateId: string, params?: TransactionParams) => Promise<Transaction>
+  ledgerEnd: () => Promise<LedgerOffset>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
@@ -86,10 +88,11 @@ export const useLedger = (): UseLedgerResult => {
     [isLocked, partyId, status],
   )
 
-  const ledgerEnd = useCallback(
-    async (): Promise<number | string> => offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST)),
-    [sdk],
-  )
+  const ledgerEnd = useCallback(async (): Promise<LedgerOffset> => {
+    assertUsable(status, isLocked)
+
+    return offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
+  }, [isLocked, sdk, status])
 
   const activeContracts = useCallback(
     async <Payload = unknown>(
@@ -145,6 +148,7 @@ export const useLedger = (): UseLedgerResult => {
     activeContractsByInterface,
     transactions,
     transaction,
+    ledgerEnd,
     ledgerApi,
     isReady: status === 'connected' && !isLocked,
   }
