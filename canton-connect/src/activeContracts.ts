@@ -6,7 +6,10 @@ import type { LedgerApiParams, PrepareExecuteParams } from '@canton-network/dapp
  *
  * @category Types
  */
-export type DisclosedContract = NonNullable<PrepareExecuteParams['disclosedContracts']>[number]
+export type DisclosedContract = NonNullable<PrepareExecuteParams['disclosedContracts']>[number] & {
+  contractId: string
+  templateId: string
+}
 
 /**
  * An active contract, envelope unwrapped. `payload` is the create argument, typed by the
