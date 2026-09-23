@@ -72,7 +72,7 @@ export const useHoldings = (): UseHoldingsResult => {
     const request = newest.current
     setState(LOADING)
     activeContractsByInterface({ interfaceId: HOLDING_INTERFACE, party: partyId }).then(
-      (contracts) => {
+      ({ contracts }) => {
         const holdings = contracts.flatMap((contract) => holdingFromView(contract.view) ?? [])
         if (request === newest.current) setState({ error: undefined, holdings, isLoading: false })
       },

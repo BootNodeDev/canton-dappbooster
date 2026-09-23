@@ -64,15 +64,18 @@ describe('useLedger', () => {
     await act(async () => {
       await expect(
         result.current.activeContracts<{ receiver: string }>({ templateId: '#app:Main:Grant' }),
-      ).resolves.toEqual([
-        {
-          contractId: '00aa',
-          templateId: 'pkg:Main:Grant',
-          payload: { receiver: 'bob::1220' },
-          createdEventBlob: undefined,
-          synchronizerId: undefined,
-        },
-      ])
+      ).resolves.toEqual({
+        offset: 9,
+        contracts: [
+          {
+            contractId: '00aa',
+            templateId: 'pkg:Main:Grant',
+            payload: { receiver: 'bob::1220' },
+            createdEventBlob: undefined,
+            synchronizerId: undefined,
+          },
+        ],
+      })
     })
 
     expect(ledgerApi).toHaveBeenNthCalledWith(1, {
@@ -93,6 +96,24 @@ describe('useLedger', () => {
     )
   })
 
+  it('reports the offset its snapshot was taken at, so a caller can follow from there', async () => {
+    const ledgerApi = vi
+      .fn()
+      .mockResolvedValueOnce({ offset: 41 })
+      .mockResolvedValueOnce({ activeContracts: [] })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      const snapshot = await result.current.activeContracts({ templateId: '#app:Main:Grant' })
+      expect(snapshot.offset).toBe(41)
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ body: expect.objectContaining({ activeAtOffset: 41 }) }),
+    )
+  })
+
   it('reads as another party when told to, session party or not', async () => {
     const ledgerApi = vi
       .fn<DappSdkMethods['ledgerApi']>()
@@ -106,7 +127,7 @@ describe('useLedger', () => {
           templateId: '#app:Main:Factory',
           party: 'operator::1220',
         }),
-      ).resolves.toEqual([])
+      ).resolves.toEqual({ contracts: [], offset: 9 })
     })
 
     expect(ledgerApi).toHaveBeenNthCalledWith(
@@ -147,7 +168,10 @@ describe('useLedger', () => {
         result.current.activeContractsByInterface<{ amount: string }>({
           interfaceId: '#token:Holding',
         }),
-      ).resolves.toEqual([{ contractId: '00aa', templateId: 'pkg:Amulet', view: { amount: '3' } }])
+      ).resolves.toEqual({
+        contracts: [{ contractId: '00aa', templateId: 'pkg:Amulet', view: { amount: '3' } }],
+        offset: 9,
+      })
     })
 
     expect(ledgerApi).toHaveBeenNthCalledWith(
@@ -180,8 +204,11 @@ describe('useLedger', () => {
     const { result } = renderLedger(ledgerApi)
 
     await act(async () => {
-      const contracts = await result.current.activeContracts({ templateId: '#app:Main:Grant' })
+      const { contracts, offset } = await result.current.activeContracts({
+        templateId: '#app:Main:Grant',
+      })
       expect(contracts.map((one) => one.contractId)).toEqual(['00aa', '00bb', '00cc'])
+      expect(offset).toBe(9)
     })
 
     expect(ledgerApi).toHaveBeenCalledTimes(4)

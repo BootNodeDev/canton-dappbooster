@@ -1,6 +1,7 @@
 import type {
   ActiveContract,
   ActiveContractsParams,
+  ActiveContractsResult,
   PrepareExecuteAndWaitResult,
   Transaction,
   TransactionsParams,
@@ -175,13 +176,13 @@ const harness = (
     ledgerEnd: async () => 100,
     activeContracts: async <Payload>(
       params: ActiveContractsParams,
-    ): Promise<ActiveContract<Payload>[]> => {
+    ): Promise<ActiveContractsResult<Payload>> => {
       acsCalls.push(params)
-      return (acs[params.templateId] ?? []) as ActiveContract<Payload>[]
+      return { contracts: (acs[params.templateId] ?? []) as ActiveContract<Payload>[], offset: 100 }
     },
-    transactions: async (params: TransactionsParams): Promise<Transaction[]> => {
+    transactions: async <Payload>(params: TransactionsParams): Promise<Transaction<Payload>[]> => {
       transactionCalls.push(params)
-      return transactionPages[page++] ?? []
+      return (transactionPages[page++] ?? []) as Transaction<Payload>[]
     },
   }
   return { backend: new LedgerBackend(config, wallet), submissions, acsCalls, transactionCalls }

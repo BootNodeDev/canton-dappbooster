@@ -1,4 +1,8 @@
-import { type ActiveContract, toDisclosedContract } from '@bootnodedev/canton-connect'
+import {
+  type ActiveContract,
+  type Transaction,
+  toDisclosedContract,
+} from '@bootnodedev/canton-connect'
 import {
   buildAcceptCommand,
   buildCancelCommand,
@@ -95,7 +99,7 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
-    const [pendingGrantContracts, grantContracts, claimContracts] = await Promise.all([
+    const [pendingGrants, grants, claims] = await Promise.all([
       this.wallet.activeContracts<VestingPayload>({
         templateId: vesting('AmuletVestingProposal'),
         party: partyId,
@@ -110,9 +114,9 @@ export class LedgerBackend implements VestingBackend {
       }),
     ])
     return {
-      pendingGrants: mapContracts(pendingGrantContracts, contractToPendingGrant),
-      grants: mapContracts(grantContracts, contractToGrant),
-      claims: mapContracts(claimContracts, contractToClaim),
+      pendingGrants: mapContracts(pendingGrants.contracts, contractToPendingGrant),
+      grants: mapContracts(grants.contracts, contractToGrant),
+      claims: mapContracts(claims.contracts, contractToClaim),
     }
   }
 
@@ -133,14 +137,15 @@ export class LedgerBackend implements VestingBackend {
   private async freeAmulets(
     owner: string,
   ): Promise<{ free: ActiveContract<AmuletPayload>[]; held: ActiveContract<AmuletPayload>[] }> {
-    const [held, pendingContracts] = await Promise.all([
+    const [heldSnapshot, pending] = await Promise.all([
       this.wallet.activeContracts<AmuletPayload>({ templateId: AMULET, party: owner }),
       this.wallet.activeContracts<VestingPayload>({
         templateId: vesting('AmuletVestingProposal'),
         party: owner,
       }),
     ])
-    const pledged = new Set(pendingContracts.flatMap(pledgedAmulets))
+    const held = heldSnapshot.contracts
+    const pledged = new Set(pending.contracts.flatMap(pledgedAmulets))
     return { free: held.filter((contract) => !pledged.has(contract.contractId)), held }
   }
 
@@ -188,7 +193,7 @@ export class LedgerBackend implements VestingBackend {
       party: owner,
       includeCreatedEventBlob: true,
     })
-    const created = after.find(
+    const created = after.contracts.find(
       (contract) =>
         !before.has(contract.contractId) && canonicalAmount(amuletValue(contract)) === wanted,
     )
@@ -204,7 +209,7 @@ export class LedgerBackend implements VestingBackend {
     const records: ClaimRecord[] = []
     let beginExclusive: string | number = 0
     for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
-      const transactions = await this.wallet.transactions({
+      const transactions: Transaction<VestingPayload>[] = await this.wallet.transactions({
         templateId: vesting('AmuletVestingContract'),
         party: partyId,
         beginExclusive,
@@ -222,7 +227,7 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
-    const contracts = await this.wallet.activeContracts<VestingPayload>({
+    const { contracts } = await this.wallet.activeContracts<VestingPayload>({
       templateId: vesting('AmuletVestingProposal'),
       party: args.receiver,
     })

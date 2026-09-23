@@ -41,6 +41,16 @@ export interface ActiveContractsParams {
 }
 
 /**
+ * A snapshot of one template's contracts, with the offset it was taken at.
+ *
+ * @category Types
+ */
+export interface ActiveContractsResult<Payload = unknown> {
+  contracts: ActiveContract<Payload>[]
+  offset: LedgerOffset
+}
+
+/**
  * A contract read by interface: `view` is the interface view, the one shape all implementors
  * share.
  *
@@ -63,6 +73,16 @@ export interface InterfaceContract<View = unknown> {
 export interface ActiveContractsByInterfaceParams {
   interfaceId: string
   party?: string | string[]
+}
+
+/**
+ * A snapshot of one interface's contracts, with the offset it was taken at.
+ *
+ * @category Types
+ */
+export interface InterfaceContractsResult<View = unknown> {
+  contracts: InterfaceContract<View>[]
+  offset: LedgerOffset
 }
 
 /**
@@ -216,7 +236,8 @@ export const decodeInterfaceContracts = <View>(rows: unknown): InterfaceContract
  * @throws without the blob, which the ledger rejects as a disclosure.
  *
  * @example
- * const [factory] = await activeContracts({ templateId: '#my-app:Main:Factory', includeCreatedEventBlob: true })
+ * const { contracts } = await activeContracts({ templateId: '#my-app:Main:Factory', includeCreatedEventBlob: true })
+ * const factory = contracts[0]
  * await execute({ commands, disclosedContracts: [toDisclosedContract(factory)] })
  *
  * @category Utilities

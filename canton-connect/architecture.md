@@ -170,10 +170,13 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   Splice line runs; a 3.4 participant (`dpm sandbox`) has no paged read at all and the call fails
   with the gateway's `Unsupported post resource`. There, `ledgerApi` on `/v2/state/active-contracts`
   is the read, unpaged, and the exported types still fit its rows.
+- A contracts read answers `{ contracts, offset }`, not a bare list. The offset is the one its pages
+  were pinned at, so a caller following changes resumes exactly there instead of reading the ledger
+  end separately and double-counting whatever committed in between.
 - `party` defaults to the connected party and takes a list. Visibility stays the ledger's: a party
   the session's user cannot read as is refused by the participant, not filtered here.
-- Payloads and views are generics the caller names. The package knows the envelope, not the Daml
-  model.
+- Payloads and views are generics the caller names, on a transaction's created events as much as on
+  an active contract. The package knows the envelope, not the Daml model.
 - A view with a non-zero `viewStatus` is one the ledger could not compute, so the contract is
   dropped rather than returned without a value.
 - Transactions are always read in the ledger-effects shape: the default drops exercised events, and

@@ -54,7 +54,7 @@ export const loadBackendConfig = async (
   activeContracts: ActiveContracts,
 ): Promise<Deployment> => {
   const operator = await newestOperator(ledgerApi)
-  const contracts = await activeContracts({
+  const { contracts } = await activeContracts({
     templateId: FACTORY,
     party: operator,
     includeCreatedEventBlob: true,

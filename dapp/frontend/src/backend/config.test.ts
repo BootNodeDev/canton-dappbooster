@@ -1,4 +1,8 @@
-import type { ActiveContract, ActiveContractsParams } from '@bootnodedev/canton-connect'
+import type {
+  ActiveContract,
+  ActiveContractsParams,
+  ActiveContractsResult,
+} from '@bootnodedev/canton-connect'
 import { describe, expect, it } from 'vitest'
 import { type ActiveContracts, type LedgerApi, loadBackendConfig } from '@/backend/config'
 
@@ -34,9 +38,12 @@ const ledger = (
   }
   const activeContracts: ActiveContracts = async <Payload>(
     params: ActiveContractsParams,
-  ): Promise<ActiveContract<Payload>[]> => {
+  ): Promise<ActiveContractsResult<Payload>> => {
     lastCall = params
-    return (overrides.contracts ?? [factoryContract()]) as ActiveContract<Payload>[]
+    return {
+      contracts: (overrides.contracts ?? [factoryContract()]) as ActiveContract<Payload>[],
+      offset: 100,
+    }
   }
   return { ledgerApi, activeContracts, lastCall: () => lastCall }
 }

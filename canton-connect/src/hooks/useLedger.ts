@@ -1,14 +1,14 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
 import {
-  type ActiveContract,
   type ActiveContractsByInterfaceParams,
   type ActiveContractsParams,
+  type ActiveContractsResult,
   activeContractsByInterfaceRequest,
   activeContractsRequest,
   decodeActiveContracts,
   decodeInterfaceContracts,
-  type InterfaceContract,
+  type InterfaceContractsResult,
   LEDGER_END_REQUEST,
   type LedgerOffset,
   offsetOf,
@@ -41,12 +41,15 @@ export type { LedgerApiParams }
 export interface UseLedgerResult {
   activeContracts: <Payload = unknown>(
     params: ActiveContractsParams,
-  ) => Promise<ActiveContract<Payload>[]>
+  ) => Promise<ActiveContractsResult<Payload>>
   activeContractsByInterface: <View = unknown>(
     params: ActiveContractsByInterfaceParams,
-  ) => Promise<InterfaceContract<View>[]>
-  transactions: (params: TransactionsParams) => Promise<Transaction[]>
-  transaction: (updateId: string, params?: TransactionParams) => Promise<Transaction>
+  ) => Promise<InterfaceContractsResult<View>>
+  transactions: <Payload = unknown>(params: TransactionsParams) => Promise<Transaction<Payload>[]>
+  transaction: <Payload = unknown>(
+    updateId: string,
+    params?: TransactionParams,
+  ) => Promise<Transaction<Payload>>
   ledgerEnd: () => Promise<LedgerOffset>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
@@ -54,7 +57,8 @@ export interface UseLedgerResult {
 
 /**
  * Ledger reads over the wallet session, envelope unwrapped; `ledgerApi` is the raw call for
- * anything else.
+ * anything else. A contracts read answers with the offset it was taken at, which is where a
+ * caller following changes resumes.
  *
  * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
  * party; `transaction` also when the update is not one the party sees.
@@ -62,7 +66,10 @@ export interface UseLedgerResult {
  * @example
  * const { activeContracts, transactions, transaction } = useLedger()
  * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
- * const history = await transactions({ templateId: '#my-app:Main:Grant' })
+ * const since = await transactions({
+ *   templateId: '#my-app:Main:Grant',
+ *   beginExclusive: grants.offset,
+ * })
  * const committed = await transaction(tx.payload.updateId)
  *
  * @category Hooks
@@ -123,7 +130,7 @@ export const useLedger = (): UseLedgerResult => {
         pageToken = page.nextPageToken
       } while (pageToken !== undefined)
 
-      return rows
+      return { rows, offset }
     },
     [ledgerEnd, read],
   )
@@ -131,14 +138,13 @@ export const useLedger = (): UseLedgerResult => {
   const activeContracts = useCallback(
     async <Payload = unknown>(
       params: ActiveContractsParams,
-    ): Promise<ActiveContract<Payload>[]> => {
+    ): Promise<ActiveContractsResult<Payload>> => {
       const parties = readAs(params.party)
-
-      return decodeActiveContracts<Payload>(
-        await readAllPages((offset, token) =>
-          activeContractsRequest(parties, offset, params, token),
-        ),
+      const { rows, offset } = await readAllPages((snapshot, token) =>
+        activeContractsRequest(parties, snapshot, params, token),
       )
+
+      return { contracts: decodeActiveContracts<Payload>(rows), offset }
     },
     [readAllPages, readAs],
   )
@@ -146,32 +152,38 @@ export const useLedger = (): UseLedgerResult => {
   const activeContractsByInterface = useCallback(
     async <View = unknown>(
       params: ActiveContractsByInterfaceParams,
-    ): Promise<InterfaceContract<View>[]> => {
+    ): Promise<InterfaceContractsResult<View>> => {
       const parties = readAs(params.party)
-
-      return decodeInterfaceContracts<View>(
-        await readAllPages((offset, token) =>
-          activeContractsByInterfaceRequest(parties, offset, params, token),
-        ),
+      const { rows, offset } = await readAllPages((snapshot, token) =>
+        activeContractsByInterfaceRequest(parties, snapshot, params, token),
       )
+
+      return { contracts: decodeInterfaceContracts<View>(rows), offset }
     },
     [readAllPages, readAs],
   )
 
   const transactions = useCallback(
-    async (params: TransactionsParams): Promise<Transaction[]> => {
+    async <Payload = unknown>(params: TransactionsParams): Promise<Transaction<Payload>[]> => {
       const parties = readAs(params.party)
       const endInclusive = params.endInclusive ?? (await ledgerEnd())
 
-      return decodeTransactions(await read(transactionsRequest(parties, endInclusive, params)))
+      return decodeTransactions<Payload>(
+        await read(transactionsRequest(parties, endInclusive, params)),
+      )
     },
     [ledgerEnd, read, readAs],
   )
 
   const transaction = useCallback(
-    async (updateId: string, params?: TransactionParams): Promise<Transaction> => {
+    async <Payload = unknown>(
+      updateId: string,
+      params?: TransactionParams,
+    ): Promise<Transaction<Payload>> => {
       const parties = readAs(params?.party)
-      const committed = decodeTransaction(await read(transactionRequest(parties, updateId)))
+      const committed = decodeTransaction<Payload>(
+        await read(transactionRequest(parties, updateId)),
+      )
       if (committed === undefined) {
         throw new Error(`update ${updateId} is not a transaction ${parties.join(', ')} sees`)
       }

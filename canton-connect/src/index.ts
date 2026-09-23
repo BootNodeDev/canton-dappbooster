@@ -12,8 +12,10 @@ export type {
   ActiveContract,
   ActiveContractsByInterfaceParams,
   ActiveContractsParams,
+  ActiveContractsResult,
   DisclosedContract,
   InterfaceContract,
+  InterfaceContractsResult,
   LedgerOffset,
 } from '#src/activeContracts'
 export { toDisclosedContract } from '#src/activeContracts'
