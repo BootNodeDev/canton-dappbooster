@@ -1,7 +1,7 @@
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LedgerApi } from '@/backend/config'
+import type { ConnectedSynchronizers } from '@/hooks/useNetworkStatus'
 
 const APP = 'global-domain::12203c8fd51a9e7b2460'
 const OTHER = 'global-domain::1220f4a17c9e2b6d80c3'
@@ -12,23 +12,25 @@ const reads = vi.hoisted(() => ({
   started: 0,
 }))
 
-vi.mock('@/backend/synchronizer', () => ({
-  walletSynchronizers: () => {
-    reads.started += 1
-    return reads.wallet()
-  },
-}))
 vi.mock('@/backend/transferContext', () => ({ fetchAppNetwork: () => reads.app() }))
 
 const { useNetworkStatus } = await import('@/hooks/useNetworkStatus')
 
-const ledgerApi = (() => Promise.resolve(undefined)) as unknown as LedgerApi
+const connectedSynchronizers: ConnectedSynchronizers = async () => {
+  reads.started += 1
+  const ids = await reads.wallet()
+  return ids.map((synchronizerId) => ({
+    synchronizerId,
+    synchronizerAlias: 'global',
+    permission: 'PARTICIPANT_PERMISSION_CONFIRMATION' as const,
+  }))
+}
 
 const roots: { unmount: () => void }[] = []
 
 const mount = (seen: (string | undefined)[]): ((networkId?: string) => Promise<void>) => {
   const Probe = ({ networkId }: { networkId: string }): null => {
-    seen.push(useNetworkStatus(ledgerApi, 'party::1', networkId))
+    seen.push(useNetworkStatus(connectedSynchronizers, 'party::1', networkId))
     return null
   }
   const root = createRoot(document.createElement('div'))

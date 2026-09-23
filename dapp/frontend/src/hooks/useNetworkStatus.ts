@@ -1,6 +1,5 @@
+import type { UseLedgerResult } from '@bootnodedev/canton-connect'
 import { useEffect, useState } from 'react'
-import type { LedgerApi } from '@/backend/config'
-import { walletSynchronizers } from '@/backend/synchronizer'
 import { fetchAppNetwork } from '@/backend/transferContext'
 import { type NetworkStatus, networkStatus } from '@/utils/network'
 
@@ -10,8 +9,16 @@ const RECHECK_MS = 30_000
 
 type Verdict = { networkId: string | undefined; party: string; status: NetworkStatus }
 
+export type ConnectedSynchronizers = UseLedgerResult['connectedSynchronizers']
+
+const walletSynchronizers = async (
+  connectedSynchronizers: ConnectedSynchronizers,
+  party: string,
+): Promise<string[]> =>
+  (await connectedSynchronizers({ party })).map((synchronizer) => synchronizer.synchronizerId)
+
 export const useNetworkStatus = (
-  ledgerApi: LedgerApi,
+  connectedSynchronizers: ConnectedSynchronizers,
   partyId: string | undefined,
   networkId: string | undefined,
 ): NetworkStatus | undefined => {
@@ -31,7 +38,7 @@ export const useNetworkStatus = (
       const seq = ++started
       inFlight = true
 
-      void Promise.all([walletSynchronizers(ledgerApi, partyId), fetchAppNetwork()])
+      void Promise.all([walletSynchronizers(connectedSynchronizers, partyId), fetchAppNetwork()])
         .then(
           ([wallet, app]) => {
             const status = networkStatus(wallet, app)
@@ -81,7 +88,7 @@ export const useNetworkStatus = (
       clearTimeout(timer)
       window.removeEventListener('focus', checkOnFocus)
     }
-  }, [ledgerApi, networkId, partyId])
+  }, [connectedSynchronizers, networkId, partyId])
 
   return verdict !== undefined && verdict.party === partyId && verdict.networkId === networkId
     ? verdict.status

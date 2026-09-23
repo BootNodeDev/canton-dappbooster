@@ -23,13 +23,14 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const [deployment, setDeployment] = useState<Deployment | undefined>(undefined)
   const [configError, setConfigError] = useState<string | undefined>(undefined)
   const { execute } = useExecute()
-  const { activeContracts, ledgerApi, ledgerEnd, transactions, userRights } = useLedger()
+  const { activeContracts, connectedSynchronizers, ledgerEnd, transactions, userRights } =
+    useLedger()
 
   const { account } = useAccount()
   const hasParty = account !== undefined
   const partyId = account?.partyId
   const [checkingSession, setCheckingSession] = useState(true)
-  const networkStatus = useNetworkStatus(ledgerApi, partyId, account?.networkId)
+  const networkStatus = useNetworkStatus(connectedSynchronizers, partyId, account?.networkId)
 
   useEffect(() => {
     const timer = setTimeout(() => setCheckingSession(false), SESSION_GRACE_MS)

@@ -1,6 +1,6 @@
 // Read back off the ledger, not carried in a file: every bootstrap run mints a fresh pair.
 
-import type { LedgerApiParams, UseLedgerResult } from '@bootnodedev/canton-connect'
+import type { UseLedgerResult } from '@bootnodedev/canton-connect'
 
 export type Deployment = {
   factoryBlob: string
@@ -9,7 +9,6 @@ export type Deployment = {
   synchronizerId?: string
 }
 
-export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 export type ActiveContracts = UseLedgerResult['activeContracts']
 export type UserRights = UseLedgerResult['userRights']
 
@@ -18,9 +17,6 @@ const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
 const OPERATOR_HINT = 'vesting-operator-'
 
 const advice = (reason: string): Error => new Error(`${reason} — run pnpm run bootstrap`)
-
-export const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Promise<T> =>
-  (await ledgerApi(params)) as T
 
 // The hint carries the run's timestamp, so the last one sorted is the newest.
 const newestOperator = async (userRights: UserRights): Promise<string> => {

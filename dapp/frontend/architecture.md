@@ -12,7 +12,7 @@ interfaces carry that, and every other decision hangs off them.
 
 | Path | Role |
 |------|------|
-| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off two Scan reads, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off two Scan reads, and `config.ts`, which loads the deployment. |
 | `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
 | `src/hooks/` | `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
 | `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
@@ -89,11 +89,11 @@ reaches. Both sides of that are read.
 contracts are on. Its own export rather than a field on the transfer context: that builder waits for
 an `AmuletRules` and an open mining round both, and the SV opens the first round minutes after a
 LocalNet start, while the id sits on the rules alone.
-[`synchronizer.ts`](src/backend/synchronizer.ts) reads the other side, the synchronizers the
-wallet's own participant is connected to. That is a read of its own rather than
-[`config.ts`](src/backend/config.ts)'s `synchronizerId` off the factory row, which the deployment
-already carries: that one is three round trips and its answer rebuilds the backend, so repeating it
-would re-run every ledger read along with it.
+[`useNetworkStatus`](src/hooks/useNetworkStatus.ts) reads the other side through `canton-connect`'s
+`connectedSynchronizers`, the synchronizers the wallet's own participant is connected to for the
+party. That is a read of its own rather than [`config.ts`](src/backend/config.ts)'s `synchronizerId`
+off the factory row, which the deployment already carries: that one is three round trips and its
+answer rebuilds the backend, so repeating it would re-run every ledger read along with it.
 
 The rule in [`src/utils/network.ts`](src/utils/network.ts) is membership rather than equality,
 because a participant can be connected to several synchronizers and reaching the app's one is what
