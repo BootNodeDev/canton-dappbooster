@@ -177,7 +177,7 @@ const claimTransaction = (
   successor: string,
   claimed: string,
   amount: string,
-): Transaction => ({
+): Transaction<VestingPayload> => ({
   updateId: `upd-${offset}`,
   offset,
   effectiveAt: '2026-03-01T00:00:00Z',

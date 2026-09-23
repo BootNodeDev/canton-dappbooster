@@ -188,6 +188,20 @@ describe('decodeTransactions', () => {
   })
 })
 
+describe('a caller-named payload', () => {
+  it('types the contract a created event carries, with no cast at the call site', () => {
+    const [transaction] = decodeTransactions<{ receiver: string }>([entry(committed)])
+    const created = transaction?.events.find((event) => event.kind === 'created')
+
+    expect(created?.kind).toBe('created')
+    if (created?.kind !== 'created') {
+      throw new Error('expected a created event')
+    }
+    const receiver: string = created.contract.payload.receiver
+    expect(receiver).toBe('bob::1220')
+  })
+})
+
 describe('decodeTransaction', () => {
   it('unwraps the one update an update-by-id answer carries', () => {
     expect(decodeTransaction(entry(committed))?.updateId).toBe('u1')

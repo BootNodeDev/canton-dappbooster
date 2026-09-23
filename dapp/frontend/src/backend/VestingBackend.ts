@@ -187,21 +187,21 @@ export const contractToGrant = (contract: ActiveContract<VestingPayload>): Grant
 }
 
 // A withdraw exercise carries the amount; the create beside it is the successor grant.
-export const updatesToClaims = (transactions: Transaction[]): ClaimRecord[] =>
+export const updatesToClaims = (transactions: Transaction<VestingPayload>[]): ClaimRecord[] =>
   transactions.flatMap((transaction) => {
     const claim = transaction.events.find(
       (event): event is ExercisedLedgerEvent =>
         event.kind === 'exercised' && event.choice === 'AmuletVestingContract_Withdraw',
     )
     const created = transaction.events.find(
-      (event): event is CreatedLedgerEvent => event.kind === 'created',
+      (event): event is CreatedLedgerEvent<VestingPayload> => event.kind === 'created',
     )
     const amount = (claim?.argument as { withdrawAmount?: unknown } | undefined)?.withdrawAmount
     const replaces = claim?.contractId
     if (created === undefined || amount === undefined || replaces === undefined) {
       return []
     }
-    const grant = contractToGrant(created.contract as ActiveContract<VestingPayload>)
+    const grant = contractToGrant(created.contract)
     return grant === undefined
       ? []
       : [

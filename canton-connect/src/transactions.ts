@@ -6,9 +6,9 @@ import { type ActiveContract, filtersByParty, type LedgerOffset } from '#src/act
  *
  * @category Types
  */
-export interface CreatedLedgerEvent {
+export interface CreatedLedgerEvent<Payload = unknown> {
   kind: 'created'
-  contract: ActiveContract
+  contract: ActiveContract<Payload>
 }
 
 /**
@@ -42,19 +42,22 @@ export interface ArchivedLedgerEvent {
  *
  * @category Types
  */
-export type LedgerEvent = CreatedLedgerEvent | ExercisedLedgerEvent | ArchivedLedgerEvent
+export type LedgerEvent<Payload = unknown> =
+  | CreatedLedgerEvent<Payload>
+  | ExercisedLedgerEvent
+  | ArchivedLedgerEvent
 
 /**
  * A committed transaction; `offset` is where the next page resumes.
  *
  * @category Types
  */
-export interface Transaction {
+export interface Transaction<Payload = unknown> {
   updateId: string
   offset: number
   effectiveAt: string
   synchronizerId: string | undefined
-  events: LedgerEvent[]
+  events: LedgerEvent<Payload>[]
 }
 
 /**
@@ -159,10 +162,10 @@ type UpdateEntry = { update?: { Transaction?: { value?: WireTransaction } } }
 
 const isPresent = <T>(value: T | undefined): value is T => value !== undefined
 
-const decodeEvent = (
+const decodeEvent = <Payload>(
   event: WireEvent,
   synchronizerId: string | undefined,
-): LedgerEvent | undefined => {
+): LedgerEvent<Payload> | undefined => {
   const created = event.CreatedEvent
   if (created?.contractId !== undefined && created.templateId !== undefined) {
     return {
@@ -170,7 +173,7 @@ const decodeEvent = (
       contract: {
         contractId: created.contractId,
         templateId: created.templateId,
-        payload: created.createArgument,
+        payload: created.createArgument as Payload,
         createdEventBlob: created.createdEventBlob,
         synchronizerId,
       },
@@ -199,7 +202,9 @@ const decodeEvent = (
   return undefined
 }
 
-const decodeWireTransaction = (value: WireTransaction | undefined): Transaction | undefined => {
+const decodeWireTransaction = <Payload>(
+  value: WireTransaction | undefined,
+): Transaction<Payload> | undefined => {
   if (
     value?.updateId === undefined ||
     value.offset === undefined ||
@@ -213,18 +218,20 @@ const decodeWireTransaction = (value: WireTransaction | undefined): Transaction 
     effectiveAt: value.effectiveAt,
     synchronizerId: value.synchronizerId,
     events: (value.events ?? [])
-      .map((event) => decodeEvent(event, value.synchronizerId))
+      .map((event) => decodeEvent<Payload>(event, value.synchronizerId))
       .filter(isPresent),
   }
 }
 
 // Reassignments and offset checkpoints are not transactions and are skipped.
-export const decodeTransactions = (updates: unknown): Transaction[] =>
+export const decodeTransactions = <Payload>(updates: unknown): Transaction<Payload>[] =>
   Array.isArray(updates)
     ? updates
-        .map((entry: UpdateEntry) => decodeWireTransaction(entry.update?.Transaction?.value))
+        .map((entry: UpdateEntry) =>
+          decodeWireTransaction<Payload>(entry.update?.Transaction?.value),
+        )
         .filter(isPresent)
     : []
 
-export const decodeTransaction = (answer: unknown): Transaction | undefined =>
-  decodeWireTransaction((answer as UpdateEntry | null)?.update?.Transaction?.value)
+export const decodeTransaction = <Payload>(answer: unknown): Transaction<Payload> | undefined =>
+  decodeWireTransaction<Payload>((answer as UpdateEntry | null)?.update?.Transaction?.value)
