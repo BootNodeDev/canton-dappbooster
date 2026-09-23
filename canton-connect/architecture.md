@@ -29,6 +29,7 @@ src/
   cantonError.ts            CantonError, isRetryable and the payload reader toError uses
   watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
   userRights.ts             the rights read and its decoder
+  connectedSynchronizers.ts the connected-synchronizers read and its decoder
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -191,7 +192,11 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   so it lists parties the session never connected as. That user's `primaryParty` stays unread: on
   the reference gateway it is the validator's `app_user` party, and would contradict `useAccount`.
 - `UserRight`'s kinds are declared, as `CantonErrorPayload` is, and `userRights.test.ts` fails
-  typecheck when the spec names a kind the decoder does not know.
+  typecheck when the spec names a kind the decoder does not know. `ParticipantPermission` is pinned
+  the same way in `connectedSynchronizers.test.ts`.
+- `connectedSynchronizers` takes one party, since the endpoint answers for one. It always sends it:
+  asked with none, the participant answers `PARTICIPANT_PERMISSION_UNSPECIFIED` for every row. A
+  party the participant does not host gets an empty list, not an error.
 
 ### Errors
 

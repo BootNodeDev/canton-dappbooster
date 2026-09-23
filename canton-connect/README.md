@@ -101,7 +101,8 @@ function Dapp() {
 
   // ... your dApp: account.partyId, signMessage(text), execute(params),
   // activeContracts<Payload>({ templateId }), activeContractsByInterface<View>({ interfaceId }),
-  // transactions({ templateId }), transaction(updateId), ledgerEnd(), userRights(), ledgerApi(params)
+  // transactions({ templateId }), transaction(updateId), ledgerEnd(), userRights(),
+  // connectedSynchronizers(), ledgerApi(params)
 }
 ```
 

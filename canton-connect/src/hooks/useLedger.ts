@@ -16,6 +16,12 @@ import {
   toParties,
 } from '#src/activeContracts'
 import { toError } from '#src/connectError'
+import {
+  type ConnectedSynchronizer,
+  type ConnectedSynchronizersParams,
+  connectedSynchronizersRequest,
+  decodeConnectedSynchronizers,
+} from '#src/connectedSynchronizers'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 import {
   decodeTransaction,
@@ -59,6 +65,9 @@ export interface UseLedgerResult {
   ) => Promise<Transaction<Payload>>
   ledgerEnd: () => Promise<LedgerOffset>
   userRights: () => Promise<UserRight[]>
+  connectedSynchronizers: (
+    params?: ConnectedSynchronizersParams,
+  ) => Promise<ConnectedSynchronizer[]>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
@@ -211,6 +220,15 @@ export const useLedger = (): UseLedgerResult => {
     return decodeUserRights(await read(userRightsRequest(userId)))
   }, [isLocked, read, status])
 
+  const connectedSynchronizers = useCallback(
+    async (params?: ConnectedSynchronizersParams): Promise<ConnectedSynchronizer[]> => {
+      const [party] = readAs(params?.party)
+
+      return decodeConnectedSynchronizers(await read(connectedSynchronizersRequest(party)))
+    },
+    [read, readAs],
+  )
+
   return {
     activeContracts,
     activeContractsByInterface,
@@ -218,6 +236,7 @@ export const useLedger = (): UseLedgerResult => {
     transaction,
     ledgerEnd,
     userRights,
+    connectedSynchronizers,
     ledgerApi,
     isReady: status === 'connected' && !isLocked,
   }

@@ -24,6 +24,11 @@ export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConne
 export type { CantonErrorPayload } from '#src/cantonError'
 export { CantonError, cantonErrorPayloadOf, isRetryable } from '#src/cantonError'
 export { ConnectCancelledError } from '#src/connectError'
+export type {
+  ConnectedSynchronizer,
+  ConnectedSynchronizersParams,
+  ParticipantPermission,
+} from '#src/connectedSynchronizers'
 export type { UseAccountResult } from '#src/hooks/useAccount'
 export { useAccount } from '#src/hooks/useAccount'
 export type {

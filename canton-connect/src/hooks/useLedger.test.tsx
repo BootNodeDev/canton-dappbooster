@@ -325,6 +325,35 @@ describe('useLedger', () => {
     })
   })
 
+  it("reads the connected party's synchronizers unless given another party", async () => {
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValue({
+      connectedSynchronizers: [
+        {
+          synchronizerAlias: 'global',
+          synchronizerId: 'global-domain::1220',
+          permission: 'PARTICIPANT_PERMISSION_SUBMISSION',
+        },
+      ],
+    })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(result.current.connectedSynchronizers()).resolves.toEqual([
+        {
+          synchronizerId: 'global-domain::1220',
+          synchronizerAlias: 'global',
+          permission: 'PARTICIPANT_PERMISSION_SUBMISSION',
+        },
+      ])
+      await result.current.connectedSynchronizers({ party: 'operator::1220' })
+    })
+
+    expect(ledgerApi.mock.calls.map(([params]) => params.query)).toEqual([
+      { party: account.partyId },
+      { party: 'operator::1220' },
+    ])
+  })
+
   it("reads the authenticated user's rights, which needs no connected party", async () => {
     const ledgerApi = vi
       .fn<DappSdkMethods['ledgerApi']>()
