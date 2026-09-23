@@ -101,8 +101,9 @@ export interface Ledger {
  * `@bootnodedev/canton-connect/core`; a React dApp reaches the same reads through
  * {@link useLedger}, which fills in the connected party.
  *
- * @throws from a read, as a {@link CantonError} where the participant raised it; `transaction`
- * also when the update is not one the party sees, `contractById` when the create is pruned.
+ * @throws from a read, as a {@link CantonError} where the participant raised it, and where the
+ * wallet answers a read with nothing; `transaction` also when the update is not one the party
+ * sees, `contractById` when the create is pruned.
  *
  * @example
  * const ledger = createLedger((params) => sdk.ledgerApi(params))
@@ -114,13 +115,25 @@ export interface Ledger {
  * @category Utilities
  */
 export const createLedger = (ledgerApi: LedgerApi): Ledger => {
-  // Every read goes through here, or a rejection reaches the caller as the raw envelope.
-  const read = async (params: LedgerApiParams): Promise<unknown> => {
+  const viaTransport = async (params: LedgerApiParams): Promise<unknown> => {
     try {
       return await ledgerApi(params)
     } catch (err) {
       throw toError(err)
     }
+  }
+
+  // Every read goes through here, or a rejection reaches the caller as the raw envelope.
+  const read = async (params: LedgerApiParams): Promise<unknown> => {
+    const answer = await viaTransport(params)
+    // The transport's own unwrap is upstream of us, so a mismatched envelope arrives as nothing.
+    if (answer === undefined || answer === null) {
+      throw new Error(
+        `no answer for ${params.resource} - every route read here returns a body, so the transport unwrapped the response wrongly; a wallet naming its JSON-RPC result something other than "result" does this`,
+      )
+    }
+
+    return answer
   }
 
   const ledgerEnd = async (): Promise<LedgerOffset> => offsetOf(await read(LEDGER_END_REQUEST))

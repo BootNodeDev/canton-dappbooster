@@ -258,6 +258,12 @@ What the code cannot say:
   The spec package is a dev-only dependency instead, and `cantonError.test.ts` fails typecheck if the
   shape it describes stops fitting. Canton sends its optional fields as `null` where that spec says
   `string`, so they are nullable here and absent on `CantonError`.
+- A read that comes back as nothing is refused where it is read, not where it is decoded. The
+  transport's own unwrap is upstream of us: `core-wallet-dapp-remote-rpc-client` returns
+  `response.result` hardcoded, so a wallet naming that member anything else leaves `undefined` and
+  no trace of why. Every route read here declares a body, which is what makes the guard safe, and
+  `ledgerApi` is deliberately outside it: the caller picks the route there, so nothing here knows
+  whether an empty answer is wrong. Without it `offsetOf` blamed the ledger for omitting an offset.
 - `errorCategory` stays a raw number and `isRetryable` reads only `retryInfo`. Nothing in the SDK
   graph exports the fourteen category names, and the six-code list `core-ledger-client` retries on is
   that client's policy rather than the error's meaning.
