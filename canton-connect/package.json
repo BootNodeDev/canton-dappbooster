@@ -73,6 +73,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
+    "@canton-network/core-ledger-client-types": "1.12.2",
     "@canton-network/core-types": "1.10.0",
     "@canton-network/dapp-sdk": "1.5.1",
     "@testing-library/dom": "^10.4.1",

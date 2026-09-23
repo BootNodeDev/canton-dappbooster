@@ -19,6 +19,8 @@ export type {
 export { toDisclosedContract } from '#src/activeContracts'
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConnectProvider'
+export type { CantonErrorPayload } from '#src/cantonError'
+export { CantonError, cantonErrorPayloadOf, isRetryable } from '#src/cantonError'
 export { ConnectCancelledError } from '#src/connectError'
 export type { UseAccountResult } from '#src/hooks/useAccount'
 export { useAccount } from '#src/hooks/useAccount'

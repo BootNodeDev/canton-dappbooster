@@ -15,6 +15,7 @@ import {
   pageOf,
   toParties,
 } from '#src/activeContracts'
+import { toError } from '#src/connectError'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 import {
   decodeTransaction,
@@ -70,13 +71,25 @@ export const useLedger = (): UseLedgerResult => {
   // Guards without `call`: a stateless query needs no pending/error renders around it.
   const { sdk, partyId, status, isLocked } = useWalletCall()
 
+  // Every read goes through here, or a rejection reaches the caller as the raw envelope.
+  const read = useCallback(
+    async (params: LedgerApiParams): Promise<unknown> => {
+      try {
+        return await sdk.ledgerApi(params)
+      } catch (err) {
+        throw toError(err)
+      }
+    },
+    [sdk],
+  )
+
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {
       assertUsable(status, isLocked)
 
-      return await sdk.ledgerApi(params)
+      return await read(params)
     },
-    [isLocked, sdk, status],
+    [isLocked, read, status],
   )
 
   const readAs = useCallback(
@@ -95,8 +108,8 @@ export const useLedger = (): UseLedgerResult => {
   const ledgerEnd = useCallback(async (): Promise<LedgerOffset> => {
     assertUsable(status, isLocked)
 
-    return offsetOf(await sdk.ledgerApi(LEDGER_END_REQUEST))
-  }, [isLocked, sdk, status])
+    return offsetOf(await read(LEDGER_END_REQUEST))
+  }, [isLocked, read, status])
 
   // One offset for every page keeps them one snapshot.
   const readAllPages = useCallback(
@@ -105,14 +118,14 @@ export const useLedger = (): UseLedgerResult => {
       const rows: unknown[] = []
       let pageToken: string | undefined
       do {
-        const page = pageOf(await sdk.ledgerApi(request(offset, pageToken)))
+        const page = pageOf(await read(request(offset, pageToken)))
         rows.push(...page.rows)
         pageToken = page.nextPageToken
       } while (pageToken !== undefined)
 
       return rows
     },
-    [ledgerEnd, sdk],
+    [ledgerEnd, read],
   )
 
   const activeContracts = useCallback(
@@ -150,26 +163,22 @@ export const useLedger = (): UseLedgerResult => {
       const parties = readAs(params.party)
       const endInclusive = params.endInclusive ?? (await ledgerEnd())
 
-      return decodeTransactions(
-        await sdk.ledgerApi(transactionsRequest(parties, endInclusive, params)),
-      )
+      return decodeTransactions(await read(transactionsRequest(parties, endInclusive, params)))
     },
-    [ledgerEnd, readAs, sdk],
+    [ledgerEnd, read, readAs],
   )
 
   const transaction = useCallback(
     async (updateId: string, params?: TransactionParams): Promise<Transaction> => {
       const parties = readAs(params?.party)
-      const committed = decodeTransaction(
-        await sdk.ledgerApi(transactionRequest(parties, updateId)),
-      )
+      const committed = decodeTransaction(await read(transactionRequest(parties, updateId)))
       if (committed === undefined) {
         throw new Error(`update ${updateId} is not a transaction ${parties.join(', ')} sees`)
       }
 
       return committed
     },
-    [readAs, sdk],
+    [read, readAs],
   )
 
   return {

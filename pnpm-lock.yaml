@@ -209,6 +209,9 @@ importers:
         specifier: ^5.32.5
         version: 5.33.2
     devDependencies:
+      '@canton-network/core-ledger-client-types':
+        specifier: 1.12.2
+        version: 1.12.2
       '@canton-network/core-types':
         specifier: 1.10.0
         version: 1.10.0

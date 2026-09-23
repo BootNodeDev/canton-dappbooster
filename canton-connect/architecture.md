@@ -26,6 +26,7 @@ src/
   testing/                  the ./testing doubles, plus suite-local helpers
   activeContracts.ts        active-contract reads: request builders, the page decoder, disclosure
   transactions.ts           update reads: request builders and the event decoder
+  cantonError.ts            CantonError, isRetryable and the payload reader toError uses
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -181,6 +182,33 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   across pages via `ledgerEnd`, or a later page sees what an earlier one could not.
 - `transaction` uses a per-party wildcard filter so the caller sees every event of its own command.
   The any-party wildcard is admin-only on a participant.
+
+### Errors
+
+Every rejection reaches the consumer as an `Error`, and as a `CantonError` where the participant
+raised it. Each layer rejects with a shape of its own, so the message is read through all three
+rather than stringified:
+
+```text
+{ code, message, data }                          the window transport, the error member alone
+{ status, error, details }                       the SDK's own controller
+{ jsonrpc, id, error: { code, message, data } }  the gateway over HTTP, envelope kept
+```
+
+What the code cannot say:
+
+- The gateway collapses every failure to JSON-RPC `-32603` and HTTP 500, so neither discriminates.
+  The participant's payload rides untouched under `error.data`, and it is the only thing that does.
+- The guard is `code`, `cause` and `errorCategory` because that is what the gateway's own
+  `isJsCantonError` requires before wrapping; the two must not disagree about what a Canton error is.
+- `CantonErrorPayload` is declared rather than imported: `JsCantonError` lives in
+  `@canton-network/core-ledger-client`, outside this package's graph and 3.8 MB with `pino` in it.
+  The spec package is a dev-only dependency instead, and `cantonError.test.ts` fails typecheck if the
+  shape it describes stops fitting. Canton sends its optional fields as `null` where that spec says
+  `string`, so they are nullable here and absent on `CantonError`.
+- `errorCategory` stays a raw number and `isRetryable` reads only `retryInfo`. Nothing in the SDK
+  graph exports the fourteen category names, and the six-code list `core-ledger-client` retries on is
+  that client's policy rather than the error's meaning.
 
 ### The party type
 

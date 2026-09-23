@@ -1,3 +1,5 @@
+import { CantonError, cantonErrorPayloadOf, messageOf } from '#src/cantonError'
+
 // What the SDK's built-in picker rejects with, and what `guardedConnect` raises in its place when
 // the SDK misses the close — matched here, at the seam that owns the SDK, and never downstream.
 const PICKER_DISMISSED = 'User closed the wallet picker'
@@ -50,27 +52,10 @@ export class ConnectCancelledError extends Error {
   }
 }
 
-/** Reads the text off a rejection: `message` as JSON-RPC sends it, `details` as the SDK does. */
-const textOf = (cause: unknown): string | undefined => {
-  if (typeof cause !== 'object' || cause === null) {
-    return undefined
-  }
-
-  for (const key of ['message', 'details'] as const) {
-    const value = (cause as Record<string, unknown>)[key]
-
-    if (typeof value === 'string' && value !== '') {
-      return value
-    }
-  }
-
-  return undefined
-}
-
 /**
- * Hands `cause` back as an `Error`, wrapping what a wallet answered with. Nothing a wallet refuses
- * arrives as an `Error`: the window transport rejects with the bare JSON-RPC object, and the SDK's
- * own controller with a `{ status, error, details }` of its own, so both are read here.
+ * Hands `cause` back as an `Error`, a {@link CantonError} where the participant raised it. Nothing
+ * a wallet refuses arrives as an `Error`, and each transport rejects with a shape of its own, so
+ * the message is read through all three rather than stringified.
  *
  * @example
  * const error = toError(await sdk.signMessage(params).catch((cause: unknown) => cause))
@@ -81,7 +66,13 @@ export const toError = (cause: unknown): Error => {
     return cause
   }
 
-  return new Error(textOf(cause) ?? String(cause), { cause })
+  const payload = cantonErrorPayloadOf(cause)
+
+  if (payload !== undefined) {
+    return new CantonError(payload, cause)
+  }
+
+  return new Error(messageOf(cause) ?? String(cause), { cause })
 }
 
 /** Classifies what `sdk.connect()` threw, so the cancel path is decided once. */
