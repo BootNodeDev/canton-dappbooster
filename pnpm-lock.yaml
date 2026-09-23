@@ -213,11 +213,11 @@ importers:
         specifier: 1.12.2
         version: 1.12.2
       '@canton-network/core-types':
-        specifier: 1.10.0
-        version: 1.10.0
+        specifier: 1.12.1
+        version: 1.12.1
       '@canton-network/dapp-sdk':
-        specifier: 1.5.1
-        version: 1.5.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)
+        specifier: 1.7.1
+        version: 1.7.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.2
@@ -338,8 +338,8 @@ importers:
         specifier: ^0.5.0
         version: link:../../canton-theme
       '@canton-network/dapp-sdk':
-        specifier: 1.5.1
-        version: 1.5.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)
+        specifier: 1.7.1
+        version: 1.7.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.3.0
@@ -592,9 +592,6 @@ packages:
   '@canton-network/core-tx-visualizer@1.11.1':
     resolution: {integrity: sha512-gxkXG8gUThO0Ao87FPhtiUdl1GAg9GfFFxZc8DOLVXHTJyXgSNHJx+TksIAZazsez1Qo7xTM1f2Y/NSRaWoHeQ==}
 
-  '@canton-network/core-types@1.10.0':
-    resolution: {integrity: sha512-MFP0iY8REKtq4kM85Uxuq80V3KZ6BncXw8kGfcD0Q4rroheZ+fXCY7Tbzz5Zohd/Jv4ztJsC7UGxMKijcmp4IA==}
-
   '@canton-network/core-types@1.12.1':
     resolution: {integrity: sha512-D6c11y4lMVSXTURBj9jQYEFntM5OxFi+bJ7mW1eRq0Fq2qUsfBd46BUZeSsTL5M961W5Qy3ziIjZjV5Fpm5OCg==}
 
@@ -622,8 +619,8 @@ packages:
   '@canton-network/core-wallet-user-rpc-client@1.13.1':
     resolution: {integrity: sha512-4/05rc5VHqZz+x1BQpjgNUdQ1KI77F88iLFQAQ2S6MTDoOj0oGRlNR9QqudGqdOmsruRAgo0yBXeNkSlmkh0gw==}
 
-  '@canton-network/dapp-sdk@1.5.1':
-    resolution: {integrity: sha512-AQYBu0QxCXTLgt7nb7LMx/W0YZUT98DL4IYk1Rqz0+H5+Hwlu+VtA/HGcHfllEjc79qti6qJae1uT4etJwm+Ig==}
+  '@canton-network/dapp-sdk@1.7.1':
+    resolution: {integrity: sha512-PgWGmeFFMHuRsDYz3mOGWHV3HNSpuRX0cy0MDNGN8NBH4DNhuaykKh6r7xJdWjujMmNPm/9kwnUh+8YRo3Rm7A==}
     peerDependencies:
       '@walletconnect/sign-client': ^2.23.8
       '@walletconnect/types': ^2.23.8
@@ -5130,12 +5127,6 @@ snapshots:
       '@types/node': 25.9.8
       camelcase-keys: 10.0.2
 
-  '@canton-network/core-types@1.10.0':
-    dependencies:
-      '@daml/types': 3.5.2
-      uuid: 14.0.2
-      zod: 4.6.5
-
   '@canton-network/core-types@1.12.1':
     dependencies:
       '@daml/types': 3.5.2
@@ -5214,12 +5205,12 @@ snapshots:
       '@canton-network/core-types': 1.12.1
       lodash: 4.18.1
 
-  '@canton-network/dapp-sdk@1.5.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)':
+  '@canton-network/dapp-sdk@1.7.1(@walletconnect/sign-client@2.25.0(typescript@5.9.3)(zod@4.6.5))(@walletconnect/types@2.25.0)(supports-color@8.1.1)':
     dependencies:
       '@canton-network/core-provider-dapp': 1.12.2
       '@canton-network/core-rpc-transport': 1.12.1
       '@canton-network/core-splice-provider': 1.12.1
-      '@canton-network/core-types': 1.10.0
+      '@canton-network/core-types': 1.12.1
       '@canton-network/core-wallet-dapp-remote-rpc-client': 1.12.1
       '@canton-network/core-wallet-dapp-rpc-client': 1.12.1
       '@canton-network/core-wallet-discovery': 1.12.1

@@ -63,7 +63,7 @@ and walk all five:
    when the wallet answers.
 3. Both of those again on a wallet that reuses the popup the SDK left open (a gateway or
    WalletConnect one), where a close after choosing must fail the connect.
-4. Check that `new DappSDK()` still only initializes fields (true on 1.5.1). The machine constructs
+4. Check that `new DappSDK()` still only initializes fields (true on 1.7.1). The machine constructs
    one inside a plain `assign`; if construction turns effectful, move the ritual into the provider's
    `createSdk` and dispose the abandoned instance on the same transition, never from an effect.
 5. Click Connect, then the Cancel that replaces it, fast enough to beat the popup: the button reads
