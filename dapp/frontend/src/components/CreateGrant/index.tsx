@@ -6,7 +6,6 @@ import { Button } from '@/components/Button'
 import { Details } from '@/components/CreateGrant/Details'
 import { Preview } from '@/components/CreateGrant/Preview'
 import { Schedule } from '@/components/CreateGrant/Schedule'
-import { StepBar } from '@/components/CreateGrant/StepBar'
 import {
   initialScheduleForm,
   type ScheduleForm,
@@ -16,6 +15,7 @@ import {
 } from '@/components/CreateGrant/scheduleForm'
 import { useFundingToken } from '@/components/CreateGrant/useFundingToken'
 import { Modal } from '@/components/Modal'
+import { StepBar } from '@/components/StepBar'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
