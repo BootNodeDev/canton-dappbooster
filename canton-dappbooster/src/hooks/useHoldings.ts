@@ -29,9 +29,6 @@ interface HoldingsState {
 const IDLE: HoldingsState = { error: undefined, holdings: undefined, isLoading: false }
 const LOADING: HoldingsState = { error: undefined, holdings: undefined, isLoading: true }
 
-const toError = (value: unknown): Error =>
-  value instanceof Error ? value : new Error(String(value))
-
 /**
  * Return shape of {@link useHoldings}. `holdings` is `undefined` until the first read answers, and
  * again whenever one fails, so an empty array means the party holds nothing.
@@ -79,8 +76,8 @@ export const useHoldings = (): UseHoldingsResult => {
         const holdings = contracts.flatMap((contract) => holdingFromView(contract.view) ?? [])
         if (request === newest.current) setState({ error: undefined, holdings, isLoading: false })
       },
-      (err) => {
-        if (request === newest.current) setState({ ...IDLE, error: toError(err) })
+      (err: Error) => {
+        if (request === newest.current) setState({ ...IDLE, error: err })
       },
     )
   }, [activeContractsByInterface, isReady, partyId])
