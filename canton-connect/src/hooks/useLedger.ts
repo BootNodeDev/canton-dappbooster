@@ -23,6 +23,7 @@ import {
   decodeConnectedSynchronizers,
 } from '#src/connectedSynchronizers'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import { explainPagedReadFailure, VERSION_REQUEST } from '#src/participantVersion'
 import {
   decodeTransaction,
   decodeTransactions,
@@ -80,7 +81,8 @@ export interface UseLedgerResult {
  *
  * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
  * party; `transaction` also when the update is not one the party sees, `userRights` when the
- * ledger names no authenticated user.
+ * ledger names no authenticated user. A contracts read on a participant older than Canton 3.5
+ * rejects saying so, with the participant's own failure as `cause`.
  *
  * @example
  * const { activeContracts, transactions, transaction, userRights } = useLedger()
@@ -138,6 +140,19 @@ export const useLedger = (): UseLedgerResult => {
     return offsetOf(await read(LEDGER_END_REQUEST))
   }, [isLocked, read, status])
 
+  // Asked only once a page fails, so a participant that pages pays nothing for the check.
+  const readPage = useCallback(
+    async (params: LedgerApiParams): Promise<unknown> => {
+      try {
+        return await read(params)
+      } catch (failure) {
+        const version = await read(VERSION_REQUEST).catch(() => undefined)
+        throw explainPagedReadFailure(toError(failure), version)
+      }
+    },
+    [read],
+  )
+
   // One offset for every page keeps them one snapshot.
   const readAllPages = useCallback(
     async (request: (offset: LedgerOffset, pageToken?: string) => LedgerApiParams) => {
@@ -145,14 +160,14 @@ export const useLedger = (): UseLedgerResult => {
       const rows: unknown[] = []
       let pageToken: string | undefined
       do {
-        const page = pageOf(await read(request(offset, pageToken)))
+        const page = pageOf(await readPage(request(offset, pageToken)))
         rows.push(...page.rows)
         pageToken = page.nextPageToken
       } while (pageToken !== undefined)
 
       return { rows, offset }
     },
-    [ledgerEnd, read],
+    [ledgerEnd, readPage],
   )
 
   const activeContracts = useCallback(

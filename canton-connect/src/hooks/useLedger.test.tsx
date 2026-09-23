@@ -94,6 +94,8 @@ describe('useLedger', () => {
         }),
       }),
     )
+
+    expect(ledgerApi).toHaveBeenCalledTimes(2)
   })
 
   it('reports the offset its snapshot was taken at, so a caller can follow from there', async () => {
@@ -322,6 +324,43 @@ describe('useLedger', () => {
     expect(ledgerApi).toHaveBeenCalledWith({
       requestMethod: 'get',
       resource: '/v2/state/ledger-end',
+    })
+  })
+
+  it('names the Canton floor when a page fails on a participant older than 3.5', async () => {
+    const notFound = new Error('HttpMethod(POST), uri: /v2/state/active-contracts-page')
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockRejectedValueOnce(notFound)
+      .mockResolvedValueOnce({ version: '3.4.11' })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(
+        result.current.activeContracts({ templateId: '#app:Main:Grant' }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining('Canton 3.5 or later and this participant runs 3.4.11'),
+        cause: notFound,
+      })
+    })
+
+    expect(ledgerApi).toHaveBeenLastCalledWith({ requestMethod: 'get', resource: '/v2/version' })
+  })
+
+  it('hands a failed page back untouched on a participant that pages', async () => {
+    const refused = new Error('PERMISSION_DENIED')
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockRejectedValueOnce(refused)
+      .mockResolvedValueOnce({ version: '3.5.17' })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(
+        result.current.activeContractsByInterface({ interfaceId: '#app:Main:Holding' }),
+      ).rejects.toBe(refused)
     })
   })
 

@@ -30,6 +30,7 @@ src/
   watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
   userRights.ts             the rights read and its decoder
   connectedSynchronizers.ts the connected-synchronizers read and its decoder
+  participantVersion.ts     the version read, and the floor a failed page names
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -170,9 +171,12 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   answers everything in one body and 413 past the participant's limit. The offset is read once and
   sent with every page: the participant refuses a page token issued at another offset, and one
   offset is what makes the pages one snapshot. The endpoint exists from Canton 3.5, which every
-  Splice line runs; a 3.4 participant (`dpm sandbox`) has no paged read at all and the call fails
-  with the gateway's `Unsupported post resource`. There, `ledgerApi` on `/v2/state/active-contracts`
-  is the read, unpaged, and the exported types still fit its rows.
+  Splice line runs. A 3.4 participant, such as `dpm sandbox` inside a project pinned to SDK 3.4,
+  answers it with a bare 404, which a gateway forwards as `Something went wrong while calling
+  ledgerApi`: its allowlist is the 3.5 and 3.6 routes whatever the participant runs. So a failed page reads `/v2/version`, and below 3.5 the
+  read rejects naming the floor, the participant's failure as `cause`; asking only on failure is
+  what keeps a paging participant at no extra call. There, `ledgerApi` on
+  `/v2/state/active-contracts` is the read, unpaged, and the exported types still fit its rows.
 - A contracts read answers `{ contracts, offset }`, not a bare list. The offset is the one its pages
   were pinned at, so a caller following changes resumes exactly there instead of reading the ledger
   end separately and double-counting whatever committed in between.
