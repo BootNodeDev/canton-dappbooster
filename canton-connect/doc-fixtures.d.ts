@@ -17,6 +17,8 @@ declare const error: Error | undefined
 
 /* Consumer-side wiring */
 
+declare const sdk: import('@canton-network/dapp-sdk').DappSDK
+
 declare const toast: { error: (message: string) => void }
 declare const App: () => FixtureElement
 declare const children: FixtureNode

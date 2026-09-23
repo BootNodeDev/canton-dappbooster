@@ -1,7 +1,8 @@
 # canton-connect
 
 wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets, over
-`@canton-network/dapp-sdk`'s `DappSDK` facade.
+`@canton-network/dapp-sdk`'s `DappSDK` facade, plus the ledger reads without React for anything
+that is not one.
 
 ## Why
 
@@ -153,6 +154,23 @@ const config = {
 `networkId` is the Canton network the dApp targets, as a CAIP-2 chain id.
 
 Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#walletconnect).
+
+## Outside React
+
+`@bootnodedev/canton-connect/core` is the ledger reads with no React and no wallet session.
+`createLedger` takes any function that answers a JSON Ledger API call, a wallet's `ledgerApi` or a
+service's own client for the participant, and returns the reads `useLedger` has, each naming its
+party.
+
+```ts
+import { createLedger } from '@bootnodedev/canton-connect/core'
+
+const ledger = createLedger((params) => sdk.ledgerApi(params))
+const { contracts } = await ledger.activeContracts({ templateId: '#my-app:Main:Grant', party: PARTY })
+```
+
+The entry loads nothing outside this package. Installing the package still brings its React and SDK
+peers into the tree.
 
 ## Reference
 

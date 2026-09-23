@@ -33,6 +33,8 @@ src/
   participantVersion.ts     the version read, and the floor a failed page names
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
+  ledger.ts                 createLedger: every typed read over a transport the caller supplies
+  core.ts                   the ./core exports, React-free
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
   index.ts                  public exports
 ```
@@ -151,6 +153,24 @@ What differs over WalletConnect:
 - `networkId` is the CAIP-2 chain id of the network the dApp targets: a wallet on another network
   cannot pair, and the default `canton:local` is a local participant, so a dApp on devnet or mainnet
   sets it.
+
+### The core
+
+`createLedger(ledgerApi)` is every typed read over a transport the caller hands it. `useLedger` is
+the session guards and the connected party over one built on the wallet's `ledgerApi`, so a read is
+written once and a hook-only read cannot drift from it. `/core` exports it with the types and the
+React-free utilities, and imports nothing outside the package at runtime; `core.test.ts` walks the
+source graph and fails the moment it does.
+
+What the code cannot say:
+
+- It fails the first gate on purpose. The reads are what a wallet, an indexer or a service wants,
+  and none of them has a dApp's session.
+- A sub-path shares its package's peers, so installing canton-connect for `/core` still puts React
+  and the SDKs in the tree, though nothing loads them. A package of its own would fix that, and
+  waits for a consumer that needs it.
+- The transport's shape is the gateway's own: a route template with `path`, `query` and `body`,
+  which `core-ledger-client`'s `LedgerClient` takes as is.
 
 ### Ledger reads
 

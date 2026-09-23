@@ -5,7 +5,8 @@ Applies only to `canton-connect/`. Repo-wide rules: [`../CLAUDE.md`](../CLAUDE.m
 ## Scope
 
 A thin React layer over `@canton-network/dapp-sdk`'s `DappSDK`, which owns discovery, the picker,
-the session and the transports. Browser-only, and built to stay cheap to delete.
+the session and the transports. The hooks are browser-only and built to stay cheap to delete;
+`/core` is the ledger reads without React, for anything that is not a React dApp.
 
 ## Working rules
 
@@ -77,6 +78,9 @@ and walk all five:
   `<Context.Provider>`, so the root's component-authoring rules do not apply to it.
 - `mock/` is source, not a double: the barrel exports `createMockAdapter`, so `testing/` cannot
   hold it.
+- `core.ts` is the published `./core` barrel and `ledger.ts` what it serves. A new read goes into
+  `createLedger` and `useLedger` wraps it, never the other way round. Nothing reachable from
+  `core.ts` imports React, xstate or an SDK at runtime; `core.test.ts` fails if something does.
 - `testing/` is the published `./testing` subpath, and only four names are on its barrel:
   `createFakeWallet`, `createAutoPicker`, `FakeSessionProvider`, `pause`. The rest is suite-local.
 

@@ -86,7 +86,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 |------|---------|-------|------|
 | [`dapp/daml/`](dapp/daml/) | `amulet-vesting` DAML model: factory, proposal, contract, residual claim, escrowing Canton Coin as a Splice `LockedAmulet`. Vendored from [cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts), where its scenarios stay | DAML | n/a (DAR artifact) |
 | [`dapp/frontend/`](dapp/frontend/) | Canton Coin vesting dApp over the local participant. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory, the `AmuletRules` and the open mining round all arrive by explicit disclosure. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router + Biome | 3012 |
-| [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + xstate 5 + Biome | n/a (library) |
+| [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports. `src/core.ts` is the `/core` sub-path: the same ledger reads over any transport, with no React | TypeScript + React 19 + xstate 5 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
@@ -294,6 +294,11 @@ leaf something you call or render, and keep parameter and return types inside th
   sub-path is merged, the component's own block states the import path, since the tree no longer
   shows it. `canton-connect`'s `testing` module stays separate: those are doubles, and a fake
   provider listed beside the real one is a trap rather than a convenience.
+- **A merged sub-path may share names with the main barrel.** `canton-connect`'s `/core` must
+  export `CantonError` and the other React-free values itself, or a service importing them would
+  load React through the main entry. Merged, each shared name would be listed twice, as the
+  declaration and a re-export reference, so that package's `typedoc.json` sets `excludeReferences`;
+  and `docs-check.mjs` imports a shared name into a snippet from the first barrel only.
 - **A re-export cannot be tagged.** typedoc resolves it to the upstream declaration, so a local
   `@category` on `export type { PrepareExecuteParams }` is ignored. `defaultCategory` catches those,
   which is safe only because everything with a local declaration is required to be tagged.

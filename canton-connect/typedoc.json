@@ -1,7 +1,8 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "extends": ["../kit/typedoc.shared.json"],
-  "entryPoints": ["src/index.ts", "src/testing/index.ts"],
+  "entryPoints": ["src/index.ts", "src/core.ts", "src/testing/index.ts"],
+  "excludeReferences": true,
   "projectDocuments": ["coming-from-wagmi.md"],
   "intentionallyNotExported": ["ConnectionActorRef", "AccountPinned"],
   "categoryOrder": ["Components", "Hooks", "Configuration", "Types", "Errors", "Utilities", "*"],
