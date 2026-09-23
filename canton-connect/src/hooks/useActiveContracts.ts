@@ -6,8 +6,7 @@ import { pollEvery, type WatchSource } from '#src/watch'
 
 /**
  * What {@link useActiveContracts} reads, plus whether to keep it current. `watch: true` polls;
- * pass a {@link WatchSource} to drive it from something else. A `party` array is a dependency of
- * the read, so hoist it or memoize it rather than spelling it inline.
+ * pass a {@link WatchSource} to drive it from something else.
  *
  * @example
  * const once: UseActiveContractsParams = { templateId: '#my-app:Main:Grant' }
@@ -37,6 +36,9 @@ interface State<Payload> {
   isLoading: boolean
   error: Error | undefined
 }
+
+const partyOf = (key: string): string | string[] | undefined =>
+  (JSON.parse(key) as string | string[] | null) ?? undefined
 
 const IDLE = { contracts: undefined, isLoading: false, error: undefined } as const
 const LOADING = { contracts: undefined, isLoading: true, error: undefined } as const
@@ -87,11 +89,15 @@ export const useActiveContracts = <Payload = unknown>(
   const newest = useRef(0)
   const cursor = useRef<LedgerOffset | undefined>(undefined)
 
-  const { templateId, party, includeCreatedEventBlob, watch } = params
+  const { templateId, includeCreatedEventBlob, watch } = params
 
   // Read through a ref so a source rebuilt each render does not reset the timer it just started.
   const source = useRef(watch)
   source.current = watch
+
+  // The dependency is the party's serialization, not the array, which is a new identity on every
+  // render: depending on the array re-reads on every render, and each read renders again.
+  const partyKey = JSON.stringify(params.party ?? null)
 
   const snapshot = useCallback((): void => {
     if (!isReady) {
@@ -105,7 +111,7 @@ export const useActiveContracts = <Payload = unknown>(
 
     activeContracts<Payload>({
       templateId,
-      party,
+      party: partyOf(partyKey),
       includeCreatedEventBlob,
     }).then(
       ({ contracts, offset }) => {
@@ -121,7 +127,7 @@ export const useActiveContracts = <Payload = unknown>(
         }
       },
     )
-  }, [activeContracts, includeCreatedEventBlob, isReady, party, templateId])
+  }, [activeContracts, includeCreatedEventBlob, isReady, partyKey, templateId])
 
   // A followed create carries no blob, so a read that asked for one re-snapshots instead.
   const follow = useCallback((): void => {
@@ -136,7 +142,7 @@ export const useActiveContracts = <Payload = unknown>(
 
     transactions<Payload>({
       templateId,
-      party,
+      party: partyOf(partyKey),
       beginExclusive: cursor.current,
     }).then(
       (page) => {
@@ -160,7 +166,7 @@ export const useActiveContracts = <Payload = unknown>(
         }
       },
     )
-  }, [includeCreatedEventBlob, party, snapshot, templateId, transactions])
+  }, [includeCreatedEventBlob, partyKey, snapshot, templateId, transactions])
 
   useEffect(() => {
     snapshot()

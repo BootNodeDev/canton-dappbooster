@@ -224,6 +224,28 @@ describe('useActiveContracts', () => {
     )
   })
 
+  it('does not re-read on every render when the party array is spelled inline', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValue({ offset: 7, activeContracts: [] })
+    const { result } = renderHook(
+      () => useActiveContracts({ templateId: TEMPLATE, party: ['alice::1220ab'] }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <FakeSessionProvider account={account} sdk={{ ledgerApi }} status="connected">
+            {children}
+          </FakeSessionProvider>
+        ),
+      },
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    // Depending on the array itself read on every render, and every read rendered again.
+    expect(ledgerApi.mock.calls.length).toBeLessThanOrEqual(4)
+  })
+
   it('reports a failed read and stops the watch when the hook goes away', async () => {
     const watch = manualWatch()
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(new Error('no ledger'))
