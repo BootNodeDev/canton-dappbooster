@@ -1,5 +1,10 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
-import { type ActiveContract, filtersByParty, type LedgerOffset } from '#src/activeContracts'
+import {
+  type ActiveContract,
+  blobOf,
+  filtersByParty,
+  type LedgerOffset,
+} from '#src/activeContracts'
 
 /**
  * A contract the transaction created, as an active-contracts read returns it.
@@ -174,7 +179,7 @@ const decodeEvent = <Payload>(
         contractId: created.contractId,
         templateId: created.templateId,
         payload: created.createArgument as Payload,
-        createdEventBlob: created.createdEventBlob,
+        createdEventBlob: blobOf(created.createdEventBlob),
         synchronizerId,
       },
     }

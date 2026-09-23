@@ -125,6 +125,10 @@ export const offsetOf = (ledgerEnd: unknown): LedgerOffset => {
 // Capped by the participant; a larger ask only saves round trips.
 const ACS_PAGE_SIZE = 200
 
+// The participant always sends the field, empty where the read did not ask for the blob.
+export const blobOf = (createdEventBlob: string | undefined): string | undefined =>
+  createdEventBlob === undefined || createdEventBlob === '' ? undefined : createdEventBlob
+
 export const toParties = (party: string | string[]): string[] =>
   Array.isArray(party) ? party : [party]
 
@@ -197,7 +201,7 @@ const decodeRow = <Payload>(row: AcsRow): ActiveContract<Payload> | undefined =>
     contractId: event.contractId,
     templateId: event.templateId,
     payload: event.createArgument as Payload,
-    createdEventBlob: event.createdEventBlob,
+    createdEventBlob: blobOf(event.createdEventBlob),
     synchronizerId: active?.synchronizerId,
   }
 }

@@ -1,5 +1,10 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
-import { type ActiveContract, filtersByParty, type LedgerOffset } from '#src/activeContracts'
+import {
+  type ActiveContract,
+  blobOf,
+  filtersByParty,
+  type LedgerOffset,
+} from '#src/activeContracts'
 
 /**
  * One contract as it was created, with the offset it was archived at where it no longer is
@@ -79,7 +84,7 @@ export const decodeContractById = <Payload>(
       contractId: event.contractId,
       templateId: event.templateId,
       payload: event.createArgument as Payload,
-      createdEventBlob: event.createdEventBlob,
+      createdEventBlob: blobOf(event.createdEventBlob),
       synchronizerId: created?.synchronizerId,
     },
     archivedOffset: archivedOffsetOf(archived),

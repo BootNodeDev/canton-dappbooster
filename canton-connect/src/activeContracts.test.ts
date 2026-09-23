@@ -198,6 +198,16 @@ describe('decodeActiveContracts', () => {
   })
 })
 
+describe('blobOf', () => {
+  it('reads the empty blob a participant sends for an unasked read as none', () => {
+    const [contract] = decodeActiveContracts([
+      row({ contractId: '00aa', templateId: 'pkg:Main:Grant', createdEventBlob: '' }),
+    ])
+
+    expect(contract?.createdEventBlob).toBeUndefined()
+  })
+})
+
 describe('toDisclosedContract', () => {
   it('carries the blob and the synchronizer', () => {
     const [contract] = decodeActiveContracts([grant])
@@ -211,10 +221,14 @@ describe('toDisclosedContract', () => {
   })
 
   it('throws when the contract was read without its blob', () => {
-    const [contract] = decodeActiveContracts([
+    const [empty] = decodeActiveContracts([
+      row({ contractId: '00aa', templateId: 'pkg:Main:Grant', createdEventBlob: '' }),
+    ])
+    const [absent] = decodeActiveContracts([
       row({ contractId: '00aa', templateId: 'pkg:Main:Grant', createArgument: {} }),
     ])
 
-    expect(() => toDisclosedContract(contract)).toThrow('includeCreatedEventBlob')
+    expect(() => toDisclosedContract(empty)).toThrow('includeCreatedEventBlob')
+    expect(() => toDisclosedContract(absent)).toThrow('includeCreatedEventBlob')
   })
 })

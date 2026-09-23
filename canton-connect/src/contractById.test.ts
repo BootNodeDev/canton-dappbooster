@@ -90,6 +90,18 @@ describe('decodeContractById', () => {
     expect(decodeContractById(answer)?.archivedOffset).toBe(725)
   })
 
+  it('reads the empty blob a participant sends for an unasked read as none', () => {
+    const answer = {
+      created: {
+        createdEvent: { contractId: CID, templateId: 'pkg1:X:Y', createdEventBlob: '' },
+        synchronizerId: SYNC,
+      },
+      archived: null,
+    }
+
+    expect(decodeContractById(answer)?.contract.createdEventBlob).toBeUndefined()
+  })
+
   it('reports nothing where the create is pruned away, archival or not', () => {
     expect(decodeContractById({ created: null, archived: null })).toBeUndefined()
     expect(decodeContractById({ created: { createdEvent: { contractId: CID } } })).toBeUndefined()

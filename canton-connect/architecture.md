@@ -203,6 +203,9 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   end separately and double-counting whatever committed in between.
 - `party` defaults to the connected party and takes a list. Visibility stays the ledger's: a party
   the session's user cannot read as is refused by the participant, not filtered here.
+- The participant always sends `createdEventBlob`, empty where the read did not ask for it, so every
+  decoder reads `""` as no blob. Passed through, it makes `toDisclosedContract`'s guard unreachable
+  and ships a disclosure the ledger then rejects for a reason that names none of this.
 - Payloads and views are generics the caller names, on a transaction's created events as much as on
   an active contract. The package knows the envelope, not the Daml model.
 - A view with a non-zero `viewStatus` is one the ledger could not compute, so the contract is

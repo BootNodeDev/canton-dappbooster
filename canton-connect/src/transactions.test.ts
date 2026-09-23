@@ -27,6 +27,7 @@ const committed = {
         contractId: '00bb',
         templateId: 'pkg:Main:Grant',
         createArgument: { receiver: 'bob::1220' },
+        createdEventBlob: '',
       },
     },
     { ArchivedEvent: { contractId: '00cc', templateId: 'pkg:Main:Other' } },
