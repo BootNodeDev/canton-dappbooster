@@ -325,6 +325,36 @@ describe('useLedger', () => {
     })
   })
 
+  it("reads the authenticated user's rights, which needs no connected party", async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ user: { id: 'ledger-api-user' } })
+      .mockResolvedValueOnce({
+        rights: [
+          { kind: { CanActAs: { value: { party: 'operator::1220' } } } },
+          { kind: { ParticipantAdmin: { value: {} } } },
+        ],
+      })
+    const { result } = renderLedger(ledgerApi, false)
+
+    await act(async () => {
+      await expect(result.current.userRights()).resolves.toEqual([
+        { kind: 'CanActAs', party: 'operator::1220' },
+        { kind: 'ParticipantAdmin' },
+      ])
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(1, {
+      requestMethod: 'get',
+      resource: '/v2/authenticated-user',
+    })
+    expect(ledgerApi).toHaveBeenNthCalledWith(2, {
+      requestMethod: 'get',
+      resource: '/v2/users/{user-id}/rights',
+      path: { 'user-id': 'ledger-api-user' },
+    })
+  })
+
   it('refuses activeContracts when the session reports no party', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>()
     const { result } = renderLedger(ledgerApi, false)

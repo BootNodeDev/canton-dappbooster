@@ -26,6 +26,13 @@ import {
   transactionRequest,
   transactionsRequest,
 } from '#src/transactions'
+import {
+  AUTHENTICATED_USER_REQUEST,
+  decodeUserRights,
+  type UserRight,
+  userIdOf,
+  userRightsRequest,
+} from '#src/userRights'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -51,6 +58,7 @@ export interface UseLedgerResult {
     params?: TransactionParams,
   ) => Promise<Transaction<Payload>>
   ledgerEnd: () => Promise<LedgerOffset>
+  userRights: () => Promise<UserRight[]>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
@@ -58,19 +66,22 @@ export interface UseLedgerResult {
 /**
  * Ledger reads over the wallet session, envelope unwrapped; `ledgerApi` is the raw call for
  * anything else. A contracts read answers with the offset it was taken at, which is where a
- * caller following changes resumes.
+ * caller following changes resumes. `userRights` answers for the ledger user the wallet
+ * authenticates as, whose parties can outnumber the connected one.
  *
  * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
- * party; `transaction` also when the update is not one the party sees.
+ * party; `transaction` also when the update is not one the party sees, `userRights` when the
+ * ledger names no authenticated user.
  *
  * @example
- * const { activeContracts, transactions, transaction } = useLedger()
+ * const { activeContracts, transactions, transaction, userRights } = useLedger()
  * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
  * const since = await transactions({
  *   templateId: '#my-app:Main:Grant',
  *   beginExclusive: grants.offset,
  * })
  * const committed = await transaction(tx.payload.updateId)
+ * const isAdmin = (await userRights()).some((right) => right.kind === 'ParticipantAdmin')
  *
  * @category Hooks
  */
@@ -193,12 +204,20 @@ export const useLedger = (): UseLedgerResult => {
     [read, readAs],
   )
 
+  const userRights = useCallback(async (): Promise<UserRight[]> => {
+    assertUsable(status, isLocked)
+    const userId = userIdOf(await read(AUTHENTICATED_USER_REQUEST))
+
+    return decodeUserRights(await read(userRightsRequest(userId)))
+  }, [isLocked, read, status])
+
   return {
     activeContracts,
     activeContractsByInterface,
     transactions,
     transaction,
     ledgerEnd,
+    userRights,
     ledgerApi,
     isReady: status === 'connected' && !isLocked,
   }

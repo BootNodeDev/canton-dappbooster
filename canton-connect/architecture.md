@@ -28,6 +28,7 @@ src/
   transactions.ts           update reads: request builders and the event decoder
   cantonError.ts            CantonError, isRetryable and the payload reader toError uses
   watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
+  userRights.ts             the rights read and its decoder
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -186,6 +187,11 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   across pages via `ledgerEnd`, or a later page sees what an earlier one could not.
 - `transaction` uses a per-party wildcard filter so the caller sees every event of its own command.
   The any-party wildcard is admin-only on a participant.
+- `userRights` answers for the ledger user the wallet authenticates as, not the connected party,
+  so it lists parties the session never connected as. That user's `primaryParty` stays unread: on
+  the reference gateway it is the validator's `app_user` party, and would contradict `useAccount`.
+- `UserRight`'s kinds are declared, as `CantonErrorPayload` is, and `userRights.test.ts` fails
+  typecheck when the spec names a kind the decoder does not know.
 
 ### Errors
 

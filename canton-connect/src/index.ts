@@ -72,5 +72,6 @@ export type {
   PartyType,
   TxStatusSnapshot,
 } from '#src/types'
+export type { UserRight } from '#src/userRights'
 export type { WatchSource } from '#src/watch'
 export { pollEvery } from '#src/watch'
