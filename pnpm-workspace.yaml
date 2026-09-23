@@ -1,5 +1,6 @@
-# allows to use local package folders if versions are within range, fetch from npm if not
+# A local folder within range is linked even when npm holds a newer version that also fits.
 linkWorkspacePackages: true
+preferWorkspacePackages: true
 
 packages:
   - canton-connect

@@ -60,7 +60,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Category | Technology | Notes |
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in `dapp/daml/`; Bash and Node for the root `scripts/` and `kit/` |
-| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
+| Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages`, `preferWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | Wallet | @canton-network/wallet-gateway-remote | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in root devDependencies, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `wallet-gateway.config.json`. `dapp/frontend` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
@@ -454,10 +454,12 @@ pnpm packs the workspace root's `LICENSE` into a package that has none of its ow
 ships the text without three copies of it in the repo.
 
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
-`linkWorkspacePackages: true`, so pnpm links the local folder whenever that folder's own `version`
-satisfies the range, and downloads from npm when it does not. `dapp/frontend` and
-`canton-dappbooster` both ask for `^0.3.1`, and the three folders are all on `0.3.1`, so every one
-of them links today. That is what lets a single `package.json` serve two readers:
+`linkWorkspacePackages` and `preferWorkspacePackages`, so pnpm links the local folder whenever that
+folder's own `version` satisfies the range, even when npm holds a newer version that also does, and
+downloads from npm when it does not. Without the second, a branch cut before a release resolved the
+published build on its next `pnpm add`, and silently wherever that build's API still matched.
+`dapp/frontend` and `canton-dappbooster` ask for a caret range on the folders' own version, so every
+one of them links. That is what lets a single `package.json` serve two readers:
 
 - In this repo the three folders exist and are in range, so an edit in `canton-connect/src` shows up
   in the dApp with no build and no republish.
