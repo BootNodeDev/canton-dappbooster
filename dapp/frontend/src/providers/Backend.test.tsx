@@ -9,7 +9,8 @@ const ledgerApi = vi.hoisted(() => ({ current: (() => undefined) as unknown as L
 vi.mock('@/backend/config', () => ({ loadBackendConfig }))
 vi.mock('@/backend/LedgerBackend', () => ({ LedgerBackend: class {} }))
 vi.mock('@/hooks/useNetworkStatus', () => ({ useNetworkStatus: () => 'ok' }))
-vi.mock('@bootnodedev/canton-connect', () => ({
+vi.mock('@bootnodedev/canton-connect', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@bootnodedev/canton-connect')>()),
   useExecute: () => ({ execute: () => undefined }),
   useLedger: () => ({ ledgerApi: ledgerApi.current }),
   useAccount: () => ({ account: { partyId: 'party::1' } }),
