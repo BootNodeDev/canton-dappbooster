@@ -39,17 +39,12 @@ be called from a class, and `LedgerBackend`'s unit tests need it constructible w
 
 Both halves of the pairing are runtime state. The deployment comes from
 [`config.ts`](src/backend/config.ts), which reads it off the ledger through the same hooks: the
-newest `vesting-operator-*` among the connected user's rights via `ledgerApi`, then `activeContracts`
+newest `vesting-operator-*` the connected user can act as via `userRights`, then `activeContracts`
 as that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
 Nothing is configured, so nothing can go stale against the participant the wallet is pointed at.
 Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
 nothing to query and without the blob there is no factory to disclose. It needs a session to read
 through, so it resolves after connect rather than before.
-
-The rights read names its route as `/v2/users/{user-id}/rights` with the id in `path`, not written
-into the string. The Wallet Gateway allowlists the resource against the ledger API's own route list,
-so an interpolated id matches nothing and comes back as `Unsupported get resource`. The rule is
-under Ledger reads in [`CLAUDE.md`](CLAUDE.md).
 
 ## What a write has to carry
 

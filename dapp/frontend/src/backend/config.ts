@@ -11,6 +11,7 @@ export type Deployment = {
 
 export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 export type ActiveContracts = UseLedgerResult['activeContracts']
+export type UserRights = UseLedgerResult['userRights']
 
 // A filter takes the package-name reference, never the id it resolves to.
 const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
@@ -22,25 +23,10 @@ export const call = async <T>(ledgerApi: LedgerApi, params: LedgerApiParams): Pr
   (await ledgerApi(params)) as T
 
 // The hint carries the run's timestamp, so the last one sorted is the newest.
-const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
-  const { user } = await call<{ user?: { id?: string } }>(ledgerApi, {
-    requestMethod: 'get',
-    resource: '/v2/authenticated-user',
-  })
-  if (user?.id === undefined) {
-    throw new Error('the wallet did not report an authenticated user')
-  }
-  const { rights } = await call<{
-    rights?: { kind?: { CanActAs?: { value?: { party?: string } } } }[]
-  }>(ledgerApi, {
-    requestMethod: 'get',
-    // A gateway allowlists the route, so the id travels in `path` rather than written in here.
-    resource: '/v2/users/{user-id}/rights',
-    path: { 'user-id': user.id },
-  })
-  const operator = (rights ?? [])
-    .map((right) => right.kind?.CanActAs?.value?.party)
-    .filter((party): party is string => party?.startsWith(OPERATOR_HINT) === true)
+const newestOperator = async (userRights: UserRights): Promise<string> => {
+  const operator = (await userRights())
+    .flatMap((right) => (right.kind === 'CanActAs' ? [right.party] : []))
+    .filter((party) => party.startsWith(OPERATOR_HINT))
     .sort()
     .at(-1)
   if (operator === undefined) {
@@ -50,10 +36,10 @@ const newestOperator = async (ledgerApi: LedgerApi): Promise<string> => {
 }
 
 export const loadBackendConfig = async (
-  ledgerApi: LedgerApi,
+  userRights: UserRights,
   activeContracts: ActiveContracts,
 ): Promise<Deployment> => {
-  const operator = await newestOperator(ledgerApi)
+  const operator = await newestOperator(userRights)
   const { contracts } = await activeContracts({
     templateId: FACTORY,
     party: operator,

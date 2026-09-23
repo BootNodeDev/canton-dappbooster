@@ -1,10 +1,10 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Deployment, LedgerApi } from '@/backend/config'
+import type { Deployment, UserRights } from '@/backend/config'
 
 const loadBackendConfig = vi.hoisted(() => vi.fn())
-const ledgerApi = vi.hoisted(() => ({ current: (() => undefined) as unknown as LedgerApi }))
+const userRights = vi.hoisted(() => ({ current: (() => undefined) as unknown as UserRights }))
 
 vi.mock('@/backend/config', () => ({ loadBackendConfig }))
 vi.mock('@/backend/LedgerBackend', () => ({ LedgerBackend: class {} }))
@@ -12,7 +12,7 @@ vi.mock('@/hooks/useNetworkStatus', () => ({ useNetworkStatus: () => 'ok' }))
 vi.mock('@bootnodedev/canton-connect', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@bootnodedev/canton-connect')>()),
   useExecute: () => ({ execute: () => undefined }),
-  useLedger: () => ({ ledgerApi: ledgerApi.current }),
+  useLedger: () => ({ userRights: userRights.current }),
   useAccount: () => ({ account: { partyId: 'party::1' } }),
 }))
 
@@ -61,7 +61,7 @@ describe('Backend', () => {
     expect(seen.at(-1)).toContain(BOOTSTRAP)
 
     loadBackendConfig.mockResolvedValueOnce(DEPLOYMENT)
-    ledgerApi.current = (() => undefined) as unknown as LedgerApi
+    userRights.current = (() => undefined) as unknown as UserRights
     await render()
 
     expect(seen.at(-1)).toBeUndefined()
