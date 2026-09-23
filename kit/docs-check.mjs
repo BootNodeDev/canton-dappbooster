@@ -328,9 +328,15 @@ const checkPackage = (pkg) => {
 
   const declarations = new Map()
   const snippets = []
+  // A name two barrels export is one symbol re-exported, so a snippet imports it from the first.
   const barrelImport = pkg.barrels
-    .map((barrel) => {
-      const names = [...(barrelExports.get(barrel) ?? [])].sort()
+    .map((barrel, index) => {
+      const earlier = new Set(
+        pkg.barrels.slice(0, index).flatMap((one) => [...(barrelExports.get(one) ?? [])]),
+      )
+      const names = [...(barrelExports.get(barrel) ?? [])]
+        .filter((name) => !earlier.has(name))
+        .sort()
       const specifier = `#${barrel.replace(/\.tsx?$/, '')}`
       return names.length === 0 ? '' : `import { ${names.join(', ')} } from '${specifier}'`
     })
