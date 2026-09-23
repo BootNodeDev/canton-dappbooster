@@ -27,6 +27,7 @@ src/
   activeContracts.ts        active-contract reads: request builders, the page decoder, disclosure
   transactions.ts           update reads: request builders and the event decoder
   cantonError.ts            CantonError, isRetryable and the payload reader toError uses
+  watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -212,6 +213,30 @@ What the code cannot say:
 - `errorCategory` stays a raw number and `isRetryable` reads only `retryInfo`. Nothing in the SDK
   graph exports the fourteen category names, and the six-code list `core-ledger-client` retries on is
   that client's policy rather than the error's meaning.
+
+### Watching a read
+
+`useActiveContracts` is the state, effect and race guard every dApp wrote around `activeContracts`.
+`watch` keeps it current by following the template's transactions from the snapshot's own offset,
+never by re-reading:
+
+```text
+snapshot   activeContracts -> { contracts, offset }   the offset becomes the cursor
+tick       transactions from the cursor               created adds, consuming exercised removes
+```
+
+What the code cannot say:
+
+- Applying events by kind is sound only because the caller already filtered by template. An
+  active-contract view cannot be rebuilt from events in general: a consuming exercise omits the
+  archived contract's stakeholders, so it cannot say whose view it left.
+- A tick is two calls, not one, since `transactions` bounds its page with the ledger end. Neither is
+  a contracts read, which is the point: watching the ledger end instead re-reads every contract
+  whenever anything on the participant moves.
+- A followed create carries no `createdEventBlob`, so a read that asked for one re-snapshots instead.
+  A contract whose blob went missing breaks a disclosure much later, where nothing points here.
+- `WatchSource` takes a tick and returns its teardown, so the timer is the default rather than the
+  mechanism. Nothing pushes to a browser today, which is the only reason it is a timer.
 
 ### The party type
 

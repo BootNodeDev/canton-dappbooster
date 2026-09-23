@@ -26,6 +26,11 @@ export { CantonError, cantonErrorPayloadOf, isRetryable } from '#src/cantonError
 export { ConnectCancelledError } from '#src/connectError'
 export type { UseAccountResult } from '#src/hooks/useAccount'
 export { useAccount } from '#src/hooks/useAccount'
+export type {
+  UseActiveContractsParams,
+  UseActiveContractsResult,
+} from '#src/hooks/useActiveContracts'
+export { useActiveContracts } from '#src/hooks/useActiveContracts'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
 export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
@@ -57,7 +62,6 @@ export type {
   TransactionParams,
   TransactionsParams,
 } from '#src/transactions'
-
 export type {
   Account,
   CantonConnectConfig,
@@ -68,3 +72,5 @@ export type {
   PartyType,
   TxStatusSnapshot,
 } from '#src/types'
+export type { WatchSource } from '#src/watch'
+export { pollEvery } from '#src/watch'
