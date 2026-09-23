@@ -313,6 +313,41 @@ describe('useLedger', () => {
     )
   })
 
+  it('reads one contract by id as the connected party, pruned creates refused', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({
+        created: {
+          createdEvent: { contractId: 'c1', templateId: '#app:Main:Grant', createArgument: {} },
+          synchronizerId: 'sync::1220',
+        },
+        archived: null,
+      })
+      .mockResolvedValueOnce({ created: null, archived: null })
+    const { result } = renderLedger(ledgerApi)
+
+    await act(async () => {
+      await expect(result.current.contractById('c1')).resolves.toMatchObject({
+        contract: { contractId: 'c1' },
+        archivedOffset: undefined,
+      })
+      await expect(result.current.contractById('c2')).rejects.toThrow('has no create event')
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        resource: '/v2/events/events-by-contract-id',
+        body: expect.objectContaining({
+          contractId: 'c1',
+          eventFormat: expect.objectContaining({
+            filtersByParty: { 'alice::1220ab': expect.anything() },
+          }),
+        }),
+      }),
+    )
+  })
+
   it('hands the ledger end back as the ledger reports it', async () => {
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockResolvedValueOnce({ offset: 9 })
     const { result } = renderLedger(ledgerApi)

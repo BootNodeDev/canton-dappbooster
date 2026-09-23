@@ -21,6 +21,12 @@ import {
   connectedSynchronizersRequest,
   decodeConnectedSynchronizers,
 } from '#src/connectedSynchronizers'
+import {
+  type ContractByIdParams,
+  type ContractByIdResult,
+  contractByIdRequest,
+  decodeContractById,
+} from '#src/contractById'
 import { explainPagedReadFailure, VERSION_REQUEST } from '#src/participantVersion'
 import {
   decodeTransaction,
@@ -78,6 +84,10 @@ export interface Ledger {
     updateId: string,
     params: WithParty<TransactionParams>,
   ) => Promise<Transaction<Payload>>
+  contractById: <Payload = unknown>(
+    contractId: string,
+    params: WithParty<ContractByIdParams>,
+  ) => Promise<ContractByIdResult<Payload>>
   ledgerEnd: () => Promise<LedgerOffset>
   userRights: () => Promise<UserRight[]>
   connectedSynchronizers: (
@@ -92,7 +102,7 @@ export interface Ledger {
  * {@link useLedger}, which fills in the connected party.
  *
  * @throws from a read, as a {@link CantonError} where the participant raised it; `transaction`
- * also when the update is not one the party sees.
+ * also when the update is not one the party sees, `contractById` when the create is pruned.
  *
  * @example
  * const ledger = createLedger((params) => sdk.ledgerApi(params))
@@ -184,6 +194,21 @@ export const createLedger = (ledgerApi: LedgerApi): Ledger => {
       }
 
       return committed
+    },
+
+    contractById: async <Payload = unknown>(
+      contractId: string,
+      params: WithParty<ContractByIdParams>,
+    ) => {
+      const parties = toParties(params.party)
+      const found = decodeContractById<Payload>(
+        await read(contractByIdRequest(parties, contractId, params)),
+      )
+      if (found === undefined) {
+        throw new Error(`contract ${contractId} has no create event ${parties.join(', ')} sees`)
+      }
+
+      return found
     },
 
     ledgerEnd,

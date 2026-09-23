@@ -42,6 +42,8 @@ declare const activeContractsByInterface: import('#src/hooks/useLedger').UseLedg
 declare const transactions: import('#src/hooks/useLedger').UseLedgerResult['transactions']
 declare const transaction: import('#src/hooks/useLedger').UseLedgerResult['transaction']
 declare const connectedSynchronizers: import('#src/hooks/useLedger').UseLedgerResult['connectedSynchronizers']
+declare const contractById: import('#src/hooks/useLedger').UseLedgerResult['contractById']
 declare const lastPage: import('#src/transactions').Transaction[]
+declare const contractId: string
 declare const tx: import('@canton-network/dapp-sdk').PrepareExecuteAndWaitResult['tx']
 declare const execute: import('#src/hooks/useExecute').UseExecuteResult['execute']

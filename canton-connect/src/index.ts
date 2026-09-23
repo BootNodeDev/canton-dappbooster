@@ -29,6 +29,7 @@ export type {
   ConnectedSynchronizersParams,
   ParticipantPermission,
 } from '#src/connectedSynchronizers'
+export type { ContractByIdParams, ContractByIdResult } from '#src/contractById'
 export type { UseAccountResult } from '#src/hooks/useAccount'
 export { useAccount } from '#src/hooks/useAccount'
 export type {

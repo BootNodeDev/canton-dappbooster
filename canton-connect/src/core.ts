@@ -26,6 +26,7 @@ export type {
   ConnectedSynchronizersParams,
   ParticipantPermission,
 } from '#src/connectedSynchronizers'
+export type { ContractByIdParams, ContractByIdResult } from '#src/contractById'
 export type { Ledger, LedgerApi, WithParty } from '#src/ledger'
 export { createLedger } from '#src/ledger'
 export type {

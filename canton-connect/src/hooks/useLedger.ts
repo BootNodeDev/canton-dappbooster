@@ -13,6 +13,7 @@ import type {
   ConnectedSynchronizer,
   ConnectedSynchronizersParams,
 } from '#src/connectedSynchronizers'
+import type { ContractByIdParams, ContractByIdResult } from '#src/contractById'
 import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 import { createLedger } from '#src/ledger'
 import type { Transaction, TransactionParams, TransactionsParams } from '#src/transactions'
@@ -41,6 +42,10 @@ export interface UseLedgerResult {
     updateId: string,
     params?: TransactionParams,
   ) => Promise<Transaction<Payload>>
+  contractById: <Payload = unknown>(
+    contractId: string,
+    params?: ContractByIdParams,
+  ) => Promise<ContractByIdResult<Payload>>
   ledgerEnd: () => Promise<LedgerOffset>
   userRights: () => Promise<UserRight[]>
   connectedSynchronizers: (
@@ -53,22 +58,23 @@ export interface UseLedgerResult {
 /**
  * Ledger reads over the wallet session, envelope unwrapped and the connected party filled in;
  * `ledgerApi` is the raw call for anything else. A contracts read answers with the offset it was
- * taken at. `userRights` answers for the ledger user the wallet signs in as, not the party.
- * Outside React, {@link createLedger} is the same reads over any transport.
+ * taken at, `contractById` with the one its contract went at, `userRights` for the wallet's ledger
+ * user rather than the party. Outside React, {@link createLedger} is the same over any transport.
  *
  * @throws with no {@link CantonConnectProvider} above it, with no session, or from a read with no
- * party; `transaction` also when the update is not one the party sees, `userRights` when the
- * ledger names no authenticated user. A contracts read on a participant older than Canton 3.5
- * rejects saying so, with the participant's own failure as `cause`.
+ * party; `transaction` also when the update is not one the party sees, `contractById` when the
+ * create is pruned, `userRights` when the ledger names no authenticated user. A contracts read on
+ * a participant older than Canton 3.5 rejects saying so, with the participant's own failure as
+ * `cause`.
  *
  * @example
- * const { activeContracts, transactions, transaction, userRights } = useLedger()
+ * const { activeContracts, transactions, contractById, userRights } = useLedger()
  * const grants = await activeContracts<{ receiver: string }>({ templateId: '#my-app:Main:Grant' })
  * const since = await transactions({
  *   templateId: '#my-app:Main:Grant',
  *   beginExclusive: grants.offset,
  * })
- * const committed = await transaction(tx.payload.updateId)
+ * const { archivedOffset } = await contractById(grants.contracts[0].contractId)
  * const isAdmin = (await userRights()).some((right) => right.kind === 'ParticipantAdmin')
  *
  * @category Hooks
@@ -141,6 +147,15 @@ export const useLedger = (): UseLedgerResult => {
     [ledger, readAs],
   )
 
+  const contractById = useCallback(
+    async <Payload = unknown>(
+      contractId: string,
+      params?: ContractByIdParams,
+    ): Promise<ContractByIdResult<Payload>> =>
+      await ledger.contractById<Payload>(contractId, { ...params, party: readAs(params?.party) }),
+    [ledger, readAs],
+  )
+
   const userRights = useCallback(async (): Promise<UserRight[]> => {
     assertUsable(status, isLocked)
 
@@ -161,6 +176,7 @@ export const useLedger = (): UseLedgerResult => {
     activeContractsByInterface,
     transactions,
     transaction,
+    contractById,
     ledgerEnd,
     userRights,
     connectedSynchronizers,

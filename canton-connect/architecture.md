@@ -30,6 +30,7 @@ src/
   watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
   userRights.ts             the rights read and its decoder
   connectedSynchronizers.ts the connected-synchronizers read and its decoder
+  contractById.ts           the one-contract read: its request builder and decoder
   participantVersion.ts     the version read, and the floor a failed page names
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
@@ -212,6 +213,15 @@ The typed reads unwrap the envelope every dApp otherwise walks by hand. What the
   across pages via `ledgerEnd`, or a later page sees what an earlier one could not.
 - `transaction` uses a per-party wildcard filter so the caller sees every event of its own command.
   The any-party wildcard is admin-only on a participant.
+- `contractById` reads `/v2/events/events-by-contract-id`, which answers with the create and the
+  consuming archival rather than a contract, so an archived contract still comes back. The read
+  reports `{ contract, archivedOffset }`: `archivedOffset` undefined is the whole of "still
+  active", and where it is set it is a cursor, not a timestamp. A caller wanting only live
+  contracts asks `activeContracts`; this is the read for one id already in hand.
+- A create pruned out from under its archival leaves nothing to report, so `contractById` rejects
+  rather than answering with half a contract. A contract the party cannot see is the participant's
+  own `CONTRACT_EVENTS_NOT_FOUND`, and a malformed id its `INVALID_FIELD`; neither is restated here.
+- `contractById` filters by wildcard, like `transaction`: the caller has an id, not a template.
 - `userRights` answers for the ledger user the wallet authenticates as, not the connected party,
   so it lists parties the session never connected as. That user's `primaryParty` stays unread: on
   the reference gateway it is the validator's `app_user` party, and would contradict `useAccount`.
