@@ -227,15 +227,14 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {
-    const { contracts } = await this.wallet.activeContracts<VestingPayload>({
-      templateId: vesting('AmuletVestingProposal'),
-      party: args.receiver,
-    })
-    const wanted = new Set(
-      contracts
-        .filter((contract) => contract.contractId === args.pendingCid)
-        .flatMap(pledgedAmulets),
+    const { contract, archivedOffset } = await this.wallet.contractById<VestingPayload>(
+      args.pendingCid,
+      { party: args.receiver },
     )
+    if (archivedOffset !== undefined) {
+      throw new Error('this grant proposal is no longer pending')
+    }
+    const wanted = new Set(pledgedAmulets(contract))
     const amulets = storedAmulets().filter((amulet) => wanted.has(amulet.contractId))
     if (wanted.size === 0 || amulets.length !== wanted.size) {
       throw new Error('the funder Amulets this grant locks are not disclosable from this browser')

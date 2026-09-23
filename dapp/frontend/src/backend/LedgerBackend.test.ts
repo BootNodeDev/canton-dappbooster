@@ -2,6 +2,7 @@ import type {
   ActiveContract,
   ActiveContractsParams,
   ActiveContractsResult,
+  ContractByIdResult,
   PrepareExecuteAndWaitResult,
   Transaction,
   TransactionsParams,
@@ -142,6 +143,7 @@ const executedResult: PrepareExecuteAndWaitResult = {
 const harness = (
   options: {
     acs?: Record<string, ActiveContract[]>
+    archivedAt?: number
     declines?: boolean
     deployment?: Deployment
     transactionPages?: Transaction[][]
@@ -154,6 +156,7 @@ const harness = (
 } => {
   const {
     acs = { [AMULET]: [amuletContract('am1')] },
+    archivedAt = undefined,
     declines = false,
     deployment: config = deployment,
     transactionPages = [],
@@ -183,6 +186,15 @@ const harness = (
     transactions: async <Payload>(params: TransactionsParams): Promise<Transaction<Payload>[]> => {
       transactionCalls.push(params)
       return (transactionPages[page++] ?? []) as Transaction<Payload>[]
+    },
+    contractById: async <Payload>(contractId: string): Promise<ContractByIdResult<Payload>> => {
+      const found = Object.values(acs)
+        .flat()
+        .find((one) => one.contractId === contractId)
+      if (found === undefined) {
+        throw new Error(`contract ${contractId} has no create event receiver::1 sees`)
+      }
+      return { contract: found as ActiveContract<Payload>, archivedOffset: archivedAt }
     },
   }
   return { backend: new LedgerBackend(config, wallet), submissions, acsCalls, transactionCalls }
@@ -462,12 +474,33 @@ describe('LedgerBackend.accept', () => {
     )
   })
 
-  it('refuses rather than submitting an Accept the participant would reject', async () => {
+  it('refuses a grant the ledger no longer shows the receiver', async () => {
     const { backend } = harness()
 
     await expect(
       backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-split-1' }),
+    ).rejects.toThrow(/has no create event/)
+  })
+
+  it('refuses a grant whose Amulets this browser never stored', async () => {
+    const acs: Record<string, ActiveContract[]> = { [AMULET]: [amuletContract('am1', '3000')] }
+    await harness({ acs }).backend.createVesting(grant('First grant'))
+    localStorage.clear()
+    const { backend } = harness({ acs })
+
+    await expect(
+      backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-split-1' }),
     ).rejects.toThrow(/not disclosable/)
+  })
+
+  it('refuses a grant the ledger has already archived', async () => {
+    const acs: Record<string, ActiveContract[]> = { [AMULET]: [amuletContract('am1', '3000')] }
+    await harness({ acs }).backend.createVesting(grant('First grant'))
+    const { backend } = harness({ acs, archivedAt: 42 })
+
+    await expect(
+      backend.accept({ receiver: 'receiver::1', pendingCid: 'pending-for-split-1' }),
+    ).rejects.toThrow(/no longer pending/)
   })
 
   it('keeps the blobs of a live grant when a later one is declined in the wallet', async () => {

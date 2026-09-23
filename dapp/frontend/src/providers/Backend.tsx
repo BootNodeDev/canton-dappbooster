@@ -23,8 +23,14 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const [deployment, setDeployment] = useState<Deployment | undefined>(undefined)
   const [configError, setConfigError] = useState<string | undefined>(undefined)
   const { execute } = useExecute()
-  const { activeContracts, connectedSynchronizers, ledgerEnd, transactions, userRights } =
-    useLedger()
+  const {
+    activeContracts,
+    connectedSynchronizers,
+    contractById,
+    ledgerEnd,
+    transactions,
+    userRights,
+  } = useLedger()
 
   const { account } = useAccount()
   const hasParty = account !== undefined
@@ -69,8 +75,14 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     () =>
       deployment === undefined || !hasParty
         ? undefined
-        : new LedgerBackend(deployment, { activeContracts, execute, ledgerEnd, transactions }),
-    [activeContracts, deployment, execute, hasParty, ledgerEnd, transactions],
+        : new LedgerBackend(deployment, {
+            activeContracts,
+            contractById,
+            execute,
+            ledgerEnd,
+            transactions,
+          }),
+    [activeContracts, contractById, deployment, execute, hasParty, ledgerEnd, transactions],
   )
 
   const value = useMemo<BackendState>(

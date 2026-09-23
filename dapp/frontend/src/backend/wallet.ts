@@ -21,6 +21,7 @@ export type LedgerCommand = {
 
 export type WalletFns = {
   activeContracts: UseLedgerResult['activeContracts']
+  contractById: UseLedgerResult['contractById']
   execute: UseExecuteResult['execute']
   ledgerEnd: UseLedgerResult['ledgerEnd']
   transactions: UseLedgerResult['transactions']
