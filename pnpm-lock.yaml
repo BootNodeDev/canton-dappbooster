@@ -274,7 +274,7 @@ importers:
         version: 1.44.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@bootnodedev/canton-connect':
-        specifier: ^0.5.1
+        specifier: ^0.5.2
         version: link:../canton-connect
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -326,13 +326,13 @@ importers:
         specifier: ^5.39.1
         version: 5.39.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@bootnodedev/canton-connect':
-        specifier: ^0.5.1
+        specifier: ^0.5.2
         version: link:../../canton-connect
       '@bootnodedev/canton-dappbooster':
-        specifier: ^0.5.1
+        specifier: ^0.5.2
         version: link:../../canton-dappbooster
       '@bootnodedev/canton-theme':
-        specifier: ^0.5.1
+        specifier: ^0.5.2
         version: link:../../canton-theme
       '@canton-network/dapp-sdk':
         specifier: 1.5.1

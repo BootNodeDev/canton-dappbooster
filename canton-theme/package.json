@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-theme",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster",
   "repository": {
     "type": "git",
