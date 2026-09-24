@@ -3,6 +3,7 @@ import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
 import { ConnectFace } from '@/components/ConnectFace'
 import { Spinner } from '@/components/Spinner'
 import { AccountMenu } from '@/components/TopBar/AccountMenu'
+import { ConnectGuide } from '@/components/TopBar/ConnectGuide'
 import { Logo } from '@/components/TopBar/Logo'
 import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useBackend } from '@/providers/Backend'
@@ -29,6 +30,7 @@ export const TopBar = (): React.JSX.Element => {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <ConnectGuide />
           {sessionPending ? (
             <span
               role="status"

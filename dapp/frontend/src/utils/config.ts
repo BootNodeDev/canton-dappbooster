@@ -6,6 +6,7 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 
 // The gateway serves its UI on the origin and the dApp API under /api/v0/dapp.
 export const WALLET_GATEWAY_URL: string = import.meta.env.VITE_WALLET_GATEWAY_URL
+export const WALLET_GATEWAY_UI_URL = new URL(WALLET_GATEWAY_URL).origin
 
 export const SCAN_API_URL: string = import.meta.env.VITE_SCAN_API_URL
 
