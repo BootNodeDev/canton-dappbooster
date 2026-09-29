@@ -2,7 +2,7 @@
 
 ![Static Badge](https://img.shields.io/badge/dApp-Booster-green?style=flat&color=%238b46a4) ![GitHub top language](https://img.shields.io/github/languages/top/bootnodedev/canton-dappbooster) ![GitHub branch status](https://img.shields.io/github/checks-status/bootnodedev/canton-dappbooster/main) ![GitHub License](https://img.shields.io/github/license/bootnodedev/canton-dappbooster)
 
-Local Canton development stack.
+Canton dAppBooster is an open-source local development stack and boilerplate by BootNode designed to take Canton network developers from Daml smart contracts to a working dApp user interface.
 
 ## Requirements
 
