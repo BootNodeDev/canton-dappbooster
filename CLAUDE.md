@@ -489,7 +489,7 @@ order, so `canton-connect` publishes before `canton-dappbooster`, which depends 
 
 **Four versions move in lockstep**: the root `package.json` and the three libraries. `dapp/frontend`
 and `dapp/daml` keep their own, because neither is published — and `dapp/daml`'s real version is
-`version: 0.0.2` in `dapp/daml/daml.yaml`, which names the built DAR, so its `package.json` version
+`version: 0.0.3` in `dapp/daml/daml.yaml`, which names the built DAR, so its `package.json` version
 is not the one that matters.
 
 **`node kit/release-version.mjs 0.4.0` does the whole bump.** `pnpm run release:version 0.4.0`
