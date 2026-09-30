@@ -91,7 +91,12 @@ log()  { printf '%s %s\n' "$P_STEP" "$*" >&5; }
 say()  { printf '%s %s\n' "$P_STEP" "$*" >&3; }
 warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
 # The one human line outside the fd scheme: an error belongs on stderr in every mode.
-die()  { json_event error "$*"; printf '%s %s\n' "$P_ERR" "$*" >&2; exit 1; }
+die() {
+  local message="$*"
+  json_event error "${message//$'\n'/ }"
+  printf '%s %s\n' "$P_ERR" "${message//$'\n'/$'\n'    }" >&2
+  exit 1
+}
 
 # Keep in step with the `step` calls in up(), which are the list.
 STEP_TOTAL=10
@@ -288,10 +293,16 @@ up() {
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
 
-  # The DAR build needs dpm; check here so a missing SDK fails before the
-  # containers come up rather than after.
   command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH. Install the DAML SDK (3.4.11), then run 'up'."
+    || die "dpm not found on PATH.
+Install it and add ~/.dpm/bin to your PATH: https://docs.canton.network/sdks-tools/cli-tools/dpm#installation
+Then open a new terminal and run ./scripts/dev-stack.sh up again (menu: Stack up)."
+
+  # Before anything starts, so an SDK it cannot build on stops `up` with nothing to undo.
+  step build-dar "Building the $DAR_NAME DAR..."
+  pnpm run build-dar \
+    || die "The $DAR_NAME build failed.
+Fix what build-dar printed above, then run ./scripts/dev-stack.sh up again (menu: Stack up)."
 
   # ./.env is the mint recipe, the DAR upload token and the bootstrap token.
   # Minting is offline, so this needs nothing running.
@@ -344,11 +355,6 @@ up() {
   step json-api "Waiting for the app-user JSON API on $JSON_API_URL..."
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
-
-  # The build fetches the Splice DARs amulet-vesting data-depends on the first time,
-  # and after a Splice bump.
-  step build-dar "Building the $DAR_NAME DAR..."
-  pnpm run build-dar || die "The $DAR_NAME build failed."
 
   step deploy-dar "Deploying $DAR_PATH to Canton..."
   pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
