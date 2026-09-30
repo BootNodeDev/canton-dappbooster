@@ -9,7 +9,7 @@ Canton dAppBooster is an open-source local development stack and boilerplate by 
 - Node 24 (>=24.15.0)
 - pnpm
 - Docker
-- dpm (DAML SDK 3.4.11)
+- dpm (DAML SDK 3.5, tested on 3.5.2; newer 3.5 patches should work)
 
 ## Installation
 
