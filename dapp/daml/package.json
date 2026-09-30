@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.3.0",
   "scripts": {
-    "build": "node ../../scripts/fetch-daml-deps.mjs && LANG=C.UTF-8 dpm build"
+    "build": "node ../../scripts/fetch-daml-deps.mjs && node ../../scripts/build-dar.mjs"
   }
 }
