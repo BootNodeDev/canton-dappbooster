@@ -7,6 +7,8 @@ packages:
   - canton-theme
   - dapp/daml
   - dapp/frontend
+  - create-canton-dappbooster
+  - templates/*
 
 allowBuilds:
   better-sqlite3: true
