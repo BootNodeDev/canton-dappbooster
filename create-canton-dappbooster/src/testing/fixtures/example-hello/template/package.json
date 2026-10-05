@@ -1,0 +1,7 @@
+{
+  "name": "canton-example-hello-template",
+  "version": "9.9.9",
+  "scripts": {
+    "dev": "vite"
+  }
+}

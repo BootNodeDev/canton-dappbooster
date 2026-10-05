@@ -1,0 +1,8 @@
+{
+  "name": "@bootnodedev/canton-example-hello",
+  "version": "0.0.1",
+  "private": true,
+  "files": [
+    "template"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "name": "create-canton-dappbooster",
+  "version": "0.5.3",
+  "description": "Scaffold a Canton dApp: a React + Vite app on the Canton dApp kit, optionally with a full local network",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
+    "directory": "create-canton-dappbooster"
+  },
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "create-canton-dappbooster": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node scripts/prepare-templates.mjs && tsdown",
+    "prepack": "node scripts/prepare-templates.mjs && tsdown",
+    "test": "node scripts/prepare-templates.mjs && vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "try": "bash scripts/try.sh",
+    "try:clean": "bash scripts/try.sh clean"
+  },
+  "imports": {
+    "#src/*": {
+      "types": [
+        "./src/*.ts",
+        "./src/*/index.ts"
+      ],
+      "default": "./src/*"
+    }
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}
