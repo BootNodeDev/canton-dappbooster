@@ -1,0 +1,4 @@
+# pnpm 10+ refuses to run a dependency's build script until it is listed here. protobufjs, under
+# the Canton SDK, has one; without this entry every install warns about it.
+allowBuilds:
+  protobufjs: true

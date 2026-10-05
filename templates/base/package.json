@@ -1,0 +1,29 @@
+{
+  "name": "@bootnodedev/canton-template-base",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host localhost --port 3012 --strictPort",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@bootnodedev/canton-connect": "^0.5.3",
+    "@bootnodedev/canton-dappbooster": "^0.5.3",
+    "@bootnodedev/canton-theme": "^0.5.3",
+    "@canton-network/core-types": "^1.8.0",
+    "@canton-network/dapp-sdk": "1.5.1",
+    "@walletconnect/sign-client": "^2.23.9",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
