@@ -23,7 +23,10 @@ const connection: ConnectResult = { isConnected: true, isNetworkConnected: true 
 const unauthenticatedConnection: ConnectResult = { ...connection, isConnected: false }
 const declined = { ...unauthenticatedConnection, reason: 'user rejected' }
 
-const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
+const liveStatus: StatusEvent = {
+  connection,
+  provider: { id: 'test-wallet', providerType: 'browser' },
+}
 
 const notAllowed = (method: string) => () => {
   throw new Error(`sdk.${method} must not be called in this test`)
