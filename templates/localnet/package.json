@@ -1,0 +1,17 @@
+{
+  "name": "@bootnodedev/canton-template-localnet",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "stack": "bash scripts/dev-stack.sh",
+    "mint-token": "node scripts/mint-token.mjs ledger-api-user",
+    "build-dar": "node scripts/fetch-daml-deps.mjs && node scripts/build-dar.mjs",
+    "deploy-dar": "bash scripts/deploy-dar.sh",
+    "wallet-gateway": "mkdir -p .wallet-gateway && wallet-gateway -c ./wallet-gateway.config.json"
+  },
+  "devDependencies": {
+    "@bootnodedev/canton-barebones": "0.6.0",
+    "@canton-network/wallet-gateway-remote": "1.11.3"
+  }
+}

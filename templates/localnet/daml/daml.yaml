@@ -1,0 +1,12 @@
+sdk-version: 3.5.2
+name: starter
+source: .
+version: 0.1.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+# Splice DARs go here as `deps/<name>.dar`; scripts/fetch-daml-deps.mjs fetches whatever is listed
+# from the Splice release the LocalNet runs, and stays a no-op while the list is empty.
+data-dependencies: []
+build-options:
+  - --target=2.1
