@@ -22,6 +22,7 @@ describe('Canton token generation', () => {
     })
     const [header, payload, signature] = token.split('.')
 
+    assert.equal(token.split('.').length, 3)
     assert.deepEqual(JSON.parse(b64urlDecode(header).toString('utf8')), {
       alg: 'HS256',
       typ: 'JWT',
