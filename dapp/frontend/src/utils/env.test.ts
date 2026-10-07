@@ -3,7 +3,9 @@ import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_NETWORK_ID: 'canton:local',
   VITE_SCAN_API_URL: 'http://scan.localhost:4000/api/scan',
+  VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
 }
 
@@ -50,6 +52,37 @@ describe('parseEnv', () => {
     (VITE_WALLET_GATEWAY_URL) => {
       expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_GATEWAY_URL })).toThrow(
         /VITE_WALLET_GATEWAY_URL/,
+      )
+    },
+  )
+
+  it('accepts a canton network id', () => {
+    expect(parseEnv({ VITE_NETWORK_ID: 'canton:devnet' }).VITE_NETWORK_ID).toBe('canton:devnet')
+  })
+
+  it.each(['', 'devnet', 'canton:', 'eip155:1', 'canton:dev net'])(
+    'rejects %j as the network id',
+    (VITE_NETWORK_ID) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_NETWORK_ID })).toThrow(/VITE_NETWORK_ID/)
+    },
+  )
+
+  it('accepts a Reown project id', () => {
+    const VITE_WALLET_CONNECT_PROJECT_ID = 'f5f92dc31ae225fd1d946cc87eb1788b'
+    expect(parseEnv({ VITE_WALLET_CONNECT_PROJECT_ID }).VITE_WALLET_CONNECT_PROJECT_ID).toBe(
+      VITE_WALLET_CONNECT_PROJECT_ID,
+    )
+  })
+
+  it('accepts an empty project id, which leaves WalletConnect off', () => {
+    expect(parseEnv({ VITE_WALLET_CONNECT_PROJECT_ID: '' }).VITE_WALLET_CONNECT_PROJECT_ID).toBe('')
+  })
+
+  it.each(['f5f92dc3', 'F5F92DC31AE225FD1D946CC87EB1788B', ' f5f92dc31ae225fd1d946cc87eb1788b'])(
+    'rejects %j as the project id',
+    (VITE_WALLET_CONNECT_PROJECT_ID) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_CONNECT_PROJECT_ID })).toThrow(
+        /VITE_WALLET_CONNECT_PROJECT_ID/,
       )
     },
   )
