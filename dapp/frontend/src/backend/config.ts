@@ -50,7 +50,12 @@ const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   }
   const { rights } = await call<{
     rights?: { kind?: { CanActAs?: { value?: { party?: string } } } }[]
-  }>(ledgerApi, { requestMethod: 'get', resource: `/v2/users/${user.id}/rights` })
+  }>(ledgerApi, {
+    requestMethod: 'get',
+    // A gateway allowlists the route, so the id travels in `path` rather than written in here.
+    resource: '/v2/users/{user-id}/rights',
+    path: { 'user-id': user.id },
+  })
   const operator = (rights ?? [])
     .map((right) => right.kind?.CanActAs?.value?.party)
     .filter((party): party is string => party?.startsWith(OPERATOR_HINT) === true)
@@ -92,8 +97,7 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
       verbose: true,
     },
   })
-  // The blob is the disclosure payload a funder cannot read the factory without, so a row lacking
-  // one is no use even though the contract exists.
+  // Without the blob a funder cannot disclose the factory, so such a row is no use.
   const factory = (Array.isArray(rows) ? rows : [])
     .map((row) => row.contractEntry?.JsActiveContract)
     .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)

@@ -81,7 +81,7 @@ describe('the contract between bootstrap and dev-stack.sh', () => {
   })
 
   it('leaves the bearer token to dev-stack.sh', () => {
-    // The one registry variable bootstrap cannot supply: it never sees the token.
+    // The one registry variable bootstrap leaves out: it never prints the token it sends.
     assert.ok(!devStackKeys().includes('LEDGER_API_TOKEN'))
   })
 

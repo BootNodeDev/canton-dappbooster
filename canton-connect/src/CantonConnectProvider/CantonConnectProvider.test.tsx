@@ -33,7 +33,7 @@ describe('CantonConnectProvider', () => {
     const { result } = renderSession(() => useSession(), { appName: 'Test dApp' })
 
     expect(result.current.status).toBe('idle')
-    expect(result.current.party).toBe(undefined)
+    expect(result.current.account).toBe(undefined)
     expect(result.current.isLocked).toBe(false)
   })
 

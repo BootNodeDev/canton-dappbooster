@@ -1,6 +1,6 @@
+import { useAccount } from '@bootnodedev/canton-connect'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
-import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 
@@ -12,9 +12,9 @@ export const ReadError = (): React.JSX.Element | null => {
   const loading = useVestingStore((s) => s.loading)
   const refresh = useVestingStore((s) => s.refresh)
   const { backend } = useBackend()
-  const { party } = useParty()
+  const { account } = useAccount()
 
-  if (error === undefined || backend === undefined || party === undefined) {
+  if (error === undefined || backend === undefined || account === undefined) {
     return null
   }
 
@@ -28,7 +28,7 @@ export const ReadError = (): React.JSX.Element | null => {
         variant="secondary"
         size="sm"
         pending={loading}
-        onClick={() => void refresh(backend, party.partyId)}
+        onClick={() => void refresh(backend, account.partyId)}
       >
         Try again
       </Button>

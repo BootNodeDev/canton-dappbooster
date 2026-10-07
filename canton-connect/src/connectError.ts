@@ -50,28 +50,38 @@ export class ConnectCancelledError extends Error {
   }
 }
 
-/** Whether a rejection carries a string `message`, as a JSON-RPC error object does. */
-const hasMessage = (cause: unknown): cause is { message: string } =>
-  typeof cause === 'object' &&
-  cause !== null &&
-  'message' in cause &&
-  typeof cause.message === 'string'
+/** Reads the text off a rejection: `message` as JSON-RPC sends it, `details` as the SDK does. */
+const textOf = (cause: unknown): string | undefined => {
+  if (typeof cause !== 'object' || cause === null) {
+    return undefined
+  }
+
+  for (const key of ['message', 'details'] as const) {
+    const value = (cause as Record<string, unknown>)[key]
+
+    if (typeof value === 'string' && value !== '') {
+      return value
+    }
+  }
+
+  return undefined
+}
 
 /**
- * Hands `cause` back as an `Error`, wrapping what a wallet answered with over JSON-RPC.
+ * Hands `cause` back as an `Error`, wrapping what a wallet answered with. Nothing a wallet refuses
+ * arrives as an `Error`: the window transport rejects with the bare JSON-RPC object, and the SDK's
+ * own controller with a `{ status, error, details }` of its own, so both are read here.
  *
  * @example
  * const error = toError(await sdk.signMessage(params).catch((cause: unknown) => cause))
  * error.cause // the wallet's `{ code, message }` when that is what it sent
  */
-// The window transport rejects with the JSON-RPC error object itself, `{ code, message }` and no
-// prototype, so `instanceof Error` fails on every wallet-side refusal.
 export const toError = (cause: unknown): Error => {
   if (cause instanceof Error) {
     return cause
   }
 
-  return new Error(hasMessage(cause) ? cause.message : String(cause), { cause })
+  return new Error(textOf(cause) ?? String(cause), { cause })
 }
 
 /** Classifies what `sdk.connect()` threw, so the cancel path is decided once. */

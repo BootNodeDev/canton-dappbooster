@@ -8,6 +8,7 @@ import type {
   ProviderType,
   WalletInfo,
 } from '@canton-network/dapp-sdk'
+import type { Account } from '#src/types'
 
 // Derived from ProviderAdapter/dappAPI so this file stays on the one dapp-sdk dependency.
 /** The provider object an adapter hands out, which is what this mock has to satisfy. */
@@ -18,8 +19,6 @@ type RequestArg = Parameters<MockProvider['request']>[0]
 type RequestResult = Awaited<ReturnType<MockProvider['request']>>
 /** A subscriber to one of the provider's push events. */
 type Listener = Parameters<MockProvider['on']>[1]
-/** One CIP-0103 account entry, as `listAccounts` reports it. */
-type Wallet = dappAPI.Wallet
 
 /**
  * One canned account the mock adapter reports. Only `partyId` is required; the rest is filled with
@@ -36,7 +35,7 @@ export interface MockAccount {
 /**
  * Wiring for {@link createMockAdapter}. `id` defaults to `'mock'`, which is the provider id
  * `createAutoPicker('mock')` matches; `accounts` defaults to one generated account and treats the
- * first entry as primary; omitting `networkId` lets `CantonConnectConfig.networkId` apply instead.
+ * first entry as primary; `networkId` defaults to `canton:local`.
  *
  * @example
  * const options: CreateMockAdapterOptions = { id: 'mock', accounts: [{ partyId }] }
@@ -63,35 +62,35 @@ const DEFAULT_PROVIDER_ID: ProviderId = 'mock'
 const DEFAULT_NAME = 'Mock Wallet'
 const DEFAULT_DESCRIPTION = 'Mock wallet for dev and tests — no real signing, never a live wallet'
 
-// Wallet requires status/signingProviderId; neither has a real mock equivalent.
-const MOCK_WALLET_STATUS: dappAPI.WalletStatus = 'allocated'
+// Account requires status/signingProviderId; neither has a real mock equivalent.
+const MOCK_ACCOUNT_STATUS: dappAPI.WalletStatus = 'allocated'
 const MOCK_SIGNING_PROVIDER_ID: dappAPI.SigningProviderId = 'mock'
 // Obviously fake, not '' — a presence check downstream shouldn't mistake this for real.
 const MOCK_PUBLIC_KEY: dappAPI.PublicKey = 'mock-public-key'
+// The entry type requires one, so the mock reports it rather than leaving a consumer to default it.
+const MOCK_NETWORK_ID: dappAPI.NetworkId = 'canton:local'
 
 /** The single mock account `createMockAdapter` reports when the caller supplies none. */
 const defaultAccounts = (providerId: ProviderId): MockAccount[] => [
   { partyId: `${providerId}::1220abcd` },
 ]
 
-/** Shapes one `MockAccount` into the `Wallet` the mock adapter's `listAccounts` returns. */
-const toWallet = (
+/** Shapes one `MockAccount` into the `Account` the mock adapter's `listAccounts` returns. */
+const toAccount = (
   account: MockAccount,
   primary: dappAPI.Primary,
   networkId: dappAPI.NetworkId | undefined,
-): Wallet =>
-  ({
-    primary,
-    partyId: account.partyId,
-    status: MOCK_WALLET_STATUS,
-    hint: account.name ?? account.partyId,
-    publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
-    // namespace is the partyId's fingerprint segment — the real party-hint::fingerprint convention.
-    namespace: account.partyId.split('::')[1] ?? account.partyId,
-    signingProviderId: MOCK_SIGNING_PROVIDER_ID,
-    // A mock has no network of its own — omitting this lets toParty's config fallback apply.
-    ...(networkId === undefined ? {} : { networkId }),
-  }) as Wallet
+): Account => ({
+  primary,
+  partyId: account.partyId,
+  status: MOCK_ACCOUNT_STATUS,
+  hint: account.name ?? account.partyId,
+  publicKey: account.publicKey ?? MOCK_PUBLIC_KEY,
+  // namespace is the partyId's fingerprint segment, the real party-hint::fingerprint convention.
+  namespace: account.partyId.split('::')[1] ?? account.partyId,
+  networkId: networkId ?? MOCK_NETWORK_ID,
+  signingProviderId: MOCK_SIGNING_PROVIDER_ID,
+})
 
 /**
  * The adapter `createMockAdapter` returns: it announces itself like an installed wallet and
@@ -102,7 +101,7 @@ class MockProviderAdapter implements ProviderAdapter {
   readonly name = DEFAULT_NAME
   readonly type: ProviderType = 'browser'
 
-  private readonly wallets: Wallet[]
+  private readonly accounts: Account[]
   private connected = false
   private listenerMap: Record<string, Listener[]> = {}
 
@@ -110,8 +109,8 @@ class MockProviderAdapter implements ProviderAdapter {
     this.providerId = options.id ?? DEFAULT_PROVIDER_ID
 
     const accounts = options.accounts ?? defaultAccounts(this.providerId)
-    this.wallets = accounts.map((account, index) =>
-      toWallet(account, index === 0, options.networkId),
+    this.accounts = accounts.map((account, index) =>
+      toAccount(account, index === 0, options.networkId),
     )
   }
 
@@ -149,7 +148,7 @@ class MockProviderAdapter implements ProviderAdapter {
       provider: { id: this.providerId, providerType: this.type },
       connection: { isConnected: this.connected, isNetworkConnected: true },
     }),
-    listAccounts: () => this.wallets,
+    listAccounts: () => this.accounts,
   }
 
   async request(args: RequestArg): Promise<RequestResult> {

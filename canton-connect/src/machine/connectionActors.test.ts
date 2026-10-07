@@ -15,7 +15,7 @@ import { createMockAdapter } from '#src/mock/mockAdapter'
 // Not the './testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a DOM.
 import { connectionInput } from '#src/testing/connectionInput'
 import { pause } from '#src/testing/pause'
-import type { WalletSdk } from '#src/types'
+import type { DappSdkMethods } from '#src/types'
 
 const pickerExploded = new Error('picker exploded')
 
@@ -23,14 +23,17 @@ const connection: ConnectResult = { isConnected: true, isNetworkConnected: true 
 const unauthenticatedConnection: ConnectResult = { ...connection, isConnected: false }
 const declined = { ...unauthenticatedConnection, reason: 'user rejected' }
 
-const liveStatus: StatusEvent = { connection, provider: { id: 'test-wallet' } }
+const liveStatus: StatusEvent = {
+  connection,
+  provider: { id: 'test-wallet', providerType: 'browser' },
+}
 
 const notAllowed = (method: string) => () => {
   throw new Error(`sdk.${method} must not be called in this test`)
 }
 
 type TestSdk = Pick<
-  WalletSdk,
+  DappSdkMethods,
   'connect' | 'disconnect' | 'init' | 'onStatusChanged' | 'removeOnStatusChanged' | 'status'
 >
 

@@ -32,7 +32,7 @@ export interface UseExecuteResult {
 
 /**
  * Submits ledger commands and tracks the transaction in `lastTx`, fed by the SDK's `txChanged`
- * event. `actAs` defaults to the party `useParty` reports, so a submit acts as the party the UI
+ * event. `actAs` defaults to the party `useAccount` reports, so a submit acts as the party the UI
  * shows rather than the wallet's own primary.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is

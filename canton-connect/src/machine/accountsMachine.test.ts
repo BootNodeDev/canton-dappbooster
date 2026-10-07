@@ -3,20 +3,20 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createActor, type EventObject, fromCallback, fromPromise } from 'xstate'
 import type { AccountsInput } from '#src/machine/accountsActors'
-import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
+import { accountsMachine } from '#src/machine/accountsMachine'
 import type { InitInput, RestoreInput } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
+import { testAccount } from '#src/testing/account'
 // Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a
 // DOM.
 import { accountsInput } from '#src/testing/accountsInput'
 import { connectionInput } from '#src/testing/connectionInput'
-import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
+import type { Account } from '#src/types'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = testParty('alice::1220ab')
-const accounts: WalletAccounts = { party }
-const pushedParty = testParty('bob::1220cd')
+const account = testAccount('alice::1220ab')
+const pushedAccount = testAccount('bob::1220cd')
 
 const sessionWith = (accountsLogic: typeof accountsMachine) =>
   connectionMachine.provide({
@@ -33,7 +33,9 @@ describe('accountsMachine', () => {
     const unsubscribed = vi.fn()
     const machine = accountsMachine.provide({
       actors: {
-        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.resolve(accounts)),
+        readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
+          Promise.resolve(account),
+        ),
         accountsEvents: fromCallback<EventObject, AccountsInput>(() => {
           subscribed()
           return () => unsubscribed()
@@ -45,10 +47,10 @@ describe('accountsMachine', () => {
     actor.start()
     await pause(0)
 
-    actor.send({ type: 'accounts.changed', accounts: { party: undefined } })
+    actor.send({ type: 'accounts.changed', account: undefined })
 
     expect(actor.getSnapshot().matches('ready')).toBe(true)
-    expect(actor.getSnapshot().context.party).toBeUndefined()
+    expect(actor.getSnapshot().context.account).toBeUndefined()
     expect(subscribed).toHaveBeenCalledOnce()
     expect(unsubscribed).not.toHaveBeenCalled()
 
@@ -56,10 +58,10 @@ describe('accountsMachine', () => {
   })
 
   it('takes a push over a read still in flight, which then cannot overwrite it', async () => {
-    let finishRead: ((accounts: WalletAccounts) => void) | undefined
+    let finishRead: ((account: Account | undefined) => void) | undefined
     const machine = accountsMachine.provide({
       actors: {
-        readAccounts: fromPromise<WalletAccounts, AccountsInput>(
+        readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(
           () =>
             new Promise((resolve) => {
               finishRead = resolve
@@ -73,16 +75,19 @@ describe('accountsMachine', () => {
 
     expect(actor.getSnapshot().matches('reading')).toBe(true)
 
-    actor.send({ type: 'accounts.changed', accounts: { party: pushedParty } })
+    actor.send({
+      type: 'accounts.changed',
+      account: pushedAccount,
+    })
 
     expect(actor.getSnapshot().matches('ready')).toBe(true)
-    expect(actor.getSnapshot().context.party).toEqual(pushedParty)
+    expect(actor.getSnapshot().context.account).toEqual(pushedAccount)
 
     // Leaving `reading` stopped the read, so what it was going to answer is already stale.
-    finishRead?.(accounts)
+    finishRead?.(account)
     await pause(0)
 
-    expect(actor.getSnapshot().context.party).toEqual(pushedParty)
+    expect(actor.getSnapshot().context.account).toEqual(pushedAccount)
 
     actor.stop()
   })
@@ -92,7 +97,7 @@ describe('accountsMachine', () => {
   it('leaves the session standing when the read fails', async () => {
     const machine = accountsMachine.provide({
       actors: {
-        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() =>
+        readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
           Promise.reject(new Error('no')),
         ),
       },
@@ -114,7 +119,9 @@ describe('accountsMachine', () => {
     const unreadable = new Error('no')
     const machine = accountsMachine.provide({
       actors: {
-        readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.reject(unreadable)),
+        readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
+          Promise.reject(unreadable),
+        ),
       },
     })
     const actor = createActor(machine, { input: accountsInput() })
@@ -125,10 +132,10 @@ describe('accountsMachine', () => {
     expect(actor.getSnapshot().matches('unavailable')).toBe(true)
     expect(actor.getSnapshot().context.error).toBe(unreadable)
 
-    actor.send({ type: 'accounts.changed', accounts })
+    actor.send({ type: 'accounts.changed', account })
 
     expect(actor.getSnapshot().matches('ready')).toBe(true)
-    expect(actor.getSnapshot().context.party).toEqual(party)
+    expect(actor.getSnapshot().context.account).toEqual(account)
     expect(actor.getSnapshot().context.error).toBeUndefined()
 
     actor.stop()

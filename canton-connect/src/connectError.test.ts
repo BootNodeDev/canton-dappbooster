@@ -3,6 +3,12 @@ import { ConnectCancelledError, toConnectError, toError } from '#src/connectErro
 
 const rpcError = { code: -32000, message: 'wallet locked', data: { reason: 'locked' } }
 
+const sdkError = {
+  status: 'error',
+  error: 3,
+  details: 'Transaction with commandId claim-1 failed to execute.',
+}
+
 describe('toConnectError', () => {
   it('translates the picker dismissal, keeping the original as cause', () => {
     const dismissed = new Error('User closed the wallet picker')
@@ -52,6 +58,25 @@ describe('toError', () => {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toBe('wallet locked')
     expect(error.cause).toBe(rpcError)
+  })
+
+  it('reads the details off an SDK rejection instead of stringifying it', () => {
+    const error = toError(sdkError)
+
+    expect(error.message).toBe('Transaction with commandId claim-1 failed to execute.')
+    expect(error.cause).toBe(sdkError)
+  })
+
+  it('prefers a message over a details when a rejection carries both', () => {
+    expect(toError({ message: 'wallet locked', details: 'something else' }).message).toBe(
+      'wallet locked',
+    )
+  })
+
+  it('falls back to the details when the message is empty', () => {
+    expect(toError({ message: '', details: 'the wallet refused' }).message).toBe(
+      'the wallet refused',
+    )
   })
 
   it('stringifies a rejection that carries no message', () => {

@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url)
 const CONFIG_NAME = 'canton-barebones.config.json'
 
 // nginx serves no /api/validator without appUser.ui and no /api/scan without sv.scanUI,
-// which is how a missing flag surfaces as wallet-service failing for unrelated reasons.
+// which is how a missing flag surfaces as a caller failing for unrelated reasons.
 const REQUIRED_FLAGS = [
   ['validators', 'appUser', 'ui'],
   ['sv', 'scanUI'],

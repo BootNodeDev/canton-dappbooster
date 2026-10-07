@@ -33,6 +33,22 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # pnpm downgrades a failed OIDC fetch to a warning and then publishes unauthenticated, which
+      # npm answers with a 404 naming no cause. This fails on GitHub's endpoint instead.
+      - name: Check the OIDC token endpoint
+        run: |
+          for attempt in 1 2 3; do
+            status=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" || true)
+            if [ "$status" = 200 ]; then
+              exit 0
+            fi
+            echo "attempt $attempt: GitHub answered $status"
+            sleep $((attempt * 10))
+          done
+          echo "::error::GitHub's OIDC token endpoint is failing, so the publish would go out unauthenticated and npm would answer 404. Re-run this job once GitHub recovers."
+          exit 1
       # prepack rebuilds each library's dist during publish, so nothing is built here. pnpm skips a
       # package whose version is already on npm, which is what makes a re-run after a partial
       # failure safe.

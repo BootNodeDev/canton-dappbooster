@@ -1,11 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": [
-    "@bootnodedev/canton-token-forge",
-    "@bootnodedev/canton-wallet-service",
-    "postcss"
-  ],
+  "ignoreDependencies": ["@bootnodedev/canton-token-forge", "postcss"],
   "workspaces": {
     ".": {
       "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]

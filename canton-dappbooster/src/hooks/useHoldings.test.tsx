@@ -6,12 +6,16 @@ import type { ComponentProps, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { useHoldings } from '#src/hooks/useHoldings'
 
-const party = {
+const account = {
+  primary: true,
+  partyId: 'alice::1220ab',
+  status: 'allocated',
+  hint: 'alice',
+  publicKey: 'test-public-key',
   namespace: '1220ab',
   networkId: 'canton:local',
-  partyId: 'alice::1220ab',
   signingProviderId: '',
-}
+} as const
 const amulet = { admin: 'DSO::1220ab', id: 'Amulet' }
 
 // Derived from the double rather than from the SDK, which this package does not depend on.
@@ -21,7 +25,7 @@ type LedgerApi = NonNullable<
 type LedgerAnswer = Awaited<ReturnType<LedgerApi>>
 
 const view = (instrumentId: typeof amulet, amount: string, lock: unknown = null) => ({
-  viewValue: { owner: party.partyId, instrumentId, amount, lock },
+  viewValue: { owner: account.partyId, instrumentId, amount, lock },
 })
 
 const row = (...views: unknown[]) => ({
@@ -31,7 +35,7 @@ const row = (...views: unknown[]) => ({
 const session = (ledgerApi: LedgerApi, usable = true) => ({
   wrapper: ({ children }: { children: ReactNode }) => (
     <FakeSessionProvider
-      party={usable ? party : undefined}
+      account={usable ? account : undefined}
       sdk={{ ledgerApi }}
       status={usable ? 'connected' : 'disconnected'}
     >
@@ -70,7 +74,7 @@ describe('useHoldings', () => {
       activeAtOffset: 42,
       filter: {
         filtersByParty: {
-          [party.partyId]: {
+          [account.partyId]: {
             cumulative: [
               {
                 identifierFilter: {

@@ -3,19 +3,20 @@ import { describe, expect, it, vi } from 'vitest'
 import { fromPromise } from 'xstate'
 import { useConnectBridge } from '#src/CantonConnectProvider/useConnectBridge'
 import type { AccountsInput } from '#src/machine/accountsActors'
-import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
+import { accountsMachine } from '#src/machine/accountsMachine'
 import type { ConnectInput, InitInput } from '#src/machine/connectionActors'
 import { connectionMachine, type WalletStatusUpdate } from '#src/machine/connectionMachine'
-import { testParty } from '#src/testing/party'
+import { testAccount } from '#src/testing/account'
 import { pause } from '#src/testing/pause'
 import { startConnection } from '#src/testing/startConnection'
+import type { Account } from '#src/types'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = testParty('alice::1220ab')
+const account = testAccount('alice::1220ab')
 
-const readingAccounts = (read: () => Promise<WalletAccounts>) =>
+const readingAccounts = (read: () => Promise<Account | undefined>) =>
   accountsMachine.provide({
-    actors: { readAccounts: fromPromise<WalletAccounts, AccountsInput>(read) },
+    actors: { readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(read) },
   })
 
 describe('useConnectBridge', () => {
@@ -96,7 +97,7 @@ describe('useConnectBridge', () => {
   })
 
   it('resolves only once the party has landed', async () => {
-    let landAccounts: ((accounts: WalletAccounts) => void) | undefined
+    let landAccounts: ((account: Account | undefined) => void) | undefined
     const machine = connectionMachine.provide({
       actors: {
         init: fromPromise<void, InitInput>(() => Promise.resolve()),
@@ -126,7 +127,7 @@ describe('useConnectBridge', () => {
     expect(settled).not.toHaveBeenCalled()
 
     await act(async () => {
-      landAccounts?.({ party })
+      landAccounts?.(account)
       await pause(0)
     })
 

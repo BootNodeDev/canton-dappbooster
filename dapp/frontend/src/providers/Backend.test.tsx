@@ -12,7 +12,7 @@ vi.mock('@/hooks/useNetworkStatus', () => ({ useNetworkStatus: () => 'ok' }))
 vi.mock('@bootnodedev/canton-connect', () => ({
   useExecute: () => ({ execute: () => undefined }),
   useLedger: () => ({ ledgerApi: ledgerApi.current }),
-  useParty: () => ({ party: { partyId: 'party::1' } }),
+  useAccount: () => ({ account: { partyId: 'party::1' } }),
 }))
 
 const { Backend, useBackend } = await import('@/providers/Backend')

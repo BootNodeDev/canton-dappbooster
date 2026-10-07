@@ -2,10 +2,10 @@
 
 import { act, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useAccount } from '#src/hooks/useAccount'
 import { useConnect } from '#src/hooks/useConnect'
 import { useDisconnect } from '#src/hooks/useDisconnect'
 import { useExecute } from '#src/hooks/useExecute'
-import { useParty } from '#src/hooks/useParty'
 import { clearDiscoveryStorage } from '#src/testing/discoveryStorage'
 import { renderSession } from '#src/testing/renderSession'
 import { useSession } from '#src/testing/useSession'
@@ -17,16 +17,16 @@ describe('CantonConnectProvider wallet pushes', () => {
     vi.restoreAllMocks()
   })
 
-  it('delivers a pushed accountsChanged event to useParty()', async () => {
+  it('delivers a pushed accountsChanged event to useAccount()', async () => {
     const wallet = walletA()
 
-    const { result } = renderSession(() => ({ connect: useConnect(), party: useParty() }))
+    const { result } = renderSession(() => ({ connect: useConnect(), account: useAccount() }))
 
     await act(async () => {
       await result.current.connect.connect()
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('alice::1220ab'))
 
     act(() => {
       wallet.push('accountsChanged', [
@@ -40,8 +40,8 @@ describe('CantonConnectProvider wallet pushes', () => {
       ])
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('bob::9931cd'))
-    expect(result.current.party.party?.name).toBe('bob')
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('bob::9931cd'))
+    expect(result.current.account.account?.hint).toBe('bob')
 
     wallet.dispose()
   })
@@ -51,7 +51,7 @@ describe('CantonConnectProvider wallet pushes', () => {
 
     const { result } = renderSession(() => ({
       connect: useConnect(),
-      party: useParty(),
+      account: useAccount(),
       execute: useExecute(),
     }))
 
@@ -59,7 +59,7 @@ describe('CantonConnectProvider wallet pushes', () => {
       await result.current.connect.connect()
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('alice::1220ab'))
 
     const before = result.current.execute.execute
 
@@ -75,7 +75,7 @@ describe('CantonConnectProvider wallet pushes', () => {
       ])
     })
 
-    await waitFor(() => expect(result.current.party.party?.name).toBe('alice renamed'))
+    await waitFor(() => expect(result.current.account.account?.hint).toBe('alice renamed'))
     expect(result.current.execute.execute).toBe(before)
 
     wallet.dispose()
@@ -120,7 +120,7 @@ describe('CantonConnectProvider wallet pushes', () => {
     const { result } = renderSession(() => ({
       connect: useConnect(),
       disconnect: useDisconnect(),
-      party: useParty(),
+      account: useAccount(),
       execute: useExecute(),
     }))
 
@@ -128,7 +128,7 @@ describe('CantonConnectProvider wallet pushes', () => {
       await result.current.connect.connect()
     })
 
-    await waitFor(() => expect(result.current.party.party?.partyId).toBe('alice::1220ab'))
+    await waitFor(() => expect(result.current.account.account?.partyId).toBe('alice::1220ab'))
 
     act(() => {
       wallet.push('txChanged', { status: 'pending', commandId: 'cmd-1' })
@@ -140,7 +140,7 @@ describe('CantonConnectProvider wallet pushes', () => {
       await result.current.disconnect.disconnect()
     })
 
-    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.account.account).toBe(undefined)
     expect(result.current.execute.lastTx).toBe(undefined)
 
     act(() => {
@@ -159,10 +159,10 @@ describe('CantonConnectProvider wallet pushes', () => {
     // waitFor exhausts its retry window trying to observe the change; rejecting proves it never
     // arrived.
     await expect(
-      waitFor(() => expect(result.current.party.party?.partyId).toBe('carol::deadbeef')),
+      waitFor(() => expect(result.current.account.account?.partyId).toBe('carol::deadbeef')),
     ).rejects.toThrow()
 
-    expect(result.current.party.party).toBe(undefined)
+    expect(result.current.account.account).toBe(undefined)
     // The tx push had the same retry window to arrive in.
     expect(result.current.execute.lastTx).toBe(undefined)
 

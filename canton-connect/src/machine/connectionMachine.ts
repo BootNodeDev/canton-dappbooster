@@ -18,7 +18,7 @@ import {
   restore,
   walletEvents,
 } from '#src/machine/connectionActors'
-import type { ConnectionStatus, ConnectionSubscription, Party, WalletSdk } from '#src/types'
+import type { Account, ConnectionStatus, ConnectionSubscription, DappSdkMethods } from '#src/types'
 
 // The SDK's disconnect awaits the wallet's answer with no deadline of its own, so this is the only
 // bound on how long `disconnecting` can last.
@@ -37,27 +37,26 @@ export type WalletStatusUpdate = Pick<StatusEvent, 'connection'>
  * import { connectionMachine } from '#src/machine/connectionMachine'
  *
  * const createSdk = () => new DappSDK({})
- * const input = { createSdk, initOptions: {}, guardPicker: true, networkId: 'canton:local' }
+ * const input = { createSdk, initOptions: {}, guardPicker: true }
  * createActor(connectionMachine, { input })
  *
  * @category Types
  */
 export type ConnectionInput = {
-  createSdk: () => WalletSdk
+  createSdk: () => DappSdkMethods
   initOptions: InitOptions
   guardPicker: boolean
-  networkId: string
 }
 
-/** What the machine carries beyond its input: the sdk it drives, the last failure, the party. */
+/** What the machine carries beyond its input: the sdk it drives, the last failure, the account. */
 type ConnectionContext = ConnectionInput & {
-  sdk: WalletSdk
+  sdk: DappSdkMethods
   // The last attempt's failure, not the session's: it outlives `failure` on purpose, so a
   // session recovered afterwards can still say why the attempt before it failed.
   lastConnectError: unknown
   // Projected up from the accounts child rather than read off it, so one snapshot answers the
   // hooks; `authenticated` clears it on exit, because the child dies with that state.
-  party: Party | undefined
+  account: Account | undefined
 }
 
 /** Reduces the machine's internal states to the five-value `ConnectionStatus` hooks expose. */
@@ -285,7 +284,7 @@ export const connectionMachine = setup({
     ...input,
     sdk: input.createSdk(),
     lastConnectError: undefined,
-    party: undefined,
+    account: undefined,
   }),
   id: 'connection',
   initial: 'idle',
@@ -342,11 +341,11 @@ export const connectionMachine = setup({
           // A wallet that will not serve requests has no party to offer, and the two ways it
           // stops serving (a lock, a wallet-side disconnect) are one indistinguishable push. The
           // session itself stays, so the unlock push is still heard and re-reads the party.
-          exit: assign({ party: undefined }),
+          exit: assign({ account: undefined }),
           invoke: {
             src: 'accounts',
             id: 'accounts',
-            input: ({ context }) => ({ sdk: context.sdk, networkId: context.networkId }),
+            input: ({ context }) => ({ sdk: context.sdk }),
             // The child owns the read and why it failed; these sub-states mirror its states, so one
             // snapshot of this machine can say whether a connect has landed.
             onSnapshot: [
@@ -354,7 +353,7 @@ export const connectionMachine = setup({
                 guard: ({ event }) => event.snapshot.matches('ready'),
                 target: '.ready',
                 actions: assign(({ event }) => ({
-                  party: event.snapshot.context.party,
+                  account: event.snapshot.context.account,
                   // A push can recover a read that failed, and the failure it recorded must not
                   // outlive it: a session with a party and an error reads as broken.
                   lastConnectError: undefined,

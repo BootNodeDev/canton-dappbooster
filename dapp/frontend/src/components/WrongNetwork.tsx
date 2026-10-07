@@ -1,12 +1,12 @@
-import { useParty } from '@/hooks/useParty'
+import { useAccount } from '@bootnodedev/canton-connect'
 import { useBackend } from '@/providers/Backend'
 import { networkLabel } from '@/utils/network'
 
 export const WrongNetwork = (): React.JSX.Element | null => {
   const { networkStatus } = useBackend()
-  const { party } = useParty()
+  const { account } = useAccount()
 
-  return party === undefined || networkStatus === undefined || networkStatus === 'ok' ? null : (
+  return account === undefined || networkStatus === undefined || networkStatus === 'ok' ? null : (
     <div role="alert" className="border-b border-warning/35 bg-warning-soft px-5 py-2.5 sm:px-8">
       <p className="text-center text-xs text-fg">
         <span
@@ -21,8 +21,8 @@ export const WrongNetwork = (): React.JSX.Element | null => {
         ) : (
           <>
             wallet is connected to{' '}
-            <strong className="font-bold">{networkLabel(party.networkId)}</strong>, switch networks
-            to proceed.
+            <strong className="font-bold">{networkLabel(account.networkId)}</strong>, switch
+            networks to proceed.
           </>
         )}
       </p>

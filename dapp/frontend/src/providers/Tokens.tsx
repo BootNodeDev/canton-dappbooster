@@ -1,3 +1,4 @@
+import { useAccount } from '@bootnodedev/canton-connect'
 import {
   type Instrument,
   type InstrumentBalance,
@@ -21,7 +22,6 @@ import {
   useState,
 } from 'react'
 import type { RegistryInstrument } from '@/backend/registry'
-import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { addAmounts, subtractAmounts } from '@/utils/amount'
 import { type AssetListEntry, readAssetList } from '@/utils/assetList'
@@ -93,8 +93,8 @@ const FiguresContext = createContext<TokenFigures | undefined>(undefined)
 export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const { error: holdingsError, holdings, refetch: refetchHoldings } = useHoldings()
   const { backend, instrument } = useBackend()
-  const { party } = useParty()
-  const partyId = party?.partyId
+  const { account } = useAccount()
+  const partyId = account?.partyId
   const [instruments, setInstruments] = useState<readonly Instrument[]>([])
   const [curated, setCurated] = useState<readonly AssetListEntry[]>([])
   const [free, setFree] = useState<string>()

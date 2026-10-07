@@ -4,6 +4,7 @@ import { parseEnv } from '@/utils/env'
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_REGISTRY_URL: 'http://localhost:3013',
+  VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
 }
 
 describe('parseEnv', () => {
@@ -15,14 +16,13 @@ describe('parseEnv', () => {
     expect(parseEnv({ ...DEFAULTS, CANTON_AUTH_SECRET: 'unsafe' })).toEqual(DEFAULTS)
   })
 
-  // No `.env` at all is the zero-config case the app is meant to run in.
   it('falls back to the local stack when the variables are absent', () => {
     expect(parseEnv({})).toEqual(DEFAULTS)
   })
 
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
-  it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL'])(
+  it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL', 'VITE_WALLET_GATEWAY_URL'])(
     'names %s and rejects an empty value',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
@@ -33,11 +33,19 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ VITE_EXPLORER_URL: 'scan.localhost' })).toThrow(/VITE_EXPLORER_URL/)
   })
 
-  // The explorer value ends up in an href, so a script-bearing scheme must not survive.
   it.each(['javascript:alert(1)', 'data:text/html,<script></script>', 'file:///etc/passwd'])(
-    'rejects the %s scheme',
+    'rejects the %s scheme, which the explorer href would otherwise carry',
     (VITE_EXPLORER_URL) => {
       expect(() => parseEnv({ VITE_EXPLORER_URL })).toThrow(/VITE_EXPLORER_URL/)
+    },
+  )
+
+  it.each(['/api/v0/dapp', '//evil.example/api/v0/dapp', 'javascript:alert(1)'])(
+    'rejects %j as the gateway url',
+    (VITE_WALLET_GATEWAY_URL) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_GATEWAY_URL })).toThrow(
+        /VITE_WALLET_GATEWAY_URL/,
+      )
     },
   )
 
@@ -58,6 +66,7 @@ describe('parseEnv', () => {
     const deployed = {
       VITE_EXPLORER_URL: 'https://scan.example',
       VITE_REGISTRY_URL: '/api/registry',
+      VITE_WALLET_GATEWAY_URL: 'https://gateway.example/api/v0/dapp',
     }
     expect(parseEnv(deployed, false)).toEqual(deployed)
   })

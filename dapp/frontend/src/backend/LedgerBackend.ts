@@ -47,8 +47,6 @@ const mapRows = <T>(rows: AcsRow[], mapper: (row: AcsRow) => T | undefined): T[]
 const vesting = (entity: string): string => `#vesting:Vesting:${entity}`
 const TOKEN = '#canton-token-forge:Canton.TokenForge.Token:Token'
 
-// The JSON Ledger API's party/template filter, shared by the ACS read and the update stream. Built
-// in one place because a typo in this nesting yields a silent empty read rather than an error.
 const templateFilter = (
   party: string,
   templateId: string,
@@ -65,13 +63,8 @@ const templateFilter = (
   },
 })
 
-// A page of claims, and how long the stream may sit quiet before it returns what it has: the
-// endpoint is a stream, so without the idle timeout the read never completes.
 const CLAIM_HISTORY_LIMIT = 1000
 const STREAM_IDLE_MS = 1000
-// `limit` counts forward from `beginExclusive` and the endpoint offers no reverse order, so a party
-// past one page keeps its oldest claims and loses the recent ones unless the pages are followed.
-// Bounded so an offset that fails to advance cannot spin.
 const CLAIM_HISTORY_PAGES = 20
 
 // Accept locks the holding a grant reserves, which the receiver is no stakeholder of and so cannot
@@ -316,7 +309,6 @@ export class LedgerBackend implements VestingBackend {
   }
 
   async viewAs(partyId: string): Promise<VestingView> {
-    // One ledger-end fetch for all three reads, so they share a consistent snapshot offset.
     const offset = await this.ledgerEnd()
     const [pendingGrantRows, contractRows, claimRows] = await Promise.all([
       this.readAcs(partyId, vesting('VestingProposal'), offset),
@@ -462,8 +454,6 @@ export class LedgerBackend implements VestingBackend {
     return this.synchronizerId ?? fromConfig
   }
 
-  // `TRANSACTION_SHAPE_LEDGER_EFFECTS` is what carries the exercise; the default ACS-delta shape
-  // would only show the contract being replaced.
   private readUpdates(
     partyId: string,
     beginExclusive: string | number,
@@ -489,10 +479,6 @@ export class LedgerBackend implements VestingBackend {
     })
   }
 
-  // The ledger keeps no claim log of its own, so the history is the transaction stream: every
-  // withdrawal this party can see, read once rather than followed, since the page asks again after
-  // each one. The stream is party-wide, so the one grant's chain is picked out of it here and no
-  // caller has to know a withdrawal replaces the contract it was taken from.
   async claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]> {
     const endInclusive = await this.ledgerEnd()
     const records: ClaimRecord[] = []

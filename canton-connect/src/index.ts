@@ -11,6 +11,8 @@
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConnectProvider'
 export { ConnectCancelledError } from '#src/connectError'
+export type { UseAccountResult } from '#src/hooks/useAccount'
+export { useAccount } from '#src/hooks/useAccount'
 export type { UseConnectResult } from '#src/hooks/useConnect'
 export { useConnect } from '#src/hooks/useConnect'
 export type { UseDisconnectResult } from '#src/hooks/useDisconnect'
@@ -19,8 +21,6 @@ export type { PrepareExecuteParams, UseExecuteResult } from '#src/hooks/useExecu
 export { useExecute } from '#src/hooks/useExecute'
 export type { LedgerApiParams, UseLedgerResult } from '#src/hooks/useLedger'
 export { useLedger } from '#src/hooks/useLedger'
-export type { UsePartyResult } from '#src/hooks/useParty'
-export { useParty } from '#src/hooks/useParty'
 export type { UsePartyTypeResult } from '#src/hooks/usePartyType'
 export { usePartyType } from '#src/hooks/usePartyType'
 export type { UseSignMessageResult } from '#src/hooks/useSignMessage'
@@ -33,12 +33,12 @@ export type { CreateMockAdapterOptions, MockAccount, MockAdapter } from '#src/mo
 export { createMockAdapter } from '#src/mock/mockAdapter'
 
 export type {
+  Account,
   CantonConnectConfig,
   CantonConnectContextValue,
   ConnectionStatus,
   ConnectionSubscription,
-  Party,
+  DappSdkMethods,
   PartyType,
   TxStatusSnapshot,
-  WalletSdk,
 } from '#src/types'

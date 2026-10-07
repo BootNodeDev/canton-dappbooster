@@ -5,9 +5,9 @@
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
 | LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
+| Wallet Gateway (external: [canton-network/wallet](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root devDependency, run on the host by `scripts/dev-stack.sh` from `wallet-gateway.config.json` |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR upload, the token mint, the vesting bootstrap |
 | `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the typedoc configs. Grouped so a consumer scaffold deletes it whole; see [`CLAUDE.md`](CLAUDE.md) |
-| wallet-service (external: [BootNodeDev/canton-wallet-service](https://github.com/BootNodeDev/canton-wallet-service)) | Node 24 + Express 5 + TypeScript + `@canton-network/wallet-sdk` | Bridge the wallet uses for external-party onboarding and participant JSON API calls. A root devDependency installed from npm, run on the host by `scripts/dev-stack.sh` |
 | token registry (external: [BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge)) | Node + Express + TypeScript | Read-only CIP-56 registry over the `canton-token-forge` package: serves instrument metadata and the transfer-factory choice context. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
 | `dapp/frontend/` | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
@@ -23,21 +23,21 @@ carries two today.
 ```mermaid
 flowchart TD
   fe["dapp/frontend<br/>http://localhost:3012"]
-  wallet["CIP-0103 browser wallet (separate repo)<br/>http://localhost:3011"]
-  ws["wallet-service (separate repo)<br/>http://localhost:3010"]
+  gw["Wallet Gateway<br/>http://localhost:3030"]
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
   scan["Scan<br/>http://scan.localhost:4000"]
   dar["vendored DARs<br/>canton-token-forge + vesting"]
   reg["canton-token-forge registry<br/>http://localhost:3013"]
+  scripts["scripts/<br/>DAR upload, bootstrap"]
 
-  fe <-->|"CIP-0103 provider: reads, writes, session"| wallet
-  wallet -->|"onboarding, prepare/execute, JSON API"| ws
+  fe <-->|"CIP-0103 provider: reads, writes, session"| gw
+  gw -->|"self-signed token, participant signing"| au
   fe -->|"instrument + InstrumentConfig disclosure"| reg
   reg -->|"CANTON_BACKEND_TOKEN"| au
-  ws -->|"CANTON_BACKEND_TOKEN"| au
-  ws -->|"AmuletRules, mining rounds"| scan
+  scripts -->|"CANTON_BACKEND_TOKEN"| au
   au <--> sv
+  au --> scan
   dar --> au
 ```
 
@@ -59,25 +59,23 @@ State boundaries:
 
 - The CIP-0103 path: a dApp talks to the wallet through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session, its ledger reads, and its submissions.
 - The wallet owns user keys and signs locally.
-- wallet-service holds `CANTON_BACKEND_TOKEN` and remains the external-party onboarding bridge.
+- `CANTON_BACKEND_TOKEN` belongs to the scripts and the token registry: the DAR upload, the vesting
+  bootstrap, and the registry's ledger reads. Nothing in the browser ever holds it.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
-- wallet-service is not a container at all: it runs on the host, so it reaches Canton and Splice
-  over `localhost` rather than `host.docker.internal`.
 - The wallet should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
 
 ## Services And Ports
 
 | Service | URL / Port | Purpose |
 | --- | --- | --- |
-| wallet-service | `http://localhost:3010` | wallet bridge for onboarding and JSON API calls |
-| CIP-0103 browser wallet | `http://localhost:3011` | browser wallet UI/provider, run from its own repo |
 | dApp frontend | `http://localhost:3012` | example dApp |
 | canton-token-forge registry | `http://localhost:3013` | CIP-56 registry, run from the env block `bootstrap` prints |
+| Wallet Gateway | `http://localhost:3030` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
-| app-user Admin API | `grpc://localhost:2902` | wallet-service/tools |
+| app-user Admin API | `grpc://localhost:2902` | SDK/tools |
 | app-user Validator API | `http://localhost:2903` | health/tools |
-| app-user JSON API | `http://localhost:2975` | wallet-service/tools |
+| app-user JSON API | `http://localhost:2975` | scripts/tools |
 | app-user Validator proxy | `http://localhost:2000/api/validator` | wallet/tools |
 | app-provider backend APIs | `grpc://localhost:3901`, `grpc://localhost:3902`, `http://localhost:3903`, `http://localhost:3975` | official bundle wiring, unused |
 | app-provider UI port | `http://localhost:3000` | exposed by Nginx, routes disabled |
@@ -95,26 +93,31 @@ State boundaries:
 | --- | --- | --- |
 | `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `scripts/mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
-| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by wallet-service and the DAR upload |
+| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap and the token registry |
 
-The root `.env` is the only one that matters: wallet-service's whole configuration, since it
-loads dotenv from the directory it starts in, plus the signing recipe `scripts/mint-token.mjs`
-reads and the token `scripts/deploy-dar.sh` sends. Minting is offline, so it needs nothing
-running, which is what lets `dev-stack.sh up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env`
+The root `.env` is the only one that matters: the signing recipe `scripts/mint-token.mjs`
+reads, plus the token `scripts/deploy-dar.sh` and `scripts/bootstrap-vesting.mjs` send. Minting
+is offline, so it needs nothing running, which is what lets `dev-stack.sh up` mint
+`CANTON_BACKEND_TOKEN` into a fresh `.env`
 before anything is up. The LocalNet is configured by its own `canton-barebones.config.json`,
 scaffolded into `.canton-localnet/` and tracked by nothing.
 
 `CANTON_AUTH_AUDIENCE` plus `CANTON_AUTH_SECRET` is the local signing recipe.
 `CANTON_BACKEND_TOKEN` is the generated token. The token script defaults the
-JWT subject to `ledger-api-user`; the wallet can use a separate token generated
-with the same script, configured manually in its LocalNet settings.
+JWT subject to `ledger-api-user`.
+
+The Wallet Gateway mints its own token from the same recipe rather than reading `.env`:
+`wallet-gateway.config.json` carries the LocalNet audience, `ledger-api-user` as the client id,
+and `unsafe` as the signing secret, which is the secret Splice LocalNet runs on. Its login page
+asks for that secret and nothing else.
 
 ## Orchestration
 
 | Command | What it does |
 | --- | --- |
-| `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DARs, wallet-service on 3010, bootstrap, token registry on 3013, dApp dev server |
-| `./scripts/dev-stack.sh down` | stop the dApp dev server, the token registry and wallet-service, stop the LocalNet |
+| `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DARs, bootstrap, token registry on 3013, Wallet Gateway on 3030, dApp dev server |
+| `./scripts/dev-stack.sh down` | stop the dApp dev server, the token registry and the gateway, stop the LocalNet |
+| `pnpm run wallet-gateway` | the gateway alone, from `wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
 | `node scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |

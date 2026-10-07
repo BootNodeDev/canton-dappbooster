@@ -1,11 +1,11 @@
 import { Steps } from '@ark-ui/react/steps'
+import { useAccount } from '@bootnodedev/canton-connect'
 import { isValidPartyId, validateAmount } from '@bootnodedev/canton-dappbooster'
 import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Details } from '@/components/CreateGrant/Details'
 import { Preview } from '@/components/CreateGrant/Preview'
 import { Schedule } from '@/components/CreateGrant/Schedule'
-import { StepBar } from '@/components/CreateGrant/StepBar'
 import {
   initialScheduleForm,
   type ScheduleForm,
@@ -15,8 +15,8 @@ import {
 } from '@/components/CreateGrant/scheduleForm'
 import { useFundingToken } from '@/components/CreateGrant/useFundingToken'
 import { Modal } from '@/components/Modal'
+import { StepBar } from '@/components/StepBar'
 import { useOnScreen } from '@/hooks/useOnScreen'
-import { useParty } from '@/hooks/useParty'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
@@ -31,9 +31,9 @@ const LAST_STEP = STEPS.length - 1
 const panelClass = 'focus-visible:outline-none'
 
 export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Element => {
-  const { party } = useParty()
+  const { account } = useAccount()
   const { backend } = useBackend()
-  const partyId = party?.partyId ?? ''
+  const partyId = account?.partyId ?? ''
   const createVesting = useVestingStore((s) => s.createVesting)
   const funding = useFundingToken()
 
@@ -56,7 +56,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
     validateAmount(amount, { max: funding.balance }) === undefined &&
     amount !== '' &&
     compareAmounts(amount, MIN_GRANT_AMOUNT) >= 0
-  const isSelf = party !== undefined && receiver === party.partyId
+  const isSelf = account !== undefined && receiver === account.partyId
   const receiverValid = isValidPartyId(receiver) && !isSelf
   const titleValid = title.trim() !== ''
 
@@ -65,7 +65,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const valid = stepIsValid(0) && stepIsValid(1) && backend !== undefined
 
   const submit = async (): Promise<void> => {
-    if (!valid || party === undefined || backend === undefined) {
+    if (!valid || account === undefined || backend === undefined) {
       return
     }
     const { demo } = scheduleForm

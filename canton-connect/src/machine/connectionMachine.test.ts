@@ -12,7 +12,7 @@ import {
 } from 'xstate'
 import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
 import type { AccountsInput } from '#src/machine/accountsActors'
-import { accountsMachine, type WalletAccounts } from '#src/machine/accountsMachine'
+import { accountsMachine } from '#src/machine/accountsMachine'
 import {
   type ConnectInput,
   type DisconnectInput,
@@ -28,20 +28,24 @@ import {
   toConnectionStatus,
   type WalletStatusUpdate,
 } from '#src/machine/connectionMachine'
+import { testAccount } from '#src/testing/account'
 // Not the '#src/testing' barrel: it re-exports fakeSession, whose Lit-backed SDK import needs a
 // DOM.
 import { connectionInput } from '#src/testing/connectionInput'
-import { testParty } from '#src/testing/party'
 import { pause } from '#src/testing/pause'
+import type { Account } from '#src/types'
 
 const connection: WalletStatusUpdate['connection'] = { isConnected: true, isNetworkConnected: true }
-const party = testParty('alice::1220ab')
+const party = testAccount('alice::1220ab')
+const account = testAccount('alice::1220ab')
 
 // Provided wherever a recorded sequence walks through a session: the real read reaches an sdk
 // double that never answers, which would park those sequences in `reading`.
 const accounts = accountsMachine.provide({
   actors: {
-    readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => Promise.resolve({ party })),
+    readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
+      Promise.resolve(account),
+    ),
   },
 })
 const unauthenticatedConnection = { ...connection, isConnected: false }
@@ -647,12 +651,12 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(actor.getSnapshot().context.party).toEqual(party)
+      expect(actor.getSnapshot().context.account).toEqual(party)
 
       actor.send(lockPush)
 
       expect(actor.getSnapshot().matches({ session: 'unauthenticated' })).toBe(true)
-      expect(actor.getSnapshot().context.party).toBeUndefined()
+      expect(actor.getSnapshot().context.account).toBeUndefined()
 
       actor.stop()
     })
@@ -672,13 +676,13 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(actor.getSnapshot().context.party).toEqual(party)
+      expect(actor.getSnapshot().context.account).toEqual(party)
 
       actor.send({ type: 'disconnect' })
       await pause(0)
 
       expect(actor.getSnapshot().matches('disconnected')).toBe(true)
-      expect(actor.getSnapshot().context.party).toBeUndefined()
+      expect(actor.getSnapshot().context.account).toBeUndefined()
 
       actor.stop()
     })
@@ -985,12 +989,12 @@ describe('connectionMachine', () => {
       actor.send({ type: 'restore' })
       await pause(0)
 
-      expect(actor.getSnapshot().context.party).toEqual(party)
+      expect(actor.getSnapshot().context.account).toEqual(party)
 
       actor.send({ type: 'wallet.statusChanged', status: { connection } })
 
       expect(actor.getSnapshot().matches({ session: 'authenticated' })).toBe(true)
-      expect(actor.getSnapshot().context.party).toEqual(party)
+      expect(actor.getSnapshot().context.account).toEqual(party)
 
       actor.stop()
     })
@@ -1702,7 +1706,9 @@ describe('connectionMachine', () => {
           disconnect,
           accounts: accountsMachine.provide({
             actors: {
-              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => new Promise(() => {})),
+              readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(
+                () => new Promise(() => {}),
+              ),
             },
           }),
         },
@@ -1759,7 +1765,9 @@ describe('connectionMachine', () => {
           connect,
           accounts: accountsMachine.provide({
             actors: {
-              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() => new Promise(() => {})),
+              readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(
+                () => new Promise(() => {}),
+              ),
             },
           }),
         },
@@ -1782,13 +1790,13 @@ describe('connectionMachine', () => {
     })
 
     it('says a connect is in flight from the attempt until the party lands', async () => {
-      let landRead: ((accounts: WalletAccounts) => void) | undefined
+      let landRead: ((account: Account | undefined) => void) | undefined
       const machine = connectionMachine.provide({
         actors: {
           connect,
           accounts: accountsMachine.provide({
             actors: {
-              readAccounts: fromPromise<WalletAccounts, AccountsInput>(
+              readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(
                 () =>
                   new Promise((resolve) => {
                     landRead = resolve
@@ -1812,7 +1820,7 @@ describe('connectionMachine', () => {
       expect(actor.getSnapshot().matches({ session: { authenticated: 'reading' } })).toBe(true)
       expect(actor.getSnapshot().hasTag('connecting')).toBe(true)
 
-      landRead?.({ party })
+      landRead?.(account)
       await pause(0)
 
       expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
@@ -1876,7 +1884,7 @@ describe('connectionMachine', () => {
           connect,
           accounts: accountsMachine.provide({
             actors: {
-              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() =>
+              readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
                 Promise.reject(readFailed),
               ),
             },
@@ -1959,7 +1967,7 @@ describe('connectionMachine', () => {
           connect,
           accounts: accountsMachine.provide({
             actors: {
-              readAccounts: fromPromise<WalletAccounts, AccountsInput>(() =>
+              readPrimaryAccount: fromPromise<Account | undefined, AccountsInput>(() =>
                 Promise.reject(readFailed),
               ),
             },
@@ -1974,11 +1982,11 @@ describe('connectionMachine', () => {
 
       expect(actor.getSnapshot().context.lastConnectError).toBe(readFailed)
 
-      actor.getSnapshot().children.accounts?.send({ type: 'accounts.changed', accounts: { party } })
+      actor.getSnapshot().children.accounts?.send({ type: 'accounts.changed', account })
       await pause(0)
 
       expect(actor.getSnapshot().matches({ session: { authenticated: 'ready' } })).toBe(true)
-      expect(actor.getSnapshot().context.party).toEqual(party)
+      expect(actor.getSnapshot().context.account).toEqual(party)
       // a party and an error together read as a broken session
       expect(actor.getSnapshot().context.lastConnectError).toBeUndefined()
 

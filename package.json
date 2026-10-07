@@ -1,15 +1,15 @@
 {
   "name": "cn-dappbooster",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.4",
   "type": "module",
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.8.2",
   "engines": {
     "node": ">=24.15.0"
   },
   "scripts": {
     "app:dev": "pnpm -C dapp/frontend run dev",
-    "bootstrap": "node --env-file-if-exists=.env scripts/bootstrap-vesting.mjs",
+    "bootstrap": "node scripts/bootstrap-vesting.mjs",
     "build": "pnpm -r run --if-present build",
     "check:anatomy": "node kit/check-anatomy.mjs",
     "check:versions": "node kit/check-versions.mjs",
@@ -25,17 +25,18 @@
     "release:dry": "pnpm -r --filter './canton-*' publish --dry-run --no-git-checks",
     "release:version": "node kit/release-version.mjs",
     "test": "pnpm -r run --if-present test && node --test \"scripts/**/*.test.mjs\" \"kit/**/*.test.mjs\"",
-    "typecheck": "pnpm -r run --if-present typecheck"
+    "typecheck": "pnpm -r run --if-present typecheck",
+    "wallet-gateway": "mkdir -p .wallet-gateway && wallet-gateway -c ./wallet-gateway.config.json"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
-    "@bootnodedev/canton-barebones": "0.5.0",
+    "@biomejs/biome": "2.5.15",
+    "@bootnodedev/canton-barebones": "0.6.0",
     "@bootnodedev/canton-token-forge": "github:BootNodeDev/canton-token-forge#v0.3.0",
-    "@bootnodedev/canton-wallet-service": "^0.3.0",
+    "@canton-network/wallet-gateway-remote": "1.11.3",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "husky": "^9.1.7",
-    "knip": "6.35.1",
+    "knip": "6.39.0",
     "lint-staged": "^17.0.4",
     "postcss": "^8.5.26",
     "typedoc": "^0.28.20",

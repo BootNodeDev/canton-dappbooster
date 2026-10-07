@@ -7,9 +7,12 @@ export const EXPLORER: ExplorerConfig = { baseUrl: import.meta.env.VITE_EXPLORER
 // Direct in dev; #169 fronts it same-origin: an https page cannot reach a plain-http registry.
 export const REGISTRY_URL: string = import.meta.env.VITE_REGISTRY_URL
 
+// The gateway serves its UI on the origin and the dApp API under /api/v0/dapp.
+export const WALLET_GATEWAY_URL: string = import.meta.env.VITE_WALLET_GATEWAY_URL
+export const WALLET_GATEWAY_UI_URL = new URL(WALLET_GATEWAY_URL).origin
+
 // The published list plus a LocalNet entry, served by the dev server: `vite.config.ts`.
 export const ASSET_LIST_URL = '/assets.json'
 
-// A top-level key of the asset list. The published one carries `MainNet`, `TestNet` and `DevNet`; a
-// stack it does not cover is served a file of its own, under whatever key that file uses.
+// The published list carries `MainNet`, `TestNet` and `DevNet`; anything else ships its own file.
 export const ASSET_LIST_NETWORK: string | undefined = 'LocalNet'

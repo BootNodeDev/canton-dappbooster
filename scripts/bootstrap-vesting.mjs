@@ -8,7 +8,15 @@
 //
 // Run with the local stack up and the DAR deployed.
 
-const RPC_URL = process.env.RPC_URL ?? 'http://localhost:3010/rpc'
+// A caller-exported value wins over .env, the same precedence deploy-dar.sh spells out by hand.
+try {
+  process.loadEnvFile(new URL('../.env', import.meta.url))
+} catch {
+  // No .env: the caller's environment is the whole configuration.
+}
+
+const JSON_API_URL = process.env.CANTON_JSON_API_URL || 'http://localhost:2975'
+const TOKEN = process.env.CANTON_BACKEND_TOKEN
 const PACKAGE_NAME = 'vesting'
 const STAMP = Date.now()
 
@@ -46,37 +54,37 @@ export const formatRegistryEnv = ({ ledgerApiUrl, adminParty, port }) =>
     `PORT=${port}`,
   ].join('\n')
 
-const rpc = async (method, params) => {
-  const response = await fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: crypto.randomUUID(), method, params }),
+// Checked on the first call rather than at import, so the test importing the exports above runs
+// in CI, which has no .env.
+const ledger = async (requestMethod, resource, body, query) => {
+  if (!TOKEN) {
+    throw new Error('CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run mint-token')
+  }
+  const url = new URL(JSON_API_URL + resource)
+  for (const [key, value] of Object.entries(query ?? {})) {
+    url.searchParams.set(key, value)
+  }
+  const response = await fetch(url, {
+    method: requestMethod.toUpperCase(),
+    headers: {
+      authorization: `Bearer ${TOKEN}`,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   const text = await response.text()
-  // Status before parse: a proxy error page or an empty body from a still-starting wallet-service
-  // would otherwise surface as a JSON syntax error instead of the failure.
+  // Status before parse: an error page would otherwise surface as a JSON syntax error.
   if (!response.ok) {
-    throw new Error(`${method} failed: HTTP ${response.status} ${text.slice(0, 400)}`)
+    throw new Error(
+      `${requestMethod} ${resource} failed: HTTP ${response.status} ${text.slice(0, 400)}`,
+    )
   }
-  let payload
   try {
-    payload = JSON.parse(text)
+    return JSON.parse(text)
   } catch {
-    throw new Error(`${method} returned no JSON: ${text.slice(0, 400)}`)
+    throw new Error(`${requestMethod} ${resource} returned no JSON: ${text.slice(0, 400)}`)
   }
-  if (payload.error !== undefined) {
-    throw new Error(`${method} failed: ${text.slice(0, 400)}`)
-  }
-  return payload.result
 }
-
-const ledger = (requestMethod, resource, body, query) =>
-  rpc('ledgerApi', {
-    requestMethod,
-    resource,
-    ...(body === undefined ? {} : { body }),
-    ...(query === undefined ? {} : { query }),
-  })
 
 const PARTY_PAGES = 20
 
@@ -132,7 +140,7 @@ const ensureParty = async (hint) => {
       throw new Error(`no party id for hint ${hint}: ${JSON.stringify(result)}`)
     }
   }
-  // wallet-service keeps its bearer token private, so ask the participant who it authenticated as.
+  // Asked rather than decoded off the token, so a token minted for another subject still works.
   const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
   if (typeof userId !== 'string' || userId.length === 0) {
     throw new Error('participant did not report an authenticated user')
@@ -266,7 +274,7 @@ const printRegistryEnv = (adminParty) => {
   console.log('\nregistry env')
   console.log(
     formatRegistryEnv({
-      ledgerApiUrl: process.env.CANTON_JSON_API_URL || 'http://localhost:2975',
+      ledgerApiUrl: JSON_API_URL,
       adminParty,
       port: REGISTRY_PORT,
     }),

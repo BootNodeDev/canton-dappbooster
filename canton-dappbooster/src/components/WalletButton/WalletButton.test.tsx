@@ -11,18 +11,22 @@ import {
 import { hangingPicker, PARTY, renderWithWallet } from '#src/testing/walletSession'
 
 const NETWORK = 'canton:local'
-const party = {
+const account = {
+  primary: true,
   partyId: PARTY,
-  networkId: NETWORK,
+  status: 'allocated',
+  hint: PARTY.split('::')[0] ?? PARTY,
+  publicKey: 'test-public-key',
   namespace: PARTY.split('::')[1] ?? PARTY,
+  networkId: NETWORK,
   signingProviderId: 'test',
-}
+} as const
 
 const renderInSession = (ui: ReactElement, isLocked = false): ReturnType<typeof render> =>
   render(
     <FakeSessionProvider
       isLocked={isLocked}
-      party={isLocked ? undefined : party}
+      account={isLocked ? undefined : account}
       status="connected"
     >
       {ui}
