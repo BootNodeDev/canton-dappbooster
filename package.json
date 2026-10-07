@@ -1,7 +1,7 @@
 {
   "name": "cn-dappbooster",
   "private": true,
-  "version": "0.5.3",
+  "version": "0.5.4",
   "type": "module",
   "packageManager": "pnpm@12.8.2",
   "engines": {
