@@ -3,7 +3,9 @@ import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_NETWORK_ID: 'canton:local',
   VITE_REGISTRY_URL: 'http://localhost:3013',
+  VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
 }
 
@@ -49,11 +51,42 @@ describe('parseEnv', () => {
     },
   )
 
+  it('accepts a canton network id', () => {
+    expect(parseEnv({ VITE_NETWORK_ID: 'canton:devnet' }).VITE_NETWORK_ID).toBe('canton:devnet')
+  })
+
+  it.each(['', 'devnet', 'canton:', 'eip155:1', 'canton:dev net'])(
+    'rejects %j as the network id',
+    (VITE_NETWORK_ID) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_NETWORK_ID })).toThrow(/VITE_NETWORK_ID/)
+    },
+  )
+
+  it('accepts a Reown project id', () => {
+    const VITE_WALLET_CONNECT_PROJECT_ID = 'f5f92dc31ae225fd1d946cc87eb1788b'
+    expect(parseEnv({ VITE_WALLET_CONNECT_PROJECT_ID }).VITE_WALLET_CONNECT_PROJECT_ID).toBe(
+      VITE_WALLET_CONNECT_PROJECT_ID,
+    )
+  })
+
+  it('accepts an empty project id, which leaves WalletConnect off', () => {
+    expect(parseEnv({ VITE_WALLET_CONNECT_PROJECT_ID: '' }).VITE_WALLET_CONNECT_PROJECT_ID).toBe('')
+  })
+
+  it.each(['f5f92dc3', 'F5F92DC31AE225FD1D946CC87EB1788B', ' f5f92dc31ae225fd1d946cc87eb1788b'])(
+    'rejects %j as the project id',
+    (VITE_WALLET_CONNECT_PROJECT_ID) => {
+      expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_CONNECT_PROJECT_ID })).toThrow(
+        /VITE_WALLET_CONNECT_PROJECT_ID/,
+      )
+    },
+  )
+
   it('rejects a source that is not an object', () => {
     expect(() => parseEnv(undefined)).toThrow()
   })
 
-  it.each(Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[])(
+  it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL', 'VITE_WALLET_GATEWAY_URL'])(
     'refuses to fall back to the local default for %s without them',
     (key) => {
       expect(() => parseEnv({ ...DEFAULTS, [key]: undefined }, false)).toThrow(
@@ -68,7 +101,18 @@ describe('parseEnv', () => {
       VITE_REGISTRY_URL: '/api/registry',
       VITE_WALLET_GATEWAY_URL: 'https://gateway.example/api/v0/dapp',
     }
-    expect(parseEnv(deployed, false)).toEqual(deployed)
+    expect(parseEnv(deployed, false)).toMatchObject(deployed)
+  })
+
+  it('keeps WalletConnect off without the local defaults', () => {
+    const { VITE_NETWORK_ID, VITE_WALLET_CONNECT_PROJECT_ID } = parseEnv(
+      { ...DEFAULTS, VITE_NETWORK_ID: undefined, VITE_WALLET_CONNECT_PROJECT_ID: undefined },
+      false,
+    )
+    expect({ VITE_NETWORK_ID, VITE_WALLET_CONNECT_PROJECT_ID }).toEqual({
+      VITE_NETWORK_ID: 'canton:local',
+      VITE_WALLET_CONNECT_PROJECT_ID: '',
+    })
   })
 })
 

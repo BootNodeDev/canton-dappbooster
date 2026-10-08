@@ -1,12 +1,16 @@
 export interface Env {
   VITE_EXPLORER_URL: string
+  VITE_NETWORK_ID: string
   VITE_REGISTRY_URL: string
+  VITE_WALLET_CONNECT_PROJECT_ID: string
   VITE_WALLET_GATEWAY_URL: string
 }
 
 const DEFAULTS: Env = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
+  VITE_NETWORK_ID: 'canton:local',
   VITE_REGISTRY_URL: 'http://localhost:3013',
+  VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
 }
 
@@ -17,6 +21,10 @@ const isHttpUrl = (value: string): boolean => {
     return false
   }
 }
+
+const isCantonChainId = (value: string): boolean => /^canton:[-_a-zA-Z0-9]{1,32}$/.test(value)
+
+const isProjectIdOrEmpty = (value: string): boolean => /^([0-9a-f]{32})?$/.test(value)
 
 const ORIGIN = 'https://same.origin.invalid'
 const isSameOriginPath = (value: string): boolean =>
@@ -49,10 +57,11 @@ const read = (
   return value
 }
 
-// Validates the build's environment. `localDefaults` is off for a production build, where a value
+// Validates the build's environment. `localDefaults` is off for a production build, where a URL
 // left unset must fail the build instead: these are baked into the bundle, an https page blocks a
 // http://localhost call as mixed content before any request leaves, and localhost would mean the
-// viewer's own machine anyway, so the default can only produce a deployment nobody can use.
+// viewer's own machine anyway, so the default can only produce a deployment nobody can use. The
+// WalletConnect pair keeps its defaults everywhere, since an empty project id leaves it off.
 export const parseEnv = (source: unknown, localDefaults = true): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')
@@ -67,6 +76,13 @@ export const parseEnv = (source: unknown, localDefaults = true): Env => {
       'an http(s) url',
       localDefaults,
     ),
+    VITE_NETWORK_ID: read(
+      values,
+      'VITE_NETWORK_ID',
+      isCantonChainId,
+      'a canton CAIP-2 chain id',
+      true,
+    ),
     VITE_REGISTRY_URL: read(
       values,
       'VITE_REGISTRY_URL',
@@ -74,6 +90,13 @@ export const parseEnv = (source: unknown, localDefaults = true): Env => {
       'an http(s) url or a same-origin path',
       localDefaults,
       trimBase,
+    ),
+    VITE_WALLET_CONNECT_PROJECT_ID: read(
+      values,
+      'VITE_WALLET_CONNECT_PROJECT_ID',
+      isProjectIdOrEmpty,
+      'empty or a 32-character Reown project id',
+      true,
     ),
     VITE_WALLET_GATEWAY_URL: read(
       values,
