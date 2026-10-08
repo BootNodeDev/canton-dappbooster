@@ -6,13 +6,14 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { Backend } from '@/providers/Backend'
 import { Tokens } from '@/providers/Tokens'
 import { routes } from '@/routes'
-import { WALLET_GATEWAY_URL } from '@/utils/config'
+import { NETWORK_ID, WALLET_CONNECT_PROJECT_ID, WALLET_GATEWAY_URL } from '@/utils/config'
 
 const router = createBrowserRouter(routes)
 
 const connectConfig: CantonConnectConfig = {
   appName: 'Canton Vesting',
-  // `restore()` matches this url, so a session survives a reload only for a gateway registered here.
+  networkId: NETWORK_ID,
+  walletConnectProjectId: WALLET_CONNECT_PROJECT_ID,
   additionalAdapters: [new RemoteAdapter({ name: 'Wallet Gateway', rpcUrl: WALLET_GATEWAY_URL })],
 }
 
