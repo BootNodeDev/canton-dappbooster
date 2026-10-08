@@ -18,15 +18,19 @@
   },
   "files": [
     "dist",
-    "templates"
+    "templates",
+    "!templates/*/node_modules",
+    "!templates/*/dist",
+    "!templates/*/daml/.daml",
+    "!templates/*/daml/deps"
   ],
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "build": "node scripts/prepare-templates.mjs && tsdown",
-    "prepack": "node scripts/prepare-templates.mjs && tsdown",
-    "test": "node scripts/prepare-templates.mjs && vitest run",
+    "build": "tsdown",
+    "prepack": "tsdown",
+    "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "biome check",

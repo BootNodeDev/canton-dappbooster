@@ -1,12 +1,34 @@
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { TemplateConflictError } from '#src/merge'
 import { scaffold } from '#src/scaffold'
 
-// The prepared copy, with `workspace:` ranges already resolved, which is what ships.
-const templatesDir = path.resolve(import.meta.dirname, '..', 'templates')
+let packed: string
+let templatesDir: string
+
+// Scaffolds from the packed tarball, so the tests see what `files` ships and not the working tree.
+beforeAll(() => {
+  packed = fs.mkdtempSync(path.join(os.tmpdir(), 'create-canton-dappbooster-packed-'))
+  const packageDir = path.resolve(import.meta.dirname, '..')
+  const [{ filename }] = JSON.parse(
+    execFileSync(
+      'npm',
+      ['pack', packageDir, '--pack-destination', packed, '--json', '--ignore-scripts'],
+      {
+        encoding: 'utf8',
+      },
+    ),
+  ) as { filename: string }[]
+  execFileSync('tar', ['-xzf', path.join(packed, filename), '-C', packed])
+  templatesDir = path.join(packed, 'package', 'templates')
+})
+
+afterAll(() => {
+  fs.rmSync(packed, { recursive: true, force: true })
+})
 
 const read = (dir: string, file: string): string => fs.readFileSync(path.join(dir, file), 'utf8')
 const manifest = (dir: string): Record<string, Record<string, string>> =>
@@ -35,6 +57,7 @@ describe('app tier', () => {
     expect(manifest(target).name).toBe('my-app')
     expect(manifest(target).private).toBe(true)
     expect(fs.existsSync(path.join(target, 'scripts'))).toBe(false)
+    expect(fs.existsSync(path.join(target, 'node_modules'))).toBe(false)
   })
 
   it('ships real ranges for the kit, never the workspace protocol', () => {

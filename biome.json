@@ -16,8 +16,6 @@
       "kit/**",
       "scripts/**",
       "create-canton-dappbooster/**",
-      "!create-canton-dappbooster/templates",
-      "templates/**",
       "!**/api-specs",
       "!**/*.svg"
     ]

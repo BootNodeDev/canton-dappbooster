@@ -23,11 +23,10 @@ before it is published.
 
 ## How the templates are built
 
-`../templates/base` and `../templates/localnet` are workspace packages, so the monorepo typechecks
-them against the libraries' source; their `^<version>` ranges link the local folders here and install
-from npm in a scaffolded project, the same way `dapp/frontend` does. `scripts/prepare-templates.mjs`
-copies them here, turning any `workspace:` range into the range pnpm would publish on the way. That
-copy is what the CLI reads and what the tarball ships. `build`, `test` and `prepack` all run it first.
+`templates/base` and `templates/localnet` are workspace packages, so the monorepo typechecks them
+against the libraries' source; their `^<version>` ranges link the local folders here and install from
+npm in a scaffolded project, the same way `dapp/frontend` does. The tarball ships `templates/` as it
+is, minus what `files` excludes, so a range there is never rewritten and must never be `workspace:`.
 
 A fragment may add files and merge `scripts`, `dependencies` and `devDependencies` into the base
 manifest; `.gitignore`, `.env.example` and `README.md` are appended to. Anything else it would
