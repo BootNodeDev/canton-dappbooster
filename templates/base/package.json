@@ -10,9 +10,9 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@bootnodedev/canton-connect": "^0.5.3",
-    "@bootnodedev/canton-dappbooster": "^0.5.3",
-    "@bootnodedev/canton-theme": "^0.5.3",
+    "@bootnodedev/canton-connect": "^0.5.5",
+    "@bootnodedev/canton-dappbooster": "^0.5.5",
+    "@bootnodedev/canton-theme": "^0.5.5",
     "@canton-network/core-types": "^1.8.0",
     "@canton-network/dapp-sdk": "1.5.1",
     "@walletconnect/sign-client": "^2.23.9",
