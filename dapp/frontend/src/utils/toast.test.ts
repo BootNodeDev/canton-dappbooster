@@ -7,7 +7,7 @@ describe('toast lifetime', () => {
   })
 
   it('lets a plain toast time out on the shared duration', () => {
-    toast.success('Claimed 250 AMT')
+    toast.success('Claimed 250 DBT')
     expect(toaster.getVisibleToasts()[0].duration).toBe(3200)
   })
 

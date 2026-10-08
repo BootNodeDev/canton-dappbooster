@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
 import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
+import { ReadError } from '@/components/ReadError'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { WrongNetwork } from '@/components/WrongNetwork'
@@ -25,7 +27,8 @@ const NETWORK_CARD: Record<NetworkStatus, { body?: string; title: string }> = {
 }
 
 export const AppShell = (): React.JSX.Element => {
-  const { backend, configPending, configError, networkStatus, sessionPending } = useBackend()
+  const { backend, configPending, configError, networkStatus, retryConfig, sessionPending } =
+    useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
   // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
@@ -64,14 +67,22 @@ export const AppShell = (): React.JSX.Element => {
               {card.body !== undefined && (
                 <p className="max-w-lg text-sm text-fg-muted">{card.body}</p>
               )}
+              {/* Only off the wrong network: there the read failed for a reason retrying cannot
+                  change, and the wallet is where the fix is. */}
               {networkStatus !== 'wrong' && (
-                <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
+                <>
+                  <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
+                  <Button variant="secondary" size="sm" onClick={retryConfig}>
+                    Try again
+                  </Button>
+                </>
               )}
             </Card>
           )}
           {configPending && <Loading />}
           {configError === undefined && !configPending && (
             <>
+              <ReadError />
               <Outlet />
               {creating && backend !== undefined && (
                 <CreateGrant onClose={() => setCreating(false)} />

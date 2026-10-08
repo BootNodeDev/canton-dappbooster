@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { isPrerelease, parseVersion, rewriteManifests } from './release-version.mjs'
 
-// The workspace in miniature: a private root, two published libraries, one private consumer that
-// depends on both, and a private package that depends on neither.
+// The workspace in miniature: a private root, two published libraries, and one private consumer
+// that depends on both.
 const manifests = {
   'package.json': { name: 'cn-dappbooster', private: true, version: '0.3.0' },
   'canton-connect/package.json': { name: '@bootnodedev/canton-connect', version: '0.3.0' },
@@ -13,7 +13,6 @@ const manifests = {
     devDependencies: { '@bootnodedev/canton-connect': '^0.3.0', tsdown: '^0.22.14' },
     peerDependencies: { '@bootnodedev/canton-connect': '^0.3.0', react: '^19.0.0' },
   },
-  'dapp/daml/package.json': { name: '@canton-dappbooster/daml', private: true, version: '0.3.0' },
   'dapp/frontend/package.json': {
     name: '@canton-dappbooster/frontend',
     private: true,
@@ -33,8 +32,7 @@ describe('release version rewriting', () => {
     assert.equal(next['package.json'].version, '0.4.0')
     assert.equal(next['canton-connect/package.json'].version, '0.4.0')
     assert.equal(next['canton-dappbooster/package.json'].version, '0.4.0')
-    // Private, so it keeps its own version: the DAR is named by dapp/daml/daml.yaml.
-    assert.equal(next['dapp/daml/package.json'].version, '0.3.0')
+    // Private, so it keeps its own version even though its ranges are rewritten.
     assert.equal(next['dapp/frontend/package.json'].version, '0.3.0')
   })
 

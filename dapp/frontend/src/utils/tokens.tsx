@@ -1,20 +1,16 @@
-import type { InstrumentId } from '@bootnodedev/canton-dappbooster'
-import cantonCoin from '@/assets/canton-coin.png'
-
-// The id the Amulet registry serves. The admin party is the network's own DSO, so it is read off
-// the holdings rather than written down here.
-const AMULET_ID = 'Amulet'
-
-export const isAmulet = ({ id }: InstrumentId): boolean => id === AMULET_ID
+import type { TokenMeta } from '@bootnodedev/canton-dappbooster'
+import { TokenMark } from '@/icons'
 
 // The kit's logo slot is 2rem with `overflow: hidden`, so artwork has to be told to fit.
 export const tokenLogo = (src: string): React.JSX.Element => (
   <img alt="" className="size-full object-contain" src={src} />
 )
 
-// The artwork is the Canton Coin mark.
-export const AMT = {
-  logo: tokenLogo(cantonCoin),
-  name: 'Amulet',
-  symbol: 'AMT',
+// The instrument this deployment vests, as the app spells it in its own copy and marks. It carries
+// no `instrumentId`: the admin is minted per bootstrap run, so the identity comes from the registry
+// through `useBackend().instrument` and this is only the artwork and the words.
+export const DBT: TokenMeta & { name: string } = {
+  logo: <TokenMark className="size-full" />,
+  name: 'dAppBooster Token',
+  symbol: 'DBT',
 }

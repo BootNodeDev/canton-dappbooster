@@ -1,9 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["postcss"],
-  "ignoreBinaries": ["dpm"],
-  "ignoreWorkspaces": ["dapp/daml"],
+  "ignoreDependencies": ["@bootnodedev/canton-token-forge", "postcss"],
   "workspaces": {
     ".": {
       "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]
@@ -13,6 +11,9 @@
     },
     "canton-dappbooster": {
       "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
+    },
+    "dapp/frontend": {
+      "entry": ["api/**/*.ts"]
     }
   }
 }

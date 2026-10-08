@@ -16,6 +16,7 @@ import {
 import { useFundingToken } from '@/components/CreateGrant/useFundingToken'
 import { Modal } from '@/components/Modal'
 import { StepBar } from '@/components/StepBar'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { compareAmounts } from '@/utils/amount'
@@ -44,6 +45,10 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
+  // Only the submit button is disabled while the write is in flight, so the dialog can still be
+  // dismissed over the wallet prompt; its `onClose` clears a single `?create=1` slot, which by then
+  // may belong to a second dialog the reader has already opened.
+  const onScreen = useOnScreen()
 
   const schedule = toSchedule(scheduleForm)
   const scheduleValid = scheduleFormValid(scheduleForm)
@@ -73,10 +78,12 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
         schedule: demo === null ? schedule : shiftSchedule(schedule, now() - demo.anchorMs),
         title: title.trim(),
       })
-      onClose()
       toast.success('Grant created', {
         action: { label: 'View pending grants', to: '/pending?role=funder' },
       })
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {

@@ -4,7 +4,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { repoRoot } from '../scripts/lib/gate.mjs'
+import { repoRoot } from './gate.mjs'
 
 export const ROOT_MANIFEST = 'package.json'
 
@@ -31,7 +31,7 @@ export const readManifests = () =>
 
 /**
  * The published libraries, by package name. A workspace manifest is one unless it is private,
- * which is what leaves the root, `dapp/frontend` and `dapp/daml` out of the lockstep.
+ * which is what leaves the root and `dapp/frontend` out of the lockstep.
  */
 export const libraryNames = (manifests) =>
   new Set(

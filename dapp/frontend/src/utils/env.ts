@@ -1,7 +1,7 @@
 export interface Env {
   VITE_EXPLORER_URL: string
   VITE_NETWORK_ID: string
-  VITE_SCAN_API_URL: string
+  VITE_REGISTRY_URL: string
   VITE_WALLET_CONNECT_PROJECT_ID: string
   VITE_WALLET_GATEWAY_URL: string
 }
@@ -9,7 +9,7 @@ export interface Env {
 const DEFAULTS: Env = {
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_NETWORK_ID: 'canton:local',
-  VITE_SCAN_API_URL: 'http://scan.localhost:4000/api/scan',
+  VITE_REGISTRY_URL: 'http://localhost:3013',
   VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
 }
@@ -26,35 +26,84 @@ const isCantonChainId = (value: string): boolean => /^canton:[-_a-zA-Z0-9]{1,32}
 
 const isProjectIdOrEmpty = (value: string): boolean => /^([0-9a-f]{32})?$/.test(value)
 
+const ORIGIN = 'https://same.origin.invalid'
+const isSameOriginPath = (value: string): boolean =>
+  value.startsWith('/') && new URL(value, ORIGIN).origin === ORIGIN
+
+const isUrlOrPath = (value: string): boolean => isSameOriginPath(value) || isHttpUrl(value)
+
+// The registry value is a base every call appends a path to, and `isUrlOrPath` accepts a trailing
+// slash, which would request `//registry/...` and 404 against a path the error then misreports.
+const trimBase = (value: string): string => value.replace(/\/+$/, '')
+
+// Reads one env key, normalizing before the check so the value validated is the value returned: a
+// base of `/` trims to nothing, and unchecked it would resolve every call against the app's origin.
 const read = (
   values: Record<string, unknown>,
   key: keyof Env,
   accepts: (value: string) => boolean,
   expected: string,
+  localDefaults: boolean,
+  normalize: (value: string) => string = (value) => value,
 ): string => {
-  const value = values[key] ?? DEFAULTS[key]
+  const raw = values[key] ?? (localDefaults ? DEFAULTS[key] : undefined)
+  if (raw === undefined) {
+    throw new Error(`Invalid environment: ${key} must be set explicitly, e.g. ${DEFAULTS[key]}`)
+  }
+  const value = typeof raw === 'string' ? normalize(raw) : raw
   if (typeof value !== 'string' || !accepts(value)) {
     throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
   }
   return value
 }
 
-export const parseEnv = (source: unknown): Env => {
+// Validates the build's environment. `localDefaults` is off for a production build, where a URL
+// left unset must fail the build instead: these are baked into the bundle, an https page blocks a
+// http://localhost call as mixed content before any request leaves, and localhost would mean the
+// viewer's own machine anyway, so the default can only produce a deployment nobody can use. The
+// WalletConnect pair keeps its defaults everywhere, since an empty project id leaves it off.
+export const parseEnv = (source: unknown, localDefaults = true): Env => {
   if (typeof source !== 'object' || source === null) {
     throw new Error('Invalid environment: expected the variables as an object')
   }
   const values = source as Record<string, unknown>
 
   return {
-    VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
-    VITE_NETWORK_ID: read(values, 'VITE_NETWORK_ID', isCantonChainId, 'a canton CAIP-2 chain id'),
-    VITE_SCAN_API_URL: read(values, 'VITE_SCAN_API_URL', isHttpUrl, 'an http(s) url'),
+    VITE_EXPLORER_URL: read(
+      values,
+      'VITE_EXPLORER_URL',
+      isHttpUrl,
+      'an http(s) url',
+      localDefaults,
+    ),
+    VITE_NETWORK_ID: read(
+      values,
+      'VITE_NETWORK_ID',
+      isCantonChainId,
+      'a canton CAIP-2 chain id',
+      true,
+    ),
+    VITE_REGISTRY_URL: read(
+      values,
+      'VITE_REGISTRY_URL',
+      isUrlOrPath,
+      'an http(s) url or a same-origin path',
+      localDefaults,
+      trimBase,
+    ),
     VITE_WALLET_CONNECT_PROJECT_ID: read(
       values,
       'VITE_WALLET_CONNECT_PROJECT_ID',
       isProjectIdOrEmpty,
       'empty or a 32-character Reown project id',
+      true,
     ),
-    VITE_WALLET_GATEWAY_URL: read(values, 'VITE_WALLET_GATEWAY_URL', isHttpUrl, 'an http(s) url'),
+    VITE_WALLET_GATEWAY_URL: read(
+      values,
+      'VITE_WALLET_GATEWAY_URL',
+      isHttpUrl,
+      'an http(s) url',
+      localDefaults,
+    ),
   }
 }

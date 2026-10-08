@@ -6,10 +6,10 @@
 | --- | --- | --- |
 | LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
 | Wallet Gateway (external: [canton-network/wallet](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root devDependency, run on the host by `scripts/dev-stack.sh` from `wallet-gateway.config.json` |
-| `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dep fetch, the DAR build and upload, the token mint, the vesting bootstrap |
+| `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the DAR upload, the token mint, the vesting bootstrap |
 | `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the typedoc configs. Grouped so a consumer scaffold deletes it whole; see [`CLAUDE.md`](CLAUDE.md) |
-| `dapp/frontend/` | Vite + React + Ark UI + Tailwind v4 + zustand + react-router | Canton Coin **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect` |
-| `dapp/daml/` | DAML | `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`. Vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed |
+| token registry (external: [BootNodeDev/canton-token-forge](https://github.com/BootNodeDev/canton-token-forge)) | Node + Express + TypeScript | Read-only CIP-56 registry over the `canton-token-forge` package: serves instrument metadata and the transfer-factory choice context. A git dependency pinned to a tag, run on the host by `scripts/dev-stack.sh` |
+| `dapp/frontend/` | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router | `DBT` **vesting** dApp; every read and write goes through the connected CIP-0103 wallet via `canton-connect`, and the `InstrumentConfig` every write carries comes from the token registry |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
@@ -27,24 +27,27 @@ flowchart TD
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
   scan["Scan<br/>http://scan.localhost:4000"]
-  dar["amulet-vesting DAR"]
+  dar["vendored DARs<br/>canton-token-forge + vesting"]
+  reg["canton-token-forge registry<br/>http://localhost:3013"]
   scripts["scripts/<br/>DAR upload, bootstrap"]
 
-  fe -->|"AmuletRules + open mining round"| scan
   fe <-->|"CIP-0103 provider: reads, writes, session"| gw
   gw -->|"self-signed token, participant signing"| au
+  fe -->|"instrument + InstrumentConfig disclosure"| reg
+  reg -->|"CANTON_BACKEND_TOKEN"| au
   scripts -->|"CANTON_BACKEND_TOKEN"| au
   au <--> sv
   au --> scan
   dar --> au
 ```
 
-> `dapp/frontend` hosts the Canton Coin vesting dApp. Every ledger read and every submission goes
-> through the wallet over CIP-0103, so the dApp only ever acts as the connected account and each
-> write is signed by the account's own key. One call is not a ledger path: an Amulet-moving choice
-> takes the current `AmuletRules` and open mining round as an argument, and no connected party is a
-> stakeholder of either. `transferContext.ts` reads both from Scan, at `VITE_SCAN_API_URL`, and the
-> browser makes those calls itself.
+> `dapp/frontend` hosts the vesting dApp. Every ledger read and every submission goes through the
+> wallet over CIP-0103, so the dApp only ever acts as the connected account and each write is signed
+> by the account's own key. One call is not a ledger path: every choice that moves a holding takes
+> the instrument's `InstrumentConfig` as an argument, and no connected party is a stakeholder of it,
+> so the dApp asks the token registry's CIP-56 transfer-factory route and keeps the disclosure its
+> answer carries. Deployed, those calls go through the app's own `/api/registry` function, which
+> forwards three read-only routes and refuses the rest.
 
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
@@ -56,8 +59,8 @@ State boundaries:
 
 - The CIP-0103 path: a dApp talks to the wallet through the provider surface, which is how the vesting dApp in `dapp/frontend` gets its session, its ledger reads, and its submissions.
 - The wallet owns user keys and signs locally.
-- `CANTON_BACKEND_TOKEN` belongs to the scripts alone: the DAR upload and the vesting bootstrap.
-  Nothing in the browser ever holds it.
+- `CANTON_BACKEND_TOKEN` belongs to the scripts and the token registry: the DAR upload, the vesting
+  bootstrap, and the registry's ledger reads. Nothing in the browser ever holds it.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
 - The wallet should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
 
@@ -66,6 +69,7 @@ State boundaries:
 | Service | URL / Port | Purpose |
 | --- | --- | --- |
 | dApp frontend | `http://localhost:3012` | example dApp |
+| canton-token-forge registry | `http://localhost:3013` | CIP-56 registry, run from the env block `bootstrap` prints |
 | Wallet Gateway | `http://localhost:3030` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
@@ -89,7 +93,7 @@ State boundaries:
 | --- | --- | --- |
 | `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `scripts/mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
-| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload and the vesting bootstrap |
+| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap and the token registry |
 
 The root `.env` is the only one that matters: the signing recipe `scripts/mint-token.mjs`
 reads, plus the token `scripts/deploy-dar.sh` and `scripts/bootstrap-vesting.mjs` send. Minting
@@ -111,15 +115,14 @@ asks for that secret and nothing else.
 
 | Command | What it does |
 | --- | --- |
-| `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
-| `./scripts/dev-stack.sh down` | stop the gateway and the dApp dev server, stop the LocalNet |
+| `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DARs, bootstrap, token registry on 3013, Wallet Gateway on 3030, dApp dev server |
+| `./scripts/dev-stack.sh down` | stop the dApp dev server, the token registry and the gateway, stop the LocalNet |
 | `pnpm run wallet-gateway` | the gateway alone, from `wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
 | `node scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
-| `pnpm run build-dar` | fetch the Splice deps, then compile the DAR with `dpm` |
-| `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `pnpm run bootstrap` | create the vesting operator and its factory |
+| `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API; called for both `vendor/` binaries |
+| `pnpm run bootstrap` | create the vesting operator and its factory, the instrument admin and its `DBT` InstrumentConfig, and print the registry env block |
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument

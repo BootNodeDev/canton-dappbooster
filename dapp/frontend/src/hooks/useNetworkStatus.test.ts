@@ -18,7 +18,7 @@ vi.mock('@/backend/synchronizer', () => ({
     return reads.wallet()
   },
 }))
-vi.mock('@/backend/transferContext', () => ({ fetchAppNetwork: () => reads.app() }))
+vi.mock('@/backend/registry', () => ({ fetchAppNetwork: () => reads.app() }))
 
 const { useNetworkStatus } = await import('@/hooks/useNetworkStatus')
 

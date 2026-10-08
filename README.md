@@ -9,7 +9,6 @@ Canton dAppBooster is an open-source local development stack and boilerplate by 
 - Node 24 (>=24.15.0)
 - pnpm
 - Docker
-- dpm (DAML SDK 3.5, tested on 3.5.2; newer 3.5 patches should work)
 
 ## Installation
 
@@ -35,4 +34,4 @@ Once Canton dAppBooster is installed, the easiest way to start the development s
 
 - The demo app runs on http://localhost:3012/ by default.
 - Select Wallet Gateway from the picker when connecting and enter `unsafe` as the client secret.
-- Wallet Gateway runs on http://localhost:3030 by default. You'll need at least 2 parties in it to explore the demo's features in full. **Create parties with `wallet-kernel` as the signing provider.**
+- Wallet Gateway runs on http://localhost:3030 by default. You'll need at least 2 parties in it to explore the demo's features in full.
