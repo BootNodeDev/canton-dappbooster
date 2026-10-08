@@ -43,9 +43,8 @@ taps 1000 DBT into the connected party, straight off the instrument's own config
 amount above the `maxPerTap` the bootstrap set, and says so in the failure toast.
 
 Connect with a CIP-0103 wallet; the Wallet Gateway on http://localhost:3030 is the one the dev
-stack starts. Create its parties with the `wallet-kernel` signing provider, as the root README
-explains. The party it reports is the one you act as, and the session is restored on reload by the
-wallet itself. Changing the wallet's primary account changes the party the dApp acts as. Its three
+stack starts. The party it reports is the one you act as, and the session is restored on reload by
+the wallet itself. Changing the wallet's primary account changes the party the dApp acts as. Its three
 env knobs, the explorer party ids link to, the registry it fetches the instrument config from, and
 the gateway's dApp API, default to the local stack and are set in the repo root's `.env`; see the
 root
