@@ -42,16 +42,22 @@
     "#src/*": {
       "types": [
         "./src/*.ts",
-        "./src/*/index.ts"
+        "./src/*.tsx",
+        "./src/*/index.ts",
+        "./src/*/index.tsx"
       ],
       "default": "./src/*"
     }
   },
-  "dependencies": {
-    "@clack/prompts": "^1.8.0"
-  },
   "devDependencies": {
+    "@inkjs/ui": "^2.0.0",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "ink": "^8.0.0",
+    "ink-gradient": "^4.0.1",
+    "ink-link": "^5.0.0",
+    "ink-testing-library": "^4.0.0",
+    "react": "^19.3.0",
     "tsdown": "^0.22.14",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

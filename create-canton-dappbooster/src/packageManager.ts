@@ -19,15 +19,25 @@ export const detectPackageManager = (
 export const runScript = (manager: PackageManager, script: string): string =>
   manager === 'npm' ? `npm run ${script}` : `${manager} ${script}`
 
+const OUTPUT_LINES_ON_FAILURE = 20
+
+// Output is captured, not inherited: it would draw over the Ink screen.
 export const install = (manager: PackageManager, cwd: string): Promise<void> =>
   new Promise((resolve, reject) => {
-    const child = spawn(manager, ['install'], { cwd, stdio: 'inherit' })
+    const child = spawn(manager, ['install'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    let output = ''
+    const collect = (chunk: Buffer): void => {
+      output += chunk.toString()
+    }
+    child.stdout.on('data', collect)
+    child.stderr.on('data', collect)
     child.on('error', reject)
-    child.on('exit', (code) => {
+    child.on('close', (code) => {
       if (code === 0) {
         resolve()
         return
       }
-      reject(new Error(`${manager} install exited with ${code}`))
+      const tail = output.trimEnd().split('\n').slice(-OUTPUT_LINES_ON_FAILURE).join('\n')
+      reject(new Error(`${manager} install exited with ${code}\n${tail}`))
     })
   })

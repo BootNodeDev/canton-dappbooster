@@ -1,33 +1,21 @@
-import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { TemplateConflictError } from '#src/merge'
 import { scaffold } from '#src/scaffold'
+import { type PackedTemplates, packTemplates } from '#src/testing/packedTemplates'
 
-let packed: string
+let packed: PackedTemplates
 let templatesDir: string
 
-// Scaffolds from the packed tarball, so the tests see what `files` ships and not the working tree.
 beforeAll(() => {
-  packed = fs.mkdtempSync(path.join(os.tmpdir(), 'create-canton-dappbooster-packed-'))
-  const packageDir = path.resolve(import.meta.dirname, '..')
-  const [{ filename }] = JSON.parse(
-    execFileSync(
-      'npm',
-      ['pack', packageDir, '--pack-destination', packed, '--json', '--ignore-scripts'],
-      {
-        encoding: 'utf8',
-      },
-    ),
-  ) as { filename: string }[]
-  execFileSync('tar', ['-xzf', path.join(packed, filename), '-C', packed])
-  templatesDir = path.join(packed, 'package', 'templates')
+  packed = packTemplates()
+  templatesDir = packed.templatesDir
 })
 
 afterAll(() => {
-  fs.rmSync(packed, { recursive: true, force: true })
+  packed.remove()
 })
 
 const read = (dir: string, file: string): string => fs.readFileSync(path.join(dir, file), 'utf8')

@@ -3,9 +3,8 @@ import path from 'node:path'
 import { APPENDABLE, finalizeManifest, mergeManifests, TemplateConflictError } from '#src/merge'
 
 export const TIERS = {
-  app: 'A React + Vite app on the Canton dApp kit, with a mock wallet for a first run',
-  localnet:
-    'The app plus a local Canton stack: LocalNet in Docker, the Wallet Gateway, a DAML starter',
+  app: 'A web app that connects to a Canton wallet (a mock one is built in)',
+  localnet: 'The web app plus a Canton network on your computer, in Docker',
 } as const
 
 export type Tier = keyof typeof TIERS
