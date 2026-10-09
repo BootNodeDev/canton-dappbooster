@@ -1,13 +1,34 @@
 {
   "name": "@bootnodedev/canton-dappbooster",
   "version": "0.5.5",
-  "description": "Reusable UI components for Canton dApps",
+  "description": "Headless React components for Canton dApps: identifier display, truncation, copy and explorer links, a validated party-id input, a token-amount field, wallet connect buttons, and the exact-decimal amount utilities under them",
+  "keywords": [
+    "canton",
+    "canton-network",
+    "splice",
+    "dapp",
+    "web3",
+    "dappbooster",
+    "bootnode",
+    "react",
+    "react-components",
+    "headless-ui",
+    "components",
+    "wallet",
+    "cip-0103",
+    "typescript"
+  ],
+  "homepage": "https://components.dappbooster.cc/modules/_bootnodedev_canton-dappbooster.html",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
     "directory": "canton-dappbooster"
   },
   "license": "MIT",
+  "author": "BootNode (https://canton.bootnode.dev/)",
   "scripts": {
     "build": "tsdown",
     "lint:fix": "biome check --write",
@@ -65,6 +86,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.5",
     "@bootnodedev/canton-connect": "^0.5.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
@@ -73,6 +95,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^30.0.0",
+    "publint": "^0.3.25",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "^0.23.0",
