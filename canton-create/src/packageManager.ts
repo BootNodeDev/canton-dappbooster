@@ -4,7 +4,7 @@ export type PackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn'
 
 const MANAGERS = new Set<PackageManager>(['bun', 'npm', 'pnpm', 'yarn'])
 
-export const isPackageManager = (value: string): value is PackageManager =>
+const isPackageManager = (value: string): value is PackageManager =>
   MANAGERS.has(value as PackageManager)
 
 // `npm create x` runs through the invoking manager, which names itself in this variable; that is

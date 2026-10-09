@@ -1,8 +1,20 @@
 {
   "name": "@bootnodedev/canton-example-hello",
   "version": "0.0.1",
-  "private": true,
+  "description": "A fixture example",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
-    "template"
-  ]
+    "_gitignore",
+    "src"
+  ],
+  "scripts": {
+    "dev": "vite"
+  }
 }

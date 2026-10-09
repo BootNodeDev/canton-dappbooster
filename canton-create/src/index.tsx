@@ -2,22 +2,24 @@
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { render } from 'ink'
+import { EXAMPLES, STARTER } from '#src/apps'
 import { App } from '#src/components/App'
-import { detectPackageManager, isPackageManager } from '#src/packageManager'
+import { detectPackageManager } from '#src/packageManager'
 import { isEmptyDir } from '#src/projectDirectory'
-import { isTier, TIERS } from '#src/scaffold'
 
 const SCAFFOLD_DIR = path.resolve(import.meta.dirname, '..', 'scaffold')
 
 const USAGE = `Usage: create-canton-dappbooster [directory] [options]
 
 Options:
-  --tier <app|localnet>   what to scaffold (picked from a list when omitted)
-  --example <name|spec>   a complete example instead of a tier, e.g. vesting
-  --pm <npm|pnpm|yarn|bun> package manager (detected from the one running this)
-  --skip-install          write the files and stop
-  --disable-git           skip creating a git repository
-  -h, --help              this text
+  --example <name>   start from an example dApp instead of the starter: ${Object.keys(EXAMPLES).join(', ')}
+  --localnet         add a Canton network that runs on this computer, in Docker
+  --skip-install     write the files and stop
+  --disable-git      skip creating a git repository
+  -h, --help         this text
+
+In a terminal, whatever the options leave out is asked. Without one, the directory is
+required and the rest take their defaults: the starter, no local network.
 `
 
 const fail = (message: string): never => {
@@ -32,9 +34,8 @@ const main = async (): Promise<void> => {
       'disable-git': { type: 'boolean' },
       example: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
-      pm: { type: 'string' },
+      localnet: { type: 'boolean' },
       'skip-install': { type: 'boolean' },
-      tier: { type: 'string' },
     },
   })
   if (values.help === true) {
@@ -50,29 +51,14 @@ const main = async (): Promise<void> => {
   if (directory !== undefined && !isEmptyDir(path.resolve(directory))) {
     fail(`${directory} exists and is not empty.`)
   }
-  const tier =
-    values.tier === undefined
-      ? undefined
-      : isTier(values.tier)
-        ? values.tier
-        : fail(`Unknown tier: ${values.tier}. One of ${Object.keys(TIERS).join(', ')}.`)
-  if (tier === undefined && values.example === undefined && !interactive) {
-    fail('Pass --tier or --example when not running in a terminal.')
-  }
-  const manager =
-    values.pm === undefined
-      ? detectPackageManager()
-      : isPackageManager(values.pm)
-        ? values.pm
-        : fail(`Unknown package manager: ${values.pm}`)
 
   const { waitUntilExit } = render(
     <App
       directory={directory}
-      tier={values.example === undefined ? tier : undefined}
-      example={values.example}
+      app={values.example ?? (interactive ? undefined : STARTER)}
+      localnet={values.localnet ?? (interactive ? undefined : false)}
       scaffoldDir={SCAFFOLD_DIR}
-      manager={manager}
+      manager={detectPackageManager()}
       install={values['skip-install'] !== true}
       git={values['disable-git'] !== true}
     />,

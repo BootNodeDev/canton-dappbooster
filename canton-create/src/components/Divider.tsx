@@ -12,7 +12,9 @@ export const Divider = ({ title }: { title: string }): ReactElement => {
     <Text>
       <Text color="gray">{'─'.repeat(left)}</Text>
       {TITLE_PADDING}
-      <Text color="whiteBright">{title}</Text>
+      <Text bold color="whiteBright">
+        {title}
+      </Text>
       {TITLE_PADDING}
       <Text color="gray">{'─'.repeat(lineLength - left)}</Text>
     </Text>

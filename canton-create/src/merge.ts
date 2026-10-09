@@ -59,7 +59,21 @@ export const mergeManifests = (base: Manifest, fragment: Manifest): Manifest => 
   return merged
 }
 
+// An example ships as an npm package; these describe that package, not the project made from it.
+const PACKAGE_ONLY = new Set([
+  'name',
+  'private',
+  'version',
+  'description',
+  'license',
+  'repository',
+  'publishConfig',
+  'files',
+])
+
 export const finalizeManifest = (manifest: Manifest, projectName: string): Manifest => {
-  const { name: _name, private: _private, version: _version, ...rest } = manifest
+  const rest = Object.fromEntries(
+    Object.entries(manifest).filter(([key]) => !PACKAGE_ONLY.has(key)),
+  )
   return { name: projectName, private: true, version: '0.0.0', ...rest }
 }

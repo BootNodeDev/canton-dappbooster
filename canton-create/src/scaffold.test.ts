@@ -8,6 +8,7 @@ import { type PackedScaffold, packScaffold } from '#src/testing/packedScaffold'
 
 let packed: PackedScaffold
 let scaffoldDir: string
+const starter = (): string => path.join(scaffoldDir, 'starter')
 
 beforeAll(() => {
   packed = packScaffold()
@@ -32,11 +33,17 @@ afterEach(() => {
   fs.rmSync(work, { recursive: true, force: true })
 })
 
-describe('app tier', () => {
+describe('the starter', () => {
   it('copies the starter, names the package and renames _gitignore', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'app' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: false,
+    })
 
     expect(fs.existsSync(path.join(target, 'src/App.tsx'))).toBe(true)
     expect(fs.existsSync(path.join(target, '.gitignore'))).toBe(true)
@@ -51,7 +58,13 @@ describe('app tier', () => {
   it('adds the DAML tooling because the starter has a contract', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'app' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: false,
+    })
 
     expect(fs.existsSync(path.join(target, 'daml/daml.yaml'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'scripts/build-dar.mjs'))).toBe(true)
@@ -64,7 +77,13 @@ describe('app tier', () => {
   it('ships real ranges for the kit, never the workspace protocol', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'app' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: false,
+    })
 
     const ranges = Object.values(manifest(target).dependencies)
     expect(ranges.some((range) => range.startsWith('workspace:'))).toBe(false)
@@ -72,11 +91,17 @@ describe('app tier', () => {
   })
 })
 
-describe('localnet tier', () => {
+describe('the starter with the local network', () => {
   it('adds the stack beside the app and merges the manifest', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'localnet' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: true,
+    })
 
     expect(fs.existsSync(path.join(target, 'scripts/dev-stack.sh'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'scripts/build-dar.mjs'))).toBe(true)
@@ -94,7 +119,13 @@ describe('localnet tier', () => {
   it('appends to the files every layer writes', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'localnet' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: true,
+    })
 
     expect(read(target, '.gitignore')).toContain('node_modules/')
     expect(read(target, '.gitignore')).toContain('.canton-localnet/')
@@ -110,7 +141,13 @@ describe('localnet tier', () => {
   it('sets every .env.example key once', () => {
     const target = path.join(work, 'my-app')
 
-    scaffold({ projectName: 'my-app', targetDir: target, scaffoldDir, tier: 'localnet' })
+    scaffold({
+      projectName: 'my-app',
+      targetDir: target,
+      appDir: starter(),
+      scaffoldDir,
+      localnet: true,
+    })
 
     const keys = [...read(target, '.env.example').matchAll(/^([A-Z_]+)=/gm)].map(([, key]) => key)
     expect(keys).toEqual([...new Set(keys)])
@@ -136,7 +173,14 @@ describe('the layer rule', () => {
   it('leaves out the DAML tooling when the app has no daml/', () => {
     const target = path.join(work, 'out')
 
-    scaffold({ projectName: 'x', targetDir: target, scaffoldDir: fakeScaffold({}), tier: 'app' })
+    const scaffoldDir = fakeScaffold({})
+    scaffold({
+      projectName: 'x',
+      targetDir: target,
+      appDir: path.join(scaffoldDir, 'starter'),
+      scaffoldDir,
+      localnet: false,
+    })
 
     expect(fs.existsSync(path.join(target, 'scripts/build-dar.mjs'))).toBe(false)
   })
@@ -148,8 +192,9 @@ describe('the layer rule', () => {
       scaffold({
         projectName: 'x',
         targetDir: path.join(work, 'out'),
+        appDir: path.join(scaffoldDir, 'starter'),
         scaffoldDir,
-        tier: 'localnet',
+        localnet: true,
       }),
     ).toThrow(ScaffoldConflictError)
   })
@@ -163,8 +208,9 @@ describe('the layer rule', () => {
       scaffold({
         projectName: 'x',
         targetDir: path.join(work, 'out'),
+        appDir: path.join(scaffoldDir, 'starter'),
         scaffoldDir,
-        tier: 'localnet',
+        localnet: true,
       }),
     ).toThrow(/redefines scripts: dev/)
   })

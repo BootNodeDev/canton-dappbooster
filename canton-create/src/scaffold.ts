@@ -8,17 +8,8 @@ import {
   ScaffoldConflictError,
 } from '#src/merge'
 
-export const TIERS = {
-  app: 'A web app that connects to a Canton wallet (a mock one is built in)',
-  localnet: 'The web app plus a Canton network on your computer, in Docker',
-} as const
-
-export type Tier = keyof typeof TIERS
-
-export const isTier = (value: string): value is Tier => value in TIERS
-
 // npm drops a `.gitignore` from every tarball it packs, and a `pnpm-workspace.yaml` inside the
-// monorepo would make pnpm treat the template as its own workspace root, so both travel renamed.
+// monorepo would make pnpm treat the app as its own workspace root, so both travel renamed.
 const RENAMES: Record<string, string> = {
   _gitignore: '.gitignore',
   '_pnpm-workspace.yaml': 'pnpm-workspace.yaml',
@@ -77,49 +68,35 @@ const applyFragment = (fragmentDir: string, targetDir: string): string[] =>
     throw new ScaffoldConflictError(`a layer rewrites a file an earlier one wrote: ${target}`)
   })
 
-export interface ScaffoldFromTemplateOptions {
-  projectName: string
-  targetDir: string
-  templateDir: string
-}
-
-/** Copies one complete template (an example's `template/`) and names the package. */
-export const scaffoldFromTemplate = ({
-  projectName,
-  targetDir,
-  templateDir,
-}: ScaffoldFromTemplateOptions): string[] => {
-  const written = copyTree(templateDir, targetDir)
-  const manifestPath = path.join(targetDir, 'package.json')
-  if (!fs.existsSync(manifestPath)) {
-    throw new Error(`template has no package.json: ${templateDir}`)
-  }
-  writeJson(manifestPath, finalizeManifest(readJson(manifestPath), projectName))
-  return written
-}
+export const hasContract = (dir: string): boolean =>
+  fs.existsSync(path.join(dir, 'daml', 'daml.yaml'))
 
 export interface ScaffoldOptions {
   projectName: string
   targetDir: string
+  appDir: string
   scaffoldDir: string
-  tier: Tier
+  localnet: boolean
 }
 
-/** The starter app, then the DAML tooling when it has a `daml/`, then the localnet layer. */
+/** The app (the starter or an example), then the DAML tooling when it has a contract, then the local network. */
 export const scaffold = ({
   projectName,
   targetDir,
+  appDir,
   scaffoldDir,
-  tier,
+  localnet,
 }: ScaffoldOptions): string[] => {
-  const written = copyTree(path.join(scaffoldDir, 'starter'), targetDir)
-  const hasContract = fs.existsSync(path.join(targetDir, 'daml', 'daml.yaml'))
+  const written = copyTree(appDir, targetDir)
+  const manifestPath = path.join(targetDir, 'package.json')
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`the app has no package.json: ${appDir}`)
+  }
   const layers = [
-    ...(hasContract ? ['daml-tooling'] : []),
-    ...(tier === 'localnet' ? ['localnet'] : []),
+    ...(hasContract(targetDir) ? ['daml-tooling'] : []),
+    ...(localnet ? ['localnet'] : []),
   ]
   const added = layers.flatMap((layer) => applyFragment(path.join(scaffoldDir, layer), targetDir))
-  const manifestPath = path.join(targetDir, 'package.json')
   writeJson(manifestPath, finalizeManifest(readJson(manifestPath), projectName))
   return [...written, ...added]
 }
