@@ -14,14 +14,14 @@
     "canton-dappbooster": {
       "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
     },
-    "create-canton-dappbooster": {
+    "canton-create": {
       "entry": ["src/**/*.test.ts"],
       "ignore": ["src/testing/fixtures/**"]
     },
-    "create-canton-dappbooster/templates/base": {
+    "canton-create/templates/base": {
       "ignoreDependencies": ["@bootnodedev/canton-theme"]
     },
-    "create-canton-dappbooster/templates/localnet": {
+    "canton-create/templates/localnet": {
       "entry": ["scripts/*.mjs!"]
     }
   }

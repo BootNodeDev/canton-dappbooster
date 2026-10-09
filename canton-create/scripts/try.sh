@@ -8,8 +8,8 @@
 # is `pnpm dlx create-canton-dappbooster`, registry only — so its line is `pnpm dlx <tarball>`, the
 # same mechanism with a local spec.
 #
-#   pnpm -C create-canton-dappbooster try          # then follow what it prints
-#   pnpm -C create-canton-dappbooster try:clean    # wind down whatever was started, remove .try
+#   pnpm -C canton-create try          # then follow what it prints
+#   pnpm -C canton-create try:clean    # wind down whatever was started, remove .try
 set -euo pipefail
 
 PKG="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -100,7 +100,7 @@ else
   $published stands in. --skip-install and the install of the libs go away once the branch is rebased.
 TXT
 fi
-printf '\nDone trying? pnpm -C create-canton-dappbooster try:clean   (stops the stack, resets the LocalNet, removes %s)\n' "$rel"
+printf '\nDone trying? pnpm -C canton-create try:clean  (stops the stack, resets the LocalNet, removes %s)\n' "$rel"
 }
 
 case "${1:-}" in

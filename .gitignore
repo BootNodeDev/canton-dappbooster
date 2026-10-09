@@ -56,8 +56,8 @@ playwright-report/
 # vitest coverage output
 coverage/
 
-# create-canton-dappbooster: the sandbox try.sh installs the packed CLI into
-create-canton-dappbooster/.try/
+# canton-create: the sandbox try.sh installs the packed CLI into
+canton-create/.try/
 # the DAML starter's build output and fetched DARs
-create-canton-dappbooster/templates/localnet/daml/.daml/
-create-canton-dappbooster/templates/localnet/daml/deps/
+canton-create/templates/localnet/daml/.daml/
+canton-create/templates/localnet/daml/deps/

@@ -11,11 +11,11 @@ export const ROOT_MANIFEST = 'package.json'
 const MANIFESTS = [
   ROOT_MANIFEST,
   'canton-connect/package.json',
+  'canton-create/package.json',
+  'canton-create/templates/base/package.json',
+  'canton-create/templates/localnet/package.json',
   'canton-dappbooster/package.json',
   'canton-theme/package.json',
-  'create-canton-dappbooster/package.json',
-  'create-canton-dappbooster/templates/base/package.json',
-  'create-canton-dappbooster/templates/localnet/package.json',
   'dapp/daml/package.json',
   'dapp/frontend/package.json',
 ]

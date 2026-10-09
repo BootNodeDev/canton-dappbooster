@@ -15,7 +15,7 @@
       "dapp/frontend/**",
       "kit/**",
       "scripts/**",
-      "create-canton-dappbooster/**",
+      "canton-create/**",
       "!**/api-specs",
       "!**/*.svg"
     ]
