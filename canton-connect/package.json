@@ -2,12 +2,35 @@
   "name": "@bootnodedev/canton-connect",
   "version": "0.5.5",
   "description": "wagmi-style React hooks for connecting Canton dApps to CIP-0103 wallets",
+  "keywords": [
+    "canton",
+    "canton-network",
+    "splice",
+    "dapp",
+    "web3",
+    "dappbooster",
+    "bootnode",
+    "react",
+    "react-hooks",
+    "hooks",
+    "wallet",
+    "cip-0103",
+    "walletconnect",
+    "wagmi",
+    "dapp-sdk",
+    "typescript"
+  ],
+  "homepage": "https://components.dappbooster.cc/modules/_bootnodedev_canton-connect.html",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
     "directory": "canton-connect"
   },
   "license": "MIT",
+  "author": "BootNode (https://www.bootnode.dev)",
   "scripts": {
     "build": "tsdown",
     "coverage": "vitest run --coverage",
