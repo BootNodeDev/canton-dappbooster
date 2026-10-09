@@ -26,7 +26,7 @@
     "directory": "canton-theme"
   },
   "license": "MIT",
-  "author": "BootNode (https://www.bootnode.dev)",
+  "author": "BootNode (https://canton.bootnode.dev/)",
   "type": "module",
   "private": false,
   "publishConfig": {

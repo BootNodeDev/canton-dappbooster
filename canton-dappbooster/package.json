@@ -28,7 +28,7 @@
     "directory": "canton-dappbooster"
   },
   "license": "MIT",
-  "author": "BootNode (https://www.bootnode.dev)",
+  "author": "BootNode (https://canton.bootnode.dev/)",
   "scripts": {
     "build": "tsdown",
     "lint:fix": "biome check --write",

@@ -30,7 +30,7 @@
     "directory": "canton-connect"
   },
   "license": "MIT",
-  "author": "BootNode (https://www.bootnode.dev)",
+  "author": "BootNode (https://canton.bootnode.dev/)",
   "scripts": {
     "build": "tsdown",
     "coverage": "vitest run --coverage",
