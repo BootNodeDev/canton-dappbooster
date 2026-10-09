@@ -1,6 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { APPENDABLE, finalizeManifest, mergeManifests, TemplateConflictError } from '#src/merge'
+import {
+  APPENDABLE,
+  finalizeManifest,
+  mergeEnvExample,
+  mergeManifests,
+  ScaffoldConflictError,
+} from '#src/merge'
 
 export const TIERS = {
   app: 'A web app that connects to a Canton wallet (a mock one is built in)',
@@ -56,11 +62,19 @@ const applyFragment = (fragmentDir: string, targetDir: string): string[] =>
       fs.copyFileSync(source, destination)
       return [target]
     }
+    if (path.basename(target) === '.env.example') {
+      const merged = mergeEnvExample(
+        fs.readFileSync(destination, 'utf8'),
+        fs.readFileSync(source, 'utf8'),
+      )
+      fs.writeFileSync(destination, merged)
+      return []
+    }
     if (APPENDABLE.has(path.basename(target))) {
       fs.appendFileSync(destination, fs.readFileSync(source))
       return []
     }
-    throw new TemplateConflictError(`fragment rewrites a base file: ${target}`)
+    throw new ScaffoldConflictError(`a layer rewrites a file an earlier one wrote: ${target}`)
   })
 
 export interface ScaffoldFromTemplateOptions {
@@ -69,7 +83,7 @@ export interface ScaffoldFromTemplateOptions {
   templateDir: string
 }
 
-/** Copies one complete template (the base, or an example's `template/`) and names the package. */
+/** Copies one complete template (an example's `template/`) and names the package. */
 export const scaffoldFromTemplate = ({
   projectName,
   targetDir,
@@ -87,19 +101,24 @@ export const scaffoldFromTemplate = ({
 export interface ScaffoldOptions {
   projectName: string
   targetDir: string
-  templatesDir: string
+  scaffoldDir: string
   tier: Tier
 }
 
-/** The base template, then the tier's fragment on top of it. */
+/** The starter app, then the DAML tooling when it has a `daml/`, then the localnet layer. */
 export const scaffold = ({
   projectName,
   targetDir,
-  templatesDir,
+  scaffoldDir,
   tier,
 }: ScaffoldOptions): string[] => {
-  const written = copyTree(path.join(templatesDir, 'base'), targetDir)
-  const added = tier === 'app' ? [] : applyFragment(path.join(templatesDir, tier), targetDir)
+  const written = copyTree(path.join(scaffoldDir, 'starter'), targetDir)
+  const hasContract = fs.existsSync(path.join(targetDir, 'daml', 'daml.yaml'))
+  const layers = [
+    ...(hasContract ? ['daml-tooling'] : []),
+    ...(tier === 'localnet' ? ['localnet'] : []),
+  ]
+  const added = layers.flatMap((layer) => applyFragment(path.join(scaffoldDir, layer), targetDir))
   const manifestPath = path.join(targetDir, 'package.json')
   writeJson(manifestPath, finalizeManifest(readJson(manifestPath), projectName))
   return [...written, ...added]

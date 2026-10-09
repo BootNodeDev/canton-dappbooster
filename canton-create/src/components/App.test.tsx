@@ -4,15 +4,15 @@ import path from 'node:path'
 import { render } from 'ink-testing-library'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { App } from '#src/components/App'
-import { type PackedTemplates, packTemplates } from '#src/testing/packedTemplates'
+import { type PackedScaffold, packScaffold } from '#src/testing/packedScaffold'
 
 const ENTER = '\r'
 
-let packed: PackedTemplates
+let packed: PackedScaffold
 let work: string
 
 beforeAll(() => {
-  packed = packTemplates()
+  packed = packScaffold()
 })
 
 afterAll(() => {
@@ -37,12 +37,12 @@ const waitFor = async (frame: () => string | undefined, text: string): Promise<v
   }
 }
 
-const app = (props: { directory?: string; templatesDir?: string }) =>
+const app = (props: { directory?: string; scaffoldDir?: string }) =>
   render(
     <App
       directory={props.directory}
       tier={props.directory === undefined ? undefined : 'app'}
-      templatesDir={props.templatesDir ?? packed.templatesDir}
+      scaffoldDir={props.scaffoldDir ?? packed.scaffoldDir}
       manager="npm"
       install={false}
       git={false}
@@ -93,7 +93,7 @@ describe('App', () => {
 
   it('shows the failure and removes the folder it started', async () => {
     const target = path.join(work, 'broken')
-    const { frames } = app({ directory: target, templatesDir: path.join(work, 'missing') })
+    const { frames } = app({ directory: target, scaffoldDir: path.join(work, 'missing') })
 
     await waitFor(() => frames.join('\n'), '✗ Copying the app template')
 

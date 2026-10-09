@@ -3,7 +3,8 @@
 # dev-stack.sh — start or stop the local Canton dApp stack.
 #
 # Every step is a script in package.json, which is the contract this file relies on:
-# `mint-token`, `build-dar`, `deploy-dar`, `wallet-gateway`, `dev`, and optionally `bootstrap`.
+# `mint-token`, `wallet-gateway`, `dev`, `build-dar` and `deploy-dar` when the app has a contract
+# (daml/daml.yaml), and optionally `bootstrap`.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -55,7 +56,12 @@ JSON_API_URL=""
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-daml}"
-DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
+HAS_CONTRACT=0
+DAR_NAME=""
+if [ -f "$DAML_DIR/daml.yaml" ]; then
+  HAS_CONTRACT=1
+  DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
+fi
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
 # Flags are pulled out before the positional arguments, so `up --json <dir>` and
@@ -100,7 +106,7 @@ die() {
 }
 
 # Keep in step with the `step` calls in up(), which are the list.
-STEP_TOTAL=10
+STEP_TOTAL=$((8 + 2 * HAS_CONTRACT))
 STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
@@ -147,9 +153,11 @@ tick_end() {
 }
 
 # A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
-case "$DAR_NAME" in
-  -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
-esac
+if [ "$HAS_CONTRACT" = 1 ]; then
+  case "$DAR_NAME" in
+    -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
+  esac
+fi
 
 ACTION="${1:-menu}"
 LOCALNET_ARG="${2:-}"
@@ -293,7 +301,11 @@ up() {
   local stack_start=$SECONDS total holder
   mkdir -p "$RUN_DIR"
 
-  step preflight "Checking Docker, dpm and the dependencies..."
+  if [ "$HAS_CONTRACT" = 1 ]; then
+    step preflight "Checking Docker, dpm and the dependencies..."
+  else
+    step preflight "Checking Docker and the dependencies..."
+  fi
 
   # A fresh checkout may have no deps yet.
   if [ ! -d node_modules ]; then
@@ -304,16 +316,18 @@ up() {
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'up'."
 
-  command -v dpm >/dev/null 2>&1 \
-    || die "dpm not found on PATH.
+  if [ "$HAS_CONTRACT" = 1 ]; then
+    command -v dpm >/dev/null 2>&1 \
+      || die "dpm not found on PATH.
 Install it and add ~/.dpm/bin to your PATH: https://docs.canton.network/sdks-tools/cli-tools/dpm#installation
 Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
 
-  # Before anything starts, so an SDK it cannot build on stops `up` with nothing to undo.
-  step build-dar "Building the $DAR_NAME DAR..."
-  pnpm run build-dar \
-    || die "The $DAR_NAME build failed.
+    # Before anything starts, so an SDK it cannot build on stops `up` with nothing to undo.
+    step build-dar "Building the $DAR_NAME DAR..."
+    pnpm run build-dar \
+      || die "The $DAR_NAME build failed.
 Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
+  fi
 
   # ./.env is the mint recipe, the DAR upload token and the dApp's VITE_* settings.
   # Minting is offline, so this needs nothing running.
@@ -367,8 +381,10 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
-  step deploy-dar "Deploying $DAR_PATH to Canton..."
-  pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
+  if [ "$HAS_CONTRACT" = 1 ]; then
+    step deploy-dar "Deploying $DAR_PATH to Canton..."
+    pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
+  fi
 
   # Whatever the model needs on the ledger before the dApp is useful. Optional, so a starter
   # with nothing to create skips it.

@@ -64,7 +64,7 @@ printf '{ "name": "try", "private": true }\n' >"$TRY/package.json"
 
 # The template pins the workspace's own library version. While that is not on npm, the CLI's
 # install step would fail, so the printed flow skips it and adds the published libs by hand.
-range="$(tar -xzOf "$tgz" package/templates/base/package.json | node -e "process.stdin.on('data',(d)=>console.log(JSON.parse(d).dependencies['@bootnodedev/canton-connect']))")"
+range="$(tar -xzOf "$tgz" package/scaffold/starter/package.json | node -e "process.stdin.on('data',(d)=>console.log(JSON.parse(d).dependencies['@bootnodedev/canton-connect']))")"
 published="$(npm view @bootnodedev/canton-connect version 2>/dev/null || true)"
 libs="@bootnodedev/canton-connect@^$published @bootnodedev/canton-dappbooster@^$published @bootnodedev/canton-theme@^$published"
 

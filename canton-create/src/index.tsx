@@ -7,7 +7,7 @@ import { detectPackageManager, isPackageManager } from '#src/packageManager'
 import { isEmptyDir } from '#src/projectDirectory'
 import { isTier, TIERS } from '#src/scaffold'
 
-const TEMPLATES_DIR = path.resolve(import.meta.dirname, '..', 'templates')
+const SCAFFOLD_DIR = path.resolve(import.meta.dirname, '..', 'scaffold')
 
 const USAGE = `Usage: create-canton-dappbooster [directory] [options]
 
@@ -71,7 +71,7 @@ const main = async (): Promise<void> => {
       directory={directory}
       tier={values.example === undefined ? tier : undefined}
       example={values.example}
-      templatesDir={TEMPLATES_DIR}
+      scaffoldDir={SCAFFOLD_DIR}
       manager={manager}
       install={values['skip-install'] !== true}
       git={values['disable-git'] !== true}

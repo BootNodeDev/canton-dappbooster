@@ -1,17 +1,36 @@
-// A tier fragment may add files and merge these fields; it may never rewrite what the base wrote.
-// A conflict is a design error in the templates, so it throws rather than picking a winner.
+// A layer may add files and merge these fields; it may never rewrite what an earlier layer wrote.
+// A conflict is a design error in scaffold/, so it throws rather than picking a winner.
 
 export const APPENDABLE = new Set(['.gitignore', '.env.example', 'README.md'])
+
+const ENV_ASSIGNMENT = /^([A-Za-z_][A-Za-z0-9_]*)=/gm
+
+const assignedKeys = (text: string): string[] =>
+  [...text.matchAll(ENV_ASSIGNMENT)].map(([, key]) => key as string)
+
+/** Appends a layer's `.env.example` blocks, leaving out a block whose every key is already set. */
+export const mergeEnvExample = (current: string, layer: string): string => {
+  const assigned = new Set(assignedKeys(current))
+  const added = layer
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block !== '')
+    .filter((block) => {
+      const keys = assignedKeys(block)
+      return keys.length === 0 || keys.some((key) => !assigned.has(key))
+    })
+  return added.length === 0 ? current : `${current.trimEnd()}\n\n${added.join('\n\n')}\n`
+}
 
 const MERGED_FIELDS = ['scripts', 'dependencies', 'devDependencies'] as const
 
 type Manifest = Record<string, unknown>
 type Field = Record<string, string>
 
-export class TemplateConflictError extends Error {
+export class ScaffoldConflictError extends Error {
   constructor(message: string) {
     super(message)
-    this.name = 'TemplateConflictError'
+    this.name = 'ScaffoldConflictError'
   }
 }
 
@@ -21,7 +40,7 @@ const sorted = (field: Field): Field =>
 const mergeField = (name: string, base: Field, fragment: Field): Field => {
   const clash = Object.keys(fragment).filter((key) => key in base)
   if (clash.length > 0) {
-    throw new TemplateConflictError(`fragment redefines ${name}: ${clash.join(', ')}`)
+    throw new ScaffoldConflictError(`fragment redefines ${name}: ${clash.join(', ')}`)
   }
   return { ...base, ...fragment }
 }

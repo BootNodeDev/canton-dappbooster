@@ -8,7 +8,7 @@ packages:
   - dapp/daml
   - dapp/frontend
   - canton-create
-  - canton-create/templates/*
+  - canton-create/scaffold/*
 
 allowBuilds:
   better-sqlite3: true

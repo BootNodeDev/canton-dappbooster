@@ -3,13 +3,13 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-export interface PackedTemplates {
-  templatesDir: string
+export interface PackedScaffold {
+  scaffoldDir: string
   remove: () => void
 }
 
 /** Packs the CLI as npm would publish it, so a test scaffolds from what `files` ships. */
-export const packTemplates = (): PackedTemplates => {
+export const packScaffold = (): PackedScaffold => {
   const packed = fs.mkdtempSync(path.join(os.tmpdir(), 'create-canton-dappbooster-packed-'))
   const packageDir = path.resolve(import.meta.dirname, '..', '..')
   const args = ['pack', packageDir, '--pack-destination', packed, '--json', '--ignore-scripts']
@@ -18,7 +18,7 @@ export const packTemplates = (): PackedTemplates => {
   }[]
   execFileSync('tar', ['-xzf', path.join(packed, filename), '-C', packed])
   return {
-    templatesDir: path.join(packed, 'package', 'templates'),
+    scaffoldDir: path.join(packed, 'package', 'scaffold'),
     remove: () => fs.rmSync(packed, { recursive: true, force: true }),
   }
 }

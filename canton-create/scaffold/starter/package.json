@@ -1,5 +1,5 @@
 {
-  "name": "@bootnodedev/canton-template-base",
+  "name": "@bootnodedev/canton-scaffold-starter",
   "private": true,
   "version": "0.0.0",
   "type": "module",

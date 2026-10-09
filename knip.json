@@ -18,10 +18,13 @@
       "entry": ["src/**/*.test.ts"],
       "ignore": ["src/testing/fixtures/**"]
     },
-    "canton-create/templates/base": {
+    "canton-create/scaffold/starter": {
       "ignoreDependencies": ["@bootnodedev/canton-theme"]
     },
-    "canton-create/templates/localnet": {
+    "canton-create/scaffold/daml-tooling": {
+      "entry": ["scripts/*.mjs!"]
+    },
+    "canton-create/scaffold/localnet": {
       "entry": ["scripts/*.mjs!"]
     }
   }

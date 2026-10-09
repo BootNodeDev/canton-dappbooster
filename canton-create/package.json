@@ -18,11 +18,11 @@
   },
   "files": [
     "dist",
-    "templates",
-    "!templates/*/node_modules",
-    "!templates/*/dist",
-    "!templates/*/daml/.daml",
-    "!templates/*/daml/deps"
+    "scaffold",
+    "!scaffold/*/node_modules",
+    "!scaffold/*/dist",
+    "!scaffold/*/daml/.daml",
+    "!scaffold/*/daml/deps"
   ],
   "engines": {
     "node": ">=22.12.0"

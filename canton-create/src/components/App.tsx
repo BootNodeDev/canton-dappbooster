@@ -37,7 +37,7 @@ export interface AppProps {
   directory?: string
   tier?: Tier
   example?: string
-  templatesDir: string
+  scaffoldDir: string
   manager: PackageManager
   install: boolean
   git: boolean
@@ -47,7 +47,7 @@ interface Plan {
   directory: string
   tier: Tier | undefined
   example: string | undefined
-  templatesDir: string
+  scaffoldDir: string
   manager: PackageManager
   install: boolean
   git: boolean
@@ -75,7 +75,7 @@ const sectionsFor = (plan: Plan): SectionPlan[] => {
       title: 'Scaffold',
       run: async (progress) => {
         progress.step(`Copying the ${tier} template into ${plan.directory}`)
-        scaffold({ projectName, targetDir, templatesDir: plan.templatesDir, tier: tier as Tier })
+        scaffold({ projectName, targetDir, scaffoldDir: plan.scaffoldDir, tier: tier as Tier })
         addEnvFile(progress, targetDir)
       },
     })
@@ -150,7 +150,7 @@ export const App = ({
   directory: givenDirectory,
   tier: givenTier,
   example,
-  templatesDir,
+  scaffoldDir,
   manager,
   install,
   git,
@@ -167,8 +167,8 @@ export const App = ({
   )
   const sections = useMemo(
     () =>
-      ready ? sectionsFor({ directory, tier, example, templatesDir, manager, install, git }) : [],
-    [ready, directory, tier, example, templatesDir, manager, install, git],
+      ready ? sectionsFor({ directory, tier, example, scaffoldDir, manager, install, git }) : [],
+    [ready, directory, tier, example, scaffoldDir, manager, install, git],
   )
   const done = ready && finished === sections.length
 

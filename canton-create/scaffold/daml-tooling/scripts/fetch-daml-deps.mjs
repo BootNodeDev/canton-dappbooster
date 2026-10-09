@@ -6,15 +6,18 @@
 //
 // The version is not a choice: an Amulet-moving choice is exercised against the
 // AmuletRules the network is running, so the DAR has to be the one that network's Splice
-// release ships. `spliceTag` reads that release off the canton-barebones template the
-// LocalNet is scaffolded from, so the DAR and the LocalNet cannot disagree, and within a
-// release the current Amulet is the highest version in its dars/ directory.
+// release ships. SPLICE_TAG names it for a network of your own; with the local stack,
+// `spliceTag` reads it off the canton-barebones template the LocalNet is scaffolded from, so
+// the DAR and the LocalNet cannot disagree. Within a release the current Amulet is the highest
+// version in its dars/ directory.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { spliceTag } from './localnet-config.mjs'
+import { pathToFileURL } from 'node:url'
 
+const ENV_FILE = path.resolve(import.meta.dirname, '..', '.env')
+const LOCALNET_CONFIG = path.join(import.meta.dirname, 'localnet-config.mjs')
 const DAML_DIR = path.resolve(import.meta.dirname, '..', 'daml')
 const DEPS_DIR = path.join(DAML_DIR, 'deps')
 const STAMP = path.join(DEPS_DIR, '.splice-tag')
@@ -43,13 +46,30 @@ export const newest = (names, target) =>
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .at(-1)
 
-const main = () => {
+// Imported only when needed, because only the localnet layer ships that script.
+const resolveSpliceTag = async () => {
+  if (fs.existsSync(ENV_FILE)) {
+    process.loadEnvFile(ENV_FILE)
+  }
+  if (process.env.SPLICE_TAG) {
+    return process.env.SPLICE_TAG
+  }
+  if (!fs.existsSync(LOCALNET_CONFIG)) {
+    throw new Error(
+      'daml/daml.yaml depends on Splice DARs: set SPLICE_TAG in .env to the Splice release your network runs, e.g. 0.8.1',
+    )
+  }
+  const { spliceTag } = await import(pathToFileURL(LOCALNET_CONFIG).href)
+  return spliceTag()
+}
+
+const main = async () => {
   const wanted = targets()
   if (wanted.length === 0) {
     return
   }
 
-  const tag = spliceTag()
+  const tag = await resolveSpliceTag()
   // Every target has to be on disk too, not just the right tag: adding a data-dependency moves
   // daml.yaml without moving the tag, and a stamp alone would skip the fetch and leave `dpm build`
   // to fail on a DAR nobody fetched.
@@ -114,5 +134,5 @@ const main = () => {
 // `import.meta.filename` rather than a `file://` template around argv[1]: the two disagree the
 // moment the project path holds a space, and then the fetch silently no-ops.
 if (import.meta.filename === process.argv[1]) {
-  main()
+  await main()
 }
