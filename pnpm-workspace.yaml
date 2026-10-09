@@ -7,7 +7,7 @@ packages:
   - canton-theme
   - canton-create
   - canton-create/scaffold/*
-  - examples/*
+  - example-dapps/*
 
 allowBuilds:
   better-sqlite3: true

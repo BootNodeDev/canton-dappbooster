@@ -3,8 +3,8 @@
 export default {
   'canton-connect/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-connect test',
   'canton-dappbooster/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-dappbooster test',
-  'examples/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
-    [...new Set(files.map((file) => file.match(/examples\/[^/]+/)?.[0]))].map(
+  'example-dapps/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
+    [...new Set(files.map((file) => file.match(/example-dapps\/[^/]+/)?.[0]))].map(
       (example) => `pnpm -C ${example} test`,
     ),
   // One task for the whole doc gate, under the name CI uses: typedoc resolves both packages in a

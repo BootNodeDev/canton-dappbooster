@@ -81,7 +81,7 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type Assert<T extends true> = T
 
 // Fails typecheck when an SDK bump changes the account entry. `Account` is defined through it so
-// it cannot go unused, which `examples/amulet-vesting`'s `noUnusedLocals` would reject.
+// it cannot go unused, which `example-dapps/amulet-vesting`'s `noUnusedLocals` would reject.
 type AccountPinned = Assert<Exact<Wallet, PinnedAccount>>
 
 /**

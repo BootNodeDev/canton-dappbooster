@@ -44,7 +44,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 # The app the loop runs; its .env holds the mint recipe, the tokens and the dApp settings.
-APP_DIR="examples/amulet-vesting"
+APP_DIR="example-dapps/amulet-vesting"
 ENV_FILE="$APP_DIR/.env"
 
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"

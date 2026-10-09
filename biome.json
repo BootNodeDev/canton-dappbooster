@@ -12,7 +12,7 @@
       "canton-connect/**",
       "canton-dappbooster/**",
       "canton-theme/**",
-      "examples/**",
+      "example-dapps/**",
       "kit/**",
       "scripts/**",
       "canton-create/**",
@@ -64,7 +64,7 @@
       }
     },
     {
-      "includes": ["examples/**"],
+      "includes": ["example-dapps/**"],
       "css": {
         "parser": {
           "cssModules": false,
@@ -111,7 +111,7 @@
       }
     },
     {
-      "includes": ["examples/**"],
+      "includes": ["example-dapps/**"],
       "linter": {
         "rules": {
           "style": {
@@ -173,7 +173,7 @@
       }
     },
     {
-      "includes": ["examples/*/src/**", "!**/*.test.ts", "!**/*.test.tsx", "!**/testing/**"],
+      "includes": ["example-dapps/*/src/**", "!**/*.test.ts", "!**/*.test.tsx", "!**/testing/**"],
       "linter": {
         "rules": {
           "style": {

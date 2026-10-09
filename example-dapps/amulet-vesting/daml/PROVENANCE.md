@@ -9,7 +9,7 @@ fetched rather than committed (see [`README.md`](README.md)).
 | Source repo | https://github.com/BootNodeDev/cc-vesting-contracts |
 | Source branch | `main` |
 | Source commit | `000c481b1c9119bf564568c93ab53cddd3072ab0` |
-| Imported | `daml/amulet-vesting/daml/` flattened into `dapp/daml/`, since moved to `examples/amulet-vesting/daml/` |
+| Imported | `daml/amulet-vesting/daml/` flattened into `dapp/daml/`, since moved to `example-dapps/amulet-vesting/daml/` |
 
 ## Integration deltas
 

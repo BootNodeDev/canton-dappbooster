@@ -17,7 +17,7 @@ const MANIFESTS = [
   'canton-create/scaffold/starter/package.json',
   'canton-dappbooster/package.json',
   'canton-theme/package.json',
-  'examples/amulet-vesting/package.json',
+  'example-dapps/amulet-vesting/package.json',
 ]
 
 export const DEPENDENCY_FIELDS = [

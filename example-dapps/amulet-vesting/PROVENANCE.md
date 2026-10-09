@@ -23,7 +23,7 @@ Applied on import to fit this repo's conventions:
   `AGENTS.md`, `architecture.md`, and `.nvmrc`; the repo uses one root Biome config
   and root Node pin. The `architecture.md` here now is this repo's own, not that
   one. The source's `noImportantStyles`/`noDescendingSpecificity` CSS relaxations
-  moved into the root `biome.json` override for `examples/`.
+  moved into the root `biome.json` override for `example-dapps/`.
 - **Toolchain aligned to the repo:** `vite` 6→8, `@vitejs/plugin-react` 4→6,
   `vitest` 3→4 (avoids duplicate major versions across the workspace).
 - **Kit-from-source resolution:** `tsconfig.app.json` gains

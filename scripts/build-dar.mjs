@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 //
-// Builds examples/amulet-vesting/daml on the pinned Daml SDK, else on the newest installed patch of the pin's minor line.
+// Builds example-dapps/amulet-vesting/daml on the pinned Daml SDK, else on the newest installed patch of the pin's minor line.
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { repoRoot } from './lib/gate.mjs'
 
-const DAML_DIR = path.join(repoRoot, 'examples/amulet-vesting/daml')
+const DAML_DIR = path.join(repoRoot, 'example-dapps/amulet-vesting/daml')
 const DPM_INSTALL_DOCS = 'https://docs.canton.network/sdks-tools/cli-tools/dpm#installation'
 
 export const sdkVersionOf = (damlYaml) =>
@@ -70,7 +70,7 @@ const fail = (...lines) => {
 const main = () => {
   const pin = pinnedSdk()
   if (pin === undefined) {
-    fail('no sdk-version in examples/amulet-vesting/daml/daml.yaml.')
+    fail('no sdk-version in example-dapps/amulet-vesting/daml/daml.yaml.')
   }
 
   const listing = spawnSync('dpm', ['version', '--output', 'json'], {

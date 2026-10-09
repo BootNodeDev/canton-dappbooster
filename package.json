@@ -8,8 +8,8 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "app:dev": "pnpm -C examples/amulet-vesting run dev",
-    "bootstrap": "pnpm -C examples/amulet-vesting run bootstrap",
+    "app:dev": "pnpm -C example-dapps/amulet-vesting run dev",
+    "bootstrap": "pnpm -C example-dapps/amulet-vesting run bootstrap",
     "build-dar": "node scripts/fetch-daml-deps.mjs && node scripts/build-dar.mjs",
     "build": "pnpm -r run --if-present build",
     "check:anatomy": "node kit/check-anatomy.mjs",

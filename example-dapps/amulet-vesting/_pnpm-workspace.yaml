@@ -1,5 +1,5 @@
 # pnpm 10+ refuses to run a dependency's build script until it is listed here. protobufjs, under
-# the Canton SDK, has one; the other four come with the localnet tier's packages.
+# the Canton SDK, has one; the other four come with the local network's packages.
 allowBuilds:
   protobufjs: true
   better-sqlite3: true

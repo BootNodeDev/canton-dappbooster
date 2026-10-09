@@ -1,6 +1,6 @@
-# Agent Configuration — examples/amulet-vesting
+# Agent Configuration — example-dapps/amulet-vesting
 
-This file applies only to `examples/amulet-vesting/`. For monorepo-wide rules, including the
+This file applies only to `example-dapps/amulet-vesting/`. For monorepo-wide rules, including the
 filename casing table and the colocate-then-promote placement rules it layers on, see
 [`../../CLAUDE.md`](../../CLAUDE.md). The internal seams are in
 [`architecture.md`](architecture.md). Deltas for this app only are below.

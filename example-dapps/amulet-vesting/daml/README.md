@@ -12,12 +12,12 @@ From the repo root:
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- examples/amulet-vesting/daml/.daml/dist/amulet-vesting-0.0.3.dar
+pnpm run deploy-dar -- example-dapps/amulet-vesting/daml/.daml/dist/amulet-vesting-0.0.3.dar
 ```
 
-`deploy-dar` uploads to the app-user JSON API and takes the bearer token from `examples/amulet-vesting/.env`.
-Both commands need the Daml SDK (`dpm`), which `scripts/dev-stack.sh up` checks for before it
-starts anything.
+`deploy-dar` uploads to the app-user JSON API and takes the bearer token from
+`example-dapps/amulet-vesting/.env`. Both commands need the Daml SDK (`dpm`), which
+`scripts/dev-stack.sh up` checks for before it starts anything.
 
 Any edit to the model changes the package id, and a participant refuses a second package at the
 same name and version — `KNOWN_PACKAGE_VERSION`. So a redeploy after a source change means either

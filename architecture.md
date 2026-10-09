@@ -8,7 +8,7 @@
 | Wallet Gateway (external: [canton-network/wallet](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root devDependency, run on the host by `scripts/dev-stack.sh` from `wallet-gateway.config.json` |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dep fetch, the DAR build and upload, the token mint |
 | `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the typedoc configs. Grouped so a consumer scaffold deletes it whole; see [`CLAUDE.md`](CLAUDE.md) |
-| `examples/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + zustand + react-router + DAML | Canton Coin **vesting** dApp, published as an example; every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`, vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
+| `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + zustand + react-router + DAML | Canton Coin **vesting** dApp, published as an example; every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`, vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
@@ -21,7 +21,7 @@ carries two today.
 
 ```mermaid
 flowchart TD
-  fe["examples/amulet-vesting<br/>http://localhost:3012"]
+  fe["example-dapps/amulet-vesting<br/>http://localhost:3012"]
   gw["Wallet Gateway<br/>http://localhost:3030"]
   au["Splice app-user<br/>JSON API http://localhost:2975"]
   sv["Splice sv<br/>DSO / synchronizer side"]
@@ -38,7 +38,7 @@ flowchart TD
   dar --> au
 ```
 
-> `examples/amulet-vesting` hosts the Canton Coin vesting dApp. Every ledger read and every
+> `example-dapps/amulet-vesting` hosts the Canton Coin vesting dApp. Every ledger read and every
 > submission goes through the wallet over CIP-0103, so the dApp only ever acts as the connected
 > account and each write is signed by the account's own key. One call is not a ledger path: an
 > Amulet-moving choice takes the current `AmuletRules` and open mining round as an argument, and no
@@ -53,7 +53,7 @@ containers still expose app-provider backend ports.
 
 State boundaries:
 
-- The CIP-0103 path: a dApp talks to the wallet through the provider surface, which is how the vesting dApp in `examples/amulet-vesting` gets its session, its ledger reads, and its submissions.
+- The CIP-0103 path: a dApp talks to the wallet through the provider surface, which is how the vesting dApp in `example-dapps/amulet-vesting` gets its session, its ledger reads, and its submissions.
 - The wallet owns user keys and signs locally.
 - `CANTON_BACKEND_TOKEN` belongs to the scripts alone: the DAR upload and the vesting bootstrap.
   Nothing in the browser ever holds it.
@@ -90,7 +90,7 @@ State boundaries:
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
 | `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload and the vesting bootstrap |
 
-`examples/amulet-vesting/.env` is the only one that matters: the signing recipe
+`example-dapps/amulet-vesting/.env` is the only one that matters: the signing recipe
 `scripts/mint-token.mjs` reads, plus the token `scripts/deploy-dar.sh` and the example's
 `scripts/bootstrap-vesting.mjs` send. Minting is offline, so it needs nothing running, which is what
 lets `dev-stack.sh up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
@@ -139,7 +139,7 @@ sit in this repo. Which copy a consumer gets is decided per install, by version:
 | this repo | the local folder, symlinked into `node_modules` | `linkWorkspacePackages: true` in `pnpm-workspace.yaml`, and the folder's `version` satisfies the declared range |
 | a project scaffolded from it | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
-Both cases read the same `package.json`. Nothing in `examples/amulet-vesting` or
+Both cases read the same `package.json`. Nothing in `example-dapps/amulet-vesting` or
 `canton-dappbooster` names a workspace, only a range (`^0.3.1`), which is why the same file works in
 a repo that has the folders and in one that does not.
 

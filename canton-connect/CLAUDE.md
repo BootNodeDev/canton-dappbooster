@@ -43,7 +43,7 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
   indistinguishable from a real wallet's.
 - **The hook and config surface is documented in JSDoc, and nowhere else.** The published reference
   is generated from it, and a table beside the code drifts from it unnoticed.
-- **App-agnostic.** No imports from `examples/`; name no wallet.
+- **App-agnostic.** No imports from `example-dapps/`; name no wallet.
 
 ## Bumping `dapp-sdk`
 
@@ -54,7 +54,7 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
 - `connect()` calls `this.walletPicker` only when it reaches the picker, so a swapped one is honored
 
 Why: [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). Serve
-`examples/amulet-vesting` and walk all five:
+`example-dapps/amulet-vesting` and walk all five:
 
 1. Close the picker without choosing, three times over: the button re-enables each time, and the
    next real connect raises exactly one approval prompt.

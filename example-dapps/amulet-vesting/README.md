@@ -27,8 +27,8 @@ root. A single `pnpm install` at the root links every workspace.
 ```bash
 pnpm run mint-token       # prints a CANTON_BACKEND_TOKEN line; add it to this folder's .env
 pnpm run build-dar
-# <version> is the one in examples/amulet-vesting/daml/daml.yaml
-pnpm run deploy-dar -- examples/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
+# <version> is the one in example-dapps/amulet-vesting/daml/daml.yaml
+pnpm run deploy-dar -- example-dapps/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
 pnpm run bootstrap        # creates the operator and its factory
 pnpm run wallet-gateway   # serves http://localhost:3030
 pnpm run app:dev          # serves http://localhost:3012
