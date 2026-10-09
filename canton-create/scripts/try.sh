@@ -1,23 +1,14 @@
 #!/usr/bin/env bash
-#
-# try.sh — use the scaffolder as if it were published, without publishing anything.
-#
-# Packs the package into ./.try and installs the tarball there with npm, so inside that directory
-# `npm create canton-dappbooster` runs the local build: npm resolves a create-* package against the
-# current project's dependencies before it asks the registry. pnpm has no such path — `pnpm create`
-# is `pnpm dlx create-canton-dappbooster`, registry only — so its line is `pnpm dlx <tarball>`, the
-# same mechanism with a local spec.
+# Runs the CLI and the example dApps from ./.try as if they were published.
 #
 #   pnpm -C canton-create try          # then follow what it prints
 #   pnpm -C canton-create try:clean    # wind down whatever was started, remove .try
 set -euo pipefail
 
 PKG="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$PKG/.." && pwd)"
 TRY="$PKG/.try"
 
-# Undo everything trying could have started: for each localnet-tier project, `dev-stack.sh down`
-# (the Wallet Gateway, the dev server, the LocalNet) then `canton-barebones reset` (containers and
-# volumes); any dev server still running from inside the sandbox; then the sandbox itself.
 clean() {
   if [ ! -d "$TRY" ]; then
     echo "nothing to clean: $TRY does not exist"
@@ -52,8 +43,7 @@ find "$TRY" -maxdepth 1 -name '*.tgz' -delete
 rm -rf "$TRY/node_modules" "$TRY/package-lock.json"
 packed="$(cd "$PKG" && pnpm pack --pack-destination "$TRY" | tail -1)"
 
-# dlx caches an install by its spec string, so a re-pack under the same name would keep serving the
-# previous build for a day. A content hash in the name makes every build a new spec.
+# dlx caches an install by its spec string, so a content hash in the name makes every build a new spec.
 hash="$(shasum -a 256 "$packed" | cut -c1-8)"
 tgz="${packed%.tgz}-$hash.tgz"
 mv "$packed" "$tgz"
@@ -62,8 +52,19 @@ mv "$packed" "$tgz"
 printf '{ "name": "try", "private": true }\n' >"$TRY/package.json"
 (cd "$TRY" && npm install --no-audit --no-fund --loglevel=error "$tgz")
 
-# The template pins the workspace's own library version. While that is not on npm, the CLI's
-# install step would fail, so the printed flow skips it and adds the published libs by hand.
+# Extracted, not installed: the CLI only copies an example's files, and npm would pull its whole tree.
+examples=()
+for manifest in "$ROOT"/example-dapps/*/package.json; do
+  [ -f "$manifest" ] || continue
+  name="$(node -p "require('$manifest').name")"
+  example_tgz="$(cd "$(dirname "$manifest")" && pnpm pack --pack-destination "$TRY" | tail -1)"
+  mkdir -p "$TRY/node_modules/$name"
+  tar -xzf "$example_tgz" -C "$TRY/node_modules/$name" --strip-components=1
+  rm "$example_tgz"
+  examples+=("${name#@bootnodedev/canton-example-}")
+done
+
+# While the scaffold's library range is not on npm, the printed flow skips the install and adds the published libs.
 range="$(tar -xzOf "$tgz" package/scaffold/starter/package.json | node -e "process.stdin.on('data',(d)=>console.log(JSON.parse(d).dependencies['@bootnodedev/canton-connect']))")"
 published="$(npm view @bootnodedev/canton-connect version 2>/dev/null || true)"
 libs="@bootnodedev/canton-connect@^$published @bootnodedev/canton-dappbooster@^$published @bootnodedev/canton-theme@^$published"
@@ -71,17 +72,16 @@ libs="@bootnodedev/canton-connect@^$published @bootnodedev/canton-dappbooster@^$
 # INIT_CWD is where `pnpm -C ... try` was typed; the script itself runs in the package dir.
 rel="$(node -e "console.log(require('node:path').relative(process.env.INIT_CWD || process.cwd(), '$TRY') || '.')")"
 
-printf '\nPacked %s into %s and installed it there. Now, as a user would:\n\n  cd %s\n' "$(basename "$tgz")" "$rel" "$rel"
+printf '\nPacked %s into %s and installed it there, with the examples: %s. Now, as a user would:\n\n  cd %s\n' \
+  "$(basename "$tgz")" "$rel" "${examples[*]:-none}" "$rel"
 if [ -n "$(npm view "@bootnodedev/canton-connect@$range" version 2>/dev/null)" ]; then
   cat <<TXT
 
   # npm
   npm create canton-dappbooster my-dapp
-  cd my-dapp && npm run dev
 
   # pnpm
   pnpm dlx "\$PWD/$(basename "$tgz")" my-dapp
-  cd my-dapp && pnpm dev                     # localnet tier: pnpm stack up   (Docker + dpm)
 TXT
 else
   cat <<TXT
@@ -89,17 +89,19 @@ else
   # npm
   npm create canton-dappbooster my-dapp -- --skip-install
   cd my-dapp && npm install $libs
-  npm run dev
 
   # pnpm
   pnpm dlx "\$PWD/$(basename "$tgz")" my-dapp --skip-install
   cd my-dapp && pnpm add $libs
-  pnpm dev                                   # localnet tier: pnpm stack up   (Docker + dpm)
 
-  The template pins $range, which is not on npm while this branch sits on main; the published
-  $published stands in. --skip-install and the install of the libs go away once the branch is rebased.
+  The scaffold pins $range, which is not on npm yet, so the published $published stands in.
 TXT
 fi
+cat <<TXT
+
+  The CLI asks for the local network and the dApp, then prints the next steps. To skip the
+  questions, pass --localnet, --example <name>, --skip-install or --disable-git (after a -- with npm).
+TXT
 printf '\nDone trying? pnpm -C canton-create try:clean  (stops the stack, resets the LocalNet, removes %s)\n' "$rel"
 }
 
