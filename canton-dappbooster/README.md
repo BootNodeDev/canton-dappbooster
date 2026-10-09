@@ -2,20 +2,7 @@
 
 > [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its UI components layer, headless and unstyled. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
 
-React components for Canton dApps, in four groups:
-
-- Reading identifiers
-  - `Identifier` shows a Canton identifier truncated, with copy to clipboard and an optional explorer link
-  - `ExplorerLink` is that icon link on its own; `useExplorerLink` builds the URL
-- Entering identifiers
-  - `PartyIdInput`, a controlled field for a Canton party id
-  - `validatePartyId` and `isValidPartyId`, the check behind it
-- Amounts
-  - `TokenInput`, a token-amount field
-  - `parseAmount`, `formatAmount`, `validateAmount` and the other exact-decimal utilities under it, since a JavaScript `number` can't hold a Canton amount without losing digits
-- Tokens and holdings
-  - `TokenListProvider` and `useTokenList` supply the token list the pickers choose from
-  - `readInstruments`, `sumHoldings`, `mergeTokens` and `tokenKey` build that list from registry metadata and a party's holdings
+Reusable UI components for Canton dApps: reading Canton identifiers (display, truncation, copy-to-clipboard, explorer links) and entering them (validated party-id input). Amounts are the other half: a token-amount field, plus the exact-decimal utilities under it, because a `number` cannot carry a Canton amount without losing digits.
 
 `src/index.ts` is the public API. Every export has JSDoc, which your editor shows at the call site and which is published at [components.dappbooster.cc](https://components.dappbooster.cc/). The wallet buttons live under the `/connect` sub-path instead, because they read the wallet session and that pulls in the Canton SDK. The rules for writing new components are in [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/CLAUDE.md).
 
