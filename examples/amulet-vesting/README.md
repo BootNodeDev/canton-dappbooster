@@ -1,6 +1,6 @@
 # Amulet vesting dApp
 
-`@canton-dappbooster/frontend` is a dApp for Amulet vesting. A funder proposes a grant and the
+`@bootnodedev/canton-example-amulet-vesting` is a dApp for Amulet vesting. A funder proposes a grant and the
 receiver accepts it. The receiver claims Amulet as the grant vests. If the funder cancels the grant,
 the receiver keeps the vested but unclaimed Amulet as a residual claim.
 
@@ -14,7 +14,7 @@ has no vesting operator and factory, or you have not connected a wallet, the pag
 placeholder. See the root [README](../../README.md) for the wider stack.
 
 > This frontend comes from `cn-dappbooster@feat/vesting-lite`. See
-> [`PROVENANCE.md`](PROVENANCE.md). The Daml package it uses is in [`../daml`](../daml).
+> [`PROVENANCE.md`](PROVENANCE.md). The Daml package it uses is in [`daml/`](daml/).
 
 ## Run the app
 
@@ -25,10 +25,10 @@ To start the pieces by hand, start a Canton LocalNet first. Then run these comma
 root. A single `pnpm install` at the root links every workspace.
 
 ```bash
-pnpm run mint-token       # prints a CANTON_BACKEND_TOKEN line; add it to .env
+pnpm run mint-token       # prints a CANTON_BACKEND_TOKEN line; add it to this folder's .env
 pnpm run build-dar
-# <version> is the one in dapp/daml/daml.yaml
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-<version>.dar
+# <version> is the one in examples/amulet-vesting/daml/daml.yaml
+pnpm run deploy-dar -- examples/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
 pnpm run bootstrap        # creates the operator and its factory
 pnpm run wallet-gateway   # serves http://localhost:3030
 pnpm run app:dev          # serves http://localhost:3012
@@ -52,8 +52,8 @@ change the wallet's primary party, the dApp acts as the new one.
 
 ## Configure the app
 
-The app reads its variables from the repo root's `.env`, and the root
-[`.env.example`](../../.env.example) lists them. The URL variables default to the local stack.
+The app reads its variables from `.env` in this folder, and [`.env.example`](.env.example) lists
+them. The URL variables default to the local stack.
 
 WalletConnect is off unless you set `VITE_WALLET_CONNECT_PROJECT_ID` to a Reown project id. Once you
 set it, `VITE_NETWORK_ID` must match the network the wallet serves. For the local gateway, that is

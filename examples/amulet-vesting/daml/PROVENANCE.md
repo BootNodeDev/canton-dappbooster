@@ -9,11 +9,11 @@ fetched rather than committed (see [`README.md`](README.md)).
 | Source repo | https://github.com/BootNodeDev/cc-vesting-contracts |
 | Source branch | `main` |
 | Source commit | `000c481b1c9119bf564568c93ab53cddd3072ab0` |
-| Imported | `daml/amulet-vesting/daml/` flattened into `dapp/daml/` |
+| Imported | `daml/amulet-vesting/daml/` flattened into `dapp/daml/`, since moved to `examples/amulet-vesting/daml/` |
 
 ## Integration deltas
 
-- **The package sits at `dapp/daml/` rather than in a folder named after itself, and `daml.yaml`
+- **The package sits directly in `daml/` rather than in a folder named after itself, and `daml.yaml`
   reads `source: .` rather than `source: daml`.** Upstream is a container of several dpm packages
   and needs the name in the path; there is one package here, so a rename would otherwise move every
   reference to it. The LF package id covers the relative source root, so this layout is what

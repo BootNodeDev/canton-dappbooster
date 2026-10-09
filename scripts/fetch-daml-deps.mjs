@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //
-// Fetches the Splice DARs `dapp/daml` data-depends on into its gitignored deps/, so the Daml
+// Fetches the Splice DARs `examples/amulet-vesting/daml` data-depends on into its gitignored deps/, so the Daml
 // source is what this repository carries and the artifacts are not.
 //
 // The version is not a choice: an Amulet-moving choice is exercised against the
@@ -15,7 +15,7 @@ import path from 'node:path'
 import { repoRoot } from './lib/gate.mjs'
 import { spliceTag } from './localnet-config.mjs'
 
-const DAML_DIR = path.join(repoRoot, 'dapp/daml')
+const DAML_DIR = path.join(repoRoot, 'examples/amulet-vesting/daml')
 const DEPS_DIR = path.join(DAML_DIR, 'deps')
 const STAMP = path.join(DEPS_DIR, '.splice-tag')
 

@@ -60,7 +60,7 @@ export const createCantonToken = ({ subject, audience, secret }) => {
 // Prints a LocalNet token and the two places it can be copied for development.
 const main = () => {
   const env = {
-    ...parseEnvFile(path.join(root, '.env')),
+    ...parseEnvFile(path.join(root, 'examples/amulet-vesting/.env')),
     ...process.env,
   }
   const subject = process.argv[2] ?? 'ledger-api-user'

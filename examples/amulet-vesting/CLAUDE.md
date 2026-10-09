@@ -1,8 +1,9 @@
-# Agent Configuration — dapp/frontend
+# Agent Configuration — examples/amulet-vesting
 
-This file applies only to `dapp/frontend/`. For monorepo-wide rules, including the filename casing
-table and the colocate-then-promote placement rules it layers on, see [`../../CLAUDE.md`](../../CLAUDE.md).
-The internal seams are in [`architecture.md`](architecture.md). Deltas for this app only are below.
+This file applies only to `examples/amulet-vesting/`. For monorepo-wide rules, including the
+filename casing table and the colocate-then-promote placement rules it layers on, see
+[`../../CLAUDE.md`](../../CLAUDE.md). The internal seams are in
+[`architecture.md`](architecture.md). Deltas for this app only are below.
 
 ## Layout
 

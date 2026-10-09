@@ -43,17 +43,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
+# The app the loop runs; its .env holds the mint recipe, the tokens and the dApp settings.
+APP_DIR="examples/amulet-vesting"
+ENV_FILE="$APP_DIR/.env"
+
 RUN_DIR="${TMPDIR:-/tmp}/cn-dev-stack"
 DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
 GW_LOG="$RUN_DIR/wallet-gateway.log"
 GW_PID="$RUN_DIR/wallet-gateway.pid"
 
-# Resolved in up(), once ./.env has been read.
+# Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="dapp/daml"
+DAML_DIR="$APP_DIR/daml"
 DAR_NAME="$(awk '/^name:/{n=$2} /^version:/{v=$2} END{print n"-"v".dar"}' "$DAML_DIR/daml.yaml")"
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
@@ -304,15 +308,15 @@ Then open a new terminal and run ./scripts/dev-stack.sh up again (menu: Stack up
     || die "The $DAR_NAME build failed.
 Fix what build-dar printed above, then run ./scripts/dev-stack.sh up again (menu: Stack up)."
 
-  # ./.env is the mint recipe, the DAR upload token and the bootstrap token.
+  # $ENV_FILE is the mint recipe, the DAR upload token and the bootstrap token.
   # Minting is offline, so this needs nothing running.
-  step env "Preparing .env and the participant token..."
-  [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
+  step env "Preparing $ENV_FILE and the participant token..."
+  [ -f "$ENV_FILE" ] || { log "Creating $ENV_FILE from .env.example"; cp "$APP_DIR/.env.example" "$ENV_FILE"; }
 
   # After the copy, because mint-token.mjs reads the recipe from .env; before the source
   # below, or the shell would carry the empty entry .env.example ships with.
-  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' .env; then
-    log "CANTON_BACKEND_TOKEN already set in .env."
+  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' "$ENV_FILE"; then
+    log "CANTON_BACKEND_TOKEN already set in $ENV_FILE."
   else
     log "Minting CANTON_BACKEND_TOKEN..."
     local token_line tmp_env
@@ -322,13 +326,13 @@ Fix what build-dar printed above, then run ./scripts/dev-stack.sh up again (menu
       | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
       | sed -E 's/^[[:space:]]*//')" || true
     [ -n "$token_line" ] \
-      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in .env."
+      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in $ENV_FILE."
     # Replace the existing (empty) entry, else append — never print the token.
     tmp_env="$(mktemp)"
-    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' .env >"$tmp_env" || true
+    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' "$ENV_FILE" >"$tmp_env" || true
     printf '%s\n' "$token_line" >>"$tmp_env"
-    mv "$tmp_env" .env
-    log "Wrote CANTON_BACKEND_TOKEN to .env."
+    mv "$tmp_env" "$ENV_FILE"
+    log "Wrote CANTON_BACKEND_TOKEN to $ENV_FILE."
   fi
 
   # Read it here rather than defaulting the URLs again, so the file every other step
@@ -337,7 +341,7 @@ Fix what build-dar printed above, then run ./scripts/dev-stack.sh up again (menu
   # reads .env for itself and only the mint recipe would travel.
   local preset_json_api_url="${CANTON_JSON_API_URL:-}"
   # shellcheck disable=SC1091
-  source .env
+  source "$ENV_FILE"
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned

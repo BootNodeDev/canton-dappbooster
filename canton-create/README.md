@@ -50,8 +50,8 @@ has no dependencies to install.
 
 Each is a workspace package, so the monorepo typechecks them against the libraries' source; their
 `^<version>` ranges link the local folders here and install from npm in a scaffolded project, the
-same way `dapp/frontend` does. The tarball ships `scaffold/` as it is, minus what `files` excludes,
-so a range there is never rewritten and must never be `workspace:`.
+same way `examples/amulet-vesting` does. The tarball ships `scaffold/` as it is, minus what `files`
+excludes, so a range there is never rewritten and must never be `workspace:`.
 
 `daml-tooling/` and `localnet/` may add files and merge `scripts`, `dependencies` and
 `devDependencies` into the app's manifest. `.gitignore` and `README.md` are appended to, and

@@ -3,7 +3,6 @@
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": ["postcss"],
   "ignoreBinaries": ["dpm"],
-  "ignoreWorkspaces": ["dapp/daml"],
   "workspaces": {
     ".": {
       "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]

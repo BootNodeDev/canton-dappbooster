@@ -408,9 +408,7 @@ importers:
 
   canton-theme: {}
 
-  dapp/daml: {}
-
-  dapp/frontend:
+  examples/amulet-vesting:
     dependencies:
       '@ark-ui/react':
         specifier: ^5.39.1

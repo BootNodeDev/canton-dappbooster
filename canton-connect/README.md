@@ -44,8 +44,8 @@ switching only once those gaps close. Until then, the machine earns its cost.
 
 ## Status
 
-Published to npm as `@bootnodedev/canton-connect`. Also consumed by `dapp/frontend` in this repo,
-which links the local folder while its version satisfies the declared range.
+Published to npm as `@bootnodedev/canton-connect`. Also consumed by `examples/amulet-vesting` in
+this repo, which links the local folder while its version satisfies the declared range.
 
 ## Install
 

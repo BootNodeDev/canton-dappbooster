@@ -18,9 +18,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 preset_token="${CANTON_BACKEND_TOKEN:-}"
 preset_json_api_url="${CANTON_JSON_API_URL:-}"
 
-if [ -f "$ROOT/.env" ]; then
+if [ -f "$ROOT/examples/amulet-vesting/.env" ]; then
   # shellcheck disable=SC1091
-  source "$ROOT/.env"
+  source "$ROOT/examples/amulet-vesting/.env"
 fi
 
 token="${preset_token:-${CANTON_BACKEND_TOKEN:-}}"

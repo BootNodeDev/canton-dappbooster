@@ -17,8 +17,7 @@ const MANIFESTS = [
   'canton-create/scaffold/starter/package.json',
   'canton-dappbooster/package.json',
   'canton-theme/package.json',
-  'dapp/daml/package.json',
-  'dapp/frontend/package.json',
+  'examples/amulet-vesting/package.json',
 ]
 
 export const DEPENDENCY_FIELDS = [
@@ -35,8 +34,8 @@ export const readManifests = () =>
   )
 
 /**
- * The published libraries, by package name. A workspace manifest is one unless it is private,
- * which is what leaves the root, `dapp/frontend` and `dapp/daml` out of the lockstep.
+ * The published packages, by package name. A workspace manifest is one unless it is private,
+ * which is what leaves the root and the `canton-create/scaffold/` folders out of the lockstep.
  */
 export const libraryNames = (manifests) =>
   new Set(

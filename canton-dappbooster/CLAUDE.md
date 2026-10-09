@@ -96,10 +96,10 @@ saves the typing.
   `@bootnodedev/canton-connect` resolves through its `types` entry into `dist/`, which is
   gitignored, and CI typechecks before it builds. It passes locally either way, because a `dist/`
   from an earlier build is sitting there.
-- Keep this package app-agnostic: do not import from `dapp/`.
+- Keep this package app-agnostic: do not import from `examples/`.
 - React 19 only, peer and dev alike.
-- `dapp/frontend` keeps its own copy/check icons in its `src/icons/`. Leave them: the kit's
-  icons are internal, and exporting them is a public-API decision, not a deduplication chore.
+- `examples/amulet-vesting` keeps its own copy/check icons in its `src/icons/`. Leave them: the
+  kit's icons are internal, and exporting them is a public-API decision, not a deduplication chore.
 
 ## Testing
 

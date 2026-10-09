@@ -12,10 +12,10 @@ From the repo root:
 
 ```bash
 pnpm run build-dar
-pnpm run deploy-dar -- dapp/daml/.daml/dist/amulet-vesting-0.0.3.dar
+pnpm run deploy-dar -- examples/amulet-vesting/daml/.daml/dist/amulet-vesting-0.0.3.dar
 ```
 
-`deploy-dar` uploads to the app-user JSON API and takes the bearer token from the root `.env`.
+`deploy-dar` uploads to the app-user JSON API and takes the bearer token from `examples/amulet-vesting/.env`.
 Both commands need the Daml SDK (`dpm`), which `scripts/dev-stack.sh up` checks for before it
 starts anything.
 

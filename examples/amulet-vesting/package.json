@@ -1,8 +1,35 @@
 {
-  "name": "@canton-dappbooster/frontend",
-  "private": true,
-  "version": "0.3.0",
+  "name": "@bootnodedev/canton-example-amulet-vesting",
+  "version": "0.5.5",
+  "description": "Canton Coin vesting dApp: an example app for create-canton-dappbooster",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
+    "directory": "examples/amulet-vesting"
+  },
+  "license": "MIT",
   "type": "module",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.html",
+    "public",
+    "src",
+    "daml/AmuletVesting.daml",
+    "daml/AmuletVesting",
+    "daml/daml.yaml",
+    "daml/README.md",
+    "scripts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "vite.config.ts",
+    ".env.example",
+    "_gitignore",
+    "_pnpm-workspace.yaml"
+  ],
   "engines": {
     "node": ">=24.15.0"
   },
@@ -12,9 +39,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "biome check",
-    "lint:fix": "biome check --write",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "bootstrap": "node scripts/bootstrap-vesting.mjs"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.1",

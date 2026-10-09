@@ -7,7 +7,7 @@ import { defineConfig } from 'vitest/config'
 // biome-ignore lint/style/noRestrictedImports: see above; both halves of this specifier are forced.
 import { parseEnv } from './src/utils/env.ts'
 
-// The empty prefix loads every key in the root `.env`, so only what `parseEnv` returns may be
+// The empty prefix loads every key in `.env`, so only what `parseEnv` returns may be
 // defined back, never the loaded object.
 // LocalNet serves the token registry behind the validator's authenticated prefix, so the browser
 // cannot read it: the bearer stays here, in the dev server, and the page asks its own origin.
@@ -74,17 +74,13 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
 })
 
 export default defineConfig(({ mode }) => {
-  const envDir = fileURLToPath(new URL('../..', import.meta.url))
-  const loaded = loadEnv(mode, envDir, '')
+  const loaded = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
   const env = parseEnv(loaded)
 
   return {
     define: Object.fromEntries(
       Object.entries(env).map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
     ),
-    // Without this a leftover `dapp/frontend/.env.local` is still loaded, silently losing to the
-    // root for exactly the keys defined above.
-    envDir,
     plugins: [react(), tailwindcss(), localnetAssets(loaded)],
     resolve: {
       alias: {

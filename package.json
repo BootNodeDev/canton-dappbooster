@@ -8,9 +8,9 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "app:dev": "pnpm -C dapp/frontend run dev",
-    "bootstrap": "node scripts/bootstrap-vesting.mjs",
-    "build-dar": "pnpm -C dapp/daml run build",
+    "app:dev": "pnpm -C examples/amulet-vesting run dev",
+    "bootstrap": "pnpm -C examples/amulet-vesting run bootstrap",
+    "build-dar": "node scripts/fetch-daml-deps.mjs && node scripts/build-dar.mjs",
     "build": "pnpm -r run --if-present build",
     "check:anatomy": "node kit/check-anatomy.mjs",
     "check:versions": "node kit/check-versions.mjs",
@@ -25,6 +25,7 @@
     "release": "pnpm -r --filter './canton-*' publish --no-git-checks",
     "release:dry": "pnpm -r --filter './canton-*' publish --dry-run --no-git-checks",
     "release:version": "node kit/release-version.mjs",
+    "starter:dev": "pnpm -C canton-create/scaffold/starter run dev",
     "test": "pnpm -r run --if-present test && node --test \"scripts/**/*.test.mjs\" \"kit/**/*.test.mjs\"",
     "typecheck": "pnpm -r run --if-present typecheck",
     "wallet-gateway": "mkdir -p .wallet-gateway && wallet-gateway -c ./wallet-gateway.config.json"
