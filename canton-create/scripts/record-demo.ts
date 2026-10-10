@@ -21,7 +21,7 @@ if (PNPM === null) {
   throw new Error('pnpm not found on PATH')
 }
 
-type CastEvent = [seconds: number, kind: 'o', data: string]
+type Chunk = [seconds: number, data: string]
 
 const work = mkdtempSync(path.join(tmpdir(), 'canton-create-demo-'))
 process.on('exit', () => rmSync(work, { recursive: true, force: true }))
@@ -43,14 +43,13 @@ Bun.spawnSync(['tar', '-xzf', tarball, '-C', work])
 const CLI = path.join(work, 'package', 'dist', 'index.js')
 
 // The recorded command line is the one a user types, while the code it runs is this working tree.
-const pnpmVersion = Bun.spawnSync([PNPM, '--version']).stdout.toString().trim()
 const shim = path.join(shimDir, 'pnpm')
 writeFileSync(
   shim,
   `#!/bin/sh
 if [ "$1" = "create" ] && [ "$2" = "canton-dappbooster" ]; then
   shift 2
-  export npm_config_user_agent="pnpm/${pnpmVersion} node/${process.version}"
+  export npm_config_user_agent=pnpm
   exec node "${CLI}" "$@"
 fi
 exec "${PNPM}" "$@"
@@ -60,7 +59,7 @@ chmodSync(shim, 0o755)
 
 const decoder = new TextDecoder()
 const started = performance.now()
-const events: CastEvent[] = []
+const events: Chunk[] = []
 let seen = ''
 
 const proc = Bun.spawn(['bash', '--norc', '--noprofile', '-i'], {
@@ -76,7 +75,7 @@ const proc = Bun.spawn(['bash', '--norc', '--noprofile', '-i'], {
     rows: ROWS,
     data(_terminal, chunk) {
       const text = decoder.decode(chunk, { stream: true })
-      events.push([(performance.now() - started) / 1000, 'o', text])
+      events.push([(performance.now() - started) / 1000, text])
       seen += text
     },
   },
@@ -140,8 +139,8 @@ try {
 
 let shift = 0
 let previous = 0
-const frames: CastEvent[] = []
-for (const [stamp, kind, data] of events) {
+const frames: Chunk[] = []
+for (const [stamp, data] of events) {
   const gap = stamp - previous
   if (gap > IDLE_CAP_SECONDS) {
     shift += gap - IDLE_CAP_SECONDS
@@ -154,21 +153,16 @@ for (const [stamp, kind, data] of events) {
   const last = frames.at(-1)
   // Merging only changes when bytes are flushed, never which bytes, so the screen stays exact.
   if (last !== undefined && capped - last[0] < FRAME_MERGE_SECONDS) {
-    last[2] += data
+    last[1] += data
   } else {
-    frames.push([capped, kind, data])
+    frames.push([capped, data])
   }
 }
 
 const cast = path.join(work, 'demo.cast')
-const header = {
-  version: 2,
-  width: COLS,
-  height: ROWS,
-  timestamp: Math.floor(Date.now() / 1000),
-  env: { SHELL: '/bin/zsh', TERM: 'xterm-256color' },
-}
-writeFileSync(cast, [header, ...frames].map((line) => JSON.stringify(line)).join('\n'))
+const header = { version: 2, width: COLS, height: ROWS }
+const lines = [header, ...frames.map(([seconds, data]) => [seconds, 'o', data])]
+writeFileSync(cast, lines.map((line) => JSON.stringify(line)).join('\n'))
 
 const convert = Bun.spawnSync(
   [

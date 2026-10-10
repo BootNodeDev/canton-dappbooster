@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PKG="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ROOT="$(cd "$PKG/.." && pwd)"
+ROOT="$(dirname "$PKG")"
 TRY="$PKG/.try"
 
 clean() {
