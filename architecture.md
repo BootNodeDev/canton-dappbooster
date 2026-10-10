@@ -4,12 +4,11 @@
 
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
-| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `dev-stack.sh` scaffolds its config into the gitignored `.canton-localnet/` |
-| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `scripts/dev-stack.sh` runs on the host from `wallet-gateway.config.json` |
-| `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dependency fetch, the DAR build and upload, the token mint |
+| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm stack` scaffolds its config into the gitignored `.canton-localnet/` |
+| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm stack` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the `typedoc` configs. See [`CLAUDE.md`](CLAUDE.md) |
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Daml | Canton Coin **vesting** dApp, published as an example. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates. They hold real Canton Coin in escrow as a Splice `LockedAmulet`, and come vendored from [`BootNodeDev/cc-vesting-contracts`](https://github.com/BootNodeDev/cc-vesting-contracts). The build fetches its Splice data-dependencies rather than committing them. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
-| `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. It copies `scaffold/starter/` or fetches an example package from npm, then adds `scaffold/daml-tooling/` and `scaffold/localnet/` on top. See [`canton-create/architecture.md`](canton-create/architecture.md) |
+| `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. Its `scaffold/daml-tooling/` and `scaffold/localnet/` scripts are also the local loop: the Splice dependency fetch, the DAR build and upload, the token mint and `dev-stack.sh`. See [`canton-create/architecture.md`](canton-create/architecture.md) |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the `dapp-sdk` facade |
 | `canton-dappbooster/` | TypeScript + React 19 + `tsdown` | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + styled defaults |
@@ -87,14 +86,15 @@ State boundaries:
 
 | Variable | Owner | Purpose |
 | --- | --- | --- |
-| `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `scripts/mint-token.mjs` |
+| `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
 | `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload and the vesting bootstrap |
 
 `example-dapps/amulet-vesting/.env` is the only one that matters: the signing recipe
-`scripts/mint-token.mjs` reads, plus the token `scripts/deploy-dar.sh` and the example's
-`scripts/bootstrap-vesting.mjs` send. Minting is offline, so it needs nothing running, which is what
-lets `dev-stack.sh up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
+`mint-token.mjs` reads, plus the token `deploy-dar.sh` and the example's
+`scripts/bootstrap-vesting.mjs` send. The root scripts point the first two at it through
+`CANTON_APP_DIR`. Minting is offline, so it needs nothing running, which is what lets
+`pnpm stack up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
 LocalNet reads its own `canton-barebones.config.json`, which `dev-stack.sh` scaffolds into
 `.canton-localnet/` and git does not track.
 
@@ -102,8 +102,8 @@ LocalNet reads its own `canton-barebones.config.json`, which `dev-stack.sh` scaf
 `CANTON_BACKEND_TOKEN` is the generated token. The token script defaults the
 JWT subject to `ledger-api-user`.
 
-Wallet Gateway mints its own token from the same recipe rather than reading `.env`.
-`wallet-gateway.config.json` carries the LocalNet audience, `ledger-api-user` as the client id, and
+Wallet Gateway mints its own token from the same recipe rather than reading `.env`. The
+`canton-create/scaffold/localnet/wallet-gateway.config.json` file carries the LocalNet audience, `ledger-api-user` as the client id, and
 `unsafe` as the signing secret. That is the secret Splice LocalNet runs on. Its login page asks for
 that secret and nothing else.
 
@@ -111,11 +111,11 @@ that secret and nothing else.
 
 | Command | What it does |
 | --- | --- |
-| `./scripts/dev-stack.sh up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
-| `./scripts/dev-stack.sh down` | stop the gateway and the dApp dev server, stop the LocalNet |
-| `pnpm run wallet-gateway` | the gateway alone, from `wallet-gateway.config.json` |
+| `pnpm stack up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
+| `pnpm stack down` | stop the gateway and the dApp dev server, stop the LocalNet |
+| `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
-| `node scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
+| `node canton-create/scaffold/localnet/scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | fetch the Splice dependencies, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
@@ -123,7 +123,7 @@ that secret and nothing else.
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
-(`./scripts/dev-stack.sh up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
+(`pnpm stack up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
 `.canton-localnet/`. It scaffolds that directory on `up` from the pinned tool's own template, and
 scaffolds it again when the template moves past the local copy. The config therefore drifts from
 the installed version rather than from a committed file. The Splice checkout and the runtime env
@@ -133,14 +133,9 @@ For the bring-up sequence, follow [`README.md`](README.md).
 
 ## Scaffolding
 
-`create-canton-dappbooster` never copies this repo. A project's app is either
-`canton-create/scaffold/starter/` or an example package from npm,
-`@bootnodedev/canton-example-<name>`, published from `example-dapps/<name>/`. The installer adds
-`canton-create/scaffold/daml-tooling/` when the app has a contract and
-`canton-create/scaffold/localnet/` when the user asks for a local network. The libraries then
-install from npm through the app's `^<version>` ranges, the same ranges that link the local folders
-inside this repo. [`canton-create/architecture.md`](canton-create/architecture.md) covers how the
-layers merge.
+`create-canton-dappbooster` never copies this repo. It builds a project from
+`canton-create/scaffold/` and the example packages published from `example-dapps/`, and
+[`canton-create/architecture.md`](canton-create/architecture.md) covers how.
 
 ## Packaging
 

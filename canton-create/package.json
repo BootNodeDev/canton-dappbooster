@@ -22,7 +22,8 @@
     "!scaffold/*/node_modules",
     "!scaffold/*/dist",
     "!scaffold/*/daml/.daml",
-    "!scaffold/*/daml/deps"
+    "!scaffold/*/daml/deps",
+    "!scaffold/*/scripts/*.test.mjs"
   ],
   "engines": {
     "node": ">=22.12.0"

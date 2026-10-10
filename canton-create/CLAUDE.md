@@ -23,12 +23,17 @@ together, see [`architecture.md`](architecture.md).
   `ScaffoldConflictError`.
 - A layer's `README.md` is a section that gets appended, so it starts with a `##` heading and never
   with a title.
-- A range in a `scaffold/` manifest is `^<version>`, never `workspace:`. The tarball ships the
-  folders as they are, so nothing rewrites it on the way out.
+- The root range rule has no exception in `scaffold/`: the tarball ships the folders as they are, so
+  nothing rewrites a `workspace:` range on the way out.
 - A file that has to land as `.gitignore` or `pnpm-workspace.yaml` lives here as `_gitignore` or
   `_pnpm-workspace.yaml`, and `scaffold` renames it back. npm drops a `.gitignore` from every
   tarball, and a `pnpm-workspace.yaml` inside the monorepo makes pnpm treat the folder as a
   workspace root of its own.
+- The monorepo runs the `daml-tooling/` and `localnet/` scripts on `example-dapps/amulet-vesting`
+  instead of keeping copies. Each script finds the app's `daml/` and `.env` through
+  `CANTON_APP_DIR`, which defaults to its own project. A new script reads the app from there, never
+  from a path to its own folder. Their tests sit beside them, and `files` keeps the tests out
+  of the tarball.
 - `node dist/index.js` run from this folder is not a test of the installer. Here `scaffold/` holds
   `node_modules` and build output that `files` leaves out of the tarball, and the copy fails on
   them. Run the packed package instead: `pnpm try`, or `src/testing/packedScaffold.ts` in a test.
@@ -62,28 +67,13 @@ canton-create/scripts/record-demo.ts
 ```
 
 The script packs the installer, runs it in a temporary directory, and overwrites `demo.svg`. The
-install it starts needs network. It removes the temporary directory when it finishes.
-
-Things worth knowing before touching it:
+install it starts needs network. Its comments explain the trimming and the frame merging.
 
 - It runs on Bun, because it needs a pseudo-terminal. Node has none without `node-pty`, a native
-  module, and `Bun.spawn` opens one through its `terminal` option. The old installer's recorder used
-  Python's `pty` for the same reason.
-- It records the packed tarball, not this folder, for the reason under Scaffold rules.
-- A `pnpm` shim on `PATH` answers `pnpm create canton-dappbooster` with the packed build and sets
-  `npm_config_user_agent` the way `pnpm create` does. The recorded command line is the real one,
-  and the installer picks pnpm for the install.
-- It waits for each question to appear in the output rather than sleeping a fixed time, so a slower
-  step does not break it.
+  module, and `Bun.spawn` opens one through its `terminal` option.
 - [svg-term-cli](https://github.com/marionebl/svg-term-cli) does the conversion, through `pnpm dlx`.
-  It is not a dependency. `--window --width 92 --height 26 --padding 10` sets the size, and a change
-  there means changing the size of the `<img>` in the README too. 26 rows fit the run down to the
-  install spinner.
-- The recording stops at 15 seconds, during the package install. Past that, the install prints little,
-  and the animation would look frozen.
-- The script merges output that arrives within 150 milliseconds into one frame, which keeps the file
-  small while the spinner redraws every 80 milliseconds. Merging changes when the terminal receives
-  bytes, never which bytes it receives.
+  It is not a dependency. `COLS` and `ROWS` set the window, so a change to either means changing
+  the size of the `<img>` in the README too.
 
 ## Testing
 

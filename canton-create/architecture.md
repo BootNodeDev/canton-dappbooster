@@ -1,7 +1,8 @@
 # Architecture: `canton-create`
 
 `create-canton-dappbooster` copies an app and the layers it needs into a new folder. The project it
-leaves installs the Canton dApp kit from npm. The rules for editing it are in [`CLAUDE.md`](CLAUDE.md).
+leaves installs the Canton dApp kit from npm. The rules for editing it are in
+[`CLAUDE.md`](CLAUDE.md).
 
 ## A run
 
@@ -45,9 +46,12 @@ manifest, appended, merged by key, or a conflict. `finalizeManifest` then strips
 published package needs (`version`, `repository`, `files`, `publishConfig` and the rest), names the
 manifest after the folder and marks it private.
 
+The monorepo's own loop runs the same `daml-tooling/` and `localnet/` scripts on
+`example-dapps/amulet-vesting`, from the root `package.json`.
+
 Each folder is a workspace package, so the monorepo checks their types against the libraries'
-source. Their `^<version>` ranges link the local library folders here and install from npm in a
-project.
+source. Their ranges resolve as the Packaging section of the root
+[`architecture.md`](../architecture.md) describes.
 
 ## Examples
 

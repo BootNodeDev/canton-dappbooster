@@ -10,7 +10,8 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# CANTON_APP_DIR points the script at another app, which is how the monorepo runs it on its example.
+APP_DIR="${CANTON_APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 # Captured before sourcing so a value the caller exported beats .env, the same precedence
 # mint-token.mjs uses. No `set -a`: curl takes the token as a header, so exporting the
@@ -18,9 +19,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 preset_token="${CANTON_BACKEND_TOKEN:-}"
 preset_json_api_url="${CANTON_JSON_API_URL:-}"
 
-if [ -f "$ROOT/.env" ]; then
+if [ -f "$APP_DIR/.env" ]; then
   # shellcheck disable=SC1091
-  source "$ROOT/.env"
+  source "$APP_DIR/.env"
 fi
 
 token="${preset_token:-${CANTON_BACKEND_TOKEN:-}}"

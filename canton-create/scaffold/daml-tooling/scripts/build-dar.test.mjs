@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import { describe, it } from 'node:test'
 import {
   chooseSdk,
@@ -7,6 +8,11 @@ import {
   sdkVersionOf,
   withoutPackageContext,
 } from './build-dar.mjs'
+
+const EXAMPLE_DAML = path.resolve(
+  import.meta.dirname,
+  '../../../../example-dapps/amulet-vesting/daml',
+)
 
 const LISTING = [
   { version: '3.4.11', installed: true },
@@ -41,8 +47,8 @@ describe('SDK choice', () => {
 })
 
 describe('daml.yaml pin', () => {
-  it('is the sdk-version the package declares', () => {
-    assert.equal(pinnedSdk(), '3.5.2')
+  it('is the sdk-version the vesting example declares', () => {
+    assert.equal(pinnedSdk(EXAMPLE_DAML), '3.5.2')
   })
 
   it('reads every form dpm accepts: plain, quoted, commented', () => {

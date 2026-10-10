@@ -5,14 +5,16 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const DAML_DIR = path.resolve(import.meta.dirname, '..', 'daml')
+// CANTON_APP_DIR points the script at another app, which is how the monorepo runs it on its example.
+const APP_DIR = path.resolve(process.env.CANTON_APP_DIR ?? path.join(import.meta.dirname, '..'))
+const DAML_DIR = path.join(APP_DIR, 'daml')
 const DPM_INSTALL_DOCS = 'https://docs.canton.network/sdks-tools/cli-tools/dpm#installation'
 
 export const sdkVersionOf = (damlYaml) =>
   damlYaml.match(/^sdk-version:\s*["']?([^\s"'#]+)["']?\s*(?:#.*)?$/m)?.[1]
 
-export const pinnedSdk = () =>
-  sdkVersionOf(fs.readFileSync(path.join(DAML_DIR, 'daml.yaml'), 'utf8'))
+export const pinnedSdk = (damlDir = DAML_DIR) =>
+  sdkVersionOf(fs.readFileSync(path.join(damlDir, 'daml.yaml'), 'utf8'))
 
 // dpm takes a package, a project or an SDK from these, so an inherited one points it somewhere else.
 const PACKAGE_CONTEXT = [

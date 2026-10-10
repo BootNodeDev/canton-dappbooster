@@ -4,7 +4,8 @@
 #
 # Every step is a script in package.json, which is the contract this file relies on:
 # `mint-token`, `wallet-gateway`, `dev`, `build-dar` and `deploy-dar` when the app has a contract
-# (daml/daml.yaml), and optionally `bootstrap`.
+# (daml/daml.yaml), and optionally `bootstrap`. `dev` and `bootstrap` are the app's own; the rest
+# run at the pnpm workspace root holding the app, which in a project is the same package.json.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -39,10 +40,20 @@
 
 set -euo pipefail
 
-# Resolve the project root from this script's location so it works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# CANTON_APP_DIR points the stack at another app, which is how the monorepo runs it on its example.
+APP_DIR="$(cd "${CANTON_APP_DIR:-$SCRIPT_DIR/..}" && pwd)"
+ROOT_DIR="$APP_DIR"
+while [ ! -f "$ROOT_DIR/pnpm-workspace.yaml" ] && [ "$ROOT_DIR" != / ]; do
+  ROOT_DIR="$(dirname "$ROOT_DIR")"
+done
+[ -f "$ROOT_DIR/pnpm-workspace.yaml" ] || ROOT_DIR="$APP_DIR"
 cd "$ROOT_DIR"
+
+# Paths below are relative to ROOT_DIR, so a project prints `.env` and the monorepo its example's.
+APP_PREFIX=""
+[ "$APP_DIR" = "$ROOT_DIR" ] || APP_PREFIX="${APP_DIR#"$ROOT_DIR"/}/"
+ENV_FILE="${APP_PREFIX}.env"
 
 # Inside the project, so two projects driving a stack never share logs or step on each other.
 RUN_DIR="$ROOT_DIR/.dev-stack"
@@ -51,11 +62,11 @@ DAPP_PID="$RUN_DIR/dapp-dev.pid"
 GW_LOG="$RUN_DIR/wallet-gateway.log"
 GW_PID="$RUN_DIR/wallet-gateway.pid"
 
-# Resolved in up(), once ./.env has been read.
+# Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
-DAML_DIR="${DAML_DIR:-daml}"
+DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
 HAS_CONTRACT=0
 DAR_NAME=""
 if [ -f "$DAML_DIR/daml.yaml" ]; then
@@ -329,15 +340,15 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
 Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
   fi
 
-  # ./.env is the mint recipe, the DAR upload token and the dApp's VITE_* settings.
+  # $ENV_FILE is the mint recipe, the DAR upload token and the dApp's VITE_* settings.
   # Minting is offline, so this needs nothing running.
-  step env "Preparing .env and the participant token..."
-  [ -f .env ] || { log "Creating .env from .env.example"; cp .env.example .env; }
+  step env "Preparing $ENV_FILE and the participant token..."
+  [ -f "$ENV_FILE" ] || { log "Creating $ENV_FILE from .env.example"; cp "${APP_PREFIX}.env.example" "$ENV_FILE"; }
 
-  # After the copy, because mint-token.mjs reads the recipe from .env; before the source
+  # After the copy, because mint-token.mjs reads the recipe from $ENV_FILE; before the source
   # below, or the shell would carry the empty entry .env.example ships with.
-  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' .env; then
-    log "CANTON_BACKEND_TOKEN already set in .env."
+  if grep -qE '^[[:space:]]*CANTON_BACKEND_TOKEN=.+' "$ENV_FILE"; then
+    log "CANTON_BACKEND_TOKEN already set in $ENV_FILE."
   else
     log "Minting CANTON_BACKEND_TOKEN..."
     local token_line tmp_env
@@ -347,13 +358,13 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
       | grep -m1 -E '^[[:space:]]*CANTON_BACKEND_TOKEN=' \
       | sed -E 's/^[[:space:]]*//')" || true
     [ -n "$token_line" ] \
-      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in .env."
+      || die "Failed to mint CANTON_BACKEND_TOKEN. Check CANTON_AUTH_SECRET / CANTON_AUTH_AUDIENCE in $ENV_FILE."
     # Replace the existing (empty) entry, else append — never print the token.
     tmp_env="$(mktemp)"
-    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' .env >"$tmp_env" || true
+    grep -vE '^[[:space:]]*CANTON_BACKEND_TOKEN=' "$ENV_FILE" >"$tmp_env" || true
     printf '%s\n' "$token_line" >>"$tmp_env"
-    mv "$tmp_env" .env
-    log "Wrote CANTON_BACKEND_TOKEN to .env."
+    mv "$tmp_env" "$ENV_FILE"
+    log "Wrote CANTON_BACKEND_TOKEN to $ENV_FILE."
   fi
 
   # Read it here rather than defaulting the URLs again, so the file every other step
@@ -362,13 +373,13 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # reads .env for itself and only the mint recipe would travel.
   local preset_json_api_url="${CANTON_JSON_API_URL:-}"
   # shellcheck disable=SC1091
-  source .env
+  source "$ENV_FILE"
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
   step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
-  node scripts/localnet-config.mjs "$LOCALNET_DIR" \
+  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
     || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
@@ -389,7 +400,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # Whatever the model needs on the ledger before the dApp is useful. Optional, so a starter
   # with nothing to create skips it.
   step bootstrap "Running the bootstrap script, if the project defines one..."
-  pnpm run --if-present bootstrap || die "The bootstrap script failed."
+  pnpm -C "$APP_DIR" run --if-present bootstrap || die "The bootstrap script failed."
 
   step wallet-gateway "Starting the Wallet Gateway -> http://localhost:3030"
   start_wallet_gateway
@@ -400,7 +411,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
     warn "Port 3012 is held by $holder; not starting the dApp dev server. Free it, then 'pnpm run dev'."
     dapp_line="dApp frontend           NOT STARTED: port 3012 is held by $holder"
   else
-    nohup pnpm run dev >"$DAPP_LOG" 2>&1 3>&- 4>&- &
+    nohup pnpm -C "$APP_DIR" run dev >"$DAPP_LOG" 2>&1 3>&- 4>&- &
     echo $! >"$DAPP_PID"
     wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
   fi

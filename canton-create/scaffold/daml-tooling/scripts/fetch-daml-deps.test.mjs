@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import { describe, it } from 'node:test'
 import { newest, targets } from './fetch-daml-deps.mjs'
+
+const EXAMPLE_DAML = path.resolve(
+  import.meta.dirname,
+  '../../../../example-dapps/amulet-vesting/daml',
+)
 
 // The names a Splice release actually ships in daml/dars, trimmed to the interesting neighbours:
 // two Amulet versions whose ordering a string sort gets wrong, and a longer name that starts with
@@ -34,8 +40,8 @@ describe('Splice DAR selection', () => {
 describe('daml.yaml data-dependencies', () => {
   // Read from the real daml.yaml, not a fixture: a dependency added there without a matching fetch
   // is exactly the drift this reading exists to prevent, and a fixture would hide it.
-  it('names every deps/ DAR the package declares, and nothing else', () => {
-    assert.deepEqual(targets(), [
+  it('names every deps/ DAR the vesting example declares, and nothing else', () => {
+    assert.deepEqual(targets(EXAMPLE_DAML), [
       'splice-amulet',
       'splice-api-token-holding-v1',
       'splice-api-token-metadata-v1',

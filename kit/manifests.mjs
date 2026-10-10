@@ -3,7 +3,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { repoRoot } from '../scripts/lib/gate.mjs'
+import { repoRoot } from './gate.mjs'
 
 export const ROOT_MANIFEST = 'package.json'
 

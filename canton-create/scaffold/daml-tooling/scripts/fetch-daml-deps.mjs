@@ -6,19 +6,21 @@
 //
 // The version is not a choice: an Amulet-moving choice is exercised against the
 // AmuletRules the network is running, so the DAR has to be the one that network's Splice
-// release ships. SPLICE_TAG names it for a network of your own; with the local stack,
-// `spliceTag` reads it off the canton-barebones template the LocalNet is scaffolded from, so
-// the DAR and the LocalNet cannot disagree. Within a release the current Amulet is the highest
+// release ships. SPLICE_TAG names it for a network of your own; with the local stack installed,
+// it comes off the canton-barebones template the LocalNet is scaffolded from, so the DAR and the
+// LocalNet cannot disagree. Within a release the current Amulet is the highest
 // version in its dars/ directory.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
-const ENV_FILE = path.resolve(import.meta.dirname, '..', '.env')
-const LOCALNET_CONFIG = path.join(import.meta.dirname, 'localnet-config.mjs')
-const DAML_DIR = path.resolve(import.meta.dirname, '..', 'daml')
+// CANTON_APP_DIR points the script at another app, which is how the monorepo runs it on its example.
+const APP_DIR = path.resolve(process.env.CANTON_APP_DIR ?? path.join(import.meta.dirname, '..'))
+const ENV_FILE = path.join(APP_DIR, '.env')
+const DAML_DIR = path.join(APP_DIR, 'daml')
+const LOCALNET_TEMPLATE = '@bootnodedev/canton-barebones/templates/canton-barebones.config.json'
 const DEPS_DIR = path.join(DAML_DIR, 'deps')
 const STAMP = path.join(DEPS_DIR, '.splice-tag')
 
@@ -31,9 +33,9 @@ const git = (args, cwd) =>
 
 // daml.yaml is where dpm reads the dependency list, so it is the one place it is spelled; each
 // name is also the version-less filename the copy below lands on.
-export const targets = () =>
+export const targets = (damlDir = DAML_DIR) =>
   fs
-    .readFileSync(path.join(DAML_DIR, 'daml.yaml'), 'utf8')
+    .readFileSync(path.join(damlDir, 'daml.yaml'), 'utf8')
     .split('\n')
     .flatMap((line) => line.match(/^\s*-\s*deps\/(\S+)\.dar\s*$/)?.slice(1) ?? [])
 
@@ -46,30 +48,35 @@ export const newest = (names, target) =>
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .at(-1)
 
-// Imported only when needed, because only the localnet layer ships that script.
-const resolveSpliceTag = async () => {
+const resolveSpliceTag = () => {
   if (fs.existsSync(ENV_FILE)) {
     process.loadEnvFile(ENV_FILE)
   }
   if (process.env.SPLICE_TAG) {
     return process.env.SPLICE_TAG
   }
-  if (!fs.existsSync(LOCALNET_CONFIG)) {
+  let template
+  try {
+    template = createRequire(import.meta.url).resolve(LOCALNET_TEMPLATE)
+  } catch {
     throw new Error(
       'daml/daml.yaml depends on Splice DARs: set SPLICE_TAG in .env to the Splice release your network runs, e.g. 0.8.1',
     )
   }
-  const { spliceTag } = await import(pathToFileURL(LOCALNET_CONFIG).href)
-  return spliceTag()
+  const tag = JSON.parse(fs.readFileSync(template, 'utf8')).splice?.tag
+  if (typeof tag !== 'string' || tag === '') {
+    throw new Error(`no splice.tag in ${template}`)
+  }
+  return tag
 }
 
-const main = async () => {
+const main = () => {
   const wanted = targets()
   if (wanted.length === 0) {
     return
   }
 
-  const tag = await resolveSpliceTag()
+  const tag = resolveSpliceTag()
   // Every target has to be on disk too, not just the right tag: adding a data-dependency moves
   // daml.yaml without moving the tag, and a stamp alone would skip the fetch and leave `dpm build`
   // to fail on a DAR nobody fetched.
@@ -134,5 +141,5 @@ const main = async () => {
 // `import.meta.filename` rather than a `file://` template around argv[1]: the two disagree the
 // moment the project path holds a space, and then the fetch silently no-ops.
 if (import.meta.filename === process.argv[1]) {
-  await main()
+  main()
 }

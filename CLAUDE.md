@@ -7,7 +7,7 @@ files are compatibility shims that point here or to a sibling `CLAUDE.md`.
 Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 
 - [`canton-connect/CLAUDE.md`](canton-connect/CLAUDE.md): wagmi-style React hooks for Canton dApps
-- [`canton-create/CLAUDE.md`](canton-create/CLAUDE.md): the `create-canton-dappbooster` installer, its flag rule, its scaffold rules and its demo recording. How a run works is in [`canton-create/architecture.md`](canton-create/architecture.md)
+- [`canton-create/CLAUDE.md`](canton-create/CLAUDE.md): the `create-canton-dappbooster` installer
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md): L2 component authoring and file layout
 - [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md): the L3 `--cnc-*` token naming convention
 - [`example-dapps/amulet-vesting/CLAUDE.md`](example-dapps/amulet-vesting/CLAUDE.md): the vesting example's layout and naming deltas. Its seams are in [`example-dapps/amulet-vesting/architecture.md`](example-dapps/amulet-vesting/architecture.md), and its Daml in `daml/README.md`
@@ -59,18 +59,18 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 | Category | Technology | Notes |
 |----------|-----------|-------|
-| Languages | TypeScript, Daml, Bash | TypeScript across the JS subprojects; Daml in each app's `daml/`; Bash and Node for the root `scripts/` and `kit/` |
+| Languages | TypeScript, Daml, Bash | TypeScript across the JS subprojects; Daml in each app's `daml/`; Bash and Node for `kit/` and the scaffold's scripts |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and `example-dapps/amulet-vesting` declare `engines.node` at `>=24.15.0`, which is what `jsdom` 30 requires. `canton-create` declares `>=22.12.0` |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
-| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies`, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `wallet-gateway.config.json`. `example-dapps/amulet-vesting` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
-| LocalNet | `@bootnodedev/canton-barebones` | Pinned exact in the root `devDependencies` and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. The repo commits none of its config. `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`. Without them, nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
+| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies`, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. `example-dapps/amulet-vesting` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
+| LocalNet | `@bootnodedev/canton-barebones` | Pinned exact in the root `devDependencies` and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. The repo commits none of its config. `canton-create/scaffold/localnet/scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`. Without them, nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + Husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); it skips standalone SVG assets |
-| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes. `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-create/`, `canton-dappbooster/`, `canton-theme/`, `example-dapps/`, `kit/` and `scripts/`. Then `.lintstagedrc.mjs` runs the read-only gates (the tests, the doc check and the anatomy check) concurrently. One pass would let a reformat land mid-parse |
+| Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes. `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-create/`, `canton-dappbooster/`, `canton-theme/`, `example-dapps/` and `kit/`. Then `.lintstagedrc.mjs` runs the read-only gates (the tests, the doc check and the anatomy check) concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | `tsc` | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, that is `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks. `scripts/install-gitleaks.sh` installs the pinned version (`.gitleaks-version`), so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `@bootnodedev/canton-barebones` is in the root's `ignoreDependencies`. Both `pnpm stack` and `build-dar` use it from the root, through scaffold scripts knip cannot trace back |
 | Doc reference + gate | TypeDoc | `kit/typedoc.json` covers `canton-dappbooster` and `canton-connect`. Each declares its entry points in its own `typedoc.json` and extends `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after TypeDoc. It owns what TypeDoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps and `@category` values. It also owns the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`. It also requires at least one selector to reach each anatomy. It is asymmetric on purpose, for the reason its header gives. A part without styles is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
@@ -85,18 +85,18 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Path | Purpose | Stack | Port |
 |------|---------|-------|------|
 | [`example-dapps/amulet-vesting/`](example-dapps/amulet-vesting/) | Canton Coin vesting dApp, an example `create-canton-dappbooster` scaffolds, published as `@bootnodedev/canton-example-amulet-vesting`. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory, the `AmuletRules` and the open mining round all arrive by explicit disclosure. Its `amulet-vesting` Daml model in `daml/` covers the factory, the proposal, the contract and the residual claim, and holds Canton Coin in escrow as a Splice `LockedAmulet`. It is vendored from [cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts), where its scenarios stay. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Ark UI + lucide-react + Tailwind v4 + `zustand` + react-router + Daml | 3012 |
-| [`canton-create/`](canton-create/) | The `create-canton-dappbooster` installer, published on its own. It copies the starter from `scaffold/starter/` or fetches an example from npm. It then adds `scaffold/daml-tooling/` when the app has a contract, and `scaffold/localnet/` when the user asks for a local network. | TypeScript + Ink + React 19 + `tsdown` + `vitest` | n/a (command-line tool) |
+| [`canton-create/`](canton-create/) | The `create-canton-dappbooster` installer, published on its own. [`canton-create/architecture.md`](canton-create/architecture.md) covers how it builds a project. | TypeScript + Ink + React 19 + `tsdown` + `vitest` | n/a (command-line tool) |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + `xstate` 5 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps, built with `tsdown` and carrying no styling. It also holds the light/dark/system theme runtime that drives `data-theme`, and the pure utilities the components build on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API. `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + `tsdown` + `vitest` + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + styled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 Two things the loop needs are not subprojects but dependencies. The LocalNet ships from
 [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones) as a pinned dev
-dependency. `scripts/dev-stack.sh` scaffolds its config into the gitignored `.canton-localnet/` and
-drives it there over `pnpm exec`. The wallet ships from
+dependency. `pnpm stack` scaffolds its config into the gitignored `.canton-localnet/` and drives it
+there. The wallet ships from
 [`canton-network/wallet`](https://github.com/canton-network/wallet) as
 `@canton-network/wallet-gateway-remote` and installs from npm as a root dev dependency.
-`scripts/dev-stack.sh` runs it on port 3030 through `pnpm run wallet-gateway`.
+`pnpm stack` runs it on port 3030 through `pnpm run wallet-gateway`.
 
 ## Code style
 
@@ -356,17 +356,17 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`. Docs and `dev-stack.sh` use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`, and `stack` runs them all. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
 - **The LocalNet is not in this repository, and neither is its config.** It is
   `@bootnodedev/canton-barebones`, a pinned dev dependency driven with `start` / `stop` / `reset` in
   the directory holding `canton-barebones.config.json`. `up` scaffolds that directory itself through
-  `scripts/localnet-config.mjs`, at the gitignored `.canton-localnet/`, so nobody edits or commits
-  it. `scripts/dev-stack.sh` shells out to it in the directory given as a path-shaped first
-  argument, which also opens the menu, the normal way to drive the stack. Otherwise it uses a second
+  `localnet-config.mjs`, at the gitignored `.canton-localnet/`, so nobody edits or commits it.
+  `pnpm stack` shells out to it in the directory given as a path-shaped first argument, which also opens the menu, the normal way to drive the stack. Otherwise it uses a second
   argument after the command, and then `CANTON_LOCALNET_DIR`. The command-line tool reads its
   config from its own working directory and writes the Splice checkout and the runtime env beside
   it, under `.generated/`.
-- **`scripts/localnet-config.mjs` owns the two flags the stack cannot run without**
+- **`canton-create/scaffold/localnet/scripts/localnet-config.mjs` owns the two flags the stack
+  cannot run without**
   (`validators.appUser.ui`, `sv.scanUI`). It scaffolds again from the installed template whenever
   that template moves past the local copy. One case is a new config version, which every command
   would otherwise reject. The other is a new Splice tag, which would otherwise pin the stack to a
@@ -379,10 +379,10 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   dApp cannot start without. Run it after deploying the DAR. It writes no file. The dApp reads both
   back off the ledger once a wallet connects, so nothing can go stale between the two. Pointing the
   wallet at another participant is the whole of switching networks.
-- **One `.env`, in `example-dapps/amulet-vesting/`.** It holds the signing recipe
-  `scripts/mint-token.mjs` reads and the token `scripts/deploy-dar.sh` and the example's
-  `scripts/bootstrap-vesting.mjs` send. The root scripts name that file, and the bootstrap resolves
-  it from its own parent directory, so none takes a path argument. Minting is offline: no container
+- **One `.env`, in `example-dapps/amulet-vesting/`.** It holds the signing recipe `mint-token.mjs`
+  reads and the token `deploy-dar.sh` and the example's `scripts/bootstrap-vesting.mjs` send. The
+  root scripts point the scaffold's scripts at that folder through `CANTON_APP_DIR`. The bootstrap
+  resolves it from its own parent directory, so none takes a path argument. Minting is offline: no container
   has to be up. The dApp's `VITE_*` variables live there too. Its `vite.config.ts` calls `loadEnv`
   against its own folder with an empty prefix, so it reads every key in that file,
   `CANTON_AUTH_SECRET` included. Only what `parseEnv` returns may reach `define`, never the loaded
@@ -392,7 +392,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
   subject in. `deploy-dar` is the one exception and handles it with an explicit `[ "$1" = "--" ] &&
   shift`, which is what lets it take `-- <dar>`.
-- Local ports: the dApp dev server on 3012 and Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` and the `.env.example` defaults together.
+- Local ports: the dApp dev server on 3012 and Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` carries no `@canton-network/*` overrides. `canton-connect`'s `@canton-network/*` dependencies (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. It pins both its `core-types` and its `dapp-sdk` dev dependencies exact, not caret. Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
 - **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
@@ -411,17 +411,16 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 ## `kit/`
 
 `kit/` holds the root tooling that reads the three libraries' source, scripts and config together.
-That is the doc, anatomy and version gates, the release bump, and the `typedoc` configs. Tooling
-that belongs to one package lives in that package, as `canton-dappbooster/scripts/add-component.mjs`
-does. `manifests.mjs` is in `kit/` because only `check-versions.mjs` and `release-version.mjs`
-import it.
+Tooling that belongs to one package lives in that package, as
+`canton-dappbooster/scripts/add-component.mjs` does. `manifests.mjs` is in `kit/` because only
+`check-versions.mjs` and `release-version.mjs` import it.
 
 No project a user creates contains this repo. `create-canton-dappbooster` copies
 `canton-create/scaffold/` and the example packages, so nothing at the root has to keep working
-without the libraries. The root `scripts/` run the monorepo's own loop against
-`example-dapps/amulet-vesting`. `canton-create/scaffold/daml-tooling/scripts/` and
-`canton-create/scaffold/localnet/scripts/` are copies adapted to a project's layout, so a fix to
-one copy usually belongs in the other.
+without the libraries. The monorepo's own loop runs the scaffold's scripts on
+`example-dapps/amulet-vesting`, so each script exists once: the root `mint-token`, `build-dar`,
+`deploy-dar` and `stack` scripts set `CANTON_APP_DIR` to that folder. The root `scripts/` holds
+only `install-gitleaks.sh`, which the hooks and CI call.
 
 ## Packaging and publishing
 
@@ -541,9 +540,10 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `canton-connect`: `pnpm test` (`vitest` + `jsdom`)
   - `canton-create`: `pnpm test` (`vitest` + `ink-testing-library`)
   - `canton-dappbooster`: `pnpm test` (`vitest` + `jsdom` + Testing Library)
-  - root `scripts/` and `kit/`: covered by the root `pnpm test`, which appends
-    `node --test "scripts/**/*.test.mjs" "kit/**/*.test.mjs"` to the fan-out because `pnpm -r` skips
-    the root package. The version lockstep check is one of those tests,
+  - the scaffold's scripts and `kit/`: covered by the root `pnpm test`, which appends
+    `node --test "canton-create/scaffold/*/scripts/*.test.mjs" "kit/**/*.test.mjs"` to the fan-out.
+    `pnpm -r` skips the root package, and a scaffold layer cannot carry a `test` script, because it
+    would collide with the app's. The version lockstep check is one of those tests,
     `kit/check-versions.test.mjs`
 - `canton-dappbooster` tests the kit components (`vitest` + `jsdom`). The `vitest` run in `example-dapps/amulet-vesting` covers its pure logic wherever that lives. Component and DOM behaviour, and app+kit integration, are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). A contract is not a workspace build. `pnpm build-dar` builds the vesting one and needs `dpm` and a network fetch of the Splice DARs, so CI does not run it.
@@ -622,7 +622,8 @@ The `create-issue` skill at `.claude/skills/create-issue/` applies these labels 
   archived a participant party's split Amulet 79 seconds after its creation. A `wallet-kernel` party
   got no install and kept both Amulets. The bootstrap operator is exempt: it holds no Amulets and
   only signs the factory.
-- **The repo commits `wallet-gateway.config.json`, unlike the LocalNet's config.** It is ours rather
+- **The repo commits `canton-create/scaffold/localnet/wallet-gateway.config.json`, unlike the
+  LocalNet's config.** It is ours rather
   than a tool's template, and it is three dozen lines. The LocalNet values in it are the published
   unsafe ones (`unsafe` as the signing secret, `https://canton.network.global` as the audience). Its
   two SQLite stores land in the gitignored `.wallet-gateway/`. The `wallet-gateway` script creates

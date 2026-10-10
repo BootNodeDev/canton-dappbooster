@@ -5,7 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const root = path.resolve(__dirname, '..')
+// CANTON_APP_DIR points the script at another app, which is how the monorepo runs it on its example.
+const root = path.resolve(process.env.CANTON_APP_DIR ?? path.join(__dirname, '..'))
 
 // Encodes JWT segments in the URL-safe base64 variant required by bearer tokens.
 const b64url = (input) =>
