@@ -1,13 +1,17 @@
 
 ## Contract
 
-`daml/` holds the app's DAML model, built with `dpm`. Requirements: the Daml SDK 3.5 (`dpm`);
-`daml/daml.yaml` pins the patch it is tested on, and any installed 3.5.x builds.
+`daml/` holds the app's Daml model, and `dpm` from the Daml SDK 3.5 builds it. `daml/daml.yaml`
+pins a tested patch release, and any installed 3.5 release builds the model.
 
 ```bash
-pnpm build-dar                                       # fetch any Splice DARs it depends on, then build
+pnpm build-dar                                           # fetch the Splice DARs it depends on, then build
 pnpm deploy-dar -- daml/.daml/dist/<name>-<version>.dar  # upload it to CANTON_JSON_API_URL
 ```
 
-`deploy-dar` sends `CANTON_BACKEND_TOKEN` from `.env`. If the project defines a `bootstrap` script,
-run it once the DAR is deployed: it is the place for anything the model needs on the ledger first.
+When `daml/daml.yaml` lists Splice DARs, `build-dar` fetches the ones your network's Splice release
+ships. With the local network it reads that release from the LocalNet. Without one, set
+`SPLICE_TAG` in `.env` to the release your network runs.
+
+`deploy-dar` sends the `CANTON_BACKEND_TOKEN` from `.env`. If the project has a `bootstrap` script,
+run it after `deploy-dar`. It creates what the model needs on the ledger first.
