@@ -20,8 +20,8 @@ placeholder.
 ## Run the app
 
 `create-canton-dappbooster --example amulet-vesting` makes a project from this package. With
-`--localnet`, `pnpm stack up` starts everything the app needs and the app itself, as the Local
-network section below describes.
+`--localnet`, `pnpm stack up` starts everything the app needs and the app itself. The installer
+appends a Local network section to this README that describes it.
 
 Without the local network, point `.env` at your network first: `CANTON_JSON_API_URL`,
 `CANTON_BACKEND_TOKEN`, the `VITE_` URLs, and `SPLICE_TAG` for the contract build. Then build and

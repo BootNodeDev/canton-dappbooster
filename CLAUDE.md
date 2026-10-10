@@ -74,7 +74,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Doc reference + gate | TypeDoc | `kit/typedoc.json` covers `canton-dappbooster` and `canton-connect`. Each declares its entry points in its own `typedoc.json` and extends `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after TypeDoc. It owns what TypeDoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps and `@category` values. It also owns the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`. It also requires at least one selector to reach each anatomy. It is asymmetric on purpose, for the reason its header gives. A part without styles is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
-| Version lockstep check | `kit/check-versions.mjs` | `pnpm run check:versions` fails unless every declared range pointing at a library is `^<that library folder's version>`. `kit/check-versions.test.mjs` runs the same check inside `pnpm test`, and the PR job calls the script. Given a version argument, it also requires the root and the three libraries to be on it. That is how the release workflow refuses a tag that disagrees with the manifests |
+| Version lockstep check | `kit/check-versions.mjs` | `pnpm run check:versions` fails unless every declared range pointing at a library is `^<that library folder's version>`. `kit/check-versions.test.mjs` runs the same check inside `pnpm test`, and the PR job calls the script. Given a version argument, it also requires the root and every public package to be on it. That is how the release workflow refuses a tag that disagrees with the manifests |
 | Reference site | Vercel | Project `docs.canton-dappbooster` under the BootNode team, production branch `main`, built by the git integration from `pnpm docs:build`. Its root directory is the repo root, so the root `vercel.json` holds its build settings and no other project's |
 | Demo deployment | Vercel | Project `demo.canton-dappbooster` under the same team, root directory `example-dapps/amulet-vesting`, so it reads `example-dapps/amulet-vesting/vercel.json`. A project resolves `vercel.json` relative to its own root directory, which is what keeps the two from colliding. `sourceFilesOutsideRootDirectory` is on and the build command runs from the workspace root. A production build needs both, because it resolves both libraries to their `dist` rather than their source. Git-connected, production branch `demo-canton-dappbooster-cc`, so a push there deploys and every other branch gets a preview. The deploy is a static bundle, so `vercel.json` rewrites every path to `index.html` |
 | CI | GitHub Actions | `.github/workflows/pr.yml` gate on every PR (Biome, typecheck+build+knip+docs, test, commitlint, gitleaks). Branch protection on `main` requires 1 approval and every check green. `.github/workflows/release.yml` publishes to npm when someone publishes a GitHub release; see Packaging and publishing. `add-to-project` and `pr-assign` automate the board and PR assignee |
@@ -204,6 +204,8 @@ Placement:
 - `kit/` and any `scripts/` folder are exempt from both rules. They hold plain `.mjs` and Bash, run
   by `node` and `bash` directly, with no build step and no `imports` map to reach through. Relative
   specifiers with extensions are correct there and lint allows them, kebab-case filenames included.
+  The one exception is `canton-create/scripts/record-demo.ts`, which runs on Bun for the reason in
+  `canton-create/CLAUDE.md`.
 
 ## Doc blocks
 
@@ -524,8 +526,8 @@ went out without the field and v0.3.1 was the first to hit this.
 so a release candidate never becomes what `npm install` resolves. `pnpm -r publish` skips a package
 whose version is already on npm, so re-running the workflow after a partial failure is safe.
 
-`pnpm run release:dry` packs all three and uploads nothing, which is how to look at a tarball's
-contents before a release.
+`pnpm run release:dry` packs every package `release` publishes and uploads nothing, which is how to
+look at a tarball's contents before a release.
 
 ## Architecture
 

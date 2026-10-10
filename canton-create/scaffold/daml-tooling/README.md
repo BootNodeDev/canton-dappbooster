@@ -10,7 +10,7 @@ pnpm deploy-dar -- daml/.daml/dist/<name>-<version>.dar  # upload it to CANTON_J
 ```
 
 When `daml/daml.yaml` lists Splice DARs, `build-dar` fetches the ones your network's Splice release
-ships. With the local network it reads that release from the LocalNet. Without one, set
+ships. With the local network it reads that release from the LocalNet's config. Without one, set
 `SPLICE_TAG` in `.env` to the release your network runs.
 
 `deploy-dar` sends the `CANTON_BACKEND_TOKEN` from `.env`. If the project has a `bootstrap` script,

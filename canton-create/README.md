@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- Node >= 24.15.0
+- Node >= 22.12.0 to run the installer, and >= 24.15.0 for the project it makes, which the Canton
+  dApp kit libraries require
 - npm, pnpm, yarn or bun. The installer installs the packages with the one that runs it.
 
 The local network also needs Docker and pnpm, and building a contract needs `dpm`. Check the
