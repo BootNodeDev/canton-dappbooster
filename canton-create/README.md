@@ -37,8 +37,8 @@ folder name.
 
 ## Non-interactive mode (agents and CI)
 
-Run without an interactive terminal, the installer asks nothing. The installer then needs the folder,
-and the choices the flags leave out take their defaults: the starter dApp and no local network.
+Run without an interactive terminal, the installer asks nothing, and the choices the flags leave out
+take the defaults marked below.
 
 | Flag | Purpose |
 |---|---|

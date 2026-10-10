@@ -25,12 +25,9 @@ appends a Local network section to this README that describes it.
 
 Without the local network, point `.env` at your network first: `CANTON_JSON_API_URL`,
 `CANTON_BACKEND_TOKEN`, the `VITE_` URLs, and `SPLICE_TAG` for the contract build. Then build and
-deploy the contract, create the operator, and start the app:
+deploy the contract as the Contract section the installer appends describes, and run:
 
 ```bash
-pnpm build-dar
-# <version> is the one in daml/daml.yaml
-pnpm deploy-dar -- daml/.daml/dist/amulet-vesting-<version>.dar
 pnpm bootstrap   # creates the operator and its factory
 pnpm dev         # serves http://localhost:3012
 ```
