@@ -12,7 +12,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
-import { createGate, repoRoot } from '../scripts/lib/gate.mjs'
+import { createGate, repoRoot } from './gate.mjs'
 import { DEPENDENCY_FIELDS, libraryNames, ROOT_MANIFEST, readManifests } from './manifests.mjs'
 
 // The gate's contract is `file:line message`, and JSON.parse keeps no positions, so the line comes

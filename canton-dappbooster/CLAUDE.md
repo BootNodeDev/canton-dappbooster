@@ -40,7 +40,7 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 
 ## Authoring a component
 
-Root [`CLAUDE.md`](../CLAUDE.md) owns the general rules under Authoring a Component or Hook, including
+Root [`CLAUDE.md`](../CLAUDE.md) owns the general rules under Authoring a component or hook, including
 accessibility and markup semantics. The styling contract they defer to is this:
 
 `node canton-dappbooster/scripts/add-component.mjs <Name>` from the repo root writes steps 1, 2, and
@@ -96,10 +96,10 @@ saves the typing.
   `@bootnodedev/canton-connect` resolves through its `types` entry into `dist/`, which is
   gitignored, and CI typechecks before it builds. It passes locally either way, because a `dist/`
   from an earlier build is sitting there.
-- Keep this package app-agnostic: do not import from `dapp/`.
+- Keep this package app-agnostic: do not import from `example-dapps/`.
 - React 19 only, peer and dev alike.
-- `dapp/frontend` keeps its own copy/check icons in its `src/icons/`. Leave them: the kit's
-  icons are internal, and exporting them is a public-API decision, not a deduplication chore.
+- `example-dapps/amulet-vesting` keeps its own copy/check icons in its `src/icons/`. Leave them: the
+  kit's icons are internal, and exporting them is a public-API decision, not a deduplication chore.
 
 ## Testing
 

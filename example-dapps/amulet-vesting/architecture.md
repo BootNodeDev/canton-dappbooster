@@ -1,0 +1,583 @@
+# Architecture — Amulet vesting dApp
+
+The app's internal seams and the reasoning behind them. What this is and how to run it is in
+[`README.md`](README.md); repo-wide rules live in [`../../CLAUDE.md`](../../CLAUDE.md) and the
+cross-component picture in [`../../architecture.md`](../../architecture.md).
+
+Everything here follows from one constraint: the wallet is the only way in. It holds the keys, so it
+is both the submitter and the reader, and the app never sees a party it is not connected as. Two
+interfaces carry that, and every other decision hangs off them.
+
+## Parts
+
+| Path | Role |
+|------|------|
+| `src/backend/` | The `VestingBackend` interface, `LedgerBackend` (its one implementation), the pure ACS→domain mappers, the command builders, the `WalletFns` seam, `transferContext.ts`, which builds the Amulet context off two Scan reads, `config.ts`, which loads the deployment, and `synchronizer.ts`, which reads the networks the wallet's participant is on. |
+| `src/providers/` | `Backend` builds the backend from the deployment plus the wallet session and carries the wrong-network state alongside it; `Tokens` builds the token list from every source and hands it to the kit's `TokenListProvider`, which is why it sits inside `Backend`: Canton Coin's figures are the backend's to report. The theme provider comes from the kit, the session provider from `canton-connect`. |
+| `src/hooks/` | `useConnectErrorToast` gives a rejected connection somewhere to surface, `useNetworkStatus` watches whether the wallet can still reach the app's network, and `useRoleLens` / `useCreateGrant` keep the role lens and the create dialog in the URL. `AppShell` keys React Router's `ScrollRestoration` on the pathname rather than on the default location key, so opening a grant starts at the top of the page while writing one of those params leaves the scroll where it was. |
+| `src/store/useVestingStore.ts` | Backend-backed zustand store; actions submit then refresh. |
+| `src/utils/` | Pure helpers, `schedule.ts` chief among them, plus `env.ts`, the environment contract `vite.config.ts` validates against, `config.ts`, which reads the literals that validation left behind, `network.ts`, the rule behind the wrong-network strip, `tokens.tsx`, the artwork and wording this deployment gives Canton Coin, and `assetList.ts`, which reads the curated token list. `toast.ts` is here too, the one module whose view lives elsewhere: it holds the Ark toaster and the three tone helpers, and `components/Toaster/` renders them. |
+| `src/components/` | What two or more places render: the shell, the top bar and its account menu, the footer, the dialogs, and the primitives the pages compose. |
+| `src/icons/` | The brand and house marks only, one per file over a shared `Svg` wrapper and re-exported from `index.ts`. Every generic icon comes from `lucide-react`. |
+| `src/pages/` | Dashboard, pending grants and grant detail, each a folder whose `index.tsx` is the route and whose siblings are what only that page renders. |
+| `src/styles/` | The single stylesheet entry and the app's own tokens. |
+
+## The two seams
+
+**`VestingBackend`** ([`src/backend/VestingBackend.ts`](src/backend/VestingBackend.ts)) is what the
+UI depends on. It speaks grants, pending grants, and claims — never DAML templates, contract payloads,
+or transport. `LedgerBackend` satisfies it against the `amulet-vesting` DAML package; it is named
+for the thing it reaches rather than for that package, so re-pointing it at another model is not a
+rename. Because the mappers that turn active-contract rows into domain types live behind this
+interface, no component knows the ledger exists.
+
+**`WalletFns`** ([`src/backend/wallet.ts`](src/backend/wallet.ts)) is the narrower one: the two
+session calls `LedgerBackend` makes, `execute` and `ledgerApi`, injected as plain functions rather
+than implemented by a class. They come straight from `canton-connect`'s `useExecute` and
+`useLedger`, which is why they are injected at all: hooks cannot be called from a class, and
+`LedgerBackend`'s unit tests need it constructible without React.
+
+Both halves of the pairing are runtime state. The deployment comes from
+[`config.ts`](src/backend/config.ts), which reads it off the ledger through that same `ledgerApi`:
+the newest `vesting-operator-*` among the connected user's rights, then an active-contracts read as
+that operator for the factory, which yields `pkg`, the contract id and the `createdEventBlob`.
+Nothing is configured, so nothing can go stale against the participant the wallet is pointed at.
+Missing is a hard error surfaced by `AppShell`, not a fallback: without a package id there is
+nothing to query and without the blob there is no factory to disclose. It needs a session to read
+through, so it resolves after connect rather than before.
+
+The rights read names its route as `/v2/users/{user-id}/rights` with the id in `path`, not written
+into the string. The Wallet Gateway allowlists the resource against the ledger API's own route list,
+so an interpolated id matches nothing and comes back as `Unsupported get resource`. The rule is
+under Ledger reads in [`CLAUDE.md`](CLAUDE.md).
+
+## What a write has to carry
+
+Every choice that moves Amulet takes an `AppTransferContext` — the current `AmuletRules` and the
+newest open mining round — and both are DSO-signed, so no connected party is a stakeholder of
+either. [`transferContext.ts`](src/backend/transferContext.ts) reads both from Scan —
+`/v0/amulet-rules` and `/v0/open-and-issuing-mining-rounds`, each answer carrying a
+`created_event_blob` — and returns the record and the two disclosures together, because a write
+needs both and sending one without the other fails at the participant rather than in the model. The
+record is flat: nesting the round under a `context` key fails preprocessing on a missing
+`openMiningRound`.
+
+Scan lists every round it knows, including ones that have not opened, so picking the live one is the
+app's job: the newest whose `opensAt` has passed, since an older one closes sooner. A LocalNet whose
+SV has not opened the first round yet has none to name, which is a wait rather than a bug.
+
+This replaced a `amulet.tap` call to wallet-service, which built a command the app threw away and
+kept only for its disclosures. Scan was rejected at the time because the SV endpoints refuse a
+browser origin on devnet; against a LocalNet they answer with the app's origin on the preflight.
+
+The faucet in the account menu is the one place the app taps for real. `LedgerBackend.tap` builds
+`AmuletRules_DevNet_Tap` for `TAP_AMOUNT` out of the same record and the same two disclosures every
+other write already fetches, and the wallet signs it as the connected party, so the button costs no
+extra read. `TAP_AMOUNT` is the app's to change. The choice exists on LocalNet and devnet
+only, and before the SV opens the first round it refuses with `OpenMiningRound active at current
+moment not found`, which reaches the user as the failure toast.
+
+Where those calls go is `VITE_SCAN_API_URL`, and the browser makes them itself. The value is read
+at build time, so changing it needs a redeploy.
+
+The DSO party the split has to name is the one thing tap cannot supply — a disclosure carries an
+opaque blob and no payload — so `LedgerBackend` reads it off an Amulet the split is about to
+consume. Every Amulet is DSO-signed, so it is the same party by construction.
+
+## Telling the user they are on the wrong network
+
+A write fails at the participant when the wallet submits to a network the app's contracts do not
+live on, because the `AmuletRules` and mining round ids do not exist on the ledger the wallet
+reaches. Both sides of that are read.
+[`transferContext.ts`](src/backend/transferContext.ts) carries `fetchAppNetwork`, which reads
+`/v0/amulet-rules` from Scan and returns only the `domain_id` on that answer, the network the app's
+contracts are on. Its own export rather than a field on the transfer context: that builder waits for
+an `AmuletRules` and an open mining round both, and the SV opens the first round minutes after a
+LocalNet start, while the id sits on the rules alone.
+[`synchronizer.ts`](src/backend/synchronizer.ts) reads the other side, the synchronizers the
+wallet's own participant is connected to. That is a read of its own rather than
+[`config.ts`](src/backend/config.ts)'s `synchronizerId` off the factory row, which the deployment
+already carries: that one is three round trips and its answer rebuilds the backend, so repeating it
+would re-run every ledger read along with it.
+
+The rule in [`src/utils/network.ts`](src/utils/network.ts) is membership rather than equality,
+because a participant can be connected to several synchronizers and reaching the app's one is what
+decides whether a write lands. It answers `ok`, `wrong` or `unknown`, and the third is the point: a
+missing side is not a mismatch, or the strip would warn about a read that has not come back yet, but
+it is not a match either, and a boolean had to call it one. `account.networkId` is not what is
+compared: CIP-0103 only recommends a CAIP-2 label, so two wallets may spell one network differently.
+
+The rule reports a verdict and not the ids behind it, because **the strip names the wallet's network
+and no target.** That is a limit rather than a choice. `networkId` is the only network name CIP-0103
+defines — `Network` is `{ networkId, ledgerApi?, accessToken? }`, with no display name or alias — and
+the spec says what a *wallet* answers, so nothing in it names the app's side. The removed
+wallet-service did expose a label of its own. Reading it was not worth
+it: that value and the wallet's are both typed by hand, by different people, so they read the same
+for two networks as easily as differently for one, and a strip saying "switch to canton:localnet"
+while already claiming
+to be on it is worse than one naming no target. Nothing checks either label against the id it claims
+to name, and no single source knows both sides — the wallet only knows the network it is on, and
+the app's side only its own.
+
+One thing to know about the label that is shown: it is the wallet's own word, unmodified. Nothing
+fills a network in for an account reporting none, so a wallet quiet about its network labels the
+sentence with whatever it sent. Only a non-compliant wallet gets there, since the spec makes
+`networkId` required on an account entry. Either way the label never decides whether the strip
+appears, which is what keeps it acceptable.
+
+[`useNetworkStatus`](src/hooks/useNetworkStatus.ts) is what keeps it current, and it polls because a
+wallet-side switch reaches the app through nothing at all: CIP-0103 defines no network-change event
+and the SDK pushes accounts only. So it re-reads on three triggers — the party changing, the page
+regaining focus, and a timer. Focus is the one that catches a switch as it happens, since switching
+networks means using the wallet and the wallet takes focus; `visibilitychange` misses it, because an
+extension popup draws over the tab rather than hiding it. The timer is the backstop for a switch made
+in a window the user never comes back from. A failed read is silent and leaves the last answer
+standing, because a host that is down, or a wallet that has just locked, is not a wrong
+network.
+
+The timer starts fast and slows down. Either side can be missing when the first check runs — Scan,
+or the wallet's own participant — so the first retry is 3 seconds away and each further one
+doubles — 3, 6, 12, 24 — up to the same 30 seconds every later check runs at. The doubling is what
+keeps a host that is down from being asked twice every 3 seconds for as long as the tab is
+open. What picks the delay is a count of checks since the last definite answer, so an answer settles
+the poll at 30 seconds wherever it lands, even where a later check has already superseded it, and a
+check that stops answering starts the ramp over rather than leaving the app on two reads a minute. It
+reschedules from the timer rather than from the answer, or a read that never settles would stop the
+poll.
+
+Focus is the one trigger that can be skipped: a focus event while a check is out would only duplicate
+it, and a user moving between the wallet and the tab produces a run of them. The timer is never
+skipped, for the same reason it reschedules from itself.
+
+Both sides are on that poll, including the app's. The tap answers for one network, so keeping
+that id for the session was tempting, but a LocalNet reset gives a new synchronizer and a cached id
+would outlive it, leaving the app sure of a network that no longer exists. Several checks can be in flight at once — a focus landing
+mid-interval, or a retry starting while a tap runs down its 15 second timeout — so each carries a
+sequence number and only the last one started may write. The verdict carries the party and the
+network id it was read against too. Without the party, the previous party's answer would be shown
+against the new one's network for as long as the first read for that party takes; without the network
+id, a verdict of `wrong` would survive the switch that fixed it and name the network the user had
+just arrived on as the one to leave.
+[`WrongNetwork`](src/components/WrongNetwork.tsx) renders the verdict as a strip above the header,
+and nothing dismisses it, because only the wallet can put it right.
+
+No verdict at all is its own answer, and the hook returns nothing rather than `unknown` until the
+first check settles. Otherwise every load would open with an amber strip announcing that the network
+cannot be determined, for the half second the two reads take, on a network that turns out to be
+fine. A read that rejects with no verdict behind it does record `unknown`, which is what puts the
+strip up on a LocalNet whose SV has not opened a round yet; one that rejects with a verdict behind it
+still leaves that verdict standing.
+
+The verdict also decides what the page itself says. On the wrong network `config.ts` finds no
+operator on the ledger the wallet reaches, so it throws its `run pnpm run bootstrap` advice and
+[`AppShell`](src/components/AppShell.tsx) would fill the page with it. That message names a symptom:
+the deployment is there, the wallet is not looking at it. So the card has one heading per verdict.
+`wrong` carries the network, and the advice is held back for `ok`, the case it was written for, a
+ledger that really has no deployment. `unknown` gets a third heading rather than either, because the
+app cannot yet tell which of the two it is looking at and both would be a guess.
+
+Only `wrong` holds the advice back, though, and the heading is the whole of what the verdict decides.
+Everywhere else the card still carries what `config.ts` threw, because that is the sentence naming
+something the reader can do, and a network check that could not answer is no reason to withhold it.
+
+## Creating a grant takes two approvals
+
+A pending grant records the contract ids of the Amulets its Accept will lock, and that Accept
+consumes exactly those. So two grants may never name the same Amulet: accepting one archives it and
+leaves the other permanently unacceptable, `CONTRACT_NOT_FOUND` at the `fetch` before the transfer
+even runs. Which means each grant needs an Amulet of its own, and `createVesting` makes one — the
+funder self-transfers `totalAmount` through `AmuletRules_Transfer`, and the grant names only what
+that produced.
+
+That is two submissions and so two wallet prompts, and it cannot be one. Commands in a single Daml
+transaction carry fixed arguments, so the second cannot name a contract the first will create;
+composing an output into the next input is what a *choice* is for, and adding one is a change to the
+DAML rather than to this app.
+
+The split is exact because Splice values an Amulet input at its full `initialAmount` —
+`summarizeAndConsumeInput` sums that field, and the holding fee is charged only by `Amulet_Expire`.
+An Amulet therefore does not decay out from under a grant while it waits, so no headroom has to be
+guessed at, and `amuletValue` is a field read rather than a calculation. `sender`, `provider` and the
+one output's `receiver` are all the funder, which is what makes the funder the whole of
+`transferControllers` and keeps this a one-signature submission needing nothing from the operator.
+`AmuletRules_Transfer` also refuses a submission that does not name the DSO it expects, so
+`fetchTransferContext` returns the DSO party and the resolved rules template id alongside the
+context.
+
+Whatever an outstanding grant already pledged is kept out of the split's inputs, read off the
+funder's own pending-grant rows rather than remembered locally: a transfer consumes everything it is
+given, and consuming one of those is exactly the failure this exists to prevent. The Amulet the
+split created is then found by re-reading the ACS, because the wallet's own answer to a submission
+is an update id and nothing about what it created.
+
+Accept is the one write disclosing something the transfer context cannot supply: the funder's Amulet, which the
+receiver is no stakeholder of. Its blob is read with `includeCreatedEventBlob` while the funder is
+connected and kept in `localStorage`, written only once the grant is on the ledger — a declined
+prompt must not leave a blob behind for an Amulet no grant is waiting on. Appended rather than
+replacing, since every outstanding grant's own Amulet has to stay disclosable.
+
+Which of those blobs a given Accept sends is read off the ledger, not guessed: the receiver is an
+observer of the grant, so `accept` fetches it and discloses exactly the `amuletCids` it names, then
+drops them, since that submission archived them. Sending the whole store instead would re-disclose
+Amulets earlier accepts already consumed, grow without bound, and leave the guard unable to tell a
+missing blob from an unrelated one — the difference between a sentence naming the problem and an
+opaque participant rejection. It is a browser-local hand-off between two wallet accounts, which is
+what the demo is; a receiver on another machine has no way to disclose it and `accept` says so
+rather than submitting a rejection.
+
+A filter always names a template by package name (`#amulet-vesting:AmuletVesting:…`) and a command
+always by the resolved id the deployment carries. The participant rejects each in the other's
+position, the filter loudly with `INVALID_FIELD`.
+
+## Data flow
+
+```
+config.ts ────────────┐
+                      ├─▶ Backend ──────────▶ useBackend ──▶ useVestingStore ──▶ components
+CantonConnectProvider ┤                                                            ▲
+                      └─▶ useAccount ─────────────────────────────────────────────┘
+```
+
+`Backend` ([`src/providers/Backend.tsx`](src/providers/Backend.tsx)) is the
+only place the two seams above meet. Its backend is `undefined` until both a deployment and a wallet
+*party* exist, because neither half alone can reach the ledger, and a page with no backend renders
+`ConnectPrompt` where its data would be. The party rather than the connection status is the gate: a
+restored-but-locked session reports itself connected while reporting no party, and the party is what
+every read filters on and every submit acts as. The shell holds the pages until the deployment has
+resolved either way, so inside a page a missing backend can only mean a missing party — which is
+what makes `ConnectPrompt`'s copy, and the kit connect button inside it, correct wherever it
+renders — that face never flips to the disconnect one, which is why the prompt takes it rather than
+the kit's `WalletButton`. Once an attempt is in flight the connect button is swapped for
+`CancelButton`, so one button is on screen at a time and each does one thing only: that button
+carries the spinner for the wait and the word for the action. A double-click therefore lands its second click on the cancel and
+ends the attempt it just started, which the split makes honest rather than hidden: the button the
+user hits says Cancel.
+
+The swap itself is [`ConnectFace`](src/components/ConnectFace.tsx), which the prompt and the top bar
+both render, so a third site cannot forget half of it. It is a leaf on purpose: it holds the only
+`useConnect` subscription of the two, so an attempt re-renders one button rather than the header or
+the empty state around it. It also owns the repair a swap needs — the focused button is the one
+being unmounted, so focus falls to `<body>` and the keyboard loses its place. It hands focus to
+whichever button took over, and only then: a focus move nobody asked for on first paint would be
+worse than the problem.
+
+The session is the other chain, and none of it is this app's. `CantonConnectProvider` owns it, the
+kit's `ConnectButton`, `CancelButton` and `DisconnectButton` drive it, and `canton-connect`'s
+`useAccount` reports the connected account wherever the UI needs one. `TopBar/AccountMenu` stands
+the party hint in as a display name for the wallets that report none. `ConnectFace` and the error
+toast are the other `canton-connect` consumers, both for `isPending` off `useConnect`. The top bar picks its face itself rather than reaching for the kit's
+`WalletButton`, whose disconnect face is a plain button: the connected side here is a dropdown,
+`TopBar/AccountMenu`, holding the copyable party id, the network the session is on, and the
+disconnect. Everything short of that is `ConnectFace`, so an attempt started from the top bar can be
+abandoned there rather than only from the prompt further down the page.
+It picks on the party alone, never on `isConnected`: a standing session reports no party while the
+account read is in flight, again after it fails, and again once a lock clears it, and the connect
+face is the right answer to all three. It renders its own pending copy for the first and retries the
+second. For the third it is the only way back, because a lock and a wallet-side disconnect are one
+push the app cannot tell apart, and the machine accepts a connect from a standing session for
+exactly that reason; a refresh there restores nothing and lands on the same face, so the two agree.
+The shell no longer gates on the session: it always mounts, so the top bar's wallet control and the
+theme toggle stay reachable, and the wallet's own account switch is the only way the acting party
+changes. A connect that fails
+reaches the user through
+[`useConnectErrorToast`](src/hooks/useConnectErrorToast.ts), because the kit ships no user-facing
+copy and would otherwise fail silently; a cancel is a choice, not a failure, and stays quiet, which
+the hook reads off `canton-connect`'s `ConnectCancelledError` rather than off a message.
+
+`useVestingStore` takes the resolved backend from `useBackend` and owns the grant data. Every action
+submits through the backend and then refreshes; there is no optimistic local mutation, because a
+write is only real once the ledger has it and the read is the only thing that knows. It also drops
+every row when the party goes, because the rows were that party's.
+
+A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
+`AmuletVestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
+raised, so a claim changes the id of the grant it acted on. `grantLineage` is that identity —
+everything the choice preserves — and it is what the withdraw history keys on and what `withdraw`
+uses to hand the grant-detail page its successor's id, so a URL survives a claim rather than
+becoming "Grant not found".
+
+A withdraw that drains the escrow is the exception: it creates no successor, because the contract's
+`ensure alreadyWithdrawn < totalAmount` is strict and a zero-backing successor would hold a
+zero-amount `LockedAmulet`. So the grant is archived, exactly as `AmuletVestingContract_Cancel`
+archives it, and the page navigates away for both rather than sitting on an id the next read will
+not return. That is why there is no drained-grant state anywhere in the UI: a fully claimed grant
+cannot be in the ACS, so nothing can render it. Showing one would mean reconstructing it from the
+update stream, and the drain emits no `CreatedEvent` to reconstruct it from.
+
+## Where the numbers come from
+
+`deriveGrant` in [`src/store/useVestingStore.ts`](src/store/useVestingStore.ts) is a pure projection
+of a grant at a moment in time — vested, claimable, claimed, status. It and
+[`src/utils/schedule.ts`](src/utils/schedule.ts) are the single source of every per-grant figure, and
+they mirror the on-ledger math deliberately, so a preview and the choice that follows it agree — the
+contracts recompute `vestedAmount` themselves and reject anything above it. A component that
+derives a grant's own vesting figures is a bug. `claimAvailable`, beside it, is the same rule for a
+residual claim, which carries no schedule and so has no projection of its own: what the dashboard
+shows, sums and submits for one is a single subtraction in a single place. Two components
+legitimately compute on top of that projection rather than beside it: `MilestoneTimeline` splits a
+total across milestone steps for display, and `Dashboard` sums `deriveGrant`'s output into the
+KPI row. Both take the projection as their input; neither re-derives it.
+
+Under both sits [`src/utils/amount.ts`](src/utils/amount.ts), the arithmetic floor. Every add,
+subtract, floor-at-zero, fraction scale, and round in the app goes through it, on scaled `bigint`s,
+and `schedule.ts` builds on it too. Nothing computes an amount any other way.
+
+The invariant it exists to hold: a domain amount is an exact decimal string, never a `number`. A
+double cannot round-trip 10 decimal places past about six integer digits, which is well inside the
+range this app shows. `number` survives only for ratios, chart geometry, and percentages, and
+`toNumber` is the one sanctioned door between the two. Reading an amount into arithmetic through
+any other door is the failure this module was written to prevent, and it fails silently. `isAmount`
+is the door in: `amountOf` in the backend mappers runs every incoming `Numeric` through it, so an
+unparseable string is rejected where it arrives rather than read as zero by the arithmetic
+downstream.
+
+## The kit seam
+
+Party ids come from `@bootnodedev/canton-dappbooster`, styled by `@bootnodedev/canton-theme`. The app
+holds no truncation or copy-to-clipboard logic of its own.
+
+Entry is the other half. [`CreateGrant`](src/components/CreateGrant/Details.tsx)'s receiver field is
+the kit's `<PartyIdInput>`, and the submit gate calls the same `validatePartyId` the field does, so
+the two can never disagree about what a party id is. Party ids are exact strings here: nothing
+trims, so a stray space is invalid rather than silently stripped on the way to the ledger.
+
+That field is also where the layering is easiest to read. The kit sets `aria-invalid` and hands back
+an error *code*; this app owns the sentence, where it sits, and what it looks like. The wording lives
+in a `Record<PartyIdError, string>` so a new code added upstream fails the build here instead of
+rendering nothing, and the red state is a Tailwind `aria-invalid:` variant rather than
+`canton-theme`'s, because the app's utilities sit above the `cnc` layer (see
+[`src/styles/index.css`](src/styles/index.css)).
+
+Amounts run that same split twice more. [`CreateGrant`](src/components/CreateGrant/Details.tsx)'s
+total and [`Claim`](src/components/Claim.tsx)'s withdrawal are both the kit's
+`<TokenInput>`: the field sets `aria-invalid` and reports an error *code*, and this app words it
+in [`src/utils/amountErrorText.ts`](src/utils/amountErrorText.ts), again an exhaustive `Record` so a
+code added upstream fails the build here.
+
+**The create field offers the picker; the claim dialog does not, and will not.** What a grant pays
+out is fixed by the contract, so `Claim` passes `token={AMT}` and no `onTokenSelect`, which is what
+makes the kit render the symbol as a static mark rather than a button.
+
+The list behind the picker is real. [`src/providers/Tokens.tsx`](src/providers/Tokens.tsx) reads the
+kit's `useHoldings`, groups it with `sumHoldings`, reads the registry's catalogue with
+`readInstruments`, and hands the merged result to `TokenListProvider`.
+
+The rows are the union of what every source knows, merged by the kit's `mergeTokens`: the curated
+list, then the registries, then the balances, then the app's own artwork. Later sources win field by
+field, so the registry has the last word on a label and the curated list supplies the logo it does
+not serve. A source that will not answer costs labels and no rows.
+
+**A token the party holds none of is still a row.** The list is a catalogue, and a picker that only
+offered what you already hold could never serve a swap's buy side. This form does not filter it
+either: picking a token you hold nothing of simply leaves you unable to grant it, which is the
+field's own rule to enforce.
+
+**Canton Coin's figures are this app's, not the ledger's.** Its `balance` is what `balanceOf`
+reports, the coin free to fund a grant, and its `locked` is the escrowed coin plus whatever a
+pending grant has pledged. The three still sum to everything held, so the row hides nothing; it
+splits it the way this app can act on. Every other row keeps the ledger's own split, and when the
+app moves more than Canton Coin that rule needs revisiting.
+
+That is also why the create field no longer reads a balance of its own: it takes the row the picker
+handed back, so its Max and its ceiling are the figure the row showed. Pick a token you hold none of
+and Max is disabled, which is the correct dead end.
+
+A row carries a figure or it does not, so a read that failed looks exactly like one still running.
+`useTokenFigures` is what tells them apart: `Tokens` publishes whether either read failed, and the
+field turns that into the kit's `balanceState="error"`, which is the `Balance: N/A` face.
+
+Which registries to ask comes from the same curated list: the first URL each entry publishes, plus
+`REGISTRY_URL`, which is the fallback and the only address a LocalNet has. Every one of them is read,
+not only the ones behind a holding, because a catalogue is the point.
+
+The token standard's v1 APIs publish no way to find a registry, so every app keeps that mapping
+itself. [CIP-0056](https://github.com/canton-foundation/cips/blob/main/cip-0056/cip-0056.md) is the
+proposal to replace it: ask any SV's scan for the CNS entry at `/v0/ans-entries/by-party/<admin>`
+and read the registry URL out of the JSON its description carries. It takes an admin party, so it
+would answer where to ask about a token already listed and never which tokens exist, and no
+LocalNet registers those entries. The curated list stays the source of both.
+
+The curated list is [`assets.json`](https://github.com/canton-network/wallet/blob/main/api-specs/assets.json)
+in the Canton wallet repo, read by [`src/utils/assetList.ts`](src/utils/assetList.ts). It lives here
+and not in the kit because it is one repository's file rather than a standard: no CIP, no schema, no
+versioning, and its shape is whoever maintains it to change. So it is trusted for artwork and for
+the symbol it publishes, never for identity or amounts, and the kit ships no reader for it.
+
+`ASSET_LIST_NETWORK` picks a top-level key of that file, and `undefined` skips the source
+altogether. The published file covers `MainNet`, `TestNet` and `DevNet` and no LocalNet, whose DSO
+party is minted with the stack, so the dev server serves the whole published list with a `LocalNet`
+section appended, built from the party its own scan reports. That is the reason it is generated
+rather than committed: a party in a file would be one developer's, and wrong for everyone else after
+the next `reset`. Either half failing costs labels and nothing else, so a stack that is down still
+serves a list.
+
+**The registry is reached through the dev server, not directly.** LocalNet serves it under the
+validator's authenticated prefix, so a browser gets a 401. `REGISTRY_URL` is therefore the
+same-origin `/registry`, and [`vite.config.ts`](vite.config.ts) proxies that to
+`SPLICE_REGISTRY_API_URL` with the bearer from `.env`. The token stays in the dev server
+and never reaches the bundle. It is a constant rather than a `VITE_` variable because every build
+has the same value for it; a deployment pointing at another registry is what would earn the
+variable, and that deployment does not work yet — the proxy is the dev server's, so a deployed build
+reads no metadata at all.
+
+[`src/utils/tokens.tsx`](src/utils/tokens.tsx) is down to the artwork, the name and the symbol,
+matched by instrument id: a token this deployment does not know is listed under its raw id rather
+than dropped.
+
+One thing the pick still does not do: **it changes nothing but the field.** The re-lock floor's
+wording, the claim toast, `AmountDisplay`'s coin mark and the grant that gets created all say Amulet
+in their own right. Each has to take the chosen token instead, or a pick relabels one field and
+means nothing.
+
+Both pages re-derive that code with the kit's own `validateAmount` rather than storing the one
+`onChange` handed them, because the bounds move on their own: the claim dialog's ceiling is a
+live-vesting `claimable` that recomputes each second, and a stored code would keep flagging an
+amount the field had already accepted. The field is still the single source of the rule; the app
+just asks it again at render time.
+
+The division of labour underneath is the part neither side announces. The kit owns one amount at
+one precision: parse, format, sanitize a keystroke, validate against the ledger's own limits and a
+`max`. It knows nothing
+about a second amount, so everything that combines two of them is this app's, in
+[`src/utils/amount.ts`](src/utils/amount.ts), built on the kit's `parseAmount` / `formatScaled` pair and
+on nothing else of the kit's. So the field's `balance` is the ceiling, while both floors are the
+app's: the create form's `MIN_GRANT_AMOUNT`, and the claim dialog's re-lock floor, which is a rule
+about the *remainder* and so about two amounts at once.
+
+The two amounts the floor spans are not the ceiling's. A withdraw re-locks whatever it leaves in the
+escrow, and the escrow backs the unvested part of the grant too, so the floor is measured against
+`grantBacking` while the ceiling stays `deriveGrant`'s `claimable`. Measuring both against
+`claimable` refuses amounts the ledger takes, and offers the last claim before full vesting, which
+the ledger aborts on. `grantBacking` sits beside `deriveGrant` rather than inside it, like
+`claimAvailable`: it does not move with the clock. A residual claim carries no schedule, so its two
+are the same amount and `Claim`'s `backing` prop defaults to `available`.
+
+Both dialogs have a ceiling, and both hand it to the field as `balance`: the claim dialog's is the
+grant's own `claimable`, the create form's is whatever figure the picked row carries. So neither
+passes `aria-invalid` for the amount — the kit flags anything above the `balance` it was given — and
+where a read leaves no figure to give, the split refuses the amount instead, naming what is actually
+free.
+
+A Canton balance is a set of holding contracts rather than a scalar, so the read is party-scoped and
+summed. It reports what a grant could actually spend rather than what the party owns, over the same
+set `splitOff` will draw from: coin already escrowed is a `LockedAmulet` and so out by template, and
+coin an outstanding grant pledged is out because spending it would leave that grant unacceptable.
+The two agreeing is the point — a `Max` that offered more would put an amount in the field that the
+next step always refuses. The read belongs to `Tokens` now rather than to the form, so it runs when
+the party changes and again whenever the create dialog opens: a grant that dialog created has
+pledged coin since, and the figure it showed before would be the one from before the grant.
+
+The amount field shows no validation message at all for now, which is why nothing words
+`MIN_GRANT_AMOUNT` or a bad decimal to the user; both still gate `Continue`. `AMOUNT_ERROR_TEXT`
+stays because the claim dialog renders it.
+
+Which kit export to reach for is decided by the surrounding markup. Where an id is a standalone
+element it renders the full `<Identifier>` primitive; where it sits inside a `<button>`, a `<Link>`,
+or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters instead, because
+`<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
+element.
+
+No id links out at the moment. `VITE_EXPLORER_URL` names the explorer and nothing else now that the
+transfer context has its own endpoint, and no `<Identifier>` is given an `href`, so nothing renders
+the kit's external-link affordance and `EXPLORER` is exported for a consumer that does not exist
+yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(partyId)}` again at the call
+sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no
+canonical explorer, and the href stays a per-call-site decision the way the kit's own is optional.
+Counterparty ids go through one component:
+[`src/components/CounterpartyId.tsx`](src/components/CounterpartyId.tsx) binds the from/to prefix
+and the direction-specific label, and `GrantCard` and `PendingGrantCard` render it. A copy raises
+no toast: the icon swapping to a tick is the confirmation, and the kit's own live region announces
+it, which is why no `<Identifier>` here turns `announce` off. The toast region stays where it
+mounts, which takes one arrangement with the
+dialog: Ark's `Dialog` aria-hides everything outside its own content but skips any element carrying
+`aria-live`, and the toast region carries one, so a toast raised over an open dialog — every failed
+submit — is still announced. Clicks are the other half. A modal dialog blocks the pointer outside
+itself and reads a click there as a dismissal, so `Modal` names the region in Ark's
+`persistentElements`, and `utils/toast.ts` exports the lookup that finds it by the id Zag gives it.
+
+That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
+`parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
+`VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
+all. [`src/utils/env.ts`](src/utils/env.ts) holds that contract, and is the only module under `src/`
+that runs outside the browser. The `.env` it reads is this folder's, the one file the monorepo
+keeps, and it is loaded with an empty prefix — every key in it, `CANTON_AUTH_SECRET` included — so
+only what `parseEnv` returns may be defined back. Spreading the loaded object would put the signing
+secret in the bundle.
+
+The connect button's copy is the kit's: passed no `children` it renders its own label and swaps it
+for "Connecting…" while a connect is in flight, so neither `ConnectPrompt` nor `TopBar` supplies one.
+An app-side label meant duplicating the pending state, which is what the earlier `useConnectLabel`
+did by listening for the SDK picker's private `SPLICE_WALLET_PICKER_RESULT` message.
+
+Theme is the kit's too. `ThemeProvider` in `App.tsx` applies `data-theme` to `<html>` on the kit's
+default storage key, and [`src/styles/tokens.css`](src/styles/tokens.css) keys the app's own
+`--fg` / `--bg` set off the same attribute. The reload flash that comes with that, and why no
+pre-paint script sits in `index.html`, are the kit's call:
+[`canton-dappbooster/architecture.md`](../../canton-dappbooster/architecture.md).
+
+## Where the widgets come from
+
+Every menu, dialog, tooltip, select, toast, stepper, number input and progress bar is
+[Ark UI](https://ark-ui.com/react/docs/overview/introduction), and every generic icon is
+`lucide-react`. Ark wraps the same `@zag-js/*` machines `canton-dappbooster` already depends on and
+pins them to the exact version the kit resolves, so the lock file holds one copy of each rather than
+two. What the app still writes is the classes and the wording; what it stopped writing is
+dismissal, focus trapping, roving focus, live-region announcement and popper placement.
+
+`canton-dappbooster` stays on raw Zag. Its anatomy class strings are what `canton-theme` selects
+against, and Ark ships its own.
+
+Three things the library leaves to the caller, settled once here:
+
+- **A popper's z-index goes on its `Content`, never its `Positioner`.** Zag reads the content's
+  computed `z-index` and writes it onto the positioner as an inline `z-index: var(--z-index)`, so a
+  class on the positioner loses to that inline style and the panel lands on `auto`.
+- **A popper opened inside `Modal` renders inline with `strategy: 'fixed'` rather than in a
+  `Portal`.** A portal would put the panel outside the dialog, where Ark aria-hides it and blocks
+  the pointer. Fixed positioning is what frees it from the dialog's own scroll box without leaving
+  the dialog.
+- **`InfoTip` opens on tap.** Zag's tooltip ignores touch pointers by design, so the component adds
+  a `pointerup` toggle for `pointerType === 'touch'` and turns `closeOnClick` off, or the click that
+  follows the tap closes what the tap opened.
+- **`Modal` refuses a focus-outside dismissal.** Ark closes a dismissable layer once focus lands
+  outside it, and a modal dialog only ever gets that by accident: mounting is what opens ours, so
+  no `Dialog.Trigger` is registered for Ark to exclude, and the focus trap handing focus back to
+  the button that opened it reads as an interaction outside. Under React's development remount
+  that happens on the way in, and the dialog shuts the moment it opens. A press outside and Escape
+  still close it.
+
+The toast stack is the one Ark part that needs CSS the app has to supply: Zag places each toast
+absolutely and hands the offsets over as custom properties, so
+[`src/styles/index.css`](src/styles/index.css) turns them into a `translate` and a transition. With
+no rule there every toast draws on top of the one before it.
+
+## Stylesheet layering
+
+[`src/styles/index.css`](src/styles/index.css) is the single entry. Its leading
+`@layer properties, theme, base, cnc, components, utilities` is declared before the first `@import`,
+which is what puts the kit theme's `cnc` layer above Tailwind's preflight and below the app's
+utilities: above preflight because preflight resets `button { color: inherit }` over the kit's copy
+control, below `utilities` so a `className` on a kit component still wins. Moving that line under an
+import silently reorders the cascade, and a layer left off the list lands on top of every layer that
+is on it, so the list is worth rereading on a Tailwind major bump.
+
+The app carries its own preflight restorations in `base` too, currently `cursor: pointer` on enabled
+buttons, which Tailwind v4's preflight dropped. `base` is the right layer for them because
+`utilities` comes later in the list, so a `cursor-*` utility on the element still wins; unlayered
+they would outrank every utility and every `cnc` rule whatever the specificity.
+
+[`src/styles/tokens.css`](src/styles/tokens.css) holds the app's Tailwind-facing colour names, which
+`@theme inline` in the entry turns into utilities. `inline` is what keeps those utilities pointing at
+the live custom property, so flipping `data-theme` reskins the page with no recompile. A name
+pointing at a `--cnc-*` token inherits the kit's dark value and so needs no counterpart in the
+`[data-theme="dark"]` block; an app-only value is spelled out in both unless it is mode-independent
+by construction, which the brand hues (`--accent`, `--pink`, `--gradient-brand`) are. `--surface-2`
+and `--muted` resolve to the same grey and stay separate names because components already pick one
+or the other.
+
+Those hues are mode-independent because they are fills, and a fill answers to 3:1 while the text
+over it answers to 4.5:1. Each one a component also wanted to set text in fails that in one mode or
+the other, so `--accent-strong`, `--primary-strong` and `--pink-strong` carry the readable value and
+are per-theme wherever the plain hue is not. Which to reach for is in
+[`CLAUDE.md`](CLAUDE.md); that they are separate names rather than a darker `--accent` is because
+`--primary` also has to keep white legible on `bg-primary`, so one value cannot serve both sides.

@@ -175,7 +175,7 @@ exactly the case the attribute exists for.
   `display: none` in the user-agent stylesheet, which any author `display` loses to whatever the
   layer or the specificity. So a part with its own `display` keeps the closed panel on screen for a
   consumer whose reset does not re-declare `[hidden]`; ours only looked right because
-  `dapp/frontend` pulls in Tailwind's preflight.
+  `example-dapps/amulet-vesting` pulls in Tailwind's preflight.
 - The dialog's `z-index` goes on its positioner and its backdrop, which is only safe because its
   machine does not use Zag's popper. A popper-positioned part takes it on the *content* instead: the
   popper owns the positioner's inline style and copies the content's computed `z-index` onto it as
@@ -196,5 +196,5 @@ exactly the case the attribute exists for.
 ## Validation
 
 - `pnpm lint` from the repo root (Biome checks CSS; there is no local Biome config).
-- Kit components render against this theme in `dapp/frontend` on port 3012, which is where a
-  palette change gets looked at.
+- Kit components render against this theme in `example-dapps/amulet-vesting` on port 3012, which is
+  where a palette change gets looked at.

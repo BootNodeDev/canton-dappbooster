@@ -36,13 +36,13 @@ origin and the message type, so the next successful connect woke every past one:
 
 `settleAbandonedConnect` drains them at the close instead. It posts the SDK's own
 `SPLICE_WALLET_PICKER_RESULT` to our window, the only thing that makes that listener unsubscribe.
-The `providerId` matches no registered adapter, so it fails with `WalletNotFoundError`
-before reaching a wallet, then rejects out of `waitForWalletPickerRetrySelection` because the popup
-is closed. `walletType` stays `'browser'` to keep it out of the branch that registers a remote
-adapter from the message, and no `name` is sent, so anything else on the page watching for a pick
-can tell the two apart; `dapp/frontend` does exactly that to label its connect button. The drain is
-skipped while a second guard is in flight, since the message would resolve that one's live waiter
-too.
+The `providerId` matches no registered adapter, so it fails with `WalletNotFoundError` before
+reaching a wallet, then rejects out of `waitForWalletPickerRetrySelection` because the popup is
+closed. `walletType` stays `'browser'` to keep it out of the branch that registers a remote adapter
+from the message, and no `name` is sent, so anything else on the page watching for a pick can tell
+the two apart; `example-dapps/amulet-vesting` does exactly that to label its connect button. The
+drain is skipped while a second guard is in flight, since the message would resolve that one's live
+waiter too.
 
 A cancel can land before the popup exists: `connect()` waits ~300 ms on extension discovery before
 it calls the picker. A `connect.cancel` inside that wait finds nothing to close and nothing to

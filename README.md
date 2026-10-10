@@ -23,10 +23,10 @@ A more detailed [step-by-step installation guide](https://docs.dappbooster.cc/in
 
 ## Starting the dev stack
 
-Once Canton dAppBooster is installed, the easiest way to start the development stack is using the `dev-stack` script. It allows you to install, bring up and tear down everything you need in a simple way.
+Once Canton dAppBooster is installed, the easiest way to start the development stack is using the `stack` script. It allows you to install, bring up and tear down everything you need in a simple way.
 
 ```bash
-./scripts/dev-stack.sh
+pnpm stack
 ```
 
 ---

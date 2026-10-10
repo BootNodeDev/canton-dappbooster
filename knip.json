@@ -1,18 +1,30 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["postcss"],
   "ignoreBinaries": ["dpm"],
-  "ignoreWorkspaces": ["dapp/daml"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.mjs!", "kit/**/*.mjs!", ".lintstagedrc.format.mjs"]
+      "entry": ["kit/**/*.mjs!", ".lintstagedrc.format.mjs"],
+      "ignoreDependencies": ["@bootnodedev/canton-barebones"]
     },
     "canton-connect": {
       "entry": ["src/**/*.test.{ts,tsx}"]
     },
     "canton-dappbooster": {
       "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
+    },
+    "canton-create": {
+      "entry": ["src/**/*.test.ts", "scripts/*.ts"],
+      "ignore": ["src/testing/fixtures/**"]
+    },
+    "canton-create/scaffold/starter": {
+      "ignoreDependencies": ["@bootnodedev/canton-theme"]
+    },
+    "canton-create/scaffold/daml-tooling": {
+      "entry": ["scripts/*.mjs!"]
+    },
+    "canton-create/scaffold/localnet": {
+      "entry": ["scripts/*.mjs!"]
     }
   }
 }

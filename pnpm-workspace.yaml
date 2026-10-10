@@ -5,8 +5,9 @@ packages:
   - canton-connect
   - canton-dappbooster
   - canton-theme
-  - dapp/daml
-  - dapp/frontend
+  - canton-create
+  - canton-create/scaffold/*
+  - example-dapps/*
 
 allowBuilds:
   better-sqlite3: true
