@@ -14,7 +14,7 @@
       "entry": ["src/**/*.test.{ts,tsx}", "scripts/*.mjs!"]
     },
     "canton-create": {
-      "entry": ["src/**/*.test.ts"],
+      "entry": ["src/**/*.test.ts", "scripts/*.ts"],
       "ignore": ["src/testing/fixtures/**"]
     },
     "canton-create/scaffold/starter": {
