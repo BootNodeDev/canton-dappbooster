@@ -48,7 +48,8 @@ installer never ships one inside its tarball. Adding one takes:
 - its name, label and hint in `EXAMPLES` in `src/apps.ts`
 - its manifest in `kit/manifests.mjs`, which keeps its version in lockstep with the rest
 
-`pnpm-workspace.yaml` already lists `example-dapps/*`.
+`pnpm-workspace.yaml` already lists `example-dapps/*`, and the root `release` script publishes every
+folder there.
 
 ## Dependencies
 

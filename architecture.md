@@ -156,7 +156,7 @@ What the two cases resolve *to* differs as well. Each TypeScript library's `expo
 directly. The published copy has no such condition, because `publishConfig.exports` overrides the
 map at publish time. A consumer resolves `dist`, which `prepack` builds.
 
-`pnpm run release` publishes the libraries and the installer in dependency order.
+`pnpm run release` publishes the libraries, the installer and the examples in dependency order.
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs it when someone publishes a
 GitHub release. The bump before that is one command,
 [`kit/release-version.mjs`](kit/release-version.mjs). It moves the root, the three libraries, the

@@ -467,9 +467,10 @@ ships `src` and has no such condition, so it needs no override.
 `pnpm publish`, so a stale or missing build cannot ship. It replaced a `prepublishOnly` that failed
 every publish on purpose, back when the `development` condition had no override to strip it.
 
-`pnpm run release` from the root is
-`pnpm -r --filter './canton-*' publish --no-git-checks`. `pnpm -r` walks the workspace in dependency
-order, so `canton-connect` publishes before `canton-dappbooster`, which depends on it.
+`pnpm run release` from the root is `pnpm -r publish --no-git-checks`. It publishes every public
+workspace package and skips the private ones: the root and the `canton-create/scaffold/` folders.
+`pnpm -r` walks the workspace in dependency order, so `canton-connect` publishes before
+`canton-dappbooster`, which depends on it.
 
 **Every public workspace package moves in lockstep**: the root `package.json`, the three libraries,
 `create-canton-dappbooster` and each example. The private `canton-create/scaffold/` folders keep
