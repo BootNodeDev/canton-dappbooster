@@ -1,61 +1,83 @@
-# create-canton-dappbooster
+# Canton dAppBooster installer
 
-Scaffolds a Canton dApp.
+## Requirements
 
-```bash
-npm create canton-dappbooster my-app
-# or
-pnpm create canton-dappbooster my-app --example amulet-vesting --localnet
+- Node >= 24.15.0
+- npm, pnpm, yarn or bun. The installer installs the packages with the one that runs it.
+
+The local network also needs Docker and pnpm, and building a contract needs `dpm`. Check the
+[documentation](https://docs.dappbooster.cc/) for more info.
+
+## Interactive mode
+
+<img src="./demo.svg" width="600" height="395" alt="Terminal recording of the Canton dAppBooster installer.">
+
+```shell
+pnpm create canton-dappbooster
 ```
 
-npm needs `--` before the flags (`npm create canton-dappbooster my-app -- --localnet`); pnpm
-must not get one, because it passes the `--` through and the flags after it are read as folder names.
-`--help` lists every flag.
+The wizard asks for the project name, the local network and the dApp. It then copies the dApp,
+creates `.env` from `.env.example`, installs the packages, makes a git repository with a first
+commit, and prints the next steps. If a step fails, it removes what it wrote.
 
-## What a run does
+Alternatively, you can start with a preselected dApp or local network:
 
-It asks for the folder, the app and the local network when the command line leaves them out (without
-a terminal it asks nothing: the folder is required and the rest default to the starter without a
-local network), copies the app, creates `.env` from `.env.example`, installs the packages with the
-manager that ran it, and makes a git repository with a first commit, as create-next-app does:
-skipped when the folder is already inside a repository, or with `--disable-git`. It ends with the
-next steps. If a step fails, it removes what it wrote.
+- **Amulet Vesting:** a vesting dApp frontend and its contracts.
+- **Barebones:** a minimal local Canton stack for developer workflows.
 
-## What it makes
+```shell
+pnpm create canton-dappbooster --example amulet-vesting   # Amulet Vesting dApp
+pnpm create canton-dappbooster --localnet                 # Barebones local network
+```
 
-The app is the starter: a React + Vite app on `@bootnodedev/canton-connect`,
-`@bootnodedev/canton-dappbooster` and `@bootnodedev/canton-theme`, with a mock wallet so it connects
-before a real one is installed, and a sample DAML contract in `daml/`. An app with a contract also
-gets the scripts that build and deploy it. `--localnet` adds a local Canton stack:
-`@bootnodedev/canton-barebones` for the LocalNet, the Splice Wallet Gateway, and
-`scripts/dev-stack.sh` to drive them.
+With npm, put `--` before the flags: `npm create canton-dappbooster -- --localnet`. With pnpm,
+leave it out, because pnpm passes the `--` on and the installer reads every flag after it as a
+folder name.
 
-`--example <name>` starts from an example instead, a complete app published as
-`@bootnodedev/canton-example-<name>`; the package itself is the app, and the contract scripts and
-the local network go on top of it the same way. A copy already installed where the CLI runs is used
-first, which is how `try` tests an unpublished one. Any spec npm can pack works too.
+## Non-interactive mode (agents and CI)
 
-## How it is built
+Run without an interactive terminal, the installer asks nothing. The installer then needs the folder,
+and the choices the flags leave out take their defaults: the starter dApp and no local network.
 
-The screen is [Ink](https://github.com/vadimdemedes/ink) (React for the terminal). `tsdown` bundles
-it, React included, into `dist/index.js`, so they are `devDependencies` and the published package
-has no dependencies to install.
+| Flag | Purpose |
+|---|---|
+| `[directory]` | Folder to create the project in, new or empty. Required without a terminal |
+| `--example <name>` | Start from an example dApp instead of the starter. Takes a name from the table below, or any spec `npm pack` accepts |
+| `--localnet` | Add the Barebones local network |
+| `--skip-install` | Write the files and stop before installing the packages |
+| `--disable-git` | Skip the git repository. The installer also skips it when the folder is already inside one |
+| `-h`, `--help` | Show the usage text |
 
-## How the scaffold is built
+```shell
+pnpm create canton-dappbooster my-dapp                                       # starter dApp
+pnpm create canton-dappbooster my-dapp --example amulet-vesting --localnet   # Amulet Vesting with Barebones
+```
 
-`scaffold/` holds everything the CLI copies into a new project, in this order:
+### dApps
 
-- `starter/`: the app, a complete project
-- `daml-tooling/`: `build-dar`, `deploy-dar` and `fetch-daml-deps`, added when the app has `daml/daml.yaml`
-- `localnet/`: the local network stack, added with `--localnet` or the checkbox
+| dApp | Flag | Default | Description |
+|---|---|---|---|
+| `Starter dApp` | none | ✓ | Barebones dApp that connects to a wallet and gives you a sample contract |
+| `Amulet Vesting` | `--example amulet-vesting` | | A vesting dApp frontend and its contracts |
 
-Each is a workspace package, so the monorepo typechecks them against the libraries' source; their
-`^<version>` ranges link the local folders here and install from npm in a scaffolded project, the
-same way `example-dapps/amulet-vesting` does. The tarball ships `scaffold/` as it is, minus what
-`files` excludes, so a range there is never rewritten and must never be `workspace:`.
+### Local networks
 
-`daml-tooling/` and `localnet/` may add files and merge `scripts`, `dependencies` and
-`devDependencies` into the app's manifest. `.gitignore` and `README.md` are appended to, and
-`.env.example` gets each block whose keys are not already set. Anything else either would overwrite
-is a conflict, and `scaffold` throws rather than pick a winner. `_gitignore` is renamed back to
-`.gitignore` on the way, because npm would otherwise drop it from the tarball.
+| Local network | Flag | Default | Description |
+|---|---|---|---|
+| `No localnet` | none | ✓ | You provide your own |
+| `Barebones` | `--localnet` | | Minimal local Canton stack for developer workflows |
+
+## Installer development
+
+```shell
+git clone git@github.com:BootNodeDev/canton-dappbooster.git
+cd canton-dappbooster
+nvm use
+corepack enable
+pnpm i
+pnpm -C canton-create try
+```
+
+`try` packs the installer and every example dApp into `canton-create/.try` and prints the commands
+that run them there, as a user would. `pnpm -C canton-create try:clean` stops whatever those
+projects started and removes `.try`.
