@@ -7,8 +7,9 @@
 | LocalNet (external: [BootNodeDev/canton-barebones](https://github.com/BootNodeDev/canton-barebones)) | Node CLI over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned devDependency, scaffolded by `dev-stack.sh` into the gitignored `.canton-localnet/` |
 | Wallet Gateway (external: [canton-network/wallet](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root devDependency, run on the host by `scripts/dev-stack.sh` from `wallet-gateway.config.json` |
 | `scripts/` | Bash + Node | The local loop: `dev-stack.sh`, the Splice dep fetch, the DAR build and upload, the token mint |
-| `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the typedoc configs. Grouped so a consumer scaffold deletes it whole; see [`CLAUDE.md`](CLAUDE.md) |
+| `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the `typedoc` configs. See [`CLAUDE.md`](CLAUDE.md) |
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + zustand + react-router + DAML | Canton Coin **vesting** dApp, published as an example; every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates, escrowing real Canton Coin as a Splice `LockedAmulet`, vendored from [BootNodeDev/cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts); its Splice data-dependencies are fetched, not committed. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
+| `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. It copies `scaffold/starter/` or fetches an example package from npm, then adds `scaffold/daml-tooling/` and `scaffold/localnet/` on top. See [`canton-create/architecture.md`](canton-create/architecture.md) |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the dapp-sdk facade |
 | `canton-dappbooster/` | TypeScript + React 19 + tsdown | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included |
 | `canton-theme/` | CSS | L3 plain-CSS theme: `--cnc-*` tokens + prestyled defaults |
@@ -129,6 +130,17 @@ from a committed file. The Splice checkout and the runtime env land in its `.gen
 
 For the bring-up sequence, follow [`README.md`](README.md).
 
+## Scaffolding
+
+`create-canton-dappbooster` never copies this repo. A project's app is either
+`canton-create/scaffold/starter/` or an example package from npm,
+`@bootnodedev/canton-example-<name>`, published from `example-dapps/<name>/`. The installer adds
+`canton-create/scaffold/daml-tooling/` when the app has a contract and
+`canton-create/scaffold/localnet/` when the user asks for a local network. The libraries then
+install from npm through the app's `^<version>` ranges, the same ranges that link the local folders
+inside this repo. [`canton-create/architecture.md`](canton-create/architecture.md) covers how the
+layers merge.
+
 ## Packaging
 
 `canton-connect`, `canton-dappbooster` and `canton-theme` are three npm packages that also happen to
@@ -137,7 +149,7 @@ sit in this repo. Which copy a consumer gets is decided per install, by version:
 | Where | What resolves | Why |
 | --- | --- | --- |
 | this repo | the local folder, symlinked into `node_modules` | `linkWorkspacePackages: true` in `pnpm-workspace.yaml`, and the folder's `version` satisfies the declared range |
-| a project scaffolded from it | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
+| a project `create-canton-dappbooster` makes | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
 Both cases read the same `package.json`. Nothing in `example-dapps/amulet-vesting` or
 `canton-dappbooster` names a workspace, only a range (`^0.3.1`), which is why the same file works in
@@ -148,12 +160,12 @@ What the two cases resolve *to* differs as well. Each TypeScript library's `expo
 directly. The published copy has no such condition — `publishConfig.exports` overrides the map at
 publish time — so a consumer resolves `dist`, built by `prepack`.
 
-`pnpm run release` publishes the three in dependency order, and
+`pnpm run release` publishes the libraries and the installer in dependency order, and
 [`.github/workflows/release.yml`](.github/workflows/release.yml) is what runs it, on a published
 GitHub release. The bump before that is one command,
-[`kit/release-version.mjs`](kit/release-version.mjs): it moves four versions in lockstep —
-the root and the three libraries — rewrites every range that points at one of them, commits, tags,
-pushes, and leaves a draft release for a human to publish.
+[`kit/release-version.mjs`](kit/release-version.mjs): it moves the root, the three libraries, the
+installer and each example to one version, rewrites every range that points at a library, commits,
+tags, pushes, and leaves a draft release for a human to publish.
 
 The version ranges are the link, so a bump that outruns them turns a local folder into a download
 without saying so. [`kit/check-versions.mjs`](kit/check-versions.mjs) is what catches that,

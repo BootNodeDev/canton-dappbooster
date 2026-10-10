@@ -7,6 +7,7 @@ files are compatibility shims that point here or to a sibling `CLAUDE.md`.
 Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 
 - [`canton-connect/CLAUDE.md`](canton-connect/CLAUDE.md) — wagmi-style React hooks for Canton dApps
+- [`canton-create/CLAUDE.md`](canton-create/CLAUDE.md): the `create-canton-dappbooster` installer, its flag rule, its scaffold rules and its demo recording. How a run works is in [`canton-create/architecture.md`](canton-create/architecture.md)
 - [`canton-dappbooster/CLAUDE.md`](canton-dappbooster/CLAUDE.md) — L2 component authoring and file layout
 - [`canton-theme/CLAUDE.md`](canton-theme/CLAUDE.md) — L3 `--cnc-*` token naming convention
 - [`example-dapps/amulet-vesting/CLAUDE.md`](example-dapps/amulet-vesting/CLAUDE.md) — the vesting example's layout and naming deltas; its seams are in [`example-dapps/amulet-vesting/architecture.md`](example-dapps/amulet-vesting/architecture.md), its DAML in `daml/README.md`
@@ -36,6 +37,7 @@ Current distribution:
 |-------|--------|--------|--------|--------------|----------|
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
 | `canton-connect/` | yes | shim | yes | yes, plus `architecture/` | Public hook API, the machine-owned lifecycle, the picker/adapter seams; chapters for the connection machine and the popup close guard. |
+| `canton-create/` | yes | shim | yes | yes | The `create-canton-dappbooster` installer. `CLAUDE.md` carries the flag rule, the scaffold rules and the demo recording, and `architecture.md` how a run and the scaffold layers fit together. A project reads the `README.md` files in `scaffold/`: `starter/`'s whole, and `daml-tooling/`'s and `localnet/`'s as sections appended to the app's. |
 | `example-dapps/amulet-vesting/` | yes | shim | yes | yes | Canton Coin vesting example, published on its own; `CLAUDE.md` carries the page-owns-its-components layout and the naming rules an agent would otherwise get wrong, architecture.md its internal seams. Its single DAML package (`amulet-vesting`) sits in `daml/` with a `README.md` of its own. `PROVENANCE.md` and `daml/PROVENANCE.md` record the vendored sources. |
 | `canton-dappbooster/` | yes | shim | yes | yes | L2 headless components; `CLAUDE.md` carries the folder-per-component layout an agent would otherwise get wrong, architecture.md the authoring seam (anatomy contract, L2/L3 split, Zag boundary). |
 | `canton-theme/` | yes | shim | yes | no | Plain-CSS theme (L3); README covers the two CSS exports, `CLAUDE.md` the `--cnc-*` naming convention an agent adding a token would otherwise invent. |
@@ -59,7 +61,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 |----------|-----------|-------|
 | Languages | TypeScript, DAML, Bash | TypeScript across the JS subprojects; DAML in each app's `daml/`; Bash and Node for the root `scripts/` and `kit/` |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
-| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node subproject. Root and the four Node subprojects all declare `engines.node` at `>=24.15.0`, which is what jsdom 30 requires |
+| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and `example-dapps/amulet-vesting` declare `engines.node` at `>=24.15.0`, which is what `jsdom` 30 requires. `canton-create` declares `>=22.12.0` |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | Wallet | @canton-network/wallet-gateway-remote | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in root devDependencies, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `wallet-gateway.config.json`. `example-dapps/amulet-vesting` registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | @bootnodedev/canton-barebones | Pinned exact in root devDependencies and reached through `pnpm exec canton-barebones`, so the version is the one in `package.json`. Nothing about its config is committed: `scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`, without which nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
@@ -68,7 +70,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Pre-commit | lint-staged | Two passes from `.husky/pre-commit`, because only the first writes: `.lintstagedrc.format.mjs` runs root Biome (`biome check --write`) across `canton-connect/`, `canton-create/`, `canton-dappbooster/`, `canton-theme/`, `example-dapps/`, `kit/` and `scripts/`, then `.lintstagedrc.mjs` runs the read-only gates — the tests, the doc check and the anatomy check — concurrently. One pass would let a reformat land mid-parse |
 | Pre-push | tsc | Root `.husky/pre-push` runs `pnpm typecheck` (`pnpm -r run --if-present typecheck`, i.e. `tsc` in each Node subproject that defines it) |
 | Secret scanning | gitleaks | Shared `.husky/gitleaks.sh` runs gitleaks in the pre-commit (staged diff) and pre-push (outgoing range) hooks; the pinned version (`.gitleaks-version`) is installed by `scripts/install-gitleaks.sh`, so local and CI use the same rules. Accepted non-secret findings live in `.gitleaksignore` |
-| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports. `postcss` is in `ignoreDependencies` for the reason under `kit/` and the consumer scaffold |
+| Dead code | knip | Root `knip.json` + `pnpm knip`; gates unused files/dependencies/exports |
 | Doc reference + gate | typedoc | `kit/typedoc.json` over `canton-dappbooster` and `canton-connect`, each declaring its entry points in its own `typedoc.json` and extending `kit/typedoc.shared.json` for every option that resolves per package. `pnpm docs:check` validates without emitting; `pnpm docs:build` writes the site to `typedoc/`. One config for both, strict: every validation on, `treatValidationWarningsAsErrors` and `treatWarningsAsErrors` |
 | Doc rules gate | `kit/docs-check.mjs` | `pnpm docs:check` runs it after typedoc. Owns what typedoc cannot see: barrel completeness, `@example` presence and naming by tier, snippet compilation, comment width, tier caps, `@category` values, the `@throws` and anatomy-`@see` requirements, the `@param`/`@returns` refusals, and description presence on exported functions (see the splits below) |
 | Anatomy parity gate | `kit/check-anatomy.mjs` | `pnpm check:anatomy` checks every class and `data-*` selector in `canton-theme` against the `anatomy.parts.*` / `anatomy.states.*` strings in `canton-dappbooster`, and requires each anatomy to be reached by at least one selector. Asymmetric on purpose, for the reason its header gives: an unstyled part is a legitimate consumer hook, so there is no per-part check the other way. `aria-*` states are outside it. A styling gate, not a doc one |
@@ -83,6 +85,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | Path | Purpose | Stack | Port |
 |------|---------|-------|------|
 | [`example-dapps/amulet-vesting/`](example-dapps/amulet-vesting/) | Canton Coin vesting dApp, an example `create-canton-dappbooster` scaffolds, published as `@bootnodedev/canton-example-amulet-vesting`. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`; the operator's factory, the `AmuletRules` and the open mining round all arrive by explicit disclosure. Its `amulet-vesting` DAML model in `daml/` (factory, proposal, contract, residual claim, escrowing Canton Coin as a Splice `LockedAmulet`) is vendored from [cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts), where its scenarios stay. Imported from `cn-dappbooster@feat/vesting-lite` (see its `PROVENANCE.md`). | Vite + React + Ark UI + lucide-react + Tailwind v4 + zustand + react-router + DAML | 3012 |
+| [`canton-create/`](canton-create/) | The `create-canton-dappbooster` installer, published on its own. It copies the starter from `scaffold/starter/` or fetches an example from npm. It then adds `scaffold/daml-tooling/` when the app has a contract, and `scaffold/localnet/` when the user asks for a local network. | TypeScript + Ink + React 19 + `tsdown` + `vitest` | n/a (command-line tool) |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + xstate 5 + Biome | n/a (library) |
 | [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps (tsdown-built, zero styling), plus the light/dark/system theme runtime that drives `data-theme`, plus the pure utilities the components are built on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API; `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + tsdown + vitest + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + prestyled defaults, consumed by importing its CSS. | CSS | n/a (library) |
@@ -395,47 +398,20 @@ package, because only `canton-dappbooster` splits markup from styles across a pa
 - `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, and the three the Wallet Gateway compiles natively — `better-sqlite3`, `cbor-extract` and `secp256k1`. Anything else is blocked until it is added.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
-## `kit/` and the consumer scaffold
+## `kit/`
 
-This repo is two things at once: the development monorepo for the three published libraries, and
-the template a scaffolding installer clones for a consumer. A consumer gets the libraries from npm
-and never sees their source.
+`kit/` holds the root tooling that reads the three libraries' source, scripts and config together.
+That is the doc, anatomy and version gates, the release bump, and the `typedoc` configs. Tooling
+that belongs to one package lives in that package, as `canton-dappbooster/scripts/add-component.mjs`
+does. `manifests.mjs` is in `kit/` because only `check-versions.mjs` and `release-version.mjs`
+import it.
 
-The installer owns what leaves, in
-[`dAppBoosterInstallScript`](https://github.com/BootNodeDev/dAppBoosterInstallScript)'s
-`source/stacks/canton.ts`, and that file is the list, not this one. It deletes the three library
-folders, `kit/`, `.claude/`, `.github/`, every `CLAUDE.md`, `AGENTS.md` and `architecture.md`,
-`renovate.json`, `vercel.json`, `pnpm-lock.yaml` and the `PROVENANCE.md` files. It then rewrites
-`package.json`: any script naming a deleted directory goes automatically, `release` and
-`release:dry` go by name, and `typedoc` and `postcss` go with them.
-
-`kit/` is where the root-level tooling that reads the library source lives, scripts and config
-together, so it leaves with the libraries in one entry rather than a dozen.
-
-Two rules keep that entry whole:
-
-- **Tooling that belongs to one package lives in that package.**
-  `canton-dappbooster/scripts/add-component.mjs` is the example.
-- **`scripts/lib/` stays put.** `fetch-daml-deps.mjs` imports `repoRoot` from `gate.mjs` and
-  survives in a consumer tree, so the folder cannot move. `manifests.mjs` moved to `kit/` because
-  only `check-versions.mjs` and `release-version.mjs` import it, and both left.
-
-What survives, and why it still works with the libraries gone:
-
-- `pnpm test` names both folders, and `node --test` exits 0 on a pattern that matches nothing.
-- `.lintstagedrc.mjs` still calls `docs:check` and `check:anatomy`, but every glob it keys on points
-  inside a deleted library folder, so neither task can fire.
-- `biome.json`, `knip.json` and `.lintstagedrc.format.mjs` name `kit/` in globs that then match
-  nothing.
-- `postcss` stays in knip's `ignoreDependencies` even though the installer removes the dependency
-  too. `kit/check-anatomy.mjs` is its only importer, so the entry is what keeps a consumer tree from
-  failing on an unused root devDependency the day the installer stops removing it. knip only hints
-  here, and hints do not fail without `--treat-config-hints-as-errors`.
-- pnpm ignores a `pnpm-workspace.yaml` `packages:` entry whose folder is missing.
-
-A rule here that a consumer tree cannot satisfy is a bug in this repo *or* in the installer, and the
-two have to move together. Adding a root script that reads a library, or a root devDependency only
-`kit/` imports, means adding it to `source/stacks/canton.ts` in the same breath.
+No project a user creates contains this repo. `create-canton-dappbooster` copies
+`canton-create/scaffold/` and the example packages, so nothing at the root has to keep working
+without the libraries. The root `scripts/` run the monorepo's own loop against
+`example-dapps/amulet-vesting`. `canton-create/scaffold/daml-tooling/scripts/` and
+`canton-create/scaffold/localnet/scripts/` are copies adapted to a project's layout, so a fix to
+one copy usually belongs in the other.
 
 ## Packaging And Publishing
 
@@ -455,8 +431,8 @@ of them links today. That is what lets a single `package.json` serve two readers
 
 - In this repo the three folders exist and are in range, so an edit in `canton-connect/src` shows up
   in the dApp with no build and no republish.
-- In a project scaffolded out of this repo the folders are absent, so pnpm installs the published
-  versions. Nothing in the file changes between the two.
+- In a project `create-canton-dappbooster` makes, the folders are absent, so pnpm installs the
+  published versions. Nothing in the file changes between the two.
 
 That is the whole difference between working here and consuming the kit. A `workspace:*` range would
 break the second case: it is not a range npm can resolve.
@@ -552,11 +528,12 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
   - `example-dapps/amulet-vesting`: `pnpm test` (vitest + jsdom, though it asserts on no DOM: the
     wallet SDK reached through `canton-connect` touches DOM globals on import)
   - `canton-connect`: `pnpm test` (vitest + jsdom)
+  - `canton-create`: `pnpm test` (`vitest` + `ink-testing-library`)
   - `canton-dappbooster`: `pnpm test` (vitest + jsdom + Testing Library)
   - root `scripts/` and `kit/`: covered by the root `pnpm test`, which appends
     `node --test "scripts/**/*.test.mjs" "kit/**/*.test.mjs"` to the fan-out because `pnpm -r` skips
     the root package. The version lockstep check is one of those tests,
-    `kit/check-versions.test.mjs`, for the reason under `kit/` and the consumer scaffold
+    `kit/check-versions.test.mjs`
 - Kit components are tested inside `canton-dappbooster` (vitest + jsdom). `example-dapps/amulet-vesting`'s vitest run covers its pure logic wherever that lives; component/DOM behaviour and app+kit integration are out of scope there.
 - From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). A contract is not a workspace build: `pnpm build-dar` builds the vesting one, and needs `dpm` and a network fetch of the Splice DARs, so CI does not run it.
 - `pnpm docs:check` (typedoc plus `kit/docs-check.mjs`), `pnpm run check:anatomy` and `pnpm run check:versions` do not fan out: each reads the packages it covers directly, and typedoc has one config over both libraries. `pnpm docs:build` writes the reference site to `typedoc/`.
