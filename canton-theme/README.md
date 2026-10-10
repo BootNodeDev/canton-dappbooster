@@ -1,39 +1,28 @@
 # @bootnodedev/canton-theme
 
-Plain-CSS theme (L3) for [`@bootnodedev/canton-dappbooster`](../canton-dappbooster) components. Zero
-JavaScript, zero runtime. Two consumable artifacts:
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its styling layer: the plain-CSS theme for those components. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+
+A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/README.md) components. No JavaScript and no runtime. It ships two files:
 
 | Export | What it is |
 | --- | --- |
-| `@bootnodedev/canton-theme/tokens.css` | `--cnc-*` custom properties — the theming + dark-mode contract |
-| `@bootnodedev/canton-theme/default.css` | prestyled defaults selecting on component part classes; imports `tokens.css` |
+| `@bootnodedev/canton-theme/tokens.css` | the `--cnc-*` custom properties, which are the theming and dark-mode contract |
+| `@bootnodedev/canton-theme/default.css` | prestyled defaults that select on the component part classes; imports `tokens.css` |
 
 ## Usage
 
-Components ship no styling; import the theme once at your app entry:
+The components ship no styling. Import the theme once, at your app entry:
 
 ```ts
 import '@bootnodedev/canton-theme/default.css'
 ```
 
-- `default.css` imports `tokens.css`, so that one line is the whole theme. Import `tokens.css` alone
-  to take the contract without the prestyled defaults. Defining the `--cnc-*` properties yourself
-  instead means setting `color-scheme` directly, one explicit value per mode: it is not a `--cnc-*`
-  property, so skipping it leaves the browser painting scrollbars, form controls, and the caret in
-  the wrong mode.
-- Dark mode activates on `[data-theme="dark"]`. Set that attribute on `<html>`, as early as you can:
-  applied after first paint it flashes. It deliberately does not follow `prefers-color-scheme` by
-  itself, so that a mode toggle can override the OS preference in both directions.
-  [`canton-dappbooster`](../canton-dappbooster)'s `<ThemeProvider>` drives it from React; nothing
-  here depends on that, and setting the attribute yourself is equally valid.
-- Overriding a token means overriding it in both modes. Your `:root` also beats our
-  `[data-theme="dark"]` block, so a light-only override stays applied in dark.
-- The whole package lives under `@layer cnc`, so any unlayered CSS of yours wins without specificity
-  fights, whether you import us first or last.
+- `default.css` imports `tokens.css`, so that one line is the whole theme. Import `tokens.css` on its own if you want the contract without the prestyled defaults. If you define the `--cnc-*` properties yourself instead, remember to set `color-scheme` too, one explicit value per mode. It is not a `--cnc-*` property, and without it the browser paints scrollbars, form controls and the caret in the wrong mode.
+- Dark mode turns on with `[data-theme="dark"]`. Set that attribute on `<html>` as early as you can, because setting it after first paint flashes. The theme deliberately ignores `prefers-color-scheme` on its own, so that a mode toggle can override the OS preference in either direction. The `<ThemeProvider>` in [`canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/README.md) drives the attribute from React, but nothing here depends on it, and setting the attribute yourself works just as well.
+- When you override a token, override it in both modes. Your `:root` block also beats our `[data-theme="dark"]` block, so a light-only override stays in effect in dark mode.
+- Everything in the package sits in `@layer cnc`, so any unlayered CSS of yours wins without a specificity fight, whether you import the theme first or last.
 
-With Tailwind, position the `cnc` layer explicitly. Tailwind otherwise owns the layer order it
-emits, and its preflight resets `button { color: inherit }`, which beats the theme's copy-control
-colours. Declare the order yourself, before the first `@import`:
+With Tailwind, place the `cnc` layer yourself. Otherwise Tailwind controls the order of the layers it emits, and its preflight resets `button { color: inherit }`, which overrides the theme's colors on the copy controls. Declare the order before the first `@import`:
 
 ```css
 @layer properties, theme, base, cnc, components, utilities;
@@ -41,11 +30,8 @@ colours. Declare the order yourself, before the first `@import`:
 @import "tailwindcss";
 ```
 
-Any layer Tailwind emits that the statement omits lands on top of the ones it names, so keep
-`properties` (its `@property` polyfill) in the list.
+Any layer Tailwind emits that is missing from that statement ends up above the ones you listed, so keep `properties` (its `@property` polyfill) in the list.
 
 ## Why a separate package
 
-Components (L2) carry zero styling opinion; the theme (L3) is a separate concern styling the DOM
-contract each component declares in its `anatomy.ts`. See
-[`../canton-dappbooster/architecture.md`](../canton-dappbooster/architecture.md).
+The components (L2) carry no styling opinion. The theme (L3) is a separate concern that styles the DOM contract each component declares in its `anatomy.ts`. See [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md).

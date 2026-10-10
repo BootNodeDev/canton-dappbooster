@@ -1,13 +1,32 @@
 {
   "name": "@bootnodedev/canton-theme",
-  "version": "0.5.5",
-  "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster",
+  "version": "0.5.6",
+  "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster: --cnc-* design tokens, prestyled defaults and dark mode",
+  "keywords": [
+    "canton",
+    "canton-network",
+    "splice",
+    "dapp",
+    "web3",
+    "dappbooster",
+    "bootnode",
+    "css",
+    "theme",
+    "design-tokens",
+    "css-variables",
+    "dark-mode"
+  ],
+  "homepage": "https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-theme#readme",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
     "directory": "canton-theme"
   },
   "license": "MIT",
+  "author": "BootNode (https://canton.bootnode.dev/)",
   "type": "module",
   "private": false,
   "publishConfig": {
