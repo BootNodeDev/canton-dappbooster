@@ -24,6 +24,7 @@ if (PNPM === null) {
 type CastEvent = [seconds: number, kind: 'o', data: string]
 
 const work = mkdtempSync(path.join(tmpdir(), 'canton-create-demo-'))
+process.on('exit', () => rmSync(work, { recursive: true, force: true }))
 const stage = path.join(work, 'stage')
 const shimDir = path.join(work, 'shim')
 mkdirSync(stage)
@@ -188,7 +189,6 @@ const convert = Bun.spawnSync(
   ],
   { stdout: 'inherit', stderr: 'inherit' },
 )
-rmSync(work, { recursive: true, force: true })
 if (convert.exitCode !== 0) {
   throw new Error(`svg-term-cli exited with ${convert.exitCode}`)
 }

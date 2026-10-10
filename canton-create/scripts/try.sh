@@ -99,8 +99,8 @@ TXT
 fi
 cat <<TXT
 
-  The CLI asks for the local network and the dApp, then prints the next steps. To skip the
-  questions, pass --localnet, --example <name>, --skip-install or --disable-git (after a -- with npm).
+  The CLI asks for the local network and the dApp, then prints the next steps. --localnet and
+  --example <name> answer those questions, and --help lists every flag (after a -- with npm).
 TXT
 printf '\nDone trying? pnpm -C canton-create try:clean  (stops the stack, resets the LocalNet, removes %s)\n' "$rel"
 }
