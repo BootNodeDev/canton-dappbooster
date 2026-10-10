@@ -40,7 +40,7 @@ L2 headless components; styling is L3, in [`canton-theme`](../canton-theme). See
 
 ## Authoring a component
 
-Root [`CLAUDE.md`](../CLAUDE.md) owns the general rules under Authoring a Component or Hook, including
+Root [`CLAUDE.md`](../CLAUDE.md) owns the general rules under Authoring a component or hook, including
 accessibility and markup semantics. The styling contract they defer to is this:
 
 `node canton-dappbooster/scripts/add-component.mjs <Name>` from the repo root writes steps 1, 2, and
