@@ -10,7 +10,7 @@
 // because a live region carries its own inline sr-only. What is never legitimate is a component the
 // theme ignores entirely, so each anatomy object has to be reached by at least one selector.
 //
-// Usage: node kit/check-anatomy.mjs
+// Usage: node scripts/check-anatomy.mjs
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'

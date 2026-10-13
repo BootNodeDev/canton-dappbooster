@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm stack` scaffolds its config into the gitignored `.canton-localnet/` |
 | Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm stack` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
-| `kit/` | Node + JSON | The tooling that reads the three libraries' source: the doc, anatomy and version gates, the release bump, and the `typedoc` configs. See [`CLAUDE.md`](CLAUDE.md) |
+| `scripts/` | Node + Bash + JSON | The root tooling: the doc, anatomy and version checks, the release bump, the `typedoc` configs and the gitleaks installer. See [`CLAUDE.md`](CLAUDE.md) |
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Daml | Canton Coin **vesting** dApp, published as an example. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates. They hold real Canton Coin in escrow as a Splice `LockedAmulet`, and come vendored from [`BootNodeDev/cc-vesting-contracts`](https://github.com/BootNodeDev/cc-vesting-contracts). The build fetches its Splice data-dependencies rather than committing them. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
 | `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. Its `scaffold/daml-tooling/` and `scaffold/localnet/` scripts are also the local loop: the Splice dependency fetch, the DAR build and upload, the token mint and `dev-stack.sh`. See [`canton-create/architecture.md`](canton-create/architecture.md) |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the `dapp-sdk` facade |
@@ -159,11 +159,11 @@ map at publish time. A consumer resolves `dist`, which `prepack` builds.
 `pnpm run release` publishes the libraries, the installer and the examples in dependency order.
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs it when someone publishes a
 GitHub release. The bump before that is one command,
-[`kit/release-version.mjs`](kit/release-version.mjs). It moves the root, the three libraries, the
-installer and each example to one version, and rewrites every range that points at a library. Then
-it commits, tags, pushes, and leaves a draft release for a human to publish.
+[`scripts/release-version.mjs`](scripts/release-version.mjs). It moves the root, the three
+libraries, the installer and each example to one version, and rewrites every range that points at
+a library. Then it commits, tags, pushes, and leaves a draft release for a human to publish.
 
 The version ranges are the link, so a bump that outruns them turns a local folder into a download
-without saying so. [`kit/check-versions.mjs`](kit/check-versions.mjs) catches that, in `pnpm test`
-and in the PR job. It doubles as the release workflow's check that the tag and the manifests agree.
-The packaging rules in [`CLAUDE.md`](CLAUDE.md) cover the rest.
+without saying so. [`scripts/check-versions.mjs`](scripts/check-versions.mjs) catches that, in
+`pnpm test` and in the PR job. It doubles as the release workflow's check that the tag and the
+manifests agree. The packaging rules in [`CLAUDE.md`](CLAUDE.md) cover the rest.

@@ -4,7 +4,7 @@
 // pushes and opens a *draft* GitHub release. Publishing that draft is the one irreversible step and
 // stays a human click: .github/workflows/release.yml runs on `release: published`.
 //
-// Usage: node kit/release-version.mjs 0.4.0
+// Usage: node scripts/release-version.mjs 0.4.0
 //
 // Spell the version as a plain argument. `pnpm run release:version -- 0.4.0` forwards the separator
 // into argv, so the version arrives as `--` (the deploy-dar note in CLAUDE.md); that is rejected
@@ -23,7 +23,7 @@ const SEMVER =
 export const parseVersion = (argument) => {
   if (typeof argument !== 'string' || !SEMVER.test(argument)) {
     throw new Error(
-      `not a version: ${argument ?? '(none)'}. Usage: node kit/release-version.mjs 0.4.0`,
+      `not a version: ${argument ?? '(none)'}. Usage: node scripts/release-version.mjs 0.4.0`,
     )
   }
   return argument

@@ -46,7 +46,7 @@ installer never ships one inside its tarball. Adding one takes:
 - the app in `example-dapps/<name>/`, with a `files` list naming what it publishes and
   `publishConfig.access: "public"`
 - its name, label and hint in `EXAMPLES` in `src/apps.ts`
-- its manifest in `kit/manifests.mjs`, which keeps its version in lockstep with the rest
+- its manifest in `scripts/manifests.mjs`, which keeps its version in lockstep with the rest
 
 `pnpm-workspace.yaml` already lists `example-dapps/*`, and the root `release` script publishes every
 folder there.

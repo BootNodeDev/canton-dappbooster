@@ -7,7 +7,7 @@
 // Given a version argument it also requires the root and every library to be on it, which is how
 // .github/workflows/release.yml refuses a release whose tag and manifests disagree.
 //
-// Usage: node kit/check-versions.mjs [expected-version]
+// Usage: node scripts/check-versions.mjs [expected-version]
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

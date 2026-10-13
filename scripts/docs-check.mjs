@@ -8,7 +8,7 @@
 // vocabulary is typedoc's outright — typedoc.shared.json is the allow-list. See the Doc blocks
 // section of root CLAUDE.md for both splits.
 //
-// Usage: node kit/docs-check.mjs
+// Usage: node scripts/docs-check.mjs
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'

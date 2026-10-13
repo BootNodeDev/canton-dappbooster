@@ -4,7 +4,7 @@
   "ignoreBinaries": ["dpm"],
   "workspaces": {
     ".": {
-      "entry": ["kit/**/*.mjs!", ".lintstagedrc.format.mjs"],
+      "entry": ["scripts/*.mjs!", ".lintstagedrc.format.mjs"],
       "ignoreDependencies": ["@bootnodedev/canton-barebones"]
     },
     "canton-connect": {

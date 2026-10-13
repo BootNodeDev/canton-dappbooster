@@ -3,8 +3,6 @@ import { describe, it } from 'node:test'
 import { findDrift } from './check-versions.mjs'
 import { readManifests } from './manifests.mjs'
 
-// A test rather than a second command in the root `test` script, which would name a file a consumer
-// scaffold deletes. See the `kit/` section of root CLAUDE.md.
 const manifests = readManifests()
 
 describe('version lockstep', () => {
