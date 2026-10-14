@@ -59,6 +59,10 @@ export const fetchExample = async (
   if (packed === undefined) {
     throw new Error(`npm pack produced nothing for ${spec}`)
   }
-  await run('tar', ['-xzf', path.join(workDir, packed.filename), '-C', workDir], { signal })
-  return path.join(workDir, 'package')
+  const appDir = path.join(workDir, 'app')
+  fs.mkdirSync(appDir)
+  // A tarball npm did not build keeps its own top folder instead of `package/`.
+  const archive = path.join(workDir, packed.filename)
+  await run('tar', ['-xzf', archive, '-C', appDir, '--strip-components=1'], { signal })
+  return appDir
 }

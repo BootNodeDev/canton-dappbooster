@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -69,6 +70,18 @@ describe('resolveExampleSpec', () => {
 describe('fetchExample', () => {
   it('packs the example and hands back the package, which is the app', async () => {
     const appDir = await fetchExample(fixture, work)
+
+    expect(fs.existsSync(path.join(appDir, 'package.json'))).toBe(true)
+    expect(fs.existsSync(path.join(appDir, 'src/index.ts'))).toBe(true)
+  })
+
+  it('takes a tarball whose top folder is not package/', async () => {
+    const archiveDir = path.join(work, 'archive')
+    fs.cpSync(fixture, path.join(archiveDir, 'repo-sha'), { recursive: true })
+    const tarball = path.join(archiveDir, 'repo-sha.tar.gz')
+    execFileSync('tar', ['-czf', tarball, '-C', archiveDir, 'repo-sha'])
+
+    const appDir = await fetchExample(tarball, work)
 
     expect(fs.existsSync(path.join(appDir, 'package.json'))).toBe(true)
     expect(fs.existsSync(path.join(appDir, 'src/index.ts'))).toBe(true)
