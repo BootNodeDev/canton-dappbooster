@@ -27,10 +27,25 @@ export const readProject = (dir: string): ProjectFacts => {
   }
 }
 
-/** Undoes a failed run: deletes the folder it created, or empties the one it was given except `.git`. */
-export const removeScaffold = (dir: string, existedBefore: boolean): void => {
-  if (!existedBefore) {
-    fs.rmSync(dir, { recursive: true, force: true })
+/** The highest folder on the way to `dir` that does not exist yet, or `undefined` when `dir` does. */
+export const firstMissingFolder = (dir: string): string | undefined => {
+  if (fs.existsSync(dir)) {
+    return undefined
+  }
+  let missing = dir
+  while (!fs.existsSync(path.dirname(missing))) {
+    missing = path.dirname(missing)
+  }
+  return missing
+}
+
+/**
+ * Undoes a failed run: deletes the folders it created from `created` down, or empties the one it
+ * was given except `.git`.
+ */
+export const removeScaffold = (dir: string, created: string | undefined): void => {
+  if (created !== undefined) {
+    fs.rmSync(created, { recursive: true, force: true })
     return
   }
   for (const name of fs.readdirSync(dir)) {

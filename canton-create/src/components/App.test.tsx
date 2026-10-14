@@ -262,4 +262,16 @@ describe('App', () => {
 
     expect(fs.existsSync(target)).toBe(false)
   })
+
+  it('removes every folder it created on the way to a nested target', async () => {
+    const { frames } = run({
+      directory: path.join(work, 'a/b/c'),
+      app: fixture,
+      localnet: true,
+      scaffoldDir: path.join(work, 'missing'),
+    })
+
+    await waitFor(() => frames.join('\n'), '✗')
+    await waitUntilGone(path.join(work, 'a'))
+  })
 })

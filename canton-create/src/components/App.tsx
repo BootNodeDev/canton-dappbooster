@@ -17,7 +17,7 @@ import { createEnvFile } from '#src/env'
 import { fetchExample, resolveExampleSpec } from '#src/example'
 import { gitSkipReason, initGit } from '#src/git'
 import { install as installPackages, type PackageManager } from '#src/packageManager'
-import { readProject, removeScaffold } from '#src/projectDirectory'
+import { firstMissingFolder, readProject, removeScaffold } from '#src/projectDirectory'
 import { scaffold } from '#src/scaffold'
 
 const theme = extendTheme(defaultTheme, {
@@ -142,8 +142,8 @@ export const App = ({
   const [finished, setFinished] = useState(0)
 
   const ready = directory !== undefined && app !== undefined && localnet !== undefined
-  const existedBefore = useMemo(
-    () => directory !== undefined && fs.existsSync(path.resolve(directory)),
+  const created = useMemo(
+    () => (directory !== undefined ? firstMissingFolder(path.resolve(directory)) : undefined),
     [directory],
   )
   const sections = useMemo(
@@ -171,11 +171,11 @@ export const App = ({
   const fail = useCallback(
     (error: unknown) => {
       if (directory !== undefined) {
-        removeScaffold(path.resolve(directory), existedBefore)
+        removeScaffold(path.resolve(directory), created)
       }
       exit(error instanceof Error ? error : new Error(String(error)))
     },
-    [directory, existedBefore, exit],
+    [directory, created, exit],
   )
   // A step the abort cannot stop still finishes, and no step starts after it.
   const next = useCallback(() => {

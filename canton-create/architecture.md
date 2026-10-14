@@ -22,8 +22,8 @@ Mercurial repository. Git without an `init.defaultBranch` setting gets `main`. I
 commit fails, the installer removes the new `.git` and warns, and the run still succeeds.
 
 When a section fails, the screen shows the error, and the installer removes what it wrote. If the
-run created the folder, the installer deletes it. If the folder existed and was empty, the
-installer empties it again. Ctrl-C cancels the same way: the install or the example fetch stops,
+run created the folder, the installer deletes it, along with any parent folders the run created.
+If the folder existed and was empty, the installer empties it again. Ctrl-C cancels the same way: the install or the example fetch stops,
 no later section starts, and the installer exits with 130.
 
 After the last section, `PostInstall` prints the next steps. It reads the finished project
