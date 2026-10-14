@@ -7,10 +7,15 @@ const run = promisify(execFile)
 
 const EXAMPLE_SCOPE = '@bootnodedev/canton-example-'
 const PACKAGE_NAME = /^(@[a-z0-9-]+\/)?[a-z0-9][a-z0-9.-]*$/
+const UNSCOPED_NAME = /^[a-z0-9][a-z0-9._-]*(@[^:/@]+)?$/
+const TARBALL_FILE = /\.(tgz|tar\.gz|tar)$/
 
-/** A bare name means a published example; anything else is passed to npm as it is. */
+/**
+ * An unscoped name, with or without a version, means a published example, never another package
+ * of that name; anything else is passed to npm as it is.
+ */
 export const resolveExampleSpec = (input: string): string =>
-  /^[a-z][a-z0-9-]*$/.test(input) ? `${EXAMPLE_SCOPE}${input}` : input
+  UNSCOPED_NAME.test(input) && !TARBALL_FILE.test(input) ? `${EXAMPLE_SCOPE}${input}` : input
 
 // Only for a package name: a local folder spec would resolve to a working tree, node_modules included.
 const installedExample = (spec: string, cwd: string): string | undefined => {

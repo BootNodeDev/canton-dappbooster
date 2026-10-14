@@ -32,10 +32,23 @@ describe('resolveExampleSpec', () => {
     expect(resolveExampleSpec('amulet-vesting')).toBe('@bootnodedev/canton-example-amulet-vesting')
   })
 
-  it('passes anything npm would understand through untouched', () => {
-    expect(resolveExampleSpec('@acme/thing@1.2.3')).toBe('@acme/thing@1.2.3')
-    expect(resolveExampleSpec('./local/dir')).toBe('./local/dir')
-    expect(resolveExampleSpec('https://x.test/pkg.tgz')).toBe('https://x.test/pkg.tgz')
+  it.each(['amulet-vesting@0.5.6', 'amulet-vesting@^0.5.0', 'amulet-vesting@latest', 'foo.js@1'])(
+    'maps %s onto the scope too, version and all',
+    (input) => {
+      expect(resolveExampleSpec(input)).toBe(`@bootnodedev/canton-example-${input}`)
+    },
+  )
+
+  it.each([
+    '@acme/thing@1.2.3',
+    './local/dir',
+    'https://x.test/pkg.tgz',
+    'pkg.tgz',
+    'github:acme/thing',
+    'acme/thing',
+    'git@github.com:acme/thing.git',
+  ])('passes %s through untouched', (input) => {
+    expect(resolveExampleSpec(input)).toBe(input)
   })
 })
 
