@@ -43,7 +43,7 @@ take the defaults marked below.
 | Flag | Purpose |
 |---|---|
 | `[directory]` | Folder to create the project in, new or empty. Required without a terminal |
-| `--example <name>` | Start from an example dApp instead of the starter. Takes a name from the table below, with an optional `@<version>`. It also takes a scoped package, a tarball, a git URL or a folder |
+| `--example <name>` | Start from an example dApp instead of the starter. The value is a name from the table below, with or without `@<version>`, or a scoped package, a tarball, a git URL or a folder |
 | `--localnet` | Add the Barebones local network |
 | `--skip-install` | Write the files and stop before installing the packages |
 | `--disable-git` | Skip the git repository. The installer also skips it when the folder is already inside one |

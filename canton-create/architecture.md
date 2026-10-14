@@ -57,10 +57,11 @@ source. Their ranges resolve as the Packaging section of the root
 ## Examples
 
 An example is an app published on its own, so the installer fetches it rather than ships it.
-`resolveExampleSpec` in `src/example.ts` turns an unscoped name such as `amulet-vesting` or
-`amulet-vesting@0.5.6` into `@bootnodedev/canton-example-amulet-vesting`, version included. Passed
-through, an unscoped name would fetch whoever owns it on npm, so it only ever means an example. Any
-other spec passes through. `fetchExample`
-then uses a copy already installed where the installer runs, which is how `pnpm try` serves an
-unpublished example. Otherwise it runs `npm pack` on the spec and extracts the tarball. The
-package folder is the app, and the layers go on top of it the same way they go on the starter.
+`resolveExampleSpec` in `src/example.ts` adds the `@bootnodedev/canton-example-` scope to an
+unscoped name, with or without a version, so `amulet-vesting@0.5.6` becomes
+`@bootnodedev/canton-example-amulet-vesting@0.5.6`. Only BootNode can publish under that scope. If
+the installer sent an unscoped name to npm as typed, npm would fetch whatever package owns that
+name. Any other spec goes to npm as typed: a scoped name, a tarball, a git URL or a folder.
+`fetchExample` then uses a copy already installed where the installer runs, which is how `pnpm try`
+serves an unpublished example. Otherwise it runs `npm pack` on the spec and extracts the tarball.
+The package folder is the app, and the layers go on top of it the same way they go on the starter.

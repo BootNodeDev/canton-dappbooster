@@ -12,7 +12,7 @@ const TARBALL_FILE = /\.(tgz|tar\.gz|tar)$/
 
 /**
  * An unscoped name, with or without a version, means a published example, never another package
- * of that name; anything else is passed to npm as it is.
+ * of that name; anything else goes to npm as typed.
  */
 export const resolveExampleSpec = (input: string): string =>
   UNSCOPED_NAME.test(input) && !TARBALL_FILE.test(input) ? `${EXAMPLE_SCOPE}${input}` : input
