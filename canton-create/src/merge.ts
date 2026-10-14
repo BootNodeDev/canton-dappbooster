@@ -8,7 +8,10 @@ const ENV_ASSIGNMENT = /^([A-Za-z_][A-Za-z0-9_]*)=/gm
 const assignedKeys = (text: string): string[] =>
   [...text.matchAll(ENV_ASSIGNMENT)].map(([, key]) => key as string)
 
-/** Appends a layer's `.env.example` blocks, leaving out a block whose every key is already set. */
+/**
+ * Appends a layer's `.env.example` blocks, leaving out a block whose every key is already set. A
+ * block setting only some of them would write those keys twice, so it throws.
+ */
 export const mergeEnvExample = (current: string, layer: string): string => {
   const assigned = new Set(assignedKeys(current))
   const added = layer
@@ -17,7 +20,13 @@ export const mergeEnvExample = (current: string, layer: string): string => {
     .filter((block) => block !== '')
     .filter((block) => {
       const keys = assignedKeys(block)
-      return keys.length === 0 || keys.some((key) => !assigned.has(key))
+      const alreadySet = keys.filter((key) => assigned.has(key))
+      if (alreadySet.length > 0 && alreadySet.length < keys.length) {
+        throw new ScaffoldConflictError(
+          `fragment redefines .env.example keys beside new ones: ${alreadySet.join(', ')}`,
+        )
+      }
+      return alreadySet.length === 0
     })
   return added.length === 0 ? current : `${current.trimEnd()}\n\n${added.join('\n\n')}\n`
 }

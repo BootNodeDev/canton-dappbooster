@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeEnvExample } from '#src/merge'
+import { mergeEnvExample, ScaffoldConflictError } from '#src/merge'
 
 describe('mergeEnvExample', () => {
   it('appends a block that sets a new key', () => {
@@ -8,6 +8,10 @@ describe('mergeEnvExample', () => {
 
   it('leaves out a block whose every key is already set', () => {
     expect(mergeEnvExample('A=1\nB=2\n', '# A and B\nA=3\nB=4\n\nC=5\n')).toBe('A=1\nB=2\n\nC=5\n')
+  })
+
+  it('refuses a block that sets a key already set beside a new one', () => {
+    expect(() => mergeEnvExample('A=1\n', 'A=2\nB=3\n')).toThrow(ScaffoldConflictError)
   })
 
   it('does not count a commented-out key as set', () => {
