@@ -20,7 +20,8 @@ together, see [`architecture.md`](architecture.md).
   manifest. It never redefines a key an earlier layer set. `scaffold` appends to `.gitignore` and
   `README.md`, and merges `.env.example` by key, leaving out a block whose keys the file already
   sets. Any other overwrite is a design error in `scaffold/`, and `scaffold` throws
-  `ScaffoldConflictError`.
+  `ScaffoldConflictError`. So does any other field in a layer's `package.json`, apart from the
+  layer's own `name`, `private`, `version` and `type`, because the merge would drop it.
 - A layer's `README.md` is a section that gets appended, so it starts with a `##` heading and never
   with a title.
 - The root range rule has no exception in `scaffold/`: the tarball ships the folders as they are, so

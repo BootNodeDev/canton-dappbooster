@@ -23,6 +23,8 @@ export const mergeEnvExample = (current: string, layer: string): string => {
 }
 
 const MERGED_FIELDS = ['scripts', 'dependencies', 'devDependencies'] as const
+// A layer's own name, privacy, version and module type describe the layer, not the project.
+const LAYER_FIELDS = new Set<string>([...MERGED_FIELDS, 'name', 'private', 'version', 'type'])
 
 type Manifest = Record<string, unknown>
 type Field = Record<string, string>
@@ -46,6 +48,12 @@ const mergeField = (name: string, base: Field, fragment: Field): Field => {
 }
 
 export const mergeManifests = (base: Manifest, fragment: Manifest): Manifest => {
+  const dropped = Object.keys(fragment).filter((key) => !LAYER_FIELDS.has(key))
+  if (dropped.length > 0) {
+    throw new ScaffoldConflictError(
+      `fragment sets fields the merge would drop: ${dropped.join(', ')}`,
+    )
+  }
   const merged: Manifest = { ...base }
   for (const field of MERGED_FIELDS) {
     const fromBase = (base[field] ?? {}) as Field

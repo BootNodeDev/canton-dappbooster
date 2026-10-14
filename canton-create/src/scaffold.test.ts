@@ -214,4 +214,20 @@ describe('the layer rule', () => {
       }),
     ).toThrow(/redefines scripts: dev/)
   })
+
+  it('refuses a layer manifest field the merge would drop', () => {
+    const scaffoldDir = fakeScaffold({
+      'localnet/package.json': JSON.stringify({ engines: { node: '>=24' } }),
+    })
+
+    expect(() =>
+      scaffold({
+        projectName: 'x',
+        targetDir: path.join(work, 'out'),
+        appDir: path.join(scaffoldDir, 'starter'),
+        scaffoldDir,
+        localnet: true,
+      }),
+    ).toThrow(/would drop: engines/)
+  })
 })
