@@ -22,17 +22,30 @@ export const runScript = (manager: PackageManager, script: string): string =>
 const OUTPUT_LINES_ON_FAILURE = 20
 
 // Output is captured, not inherited: it would draw over the Ink screen.
-export const install = (manager: PackageManager, cwd: string): Promise<void> =>
+export const install = (
+  manager: PackageManager,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<void> =>
   new Promise((resolve, reject) => {
-    const child = spawn(manager, ['install'], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(manager, ['install'], { cwd, stdio: ['ignore', 'pipe', 'pipe'], signal })
     let output = ''
     const collect = (chunk: Buffer): void => {
       output += chunk.toString()
     }
     child.stdout.on('data', collect)
     child.stderr.on('data', collect)
-    child.on('error', reject)
+    // An abort settles on close, once the child has exited and the folder it wrote into can go.
+    child.on('error', (error) => {
+      if (!signal?.aborted) {
+        reject(error)
+      }
+    })
     child.on('close', (code) => {
+      if (signal?.aborted) {
+        reject(signal.reason)
+        return
+      }
       if (code === 0) {
         resolve()
         return

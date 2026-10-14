@@ -19,7 +19,7 @@ pnpm create canton-dappbooster
 
 The wizard asks for the project name, the local network and the dApp. It then copies the dApp,
 creates `.env` from `.env.example`, installs the packages, makes a git repository with a first
-commit, and prints the next steps. If a step fails, it removes what it wrote.
+commit, and prints the next steps. If a step fails or you press Ctrl-C, it removes what it wrote.
 
 Alternatively, you can start with a preselected dApp or local network:
 

@@ -34,23 +34,21 @@ export const fetchExample = async (
   spec: string,
   workDir: string,
   cwd = process.cwd(),
+  signal?: AbortSignal,
 ): Promise<string> => {
   const installed = installedExample(spec, cwd)
   if (installed !== undefined) {
     return installed
   }
-  const { stdout } = await run('npm', [
-    'pack',
-    spec,
-    '--pack-destination',
-    workDir,
-    '--json',
-    '--ignore-scripts',
-  ])
+  const { stdout } = await run(
+    'npm',
+    ['pack', spec, '--pack-destination', workDir, '--json', '--ignore-scripts'],
+    { signal },
+  )
   const [packed] = JSON.parse(stdout) as { filename: string }[]
   if (packed === undefined) {
     throw new Error(`npm pack produced nothing for ${spec}`)
   }
-  await run('tar', ['-xzf', path.join(workDir, packed.filename), '-C', workDir])
+  await run('tar', ['-xzf', path.join(workDir, packed.filename), '-C', workDir], { signal })
   return path.join(workDir, 'package')
 }

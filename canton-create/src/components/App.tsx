@@ -2,9 +2,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { defaultTheme, extendTheme, ThemeProvider } from '@inkjs/ui'
-import { Box, useApp } from 'ink'
+import { Box, useApp, useInput, useStdin } from 'ink'
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react'
 import { STARTER } from '#src/apps'
+import { CancelledError } from '#src/CancelledError'
 import { AppSelect } from '#src/components/AppSelect'
 import { SCREEN_WIDTH } from '#src/components/Divider'
 import { LocalnetSelect } from '#src/components/LocalnetSelect'
@@ -36,6 +37,7 @@ export interface AppProps {
 }
 
 interface Plan {
+  signal: AbortSignal
   directory: string
   app: string
   localnet: boolean
@@ -64,7 +66,7 @@ const sectionsFor = (plan: Plan): SectionPlan[] => {
           if (app !== STARTER) {
             const spec = resolveExampleSpec(app)
             progress.step(`Fetching ${spec}`)
-            appDir = await fetchExample(spec, workDir)
+            appDir = await fetchExample(spec, workDir, undefined, plan.signal)
           }
           progress.step(`Copying ${app} into ${plan.directory}`)
           scaffold({
@@ -89,7 +91,7 @@ const sectionsFor = (plan: Plan): SectionPlan[] => {
       title: 'Installation',
       run: async (progress) => {
         progress.step(`Installing packages with ${manager}`)
-        await installPackages(manager, targetDir)
+        await installPackages(manager, targetDir, plan.signal)
       },
     })
   }
@@ -111,7 +113,14 @@ const sectionsFor = (plan: Plan): SectionPlan[] => {
     })
   }
 
-  return sections
+  // A cancelled step shows why it stopped, whatever error the abort raised inside it.
+  return sections.map((section) => ({
+    ...section,
+    run: (progress) =>
+      section.run(progress).catch((error: unknown) => {
+        throw plan.signal.aborted ? plan.signal.reason : error
+      }),
+  }))
 }
 
 /** The whole run: title, the questions the flags left open, each section in turn, then next steps. */
@@ -125,6 +134,8 @@ export const App = ({
   git,
 }: AppProps): ReactElement => {
   const { exit } = useApp()
+  const { isRawModeSupported } = useStdin()
+  const controller = useMemo(() => new AbortController(), [])
   const [directory, setDirectory] = useState(givenDirectory)
   const [app, setApp] = useState(givenApp)
   const [localnet, setLocalnet] = useState(givenLocalnet)
@@ -137,8 +148,19 @@ export const App = ({
   )
   const sections = useMemo(
     () =>
-      ready ? sectionsFor({ directory, app, localnet, scaffoldDir, manager, install, git }) : [],
-    [ready, directory, app, localnet, scaffoldDir, manager, install, git],
+      ready
+        ? sectionsFor({
+            signal: controller.signal,
+            directory,
+            app,
+            localnet,
+            scaffoldDir,
+            manager,
+            install,
+            git,
+          })
+        : [],
+    [controller, ready, directory, app, localnet, scaffoldDir, manager, install, git],
   )
   const done = ready && finished === sections.length
   const project = useMemo(
@@ -146,7 +168,6 @@ export const App = ({
     [done, directory],
   )
 
-  const next = useCallback(() => setFinished((count) => count + 1), [])
   const fail = useCallback(
     (error: unknown) => {
       if (directory !== undefined) {
@@ -156,6 +177,37 @@ export const App = ({
     },
     [directory, existedBefore, exit],
   )
+  // A step the abort cannot stop still finishes, and no step starts after it.
+  const next = useCallback(() => {
+    if (controller.signal.aborted) {
+      fail(controller.signal.reason)
+      return
+    }
+    setFinished((count) => count + 1)
+  }, [controller, fail])
+
+  const cancel = useCallback(() => {
+    if (!ready || done) {
+      exit(new CancelledError())
+      return
+    }
+    controller.abort(new CancelledError())
+  }, [controller, ready, done, exit])
+  // In raw mode Ctrl-C arrives as a key; without a terminal it arrives as SIGINT.
+  useInput(
+    (input, key) => {
+      if (key.ctrl && input === 'c') {
+        cancel()
+      }
+    },
+    { isActive: isRawModeSupported },
+  )
+  useEffect(() => {
+    process.on('SIGINT', cancel)
+    return () => {
+      process.off('SIGINT', cancel)
+    }
+  }, [cancel])
 
   useEffect(() => {
     if (done) {

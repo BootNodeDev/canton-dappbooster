@@ -3,6 +3,7 @@ import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { render } from 'ink'
 import { EXAMPLES, STARTER } from '#src/apps'
+import { CancelledError } from '#src/CancelledError'
 import { App } from '#src/components/App'
 import { detectPackageManager } from '#src/packageManager'
 import { isEmptyDir } from '#src/projectDirectory'
@@ -62,10 +63,11 @@ const main = async (): Promise<void> => {
       install={values['skip-install'] !== true}
       git={values['disable-git'] !== true}
     />,
+    { exitOnCtrlC: false },
   )
   // The screen already shows what failed.
-  await waitUntilExit().catch(() => {
-    process.exitCode = 1
+  await waitUntilExit().catch((error: unknown) => {
+    process.exitCode = error instanceof CancelledError ? 130 : 1
   })
 }
 
