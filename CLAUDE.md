@@ -480,8 +480,8 @@ version arrives as `--`. In order, it:
 
 1. refuses a malformed version, a dirty working tree, or a `v0.4.0` tag that already exists
 2. writes the version into every public manifest, and rewrites every range pointing at a library to
-   `^0.4.0`. It reads the manifests listed in `scripts/manifests.mjs`, and a library is any of them
-   that is not private. A new workspace package has to go on that list, or the bump skips it
+   `^0.4.0`. It reads every workspace package `pnpm ls -r` lists, the same packages
+   `pnpm -r publish` walks, and a library is any of them that is not private
 3. runs `pnpm install`, then commits the manifests and `pnpm-lock.yaml` as `release: v0.4.0`, tags
    `v0.4.0`, and pushes the branch and the tag
 4. opens a **draft** GitHub release with generated notes, `--prerelease` when the version has a
