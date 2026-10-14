@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@bootnodedev/canton-barebones": "0.6.0",
     "@canton-network/wallet-gateway-remote": "1.11.3",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",

@@ -169,9 +169,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.15
         version: 2.5.15
-      '@bootnodedev/canton-barebones':
-        specifier: 0.6.0
-        version: 0.6.0
       '@canton-network/wallet-gateway-remote':
         specifier: 1.11.3
         version: 1.11.3(@types/node@26.6.4)(debug@4.4.3(supports-color@8.1.1))(jiti@2.7.0)(lightningcss@1.33.0)(supports-color@8.1.1)(yaml@2.9.1)

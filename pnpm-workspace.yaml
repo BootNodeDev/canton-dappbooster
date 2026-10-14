@@ -9,6 +9,10 @@ packages:
   - canton-create/scaffold/*
   - example-dapps/*
 
+# Only the localnet layer declares it; hoisted so the root scripts and `pnpm exec` reach that copy.
+publicHoistPattern:
+  - '@bootnodedev/canton-barebones'
+
 allowBuilds:
   better-sqlite3: true
   cbor-extract: true
