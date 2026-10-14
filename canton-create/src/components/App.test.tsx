@@ -128,13 +128,14 @@ const run = (flags: Flags) =>
 describe('App', () => {
   it('scaffolds what the flags name and ends with the next steps', async () => {
     const target = path.join(work, 'my-app')
-    const { lastFrame } = run({ directory: target, app: 'starter', localnet: false })
+    const { frames } = run({ directory: target, app: 'starter', localnet: false })
+    const screen = () => frames.join('\n')
 
-    await waitFor(lastFrame, 'Post-install instructions')
+    await waitFor(screen, 'Post-install instructions')
 
-    expect(lastFrame()).toContain('✔ Copying starter')
-    expect(lastFrame()).toContain('Install the packages with npm install')
-    expect(lastFrame()).toContain('Mock Wallet')
+    expect(screen()).toContain('✔ Copying starter')
+    expect(screen()).toContain('Install the packages with npm install')
+    expect(screen()).toContain('Mock Wallet')
     expect(fs.existsSync(path.join(target, '.env'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'scripts/build-dar.mjs'))).toBe(true)
   })
@@ -172,13 +173,14 @@ describe('App', () => {
 
   it('starts from an example instead of the starter', async () => {
     const target = path.join(work, 'from-example')
-    const { lastFrame } = run({ directory: target, app: fixture, localnet: false })
+    const { frames } = run({ directory: target, app: fixture, localnet: false })
+    const screen = () => frames.join('\n')
 
-    await waitFor(lastFrame, 'Post-install instructions')
+    await waitFor(screen, 'Post-install instructions')
 
-    expect(lastFrame()).toContain('Fetching')
-    expect(lastFrame()).toContain('Point .env at your network')
-    expect(lastFrame()).not.toContain('Mock Wallet')
+    expect(screen()).toContain('Fetching')
+    expect(screen()).toContain('Point .env at your network')
+    expect(screen()).not.toContain('Mock Wallet')
     expect(fs.existsSync(path.join(target, 'src/index.ts'))).toBe(true)
   })
 
