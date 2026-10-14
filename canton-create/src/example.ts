@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -9,6 +10,9 @@ const EXAMPLE_SCOPE = '@bootnodedev/canton-example-'
 const PACKAGE_NAME = /^(@[a-z0-9-]+\/)?[a-z0-9][a-z0-9.-]*$/
 const UNSCOPED_NAME = /^[a-z0-9][a-z0-9._-]*(@[^:/@]+)?$/
 const TARBALL_FILE = /\.(tgz|tar\.gz|tar)$/
+const INSTALLER_VERSION: string = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, '..', 'package.json'), 'utf8'),
+).version
 
 /**
  * An unscoped name, with or without a version, means a published example, never another package
@@ -24,16 +28,17 @@ const installedExample = (spec: string, cwd: string): string | undefined => {
   }
   try {
     const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${spec}/package.json`)
-    return path.dirname(manifest)
+    const { version } = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+    return version === INSTALLER_VERSION ? path.dirname(manifest) : undefined
   } catch {
     return undefined
   }
 }
 
 /**
- * The folder holding an example's app: the copy already installed where the CLI runs, as `try`
- * arranges, else the package `npm pack` fetches into `workDir`. `npm pack` takes any spec npm
- * understands: a name, a tarball URL or a local directory.
+ * The folder holding an example's app: a copy on the installer's own version already installed
+ * where the CLI runs, as `try` arranges, else the package `npm pack` fetches into `workDir`.
+ * `npm pack` takes any spec npm understands: a name, a tarball URL or a local directory.
  */
 export const fetchExample = async (
   spec: string,

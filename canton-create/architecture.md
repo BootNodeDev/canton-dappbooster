@@ -63,5 +63,7 @@ unscoped name, with or without a version, so `amulet-vesting@0.5.6` becomes
 the installer sent an unscoped name to npm as typed, npm would fetch whatever package owns that
 name. Any other spec goes to npm as typed: a scoped name, a tarball, a git URL or a folder.
 `fetchExample` then uses a copy already installed where the installer runs, which is how `pnpm try`
-serves an unpublished example. Otherwise it runs `npm pack` on the spec and extracts the tarball.
-The package folder is the app, and the layers go on top of it the same way they go on the starter.
+serves an unpublished example. It takes that copy only when its version matches the installer's,
+since Node finds it in any parent folder's `node_modules`. Otherwise it runs `npm pack` on the spec
+and extracts the tarball. The package folder is the app, and the layers go on top of it the same
+way they go on the starter.

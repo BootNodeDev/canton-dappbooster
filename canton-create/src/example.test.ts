@@ -1,12 +1,25 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchExample, resolveExampleSpec } from '#src/example'
 import { scaffold } from '#src/scaffold'
 import { type PackedScaffold, packScaffold } from '#src/testing/packedScaffold'
 
 const fixture = path.resolve(import.meta.dirname, 'testing/fixtures/example-hello')
+const { version } = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, '../package.json'), 'utf8'),
+)
+
+const installExample = (dir: string, installedVersion: string): string => {
+  const installed = path.join(dir, 'node_modules/@bootnodedev/canton-example-hello')
+  fs.mkdirSync(installed, { recursive: true })
+  fs.writeFileSync(
+    path.join(installed, 'package.json'),
+    JSON.stringify({ name: 'installed', version: installedVersion }),
+  )
+  return installed
+}
 
 let packed: PackedScaffold
 let work: string
@@ -24,6 +37,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   fs.rmSync(work, { recursive: true, force: true })
 })
 
@@ -60,14 +74,27 @@ describe('fetchExample', () => {
     expect(fs.existsSync(path.join(appDir, 'src/index.ts'))).toBe(true)
   })
 
-  it('uses a copy already installed where it runs, without npm', async () => {
-    const installed = path.join(work, 'node_modules/@bootnodedev/canton-example-hello')
-    fs.mkdirSync(installed, { recursive: true })
-    fs.writeFileSync(path.join(installed, 'package.json'), '{"name":"installed"}')
+  it('uses a copy on its own version already installed where it runs, without npm', async () => {
+    const installed = installExample(work, version)
 
     const appDir = await fetchExample('@bootnodedev/canton-example-hello', work, work)
 
     expect(fs.realpathSync(appDir)).toBe(fs.realpathSync(installed))
+  })
+
+  it('asks npm when the installed copy is on another version', async () => {
+    installExample(work, '0.0.1')
+    const bin = path.join(work, 'bin')
+    const npmArgs = path.join(work, 'npm-args')
+    fs.mkdirSync(bin)
+    fs.writeFileSync(path.join(bin, 'npm'), `#!/bin/sh\necho "$@" > "${npmArgs}"\nexit 1\n`, {
+      mode: 0o755,
+    })
+    vi.stubEnv('PATH', `${bin}${path.delimiter}${process.env.PATH}`)
+
+    await expect(fetchExample('@bootnodedev/canton-example-hello', work, work)).rejects.toThrow()
+
+    expect(fs.readFileSync(npmArgs, 'utf8')).toContain('pack @bootnodedev/canton-example-hello')
   })
 })
 
