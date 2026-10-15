@@ -148,8 +148,8 @@ sit in this repo. Each install picks which copy a consumer gets, by version:
 | a project `create-canton-dappbooster` makes | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
 Both cases read the same `package.json`. Nothing in `example-dapps/amulet-vesting` or
-`canton-dappbooster` names a workspace, only a range (`^0.3.1`). That is why the same file works in
-a repo that has the folders and in one that does not.
+`canton-dappbooster` names a workspace, only a range (`^` plus the libraries' version). That is why
+the same file works in a repo that has the folders and in one that does not.
 
 What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a
 `development` condition pointing at `src`, so the dApp's Vite and `tsc` compile library source

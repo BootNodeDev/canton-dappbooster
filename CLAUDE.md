@@ -432,8 +432,8 @@ ships the text, and the repo holds one copy.
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
 `linkWorkspacePackages: true`. So pnpm links the local folder whenever that folder's own `version`
 satisfies the range, and downloads from npm when it does not. `example-dapps/amulet-vesting` and
-`canton-dappbooster` both ask for `^0.3.1`, and the three folders are all on `0.3.1`, so every one
-of them links today. That is what lets a single `package.json` serve two readers:
+`canton-dappbooster` both ask for `^` plus the version the three folders are on, so every one of
+them links today. That is what lets a single `package.json` serve two readers:
 
 - In this repo the three folders exist and are in range. An edit in `canton-connect/src` then shows
   up in the dApp with no build and no republish.
@@ -443,13 +443,14 @@ of them links today. That is what lets a single `package.json` serve two readers
 That is the whole difference between working here and consuming the kit. A `workspace:*` range would
 break the second case: it is not a range npm can resolve.
 
-**Bumping a library past its declared range silently stops linking it.** Set `canton-connect` to
-`0.4.0` and leave the `^0.3.1` in `canton-dappbooster` and `example-dapps/amulet-vesting`. The next
-install then stops linking the folder and pulls `0.3.x` off npm instead. Local edits then have no
-visible effect, and nothing about the install says so. A version bump therefore has to update every
-range that points at that package in the same commit. That is what `scripts/release-version.mjs`
-below does, and what `pnpm run check:versions` refuses to let drift. To check it, look for the
-symlink: `ls -l example-dapps/amulet-vesting/node_modules/@bootnodedev/`.
+**Bumping a library past its declared range silently stops linking it.** Move `canton-connect` to
+the next minor version and leave the old range in `canton-dappbooster` and
+`example-dapps/amulet-vesting`. The next install then stops linking the folder and pulls the old
+version off npm instead. Local edits then have no visible effect, and nothing about the install
+says so. A version bump therefore has to update every range that points at that package in the
+same commit. That is what `scripts/release-version.mjs` below does, and what
+`pnpm run check:versions` refuses to let drift. To check it, look for the symlink:
+`ls -l example-dapps/amulet-vesting/node_modules/@bootnodedev/`.
 
 **A library's top-level `exports` is for us; `publishConfig.exports` is for consumers.** Top-level
 carries the `development` condition that points at `src`. The dev loop compiles through it, and
@@ -497,15 +498,15 @@ then runs `pnpm lint`, `pnpm typecheck` and `pnpm test`, and publishes with the 
 script. `--no-git-checks` is what lets it publish from that detached HEAD.
 
 **Publishing authenticates to npm through OIDC trusted publishing, so there is no token and no repo
-secret.** Each of the three
-packages has a trusted publisher on npmjs.com naming this repo and the workflow file. The job
-proves it is that workflow with a short-lived OIDC token. `id-token: write` in the top-level
-`permissions` is what lets it request one, and without that key the publish fails with no token to
-fall back on. `setup-node`'s `registry-url` is still needed: it writes the `.npmrc` that
-points pnpm at npmjs.org.
+secret.** Each published package has a trusted publisher on npmjs.com naming this repo and the
+workflow file. The job proves it is that workflow with a short-lived OIDC token. `id-token: write`
+in the top-level `permissions` is what lets it request one, and without that key the publish fails
+with no token to fall back on. `setup-node`'s `registry-url` is still needed: it writes the
+`.npmrc` that points pnpm at npmjs.org.
 
 **Those npmjs.com entries name `release.yml` by filename.** Renaming or moving the workflow breaks
-publishing until someone updates all three to match, and nothing in this repo can warn about it.
+publishing until someone updates every one of them to match, and nothing in this repo can warn
+about it.
 
 **Every published package declares `repository`, with its own `directory`.** Trusted publishing
 attaches a Sigstore provenance bundle naming the repository the build came from. The registry compares
