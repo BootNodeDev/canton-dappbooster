@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "vcs": {
     "clientKind": "git",
@@ -12,9 +12,9 @@
       "canton-connect/**",
       "canton-dappbooster/**",
       "canton-theme/**",
-      "dapp/frontend/**",
-      "kit/**",
+      "example-dapps/**",
       "scripts/**",
+      "canton-create/**",
       "!**/api-specs",
       "!**/*.svg"
     ]
@@ -47,7 +47,7 @@
   },
   "overrides": [
     {
-      "includes": ["kit/**", "**/scripts/**", "**/*.d.ts"],
+      "includes": ["**/scripts/**", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -63,7 +63,7 @@
       }
     },
     {
-      "includes": ["dapp/frontend/**"],
+      "includes": ["example-dapps/**"],
       "css": {
         "parser": {
           "cssModules": false,
@@ -110,7 +110,7 @@
       }
     },
     {
-      "includes": ["dapp/frontend/**"],
+      "includes": ["example-dapps/**"],
       "linter": {
         "rules": {
           "style": {
@@ -172,7 +172,7 @@
       }
     },
     {
-      "includes": ["dapp/frontend/src/**", "!**/*.test.ts", "!**/*.test.tsx", "!**/testing/**"],
+      "includes": ["example-dapps/*/src/**", "!**/*.test.ts", "!**/*.test.tsx", "!**/testing/**"],
       "linter": {
         "rules": {
           "style": {

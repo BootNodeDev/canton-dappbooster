@@ -1,0 +1,68 @@
+import { execFile } from 'node:child_process'
+import fs from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { promisify } from 'node:util'
+
+const run = promisify(execFile)
+
+const EXAMPLE_SCOPE = '@bootnodedev/canton-example-'
+const PACKAGE_NAME = /^(@[a-z0-9-]+\/)?[a-z0-9][a-z0-9.-]*$/
+const UNSCOPED_NAME = /^[a-z0-9][a-z0-9._-]*(@[^:/@]+)?$/
+const TARBALL_FILE = /\.(tgz|tar\.gz|tar)$/
+const INSTALLER_VERSION: string = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, '..', 'package.json'), 'utf8'),
+).version
+
+/**
+ * An unscoped name, with or without a version, means a published example, never another package
+ * of that name; anything else goes to npm as typed.
+ */
+export const resolveExampleSpec = (input: string): string =>
+  UNSCOPED_NAME.test(input) && !TARBALL_FILE.test(input) ? `${EXAMPLE_SCOPE}${input}` : input
+
+// Only for a package name: a local folder spec would resolve to a working tree, node_modules included.
+const installedExample = (spec: string, cwd: string): string | undefined => {
+  if (!PACKAGE_NAME.test(spec)) {
+    return undefined
+  }
+  try {
+    const manifest = createRequire(path.join(cwd, 'package.json')).resolve(`${spec}/package.json`)
+    const { version } = JSON.parse(fs.readFileSync(manifest, 'utf8'))
+    return version === INSTALLER_VERSION ? path.dirname(manifest) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The folder holding an example's app: a copy on the installer's own version already installed
+ * where the CLI runs, as `try` arranges, else the package `npm pack` fetches into `workDir`.
+ * `npm pack` takes any spec npm understands: a name, a tarball URL or a local directory.
+ */
+export const fetchExample = async (
+  spec: string,
+  workDir: string,
+  cwd = process.cwd(),
+  signal?: AbortSignal,
+): Promise<string> => {
+  const installed = installedExample(spec, cwd)
+  if (installed !== undefined) {
+    return installed
+  }
+  const { stdout } = await run(
+    'npm',
+    ['pack', spec, '--pack-destination', workDir, '--json', '--ignore-scripts'],
+    { signal },
+  )
+  const [packed] = JSON.parse(stdout) as { filename: string }[]
+  if (packed === undefined) {
+    throw new Error(`npm pack produced nothing for ${spec}`)
+  }
+  const appDir = path.join(workDir, 'app')
+  fs.mkdirSync(appDir)
+  // A tarball npm did not build keeps its own top folder instead of `package/`.
+  const archive = path.join(workDir, packed.filename)
+  await run('tar', ['-xzf', archive, '-C', appDir, '--strip-components=1'], { signal })
+  return appDir
+}

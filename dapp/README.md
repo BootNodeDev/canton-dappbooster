@@ -1,3 +1,0 @@
-# dApp
-
-Minimal dApp

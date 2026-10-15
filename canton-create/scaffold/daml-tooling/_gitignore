@@ -1,0 +1,4 @@
+
+# DAML build output and the fetched Splice DARs
+daml/.daml/
+daml/deps/

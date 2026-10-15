@@ -5,8 +5,13 @@ packages:
   - canton-connect
   - canton-dappbooster
   - canton-theme
-  - dapp/daml
-  - dapp/frontend
+  - canton-create
+  - canton-create/scaffold/*
+  - example-dapps/*
+
+# Only the localnet layer declares it; hoisted so the root scripts and `pnpm exec` reach that copy.
+publicHoistPattern:
+  - '@bootnodedev/canton-barebones'
 
 allowBuilds:
   better-sqlite3: true

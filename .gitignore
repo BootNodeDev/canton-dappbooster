@@ -12,6 +12,9 @@ typedoc/
 # canton-barebones: its scaffolded config, the Splice checkout and the runtime env
 .canton-localnet/
 
+# dev-stack.sh: logs of the background processes it starts
+.dev-stack/
+
 # wallet-gateway: its sqlite wallet and signing stores
 .wallet-gateway/
 
@@ -47,11 +50,15 @@ docs/
 **/.playwright-mcp/
 test-results/
 playwright-report/
-# stray captures land at the repo root; no tracked image belongs there
-/*.png
 
 # brainstorming visual companion
 .superpowers/
 
 # vitest coverage output
 coverage/
+
+# canton-create: the sandbox try.sh installs the packed CLI into
+canton-create/.try/
+# the DAML starter's build output and fetched DARs
+canton-create/scaffold/starter/daml/.daml/
+canton-create/scaffold/starter/daml/deps/

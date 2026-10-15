@@ -1,0 +1,18 @@
+module Main where
+
+-- A minimal template to prove the loop: build, upload, exercise from the dApp.
+template Asset
+  with
+    issuer : Party
+    owner : Party
+    name : Text
+  where
+    signatory issuer
+    observer owner
+
+    choice Give : ContractId Asset
+      with
+        newOwner : Party
+      controller owner
+      do
+        create this with owner = newOwner
