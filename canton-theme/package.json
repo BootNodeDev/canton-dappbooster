@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-theme",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "description": "Plain-CSS theme for @bootnodedev/canton-dappbooster: --cnc-* design tokens, prestyled defaults and dark mode",
   "keywords": [
     "canton",
