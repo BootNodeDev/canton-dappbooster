@@ -37,7 +37,7 @@ if [ ! -f "$DAR_PATH" ]; then
 fi
 
 if [ -z "$token" ]; then
-  echo "CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run mint-token" >&2
+  echo "deploy-dar needs CANTON_BACKEND_TOKEN: set it in .env to a JWT your participant accepts. On a LocalNet, pnpm stack up or pnpm run mint-token makes one." >&2
   exit 1
 fi
 
