@@ -395,6 +395,11 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   a `--` wherever it sits. `create-canton-dappbooster` drops it too, because `pnpm create` forwards
   it the same way.
 - Local ports: the dApp dev server on 3012 and Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
+- **A new workspace package gets a line in both pre-commit configs, in the same change.**
+  `.lintstagedrc.format.mjs` lists every folder Biome formats, and `.lintstagedrc.mjs` maps each
+  package's files to its tests. Neither finds a package by itself, and CI still passing hides the
+  gap: `canton-create` and the scaffold's script tests went in without a test entry. A new folder
+  under `example-dapps/` needs nothing, since both files already cover `example-dapps/*`.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` carries no `@canton-network/*` overrides. `canton-connect`'s `@canton-network/*` dependencies (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. It pins both its `core-types` and its `dapp-sdk` dev dependencies exact, not caret. Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.
 - **`@walletconnect/sign-client` is a required peer of `canton-connect`, on purpose, even though
