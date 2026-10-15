@@ -26,14 +26,19 @@ Alternatively, you can start with a preselected dApp or local network:
 - **Amulet Vesting:** a vesting dApp frontend and its contracts.
 - **Barebones:** a minimal local Canton stack for developer workflows.
 
+With npm:
+
+```shell
+npm create canton-dappbooster -- --example amulet-vesting   # Amulet Vesting dApp
+npm create canton-dappbooster -- --localnet                 # Barebones local network
+```
+
+With pnpm:
+
 ```shell
 pnpm create canton-dappbooster --example amulet-vesting   # Amulet Vesting dApp
 pnpm create canton-dappbooster --localnet                 # Barebones local network
 ```
-
-With npm, put `--` before the flags: `npm create canton-dappbooster -- --localnet`. With pnpm,
-leave it out, because pnpm passes the `--` on and the installer reads every flag after it as a
-folder name.
 
 ## Non-interactive mode (agents and CI)
 
