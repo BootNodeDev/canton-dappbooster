@@ -116,11 +116,18 @@ const main = () => {
   if (build.status === 0) {
     return
   }
-
-  if (sdk === pin) {
-    fail(`the build failed on Daml SDK ${sdk}.`)
+  if (build.error !== undefined) {
+    fail(`dpm build could not run: ${build.error.code}.`, `Reinstall it: ${DPM_INSTALL_DOCS}`)
   }
-  fail(`the build failed on Daml SDK ${sdk}.`, `It is tested on ${pin}: dpm install ${pin}`)
+  if (build.signal !== null) {
+    fail(`the build on Daml SDK ${sdk} was killed by ${build.signal}.`)
+  }
+
+  const failed = `the build failed on Daml SDK ${sdk} with exit code ${build.status}.`
+  if (sdk === pin) {
+    fail(failed)
+  }
+  fail(failed, `It is tested on ${pin}: dpm install ${pin}`)
 }
 
 // argv[1] keeps a symlink that import.meta.filename resolves, so compare real paths.
