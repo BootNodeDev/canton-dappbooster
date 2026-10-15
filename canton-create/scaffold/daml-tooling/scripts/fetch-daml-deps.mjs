@@ -138,8 +138,7 @@ const main = () => {
   }
 }
 
-// `import.meta.filename` rather than a `file://` template around argv[1]: the two disagree the
-// moment the project path holds a space, and then the fetch silently no-ops.
-if (import.meta.filename === process.argv[1]) {
+// argv[1] keeps a symlink that import.meta.filename resolves, so compare real paths.
+if (fs.realpathSync(process.argv[1]) === import.meta.filename) {
   main()
 }

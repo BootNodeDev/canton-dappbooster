@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { after, describe, it } from 'node:test'
 import { applyRequiredFlags, needsRescaffold } from './localnet-config.mjs'
 
 const template = {
@@ -42,5 +46,17 @@ describe('LocalNet config scaffolding', () => {
   it('refuses a config shape the flags no longer fit', () => {
     // A silently skipped flag is the failure this whole script exists to stop.
     assert.throws(() => applyRequiredFlags({ ...template, sv: {} }), /sv\.scanUI is not in the/)
+  })
+
+  it('scaffolds when run through a symlinked folder whose path holds a space', () => {
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'localnet config '))
+    after(() => fs.rmSync(work, { recursive: true, force: true }))
+    const link = path.join(work, 'scripts link')
+    fs.symlinkSync(import.meta.dirname, link)
+    const target = path.join(work, 'localnet')
+
+    execFileSync(process.execPath, [path.join(link, 'localnet-config.mjs'), target])
+
+    assert.ok(fs.existsSync(path.join(target, 'canton-barebones.config.json')))
   })
 })

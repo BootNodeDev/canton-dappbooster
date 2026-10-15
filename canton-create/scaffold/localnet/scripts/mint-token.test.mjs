@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { describe, it } from 'node:test'
+import { after, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { createCantonToken } from './mint-token.mjs'
 
@@ -51,5 +53,23 @@ describe('Canton token generation', () => {
     assert.match(output, /eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/)
     assert.match(output, /CANTON_BACKEND_TOKEN=/)
     assert.match(output, /wallet LocalNet settings/)
+  })
+
+  it('runs through a symlinked folder whose path holds a space', () => {
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mint token '))
+    after(() => fs.rmSync(work, { recursive: true, force: true }))
+    const link = path.join(work, 'scripts link')
+    fs.symlinkSync(__dirname, link)
+
+    const output = execFileSync(process.execPath, [path.join(link, 'mint-token.mjs')], {
+      env: {
+        ...process.env,
+        CANTON_AUTH_AUDIENCE: 'https://canton.network.global',
+        CANTON_AUTH_SECRET: 'unsafe',
+      },
+      encoding: 'utf8',
+    })
+
+    assert.match(output, /CANTON_BACKEND_TOKEN=eyJ/)
   })
 })

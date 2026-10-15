@@ -123,7 +123,7 @@ const main = () => {
   fail(`the build failed on Daml SDK ${sdk}.`, `It is tested on ${pin}: dpm install ${pin}`)
 }
 
-// `import.meta.filename` rather than a `file://` template around argv[1], as in fetch-daml-deps.mjs.
-if (import.meta.filename === process.argv[1]) {
+// argv[1] keeps a symlink that import.meta.filename resolves, so compare real paths.
+if (fs.realpathSync(process.argv[1]) === import.meta.filename) {
   main()
 }

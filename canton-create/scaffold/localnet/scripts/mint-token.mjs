@@ -80,6 +80,7 @@ const main = () => {
   )
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// argv[1] keeps a symlink that import.meta.filename resolves, so compare real paths.
+if (fs.realpathSync(process.argv[1]) === import.meta.filename) {
   main()
 }
