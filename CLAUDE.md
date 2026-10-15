@@ -390,8 +390,10 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 - **A `pnpm run` alias takes no arguments.** pnpm forwards the `--` separator to the script, so an
   alias over something reading `argv` mints the wrong thing in silence: `pnpm run mint-token --
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
-  subject in. `deploy-dar` is the one exception and handles it with an explicit `[ "$1" = "--" ] &&
-  shift`, which is what lets it take `-- <dar>`.
+  subject in. `deploy-dar` and `stack` are the exceptions. `deploy-dar.sh` drops a leading `--`
+  with `[ "$1" = "--" ] && shift`, which is what lets it take `-- <dar>`, and `dev-stack.sh` drops
+  a `--` wherever it sits. `create-canton-dappbooster` drops it too, because `pnpm create` forwards
+  it the same way.
 - Local ports: the dApp dev server on 3012 and Wallet Gateway on 3030. Do not change either without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
 - Treat the single root `pnpm-lock.yaml` as authoritative. Do not regenerate it as part of unrelated changes, and do not reintroduce per-package lockfiles.
 - `pnpm-workspace.yaml` carries no `@canton-network/*` overrides. `canton-connect`'s `@canton-network/*` dependencies (`dapp-sdk`, `core-types`) live on the ranges in its own `package.json`; bump those directly and test the connect flow. It pins both its `core-types` and its `dapp-sdk` dev dependencies exact, not caret. Renovate's `@canton-network/**` hold only blocks version PRs, so a caret let lock file maintenance re-resolve the SDK past the hold (PR #79). The peer ranges stay caret so consumers keep a range, which is why the peer says `^1.4.0` while the pinned dev dependency is `1.5.1`.

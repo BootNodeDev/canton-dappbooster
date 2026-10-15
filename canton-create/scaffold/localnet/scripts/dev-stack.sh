@@ -75,8 +75,7 @@ if [ -f "$DAML_DIR/daml.yaml" ]; then
 fi
 DAR_PATH="$DAML_DIR/.daml/dist/$DAR_NAME"
 
-# Flags are pulled out before the positional arguments, so `up --json <dir>` and
-# `up <dir> --json` both work.
+# Flags and the `--` pnpm forwards come out first, so `up --json <dir>` and `up <dir> --json` work.
 JSON_MODE=0
 QUIET_MODE=0
 ARGS=()
@@ -84,6 +83,7 @@ for arg in "$@"; do
   case "$arg" in
     --json)  JSON_MODE=1 ;;
     --quiet) QUIET_MODE=1 ;;
+    --)      ;;
     *)       ARGS+=("$arg") ;;
   esac
 done

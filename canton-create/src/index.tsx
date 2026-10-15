@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import path from 'node:path'
-import { parseArgs } from 'node:util'
 import { render } from 'ink'
 import { EXAMPLES, STARTER } from '#src/apps'
 import { CancelledError } from '#src/CancelledError'
+import { parseCliArgs } from '#src/cliArgs'
 import { App } from '#src/components/App'
 import { detectPackageManager } from '#src/packageManager'
 import { isEmptyDir } from '#src/projectDirectory'
@@ -29,23 +29,13 @@ const fail = (message: string): never => {
 }
 
 const main = async (): Promise<void> => {
-  const { values, positionals } = parseArgs({
-    allowPositionals: true,
-    options: {
-      'disable-git': { type: 'boolean' },
-      example: { type: 'string' },
-      help: { type: 'boolean', short: 'h' },
-      localnet: { type: 'boolean' },
-      'skip-install': { type: 'boolean' },
-    },
-  })
+  const { values, directory } = parseCliArgs(process.argv.slice(2))
   if (values.help === true) {
     process.stdout.write(USAGE)
     return
   }
 
   const interactive = process.stdin.isTTY === true
-  const directory = positionals[0]
   if (directory === undefined && !interactive) {
     fail(USAGE)
   }
