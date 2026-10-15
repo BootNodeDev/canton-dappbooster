@@ -13,10 +13,10 @@ Canton dAppBooster is an open-source local development stack and boilerplate by 
 
 ## Installation
 
-Run the install script and follow the on-screen instructions.
+Run the installer and follow the on-screen instructions.
 
 ```bash
-pnpm dlx dappbooster --canton
+pnpm create canton-dappbooster
 ```
 
 A more detailed [step-by-step installation guide](https://docs.dappbooster.cc/installation/step-by-step) is available in the [documentation](https://docs.dappbooster.cc/).
