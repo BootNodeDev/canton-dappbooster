@@ -26,6 +26,7 @@ Use one reader per doc type, layered by scope:
 |------|-------------------|-------------------|
 | `README.md` | Human: what is this and how does someone run it? | Every unit that builds, runs, publishes or tests on its own gets one. A subproject's README covers only that unit and links to the root README for shared setup. |
 | `CLAUDE.md` | Agent: what local rules change how an agent edits here? | Root always. Subproject only when local conventions differ from root enough that an agent editing only that directory would get it wrong. Deltas only; link upward for repo-wide rules. |
+| `CONTRIBUTING.md` | Human: how does someone work on this repo? | Root only. Setup, the local development command and the checks to run before a PR. A user creating a project reads the README instead. |
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, control flow that takes explaining, or named abstractions. |
 | `architecture/<topic>.md` | Human or agent editing one subsystem: how does it behave in full? | Only beside an `architecture.md` that indexes it, when a section outgrows the seam it describes. The index keeps the seam and links the page; no page without its index entry. |
@@ -35,7 +36,7 @@ Current distribution:
 
 | Scope | README | AGENTS | CLAUDE | architecture | Decision |
 |-------|--------|--------|--------|--------------|----------|
-| root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. |
+| root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. `CONTRIBUTING.md` covers working on the repo. |
 | `canton-connect/` | yes | shim | yes | yes, plus `architecture/` | Public hook API, the machine-owned lifecycle, the picker/adapter seams; pages for the connection machine and the popup close guard. |
 | `canton-create/` | yes | shim | yes | yes | The `create-canton-dappbooster` installer. `CLAUDE.md` carries the flag rule, the scaffold rules and the demo recording, and `architecture.md` how a run and the scaffold layers fit together. A project reads the `README.md` files in `scaffold/`: `starter/`'s whole, and `daml-tooling/`'s and `localnet/`'s as sections appended to the app's. |
 | `example-dapps/amulet-vesting/` | yes | shim | yes | yes | Canton Coin vesting example, published on its own. `CLAUDE.md` carries the page-owns-its-components layout and the naming rules an agent would otherwise get wrong, and architecture.md its internal seams. Its single Daml package (`amulet-vesting`) sits in `daml/` with a `README.md` of its own. `PROVENANCE.md` and `daml/PROVENANCE.md` record the vendored sources. |
@@ -92,11 +93,11 @@ A README may state that a contract exists and link to it. It may not restate it.
 
 Two things the loop needs are not subprojects but dependencies. The LocalNet ships from
 [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones) as a dev
-dependency pinned in `canton-create/scaffold/localnet/`. `pnpm stack` scaffolds its config into
+dependency pinned in `canton-create/scaffold/localnet/`. `pnpm dev:amulet-vesting` scaffolds its config into
 the gitignored `.canton-localnet/` and drives it there. The wallet ships from
 [`canton-network/wallet`](https://github.com/canton-network/wallet) as
 `@canton-network/wallet-gateway-remote` and installs from npm as a root dev dependency.
-`pnpm stack` runs it on port 3030 through `pnpm run wallet-gateway`.
+`pnpm dev:amulet-vesting` runs it on port 3030 through `pnpm run wallet-gateway`.
 
 ## Code style
 
@@ -356,12 +357,12 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`, and `stack` runs them all. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The root `package.json` is the whole local loop, in order: `mint-token`, `build-dar`, `deploy-dar -- <dar>`, `bootstrap`, `app:dev`, and `dev:amulet-vesting` runs them all. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
 - **The LocalNet is not in this repository, and neither is its config.** It is
   `@bootnodedev/canton-barebones`, a pinned dev dependency driven with `start` / `stop` / `reset` in
   the directory holding `canton-barebones.config.json`. `up` scaffolds that directory itself through
   `localnet-config.mjs`, at the gitignored `.canton-localnet/`, so nobody edits or commits it.
-  `pnpm stack` shells out to it in the directory given as a path-shaped first argument, which also opens the menu, the normal way to drive the stack. Otherwise it uses a second
+  `pnpm dev:amulet-vesting` shells out to it in the directory given as a path-shaped first argument, which also opens the menu, the normal way to drive the stack. Otherwise it uses a second
   argument after the command, and then `CANTON_LOCALNET_DIR`. The command-line tool reads its
   config from its own working directory and writes the Splice checkout and the runtime env beside
   it, under `.generated/`.
@@ -390,7 +391,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 - **A `pnpm run` alias takes no arguments.** pnpm forwards the `--` separator to the script, so an
   alias over something reading `argv` mints the wrong thing in silence: `pnpm run mint-token --
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
-  subject in. `deploy-dar` and `stack` are the exceptions. `deploy-dar.sh` drops a leading `--`
+  subject in. `deploy-dar` and `dev:amulet-vesting` are the exceptions. `deploy-dar.sh` drops a leading `--`
   with `[ "$1" = "--" ] && shift`, which is what lets it take `-- <dar>`, and `dev-stack.sh` drops
   a `--` wherever it sits. `create-canton-dappbooster` drops it too, because `pnpm create` forwards
   it the same way.
@@ -424,7 +425,7 @@ No project a user creates contains this repo. `create-canton-dappbooster` copies
 `canton-create/scaffold/` and the example packages, so nothing at the root has to keep working
 without the libraries. The monorepo's own loop runs the scaffold's scripts on
 `example-dapps/amulet-vesting`, so each script exists once: the root `mint-token`, `build-dar`,
-`deploy-dar` and `stack` scripts set `CANTON_APP_DIR` to that folder.
+`deploy-dar` and `dev:amulet-vesting` scripts set `CANTON_APP_DIR` to that folder.
 
 ## Packaging and publishing
 

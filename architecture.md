@@ -4,8 +4,8 @@
 
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
-| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm stack` scaffolds its config into the gitignored `.canton-localnet/` |
-| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm stack` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
+| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm dev:amulet-vesting` scaffolds its config into the gitignored `.canton-localnet/` |
+| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm dev:amulet-vesting` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `scripts/` | Node + Bash + JSON | The root tooling: the doc, anatomy and version checks, the release bump, the `typedoc` configs and the gitleaks installer. See [`CLAUDE.md`](CLAUDE.md) |
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Daml | Canton Coin **vesting** dApp, published as an example. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates. They hold real Canton Coin in escrow as a Splice `LockedAmulet`, and come vendored from [`BootNodeDev/cc-vesting-contracts`](https://github.com/BootNodeDev/cc-vesting-contracts). The build fetches its Splice data-dependencies rather than committing them. `scripts/bootstrap-vesting.mjs` creates the operator and its factory |
 | `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. Its `scaffold/daml-tooling/` and `scaffold/localnet/` scripts are also the local loop: the Splice dependency fetch, the DAR build and upload, the token mint and `dev-stack.sh`. See [`canton-create/architecture.md`](canton-create/architecture.md) |
@@ -94,7 +94,7 @@ State boundaries:
 `mint-token.mjs` reads, plus the token `deploy-dar.sh` and the example's
 `scripts/bootstrap-vesting.mjs` send. The root scripts point the first two at it through
 `CANTON_APP_DIR`. Minting is offline, so it needs nothing running, which is what lets
-`pnpm stack up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
+`pnpm dev:amulet-vesting up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
 LocalNet reads its own `canton-barebones.config.json`, which `dev-stack.sh` scaffolds into
 `.canton-localnet/` and git does not track.
 
@@ -111,8 +111,8 @@ that secret and nothing else.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm stack up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
-| `pnpm stack down` | stop the gateway and the dApp dev server, stop the LocalNet |
+| `pnpm dev:amulet-vesting up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
+| `pnpm dev:amulet-vesting down` | stop the gateway and the dApp dev server, stop the LocalNet |
 | `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
 | `node canton-create/scaffold/localnet/scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
@@ -123,7 +123,7 @@ that secret and nothing else.
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
-(`pnpm stack up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
+(`pnpm dev:amulet-vesting up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
 `.canton-localnet/`. It scaffolds that directory on `up` from the pinned tool's own template, and
 scaffolds it again when the template moves past the local copy. The config therefore drifts from
 the installed version rather than from a committed file. The Splice checkout and the runtime env
