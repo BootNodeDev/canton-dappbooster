@@ -504,6 +504,10 @@ release candidate: `^0.4.0-rc.0` does satisfy `0.4.0-rc.0`.
 then runs `pnpm lint`, `pnpm typecheck` and `pnpm test`, and publishes with the root `release`
 script. `--no-git-checks` is what lets it publish from that detached HEAD.
 
+**An agent asked to tag or release stops at the draft.** It runs `release:version` and leaves the
+draft for a person to publish. "Release" and "release a new version" do not mean publish. Only an
+explicit request to publish that draft does.
+
 **Publishing authenticates to npm through OIDC trusted publishing, so there is no token and no repo
 secret.** Each published package has a trusted publisher on npmjs.com naming this repo and the
 workflow file. The job proves it is that workflow with a short-lived OIDC token. `id-token: write`
