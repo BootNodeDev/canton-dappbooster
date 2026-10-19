@@ -25,6 +25,7 @@ src/
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   activeContracts.ts        the active-contracts read: request builder, page and contract decoders
+  transactions.ts           the internal transactions read a watch follows: request and decoder
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value

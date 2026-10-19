@@ -3,28 +3,30 @@
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { type LedgerApiParams, useLedger } from '#src/hooks/useLedger'
+import { type LedgerApiParams, useLedger, useLedgerReads } from '#src/hooks/useLedger'
 import { testAccount } from '#src/testing/account'
 import { FakeSessionProvider } from '#src/testing/fakeSession'
 import { toGrant } from '#src/testing/grant'
-import { acsPage, acsRow } from '#src/testing/ledgerAnswers'
+import { acsPage, acsRow, archived, transactionUpdate } from '#src/testing/ledgerAnswers'
 import type { DappSdkMethods } from '#src/types'
 
 const account = testAccount('alice::1220ab')
 const request: LedgerApiParams = { requestMethod: 'get', resource: '/v2/parties' }
 
+const liveSession = (ledgerApi: DappSdkMethods['ledgerApi'], withAccount = true) => ({
+  wrapper: ({ children }: { children: ReactNode }) => (
+    <FakeSessionProvider
+      account={withAccount ? account : undefined}
+      sdk={{ ledgerApi }}
+      status="connected"
+    >
+      {children}
+    </FakeSessionProvider>
+  ),
+})
+
 const renderLedger = (ledgerApi: DappSdkMethods['ledgerApi'], withAccount = true) =>
-  renderHook(() => useLedger(), {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <FakeSessionProvider
-        account={withAccount ? account : undefined}
-        sdk={{ ledgerApi }}
-        status="connected"
-      >
-        {children}
-      </FakeSessionProvider>
-    ),
-  })
+  renderHook(() => useLedger(), liveSession(ledgerApi, withAccount))
 
 const grant = { receiver: 'bob::1220' }
 
@@ -136,5 +138,46 @@ describe('useLedger', () => {
       result.current.activeContracts({ templateId: '#app:Main:Grant', decode: toGrant }),
     ).rejects.toThrow('no primary account')
     expect(ledgerApi).not.toHaveBeenCalled()
+  })
+})
+
+describe('useLedgerReads', () => {
+  it('follows a template from the cursor up to the ledger end, as the connected party', async () => {
+    const ledgerApi = vi
+      .fn<DappSdkMethods['ledgerApi']>()
+      .mockResolvedValueOnce({ offset: 9 })
+      .mockResolvedValueOnce([transactionUpdate(8, [archived('00aa')])])
+    const { result } = renderHook(() => useLedgerReads(), liveSession(ledgerApi))
+
+    await act(async () => {
+      await expect(
+        result.current.transactions({ templateId: '#app:Main:Grant', decode: toGrant }, 7),
+      ).resolves.toEqual({
+        transactions: [{ offset: 8, events: [{ kind: 'archived', contractId: '00aa' }] }],
+        cursor: 8,
+      })
+    })
+
+    expect(ledgerApi).toHaveBeenNthCalledWith(1, {
+      requestMethod: 'get',
+      resource: '/v2/state/ledger-end',
+    })
+    expect(ledgerApi).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        resource: '/v2/updates',
+        body: expect.objectContaining({
+          beginExclusive: 7,
+          endInclusive: 9,
+          updateFormat: {
+            includeTransactions: expect.objectContaining({
+              eventFormat: expect.objectContaining({
+                filtersByParty: { 'alice::1220ab': expect.anything() },
+              }),
+            }),
+          },
+        }),
+      }),
+    )
   })
 })

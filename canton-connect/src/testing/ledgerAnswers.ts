@@ -39,3 +39,37 @@ export const acsPage = (
   activeContracts,
   nextPageToken,
 })
+
+export const created = (
+  contractId: string,
+  createArgument: unknown,
+): LedgerCommonSchemas['Event'] => ({ CreatedEvent: createdEvent(contractId, createArgument) })
+
+export const archived = (contractId: string): LedgerCommonSchemas['Event'] => ({
+  ArchivedEvent: {
+    offset: 5,
+    nodeId: 0,
+    contractId,
+    templateId: 'pkg:Main:Grant',
+    witnessParties: ['alice::1220'],
+    packageName: 'app',
+  },
+})
+
+export const transactionUpdate = (
+  offset: number,
+  events: LedgerCommonSchemas['Event'][],
+): LedgerCommonSchemas['JsGetUpdatesResponse'] => ({
+  update: {
+    Transaction: {
+      value: {
+        updateId: `u${offset}`,
+        effectiveAt: '2026-10-19T12:00:00Z',
+        events,
+        offset,
+        synchronizerId: 'global-domain::1220',
+        recordTime: '2026-10-19T12:00:00Z',
+      },
+    },
+  },
+})
