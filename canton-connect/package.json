@@ -97,6 +97,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.5",
+    "@canton-network/core-ledger-client-types": "1.14.0",
     "@canton-network/core-types": "1.10.0",
     "@canton-network/dapp-sdk": "1.5.1",
     "@testing-library/dom": "^10.4.1",

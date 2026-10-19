@@ -1,8 +1,4 @@
-// The placeholder vocabulary an @example may lean on. `scripts/docs-check.mjs` compiles every
-// snippet with this file as a root, so an example may use only what is declared here, and a
-// placeholder's type is the real one — a loosened signature here would hide a broken example.
-//
-// Global on purpose: no top-level import or export, so these are ambient rather than a module.
+// Ambient on purpose (no top-level import or export); a loosened type here hides a broken example.
 
 type FixtureNode = import('react').ReactNode
 type FixtureElement = import('react').ReactElement
@@ -28,6 +24,7 @@ declare const ConnectButton: () => FixtureElement
 
 declare const render: (ui: FixtureNode) => void
 
-/* Ledger command payloads, which are the app's rather than this package's */
+/* Ledger payloads and their decoders, which are the app's rather than this package's */
 
 declare const commands: import('@canton-network/dapp-sdk').PrepareExecuteParams['commands']
+declare const toGrant: (createArgument: unknown) => { receiver: string } | undefined

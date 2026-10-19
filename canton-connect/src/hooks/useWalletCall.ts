@@ -26,7 +26,7 @@ export const assertUsable = (status: ConnectionStatus, isLocked: boolean): void 
 }
 
 /** Throws when the session reports no account, which a connected one can. */
-function assertPartyId(partyId: string | undefined): asserts partyId is string {
+export function assertPartyId(partyId: string | undefined): asserts partyId is string {
   if (partyId === undefined) {
     throw new Error('wallet reports no primary account - select or add one in the wallet')
   }
@@ -43,12 +43,11 @@ export interface UseWalletCallResult {
   reset: () => void
   connection: ConnectionSubscription
   sdk: DappSdkMethods
+  partyId: string | undefined
   status: ConnectionStatus
   isLocked: boolean
 }
 
-// The skeleton shared by the SDK-calling hooks: session selectors, the guards, and the
-// pending/error bookkeeping around one call. Internal; the public hooks shape its pieces.
 /**
  * Selects the session and wraps one SDK call with the connect, lock and party guards plus the
  * pending/error bookkeeping `useExecute` and `useSignMessage` share.
@@ -92,6 +91,7 @@ export const useWalletCall = (): UseWalletCallResult => {
     reset,
     connection,
     sdk,
+    partyId,
     status,
     isLocked,
   }

@@ -1,6 +1,17 @@
-import type { LedgerApiParams } from '@canton-network/dapp-sdk'
+import type { LedgerApiParams, LedgerApiResult } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import {
+  type ActiveContract,
+  type ActiveContractsParams,
+  type ActiveContractsResult,
+  activeContractsRequest,
+  decodeActiveContracts,
+  LEDGER_END_REQUEST,
+  offsetOf,
+  pageOf,
+} from '#src/activeContracts'
+import { toError } from '#src/connectError'
+import { assertPartyId, assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -8,25 +19,30 @@ import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 export type { LedgerApiParams }
 
 /**
- * Return shape of {@link useLedger}. `ledgerApi` throws when nothing is connected, which `isReady`
- * is there to check first.
+ * Return shape of {@link useLedger}. Both calls reject with no session, which `isReady` is there
+ * to check first, and `activeContracts` also where the wallet reports no party.
  *
  * @category Hooks
  */
 export interface UseLedgerResult {
+  activeContracts: <Payload>(
+    params: ActiveContractsParams<Payload>,
+  ) => Promise<ActiveContractsResult<Payload>>
   ledgerApi: (params: LedgerApiParams) => Promise<unknown>
   isReady: boolean
 }
 
 /**
- * Escape hatch for ledger reads `useExecute` and `useSignMessage` do not cover: the participant's
- * JSON API, passed through untyped.
+ * Ledger reads over the wallet session. `activeContracts` reads one template's contracts as the
+ * connected party, envelope unwrapped, with the offset the read was taken at; `ledgerApi` passes
+ * anything else to the participant's JSON API, untyped.
  *
- * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
- * is connected, which `isReady` is there to check first.
+ * @throws with no {@link CantonConnectProvider} above it, from `ledgerApi` with no session, which
+ * `isReady` checks first, and from `activeContracts` also with no party on the account.
  *
  * @example
- * const { ledgerApi } = useLedger()
+ * const { activeContracts, ledgerApi } = useLedger()
+ * const grants = await activeContracts({ templateId: '#my-app:Main:Grant', decode: toGrant })
  * await ledgerApi({
  *   requestMethod: 'get',
  *   resource: '/v2/users/{user-id}/rights',
@@ -37,7 +53,7 @@ export interface UseLedgerResult {
  */
 export const useLedger = (): UseLedgerResult => {
   // Guards without `call`: a stateless query needs no pending/error renders around it.
-  const { sdk, status, isLocked } = useWalletCall()
+  const { sdk, partyId, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(
     async (params: LedgerApiParams): Promise<unknown> => {
@@ -48,5 +64,48 @@ export const useLedger = (): UseLedgerResult => {
     [isLocked, sdk, status],
   )
 
-  return { ledgerApi, isReady: status === 'connected' && !isLocked }
+  const read = useCallback(
+    async (params: LedgerApiParams): Promise<LedgerApiResult> => {
+      try {
+        return await sdk.ledgerApi(params)
+      } catch (cause) {
+        throw toError(cause)
+      }
+    },
+    [sdk],
+  )
+
+  const connectedParty = useCallback((): string => {
+    assertUsable(status, isLocked)
+    assertPartyId(partyId)
+
+    return partyId
+  }, [isLocked, partyId, status])
+
+  const activeContracts = useCallback(
+    async <Payload>({
+      templateId,
+      decode,
+    }: ActiveContractsParams<Payload>): Promise<ActiveContractsResult<Payload>> => {
+      const party = connectedParty()
+      // One offset for every page: the participant refuses a page token issued at another.
+      const offset = offsetOf(await read(LEDGER_END_REQUEST))
+
+      const contractsFrom = async (pageToken?: string): Promise<ActiveContract<Payload>[]> => {
+        const page = pageOf(
+          await read(activeContractsRequest(party, templateId, offset, pageToken)),
+        )
+        const contracts = decodeActiveContracts(page.activeContracts, decode)
+
+        return page.nextPageToken === undefined
+          ? contracts
+          : [...contracts, ...(await contractsFrom(page.nextPageToken))]
+      }
+
+      return { contracts: await contractsFrom(), offset }
+    },
+    [connectedParty, read],
+  )
+
+  return { activeContracts, ledgerApi, isReady: status === 'connected' && !isLocked }
 }

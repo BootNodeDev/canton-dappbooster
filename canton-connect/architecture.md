@@ -24,6 +24,7 @@ src/
   hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
+  activeContracts.ts        the active-contracts read: request builder, page and contract decoders
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -157,6 +158,15 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 ```
 
 `query` holds query parameters, `body` the request body; neither goes into `resource`.
+
+`activeContracts` is the typed read, so a dApp no longer walks the envelope by hand. What the code cannot say:
+
+- It reads `/v2/state/active-contracts-page`, not `/v2/state/active-contracts`, which answers in one body and fails with a 413 past the participant's limit. The ledger end is read first and sent with every page: the participant refuses a page token issued at another offset, and one offset is what makes the pages one snapshot.
+- The paged endpoint exists from Canton 3.5, which the public networks run. A 3.4 participant, such as `dpm sandbox` inside a project pinned to SDK 3.4, answers it with a bare 404, which a gateway forwards as `Something went wrong while calling ledgerApi`. There, `ledgerApi` on `/v2/state/active-contracts` is the read.
+- It answers `{ contracts, offset }`. The offset is the one its pages were pinned at, which is where a caller following changes resumes; a separate ledger-end read would miss or double-count whatever committed in between.
+- The caller proves the payload with `decode` rather than naming it as a type parameter: the gateway forwards the participant's JSON unchecked, so a `<Payload>` alone would be a cast. A contract whose create argument decodes to `undefined` is skipped.
+- `templateId` must use the package-name form, `#package-name:Module:Template`. A 3.5.17 participant refuses a package id with `INVALID_FIELD` on the page read and on `/v2/updates` alike, though the 3.5.10 spec allows both. A contract's own `templateId` comes back as a package id, so it cannot be passed back.
+- It reads as the connected party and needs the account's party, which `isReady` does not cover. It rejects through `toError`, so a failure is an `Error` with the wallet's answer as `cause`. `ledgerApi` hands the wallet's rejection back untouched.
 
 ### The party type
 
