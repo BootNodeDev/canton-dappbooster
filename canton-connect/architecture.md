@@ -21,11 +21,12 @@ src/
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   activeContracts.ts        the active-contracts read: request builder, page and contract decoders
   transactions.ts           the internal transactions read a watch follows: request and decoder
+  watch.ts                  WatchSource and pollEvery, what keeps useActiveContracts current
   connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
@@ -88,8 +89,8 @@ The context value is the config, the actor as `ConnectionSubscription` (`send` i
 through it, so the bridges stay the only senders) and four identity-stable actions. Each hook
 selects its own slice, which is wagmi's shape: `WagmiProvider` publishes, `useAccount` subscribes
 itself. `useConnect`, `useDisconnect`, `useAccount` and `useWalletStatus` read session state;
-`useLedger`, `useExecute`, `useSignMessage` and `usePartyType` select a guard plus the sdk and
-call it directly, never entering the machine.
+`useLedger`, `useActiveContracts`, `useExecute`, `useSignMessage` and `usePartyType` select a
+guard plus the sdk and call it directly, never entering the machine.
 
 The machine's input is read once, when the actor is created, so a changed `config` prop needs a
 remount. One accepted cost: `sdk` in context makes the snapshot unserializable, which rules out
@@ -168,6 +169,28 @@ resource: `/v2/users/${userId}/rights`                                // a gatew
 - The caller proves the payload with `decode` rather than naming it as a type parameter: the gateway forwards the participant's JSON unchecked, so a `<Payload>` alone would be a cast. A contract whose create argument decodes to `undefined` is skipped.
 - `templateId` must use the package-name form, `#package-name:Module:Template`. A 3.5.17 participant refuses a package id with `INVALID_FIELD` on the page read and on `/v2/updates` alike, though the 3.5.10 spec allows both. A contract's own `templateId` comes back as a package id, so it cannot be passed back.
 - It reads as the connected party and needs the account's party, which `isReady` does not cover. It rejects through `toError`, so a failure is an `Error` with the wallet's answer as `cause`. `ledgerApi` hands the wallet's rejection back untouched.
+
+### Watching a read
+
+`useActiveContracts` is the state and effect every dApp wrote around `activeContracts`. `watch` keeps it current by following the template's transactions from the snapshot's own offset, never by reading the contracts again:
+
+```text
+snapshot   activeContracts -> { contracts, offset }        the offset becomes the cursor
+tick       ledger end, then /v2/updates after the cursor   a create adds, an archive removes
+```
+
+What the code cannot say:
+
+- The follow reads the ACS-delta shape, which filters by stakeholder as the snapshot does. Ledger effects filters by witness, so it also returns a create the party only saw: the controller of a transfer would gain the new owner's contract, and the view would drift from a fresh snapshot.
+- A tick is two calls, the ledger end and the page it bounds, and neither reads contracts. Watching the ledger end instead would read every contract again whenever anything on the participant moves.
+- The cursor moves to the ledger end only after an empty answer. A page asks for 200 transactions, Canton's default `http-list-max-elements-limit`. With a larger limit, `/v2/updates` answers a range holding more than that cap with a 413; up to it, a full page is cut with no sign of it, so a page with transactions resumes after its last one. A quiet template keeps its cursor at the ledger end, where pruning cannot overtake it while the hook is mounted.
+- The follow sends no `stream_idle_timeout_ms`. It cuts a bounded range as well as an open one, so an empty answer could mean a stalled stream, and moving the cursor to the ledger end would skip the range. Without it a bounded read still answers at once: a quiet range gives `[]`, and an end past the ledger end is a 400 `OFFSET_AFTER_LEDGER_END`, never a hang.
+- One follow runs at a time. A tick that finds one in flight is skipped, since two from the same cursor would apply the same transactions twice.
+- A failed read does not stop the watch. A refetch that kept the list falls back to the cursor it had, which still matches that list since no follow ran meanwhile. A failed follow drops its cursor, since the same range can fail every time, as on a participant capped below 200; a tick that finds no cursor after a failure reads the contracts again.
+- Nothing refetches on `execute`: the dApp's own write shows on the next tick, or at once after `refetch()`, which keeps the current list until its read answers. A failed tick or refetch sets `error` and keeps the list; the next tick that succeeds clears it, even one that finds nothing.
+- A new party or template shows none of the previous list, not even for one render. The state records whose read it holds and the hook compares that during render; a reset in an effect lands a render late, long enough to show the previous party's contracts after a switch.
+- `WatchSource` takes a tick and returns its teardown, so the timer is the default rather than the mechanism; nothing pushes ledger changes to a browser today. The source is taken when the watch starts, so one spelled inline does not reset its own timer on every render.
+- `decode` is taken when each read starts, through a ref like the source, so one spelled inline, the usual way to write it, restarts neither the read nor the watch. A create a follow finds goes through it as a snapshot row does.
 
 ### The party type
 

@@ -24,8 +24,9 @@ import {
 export type { LedgerApiParams }
 
 /**
- * Return shape of {@link useLedger}. Both calls reject with no session, which `isReady` is there
- * to check first, and `activeContracts` also where the wallet reports no party.
+ * Return shape of {@link useLedger}. `ledgerApi` rejects with no session, which `isReady` checks
+ * first; `activeContracts` also needs the account's party, which `isReady` does not cover and
+ * `useActiveContracts` waits for.
  *
  * @category Hooks
  */
@@ -37,15 +38,16 @@ export interface UseLedgerResult {
   isReady: boolean
 }
 
-/** `useLedger`'s reads, plus following a template from a cursor, which stays off its result. */
+/** `useLedger`'s reads plus what only `useActiveContracts` needs: the follow, and the party. */
 type LedgerReads = UseLedgerResult & {
   transactions: <Payload>(
     params: ActiveContractsParams<Payload>,
     beginExclusive: number,
   ) => Promise<TransactionsPage<Payload>>
+  partyId: string | undefined
 }
 
-/** Every read, the internal `transactions` included; `useLedger` publishes the rest. */
+/** Every read and the party it reads as; `useLedger` publishes the public part. */
 export const useLedgerReads = (): LedgerReads => {
   // Guards without `call`: a stateless query needs no pending/error renders around it.
   const { sdk, partyId, status, isLocked } = useWalletCall()
@@ -127,6 +129,7 @@ export const useLedgerReads = (): LedgerReads => {
     activeContracts,
     transactions,
     ledgerApi,
+    partyId,
     isReady: status === 'connected' && !isLocked,
   }
 }
@@ -134,7 +137,8 @@ export const useLedgerReads = (): LedgerReads => {
 /**
  * Ledger reads over the wallet session. `activeContracts` reads one template's contracts as the
  * connected party, envelope unwrapped, with the offset the read was taken at; `ledgerApi` passes
- * anything else to the participant's JSON API, untyped.
+ * anything else to the participant's JSON API, untyped. Where a component renders the contracts,
+ * {@link useActiveContracts} keeps them in state.
  *
  * @throws with no {@link CantonConnectProvider} above it, from `ledgerApi` with no session, which
  * `isReady` checks first, and from `activeContracts` also with no party on the account.
