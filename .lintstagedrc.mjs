@@ -1,7 +1,7 @@
 export default {
   'canton-connect/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-connect test',
   'canton-dappbooster/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-dappbooster test',
-  'example-dapps/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
+  'example-dapps/*/{src,api,scripts}/**/*.{ts,tsx,js,jsx,mjs,sh}': (files) =>
     [...new Set(files.map((file) => file.match(/example-dapps\/[^/]+/)?.[0]))].map(
       (example) => `pnpm -C ${example} test`,
     ),
