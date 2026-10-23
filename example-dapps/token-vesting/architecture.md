@@ -539,8 +539,8 @@ That literal is the build's doing. [`vite.config.ts`](vite.config.ts) runs
 `parseEnv(loadEnv(...))` and `define`s the parsed values back onto `import.meta.env`, so a bad
 `VITE_EXPLORER_URL` fails the build rather than the page load and the client ships no validator at
 all. [`src/utils/env.ts`](src/utils/env.ts) holds that contract, and is the only module under `src/`
-that runs outside the browser. The `.env` it reads is this folder's, the one file the monorepo
-keeps, and it is loaded with an empty prefix — every key in it, `CANTON_AUTH_SECRET` included — so
+that runs outside the browser. The `.env` it reads is this folder's, the one the scripts also
+read. `loadEnv` takes every key in it with an empty prefix, `CANTON_AUTH_SECRET` included, so
 only what `parseEnv` returns may be defined back. Spreading the loaded object would put the signing
 secret in the bundle.
 

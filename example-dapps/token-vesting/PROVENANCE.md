@@ -1,6 +1,11 @@
 # Provenance
 
-This dApp was vendored, frontend-only, from the vesting-lite branch of the
+This dApp started as a copy of `example-dapps/amulet-vesting`, moved off Canton Coin
+onto a canton-token-forge instrument by the #157 epic. Its two Daml packages are
+binaries; [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) records where each comes from.
+The rest of this file is the Amulet example's own record, which both dApps share.
+
+The Amulet example came, frontend-only, from the vesting-lite branch of the
 `cn-dappbooster` monorepo.
 
 | Field | Value |
