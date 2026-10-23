@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-example-token-vesting",
-  "version": "0.6.2",
+  "version": "0.6.3-rc.1",
   "description": "Token vesting dApp over a canton-token-forge instrument: an example app for create-canton-dappbooster",
   "repository": {
     "type": "git",
@@ -44,9 +44,9 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.1",
-    "@bootnodedev/canton-connect": "^0.6.2",
-    "@bootnodedev/canton-dappbooster": "^0.6.2",
-    "@bootnodedev/canton-theme": "^0.6.2",
+    "@bootnodedev/canton-connect": "^0.6.3-rc.1",
+    "@bootnodedev/canton-dappbooster": "^0.6.3-rc.1",
+    "@bootnodedev/canton-theme": "^0.6.3-rc.1",
     "@canton-network/dapp-sdk": "1.5.1",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
