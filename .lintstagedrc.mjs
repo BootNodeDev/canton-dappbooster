@@ -1,15 +1,15 @@
-// Read-only gates only. The formatter runs first, from .lintstagedrc.format.mjs, so these are safe
-// to run concurrently with each other.
 export default {
   'canton-connect/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-connect test',
   'canton-dappbooster/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-dappbooster test',
-  'dapp/frontend/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C dapp/frontend test',
-  // One task for the whole doc gate, under the name CI uses: typedoc resolves both packages in a
-  // single run anyway, so splitting it per package bought a second and two ways to drift.
-  // Snippets live in the READMEs as well as in the doc blocks, so a doc edit re-runs the compile.
+  'example-dapps/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
+    [...new Set(files.map((file) => file.match(/example-dapps\/[^/]+/)?.[0]))].map(
+      (example) => `pnpm -C ${example} test`,
+    ),
+  'canton-create/**/*.{ts,tsx,mjs,sh,json}': () => 'pnpm -C canton-create test',
+  '{canton-create/scaffold/*/scripts,scripts}/*.{mjs,sh}': () =>
+    'node --test "canton-create/scaffold/*/scripts/*.test.mjs" "scripts/*.test.mjs"',
   '{canton-connect,canton-dappbooster}/{src/**/*.{ts,tsx},doc-fixtures.d.ts,README.md,architecture.md,coming-from-wagmi.md,typedoc.json}':
     () => 'pnpm docs:check',
-  // Either side of the L2/L3 contract moving on its own is what this catches.
   '{canton-dappbooster/src/{components,providers}/**/anatomy.ts,canton-theme/src/**/*.css}': () =>
     'pnpm run check:anatomy',
 }

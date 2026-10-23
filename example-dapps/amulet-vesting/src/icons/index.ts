@@ -1,0 +1,7 @@
+export { BootNodeMark } from '@/icons/BootNodeMark'
+export { DocsMark } from '@/icons/DocsMark'
+export { GithubMark } from '@/icons/GithubMark'
+export { LinkedInMark } from '@/icons/LinkedInMark'
+export { LogoMark } from '@/icons/LogoMark'
+export { TelegramMark } from '@/icons/TelegramMark'
+export { XMark } from '@/icons/XMark'

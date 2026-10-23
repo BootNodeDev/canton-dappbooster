@@ -1,0 +1,10 @@
+{
+  "name": "@bootnodedev/canton-scaffold-daml-tooling",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build-dar": "node scripts/fetch-daml-deps.mjs && node scripts/build-dar.mjs",
+    "deploy-dar": "bash scripts/deploy-dar.sh"
+  }
+}

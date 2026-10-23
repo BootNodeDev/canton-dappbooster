@@ -8,4 +8,6 @@ export default defineConfig({
   dts: true,
   // platform: neutral flips the default extension; keep the .js the exports map points at.
   fixedExtension: false,
+  publint: true,
+  attw: { profile: 'esm-only', level: 'error' },
 })

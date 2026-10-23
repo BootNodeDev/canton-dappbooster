@@ -1,0 +1,71 @@
+module AmuletVesting.Schedule where
+
+import DA.Time (subTime, convertRelTimeToMicroseconds)
+import DA.List (last, head)
+
+-- | How CC accrues over time. Fraction-based so escrow logic stays curve-agnostic.
+data VestingCurve
+  = LinearVesting with start : Time; end : Time
+      -- ^ continuous linear accrual from start (0) to end (1)
+  | MilestoneVesting with points : [(Time, Decimal)]
+      -- ^ step function; each (time, CUMULATIVE fraction), strictly ascending, last == 1.0
+  deriving (Eq, Show)
+
+data VestingSchedule = VestingSchedule with
+    curve : VestingCurve
+    cliff : Time   -- ^ nothing is *earned* before this (true cliff)
+  deriving (Eq, Show)
+
+-- | Fraction of the grant vested by `now`, in [0,1]. The ONE place curve shape matters.
+vestedFraction : VestingSchedule -> Time -> Decimal
+vestedFraction sched now
+  | now < sched.cliff = 0.0
+  | otherwise = case sched.curve of
+      LinearVesting start end
+        | now >= end   -> 1.0
+        | now <= start -> 0.0
+        | otherwise    ->
+            let elapsedUs  = convertRelTimeToMicroseconds (subTime now start)
+                durationUs = convertRelTimeToMicroseconds (subTime end start)
+            in intToDecimal elapsedUs / intToDecimal durationUs
+      MilestoneVesting points ->
+        case filter (\(t, _) -> t <= now) points of
+          []      -> 0.0
+          reached -> snd (last reached)   -- cumulative fraction of the last reached point
+
+-- | CC vested by `now`, given the grant total. total * fraction.
+vestedAmount : VestingSchedule -> Decimal -> Time -> Decimal
+vestedAmount sched total now = total * vestedFraction sched now
+
+-- | Conservative minimum grant size (CC). This is a sanity floor against absurdly
+-- small grants, NOT a guarantee that the escrow survives the whole vesting horizon.
+--
+-- A LockedAmulet of `initialAmount` is DSO-reclaimable after
+-- `ceil(initialAmount / holdingRate)` rounds (Splice.Expiry.amountExpiresAt). At the
+-- reference rate 0.00002, `initialAmount = 1.0` survives ~50,000 rounds ≈ ~1 year at
+-- 10-min rounds - so a 1.0-CC grant vesting over more than ~1 year can have its entire
+-- escrow expired by the DSO mid-vest. The survival horizon scales with the grant
+-- size, but the holding rate is off-ledger and cannot be read by an on-ledger choice,
+-- so this floor is a flat conservative bound, not a horizon-derived one.
+--
+-- The off-ledger backend is responsible for sizing grants so the escrow outlives the
+-- schedule (`initialAmount >= holdingRate * roundsUntil(vestingEnd)`). Tunable.
+minGrantAmount : Decimal
+minGrantAmount = 1.0
+
+-- | Strictly-ascending check on a list given a comparison projection.
+strictlyAscending : Ord b => (a -> b) -> [a] -> Bool
+strictlyAscending f xs = and (zipWith (\a b -> f a < f b) xs (drop 1 xs))
+
+-- | Schedule well-formedness. Enforced at proposal creation (Factory choice).
+validVestingSchedule : VestingSchedule -> Bool
+validVestingSchedule sched = case sched.curve of
+  LinearVesting start end ->
+    start < end && start <= sched.cliff && sched.cliff <= end
+  MilestoneVesting points ->
+    not (null points)
+      && strictlyAscending fst points                                   -- times ascending
+      && strictlyAscending snd points                                   -- cumulative fractions ascending
+      && all (\(_, fr) -> fr > 0.0 && fr <= 1.0) points                 -- in (0, 1]
+      && snd (last points) == 1.0                                       -- last == 1.0
+      && sched.cliff <= fst (head points)                               -- cliff at/before first point
