@@ -110,7 +110,7 @@
       }
     },
     {
-      "includes": ["example-dapps/**", "!**/scripts/**"],
+      "includes": ["example-dapps/**"],
       "linter": {
         "rules": {
           "style": {
@@ -227,6 +227,16 @@
                 "match": "(index|use[A-Z].*?)[.](.+)"
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/scripts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
           }
         }
       }

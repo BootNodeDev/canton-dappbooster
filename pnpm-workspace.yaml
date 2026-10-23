@@ -13,8 +13,7 @@ packages:
 publicHoistPattern:
   - '@bootnodedev/canton-barebones'
 
-# The token-forge registry is a git dependency whose `prepare` builds the bin it ships. pnpm keys a
-# git dependency by its tarball, so moving its ref means replacing the commit sha below.
+# The token-forge registry's git dependency builds on install, keyed by the commit its tag resolves to.
 allowBuilds:
   '@bootnodedev/canton-token-forge@https://codeload.github.com/BootNodeDev/canton-token-forge/tar.gz/1639372eb66941e505aa52399d00b8b4121953f7': true
   better-sqlite3: true
