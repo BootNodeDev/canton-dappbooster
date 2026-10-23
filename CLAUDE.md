@@ -386,7 +386,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 - **One `.env` per example, in its own folder.** It holds the signing recipe `mint-token.mjs`
   reads and the token `deploy-dar.sh` and the example's `scripts/bootstrap-vesting.mjs` send. The
   root scripts point the scaffold's scripts at `example-dapps/amulet-vesting` through
-  `CANTON_APP_DIR` unless the caller already set it, which is how `dev:token-vesting` moves them. The bootstrap
+  `CANTON_APP_DIR`. `mint-token` keeps one the caller already set, which is how
+  `dev:token-vesting` mints into its own `.env`. The bootstrap
   resolves it from its own parent directory, so none takes a path argument. Minting is offline: no container
   has to be up. The dApp's `VITE_*` variables live there too. Its `vite.config.ts` calls `loadEnv`
   against its own folder with an empty prefix, so it reads every key in that file,
