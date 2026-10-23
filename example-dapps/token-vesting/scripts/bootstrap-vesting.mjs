@@ -3,12 +3,12 @@
 // VestingFactory it signs, plus the instrument admin and its DBT InstrumentConfig. Funder and
 // receiver are wallet accounts, so no other party is created here.
 //
-// Nothing is written out. The dApp finds both by reading this operator's rights and its factory
-// back off the ledger, so a run that ends here is a run the dApp can already see.
+// The one file it writes is .env.registry, the token registry's settings. The dApp finds the
+// operator and its factory by reading them back off the ledger, so it can already see this run.
 //
 // Run with the local stack up. It uploads the vendored DARs itself, so no deploy step comes first.
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 // A caller-exported value wins over .env, the same precedence deploy-dar.sh spells out by hand.
@@ -51,7 +51,6 @@ export const REGISTRY_TEMPLATE_IDS = {
 export const formatRegistryEnv = ({ ledgerApiUrl, adminParty, port }) =>
   [
     `LEDGER_API_URL=${ledgerApiUrl}`,
-    'LEDGER_API_TOKEN=<the CANTON_BACKEND_TOKEN from .env>',
     `ADMIN_PARTY=${adminParty}`,
     ...Object.entries(REGISTRY_TEMPLATE_IDS).map(([key, id]) => `${key}='${id}'`),
     `PORT=${port}`,
@@ -294,17 +293,14 @@ const findFactory = async (operator) => {
     .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)
 }
 
-// The whole contract with scripts/registry.sh, which reads these keys back off stdout. Both exits
-// print it, because a reused deployment configures the registry exactly as a fresh one does.
-const printRegistryEnv = (adminParty) => {
-  console.log('\nregistry env')
-  console.log(
-    formatRegistryEnv({
-      ledgerApiUrl: JSON_API_URL,
-      adminParty,
-      port: REGISTRY_PORT,
-    }),
+// Both exits write it, because a reused deployment configures the registry exactly as a fresh one.
+const writeRegistryEnv = (adminParty) => {
+  const file = path.join(import.meta.dirname, '..', '.env.registry')
+  writeFileSync(
+    file,
+    `${formatRegistryEnv({ ledgerApiUrl: JSON_API_URL, adminParty, port: REGISTRY_PORT })}\n`,
   )
+  console.log(`registry   settings in ${path.relative(process.cwd(), file)}`)
 }
 
 const main = async () => {
@@ -366,7 +362,7 @@ const main = async () => {
     for (const line of instrumentDrift(existingConfig.createArgument)) {
       console.warn(`warning:   ${line}; reset the ledger to pick that up.`)
     }
-    printRegistryEnv(admin)
+    writeRegistryEnv(admin)
     return
   }
 
@@ -399,7 +395,7 @@ const main = async () => {
   }
   console.log(`admin      ${admin}`)
   console.log(`instrument ${INSTRUMENT.instrumentId} (${INSTRUMENT.symbol}) ${created.contractId}`)
-  printRegistryEnv(admin)
+  writeRegistryEnv(admin)
 }
 
 // import.meta.main, not a comparison against argv[1]: the loader realpaths

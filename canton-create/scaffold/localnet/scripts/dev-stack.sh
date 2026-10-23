@@ -7,7 +7,7 @@
 # (daml/daml.yaml), and optionally `bootstrap`, `stack:up` and `stack:down`. `dev`, `bootstrap`
 # and the two hooks are the app's own; the rest run at the pnpm workspace root holding the app,
 # which in a project is the same package.json. The hooks start and stop whatever else the app
-# runs beside the ledger, and get DEV_STACK_RUN_DIR, where bootstrap.log holds bootstrap's output.
+# runs beside the ledger, and get DEV_STACK_RUN_DIR for its logs.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -63,9 +63,6 @@ DAPP_LOG="$RUN_DIR/dapp-dev.log"
 DAPP_PID="$RUN_DIR/dapp-dev.pid"
 GW_LOG="$RUN_DIR/wallet-gateway.log"
 GW_PID="$RUN_DIR/wallet-gateway.pid"
-# Per app, so the monorepo's two examples never read each other's bootstrap output.
-APP_RUN_DIR="$RUN_DIR${APP_PREFIX:+/${APP_PREFIX%/}}"
-BOOTSTRAP_LOG="$APP_RUN_DIR/bootstrap.log"
 
 # Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
@@ -405,11 +402,10 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # Whatever the model needs on the ledger before the dApp is useful. Optional, so a starter
   # with nothing to create skips it.
   step bootstrap "Running the bootstrap script, if the project defines one..."
-  mkdir -p "$APP_RUN_DIR"
-  pnpm -C "$APP_DIR" run --if-present bootstrap | tee "$BOOTSTRAP_LOG" || die "The bootstrap script failed."
+  pnpm -C "$APP_DIR" run --if-present bootstrap || die "The bootstrap script failed."
 
   step services "Starting the app's own services, if the project defines any..."
-  DEV_STACK_RUN_DIR="$APP_RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:up 3>&- 4>&- \
+  DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:up 3>&- 4>&- \
     || die "The stack:up script failed."
 
   step wallet-gateway "Starting the Wallet Gateway -> http://localhost:3030"
@@ -479,7 +475,7 @@ stop_port() { # stop_port <port> <label>
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
-  DEV_STACK_RUN_DIR="$APP_RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
+  DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
   stop_port 3012 "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"

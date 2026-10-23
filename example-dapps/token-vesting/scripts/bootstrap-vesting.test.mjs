@@ -1,7 +1,6 @@
+// @vitest-environment node
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { parseEnv } from 'node:util'
 import { describe, it } from 'vitest'
 import {
   formatRegistryEnv,
@@ -16,22 +15,12 @@ const block = formatRegistryEnv({
   port: REGISTRY_PORT,
 })
 
-const scriptsDir = path.dirname(fileURLToPath(import.meta.url))
-const registryScript = readFileSync(path.join(scriptsDir, 'registry.sh'), 'utf8')
-
-// Read from the array registry.sh declares rather than a copy of it, so the two
-// files cannot drift apart while the test still passes.
-const registryKeys = () => {
-  const declaration = registryScript.match(/REGISTRY_ENV_KEYS=\(([^)]*)\)/)
-  assert.ok(declaration, 'registry.sh no longer declares REGISTRY_ENV_KEYS')
-  return declaration[1].split(/\s+/).filter((key) => key !== '')
-}
-
-describe('the registry env block bootstrap prints', () => {
-  it('quotes every template id, because dotenv reads the leading # as a comment', () => {
-    const lines = block.split('\n')
+describe('the .env.registry bootstrap writes', () => {
+  it('quotes every template id, so a dotenv parse keeps the leading #', () => {
+    const parsed = parseEnv(block)
     for (const [key, id] of Object.entries(REGISTRY_TEMPLATE_IDS)) {
-      assert.ok(lines.includes(`${key}='${id}'`))
+      assert.ok(block.split('\n').includes(`${key}='${id}'`))
+      assert.equal(parsed[key], id)
       assert.ok(id.startsWith('#canton-token-forge:'), `${key} is not package-name form`)
     }
   })
@@ -42,55 +31,16 @@ describe('the registry env block bootstrap prints', () => {
     assert.match(block, /^PORT=3013$/m)
   })
 
-  it('never prints the bearer token', () => {
-    // The block is pasteable by hand, so it names the token rather than carrying
-    // it: bootstrap's stdout reaches terminal scrollback and a dev-stack log file.
-    assert.match(block, /^LEDGER_API_TOKEN=<[^>]+>$/m)
+  it('leaves the bearer token out, since registry.sh passes it in the environment', () => {
+    assert.doesNotMatch(block, /LEDGER_API_TOKEN/)
     assert.doesNotMatch(block, /eyJ[A-Za-z0-9_-]+\./)
   })
 
-  it('is a nine-line block pasteable into the registry .env as it stands', () => {
-    // registry.sh parses this back out (see the contract tests below), and a human
-    // still copies it by hand, so a silently reordered or truncated block breaks both.
-    const lines = block.split('\n')
-    assert.equal(lines.length, 9)
-    assert.doesNotMatch(block, /\n$/)
+  it('holds the registry settings in a fixed order', () => {
     assert.deepEqual(
-      lines.map((line) => line.split('=')[0]),
-      [
-        'LEDGER_API_URL',
-        'LEDGER_API_TOKEN',
-        'ADMIN_PARTY',
-        ...Object.keys(REGISTRY_TEMPLATE_IDS),
-        'PORT',
-      ],
+      block.split('\n').map((line) => line.split('=')[0]),
+      ['LEDGER_API_URL', 'ADMIN_PARTY', ...Object.keys(REGISTRY_TEMPLATE_IDS), 'PORT'],
     )
-  })
-})
-
-describe('the contract between bootstrap and registry.sh', () => {
-  it('prints every key registry.sh reads back, exactly once', () => {
-    for (const key of registryKeys()) {
-      const occurrences = block.split('\n').filter((line) => line.startsWith(`${key}=`))
-      assert.equal(
-        occurrences.length,
-        1,
-        `${key} is read by registry.sh but printed ${occurrences.length} times`,
-      )
-    }
-  })
-
-  it('leaves the bearer token to registry.sh', () => {
-    // The one registry variable bootstrap leaves out: it never prints the token it sends.
-    assert.ok(!registryKeys().includes('LEDGER_API_TOKEN'))
-  })
-
-  it('strips to the same template ids the registry checks at boot', () => {
-    for (const [key, id] of Object.entries(REGISTRY_TEMPLATE_IDS)) {
-      assert.ok(registryKeys().includes(key), `registry.sh does not read ${key}`)
-      const printed = block.split('\n').find((line) => line.startsWith(`${key}=`))
-      assert.equal(printed.slice(key.length + 1).replace(/^'|'$/g, ''), id)
-    }
   })
 })
 

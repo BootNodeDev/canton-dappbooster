@@ -131,7 +131,7 @@ that secret and nothing else.
 
 `dev-stack.sh` runs an app's own `stack:up` script after `bootstrap` and its `stack:down` script on
 `down`, when the app defines them. The token example starts and stops its registry there, from
-the values bootstrap printed into a `bootstrap.log` under `.dev-stack/`.
+the `.env.registry` its bootstrap writes.
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
 (`pnpm dev:amulet-vesting up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then

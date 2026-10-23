@@ -33,14 +33,13 @@ Without the local network, point `.env` at your network first: `CANTON_JSON_API_
 
 ```bash
 pnpm bootstrap   # uploads both DARs, creates the operator, its factory and the DBT instrument
+pnpm stack:up    # starts the token registry on http://localhost:3013
 pnpm dev         # serves http://localhost:3012
 ```
 
-`bootstrap` ends by printing the settings the token registry needs. Start the registry with them
-through `pnpm exec canton-token-forge-registry`, with `LEDGER_API_TOKEN` set to your
-`CANTON_BACKEND_TOKEN`, and point `VITE_REGISTRY_URL` at it.
-
-`bootstrap` creates only what is missing, so running it again is safe. It writes no file.
+`bootstrap` creates only what is missing, so running it again is safe. The one file it writes is
+`.env.registry`, the registry's settings, which `stack:up` starts the registry from.
+`pnpm stack:down` stops it.
 [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md)
 explains how the dApp finds the operator and the factory on the ledger.
 
