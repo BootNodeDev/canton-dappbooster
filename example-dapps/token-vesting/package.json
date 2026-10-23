@@ -1,0 +1,79 @@
+{
+  "name": "@bootnodedev/canton-example-token-vesting",
+  "version": "0.6.2",
+  "description": "Token vesting dApp over a canton-token-forge instrument: an example app for create-canton-dappbooster",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
+    "directory": "example-dapps/token-vesting"
+  },
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.html",
+    "public",
+    "src",
+    "api",
+    "vendor",
+    "scripts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "vite.config.ts",
+    ".env.example",
+    "_gitignore",
+    "_pnpm-workspace.yaml"
+  ],
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit",
+    "bootstrap": "node scripts/bootstrap-vesting.mjs",
+    "stack:up": "bash scripts/registry.sh start",
+    "stack:down": "bash scripts/registry.sh stop"
+  },
+  "dependencies": {
+    "@ark-ui/react": "^5.39.1",
+    "@bootnodedev/canton-connect": "^0.6.2",
+    "@bootnodedev/canton-dappbooster": "^0.6.2",
+    "@bootnodedev/canton-theme": "^0.6.2",
+    "@canton-network/dapp-sdk": "1.5.1",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/manrope": "^5.2.8",
+    "@walletconnect/sign-client": "^2.23.9",
+    "boring-avatars": "^2.0.4",
+    "lucide-react": "^1.39.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@bootnodedev/canton-token-forge": "github:BootNodeDev/canton-token-forge#v0.3.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.0"
+  },
+  "imports": {
+    "#api/*": {
+      "types": "./api/*.ts",
+      "default": "./api/*"
+    }
+  }
+}

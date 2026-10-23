@@ -39,7 +39,7 @@ excludes.
 |---|---|---|
 | `starter/` | the dApp is the starter | the complete starter app and a sample contract in `daml/` |
 | `daml-tooling/` | the app has `daml/daml.yaml` | `build-dar`, `deploy-dar` and `fetch-daml-deps` |
-| `localnet/` | `--localnet` or Barebones | `dev-stack.sh`, `localnet-config.mjs`, `mint-token.mjs`, `wallet-gateway.config.json`, and `canton-barebones` and the gateway in `devDependencies` |
+| `localnet/` | `--localnet` or Barebones | `dev-stack.sh`, `localnet-config.mjs`, `mint-token.mjs`, `wallet-gateway.config.json`, and `canton-barebones` and the gateway in `devDependencies`. `dev-stack.sh` runs the app's own `bootstrap`, `stack:up` and `stack:down` scripts when it has them |
 
 `scaffold` in `src/scaffold.ts` copies the app first, then applies `daml-tooling/` and `localnet/`
 on top of it in that order. `src/merge.ts` decides how each layer file lands: merged into the
@@ -47,8 +47,8 @@ manifest, appended, merged by key, or a conflict. `finalizeManifest` then strips
 published package needs (`version`, `repository`, `files`, `publishConfig` and the rest), names the
 manifest after the folder and marks it private.
 
-The monorepo's own loop runs the same `daml-tooling/` and `localnet/` scripts on
-`example-dapps/amulet-vesting`, from the root `package.json`.
+The monorepo's own loop runs the same `daml-tooling/` and `localnet/` scripts on the examples in
+`example-dapps/`, from the root `package.json`.
 
 Each folder is a workspace package, so the monorepo checks their types against the libraries'
 source. Their ranges resolve as the Packaging section of the root

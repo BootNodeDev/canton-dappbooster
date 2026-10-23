@@ -1,9 +1,13 @@
+const examples = (files) => [...new Set(files.map((file) => file.match(/example-dapps\/[^/]+/)?.[0]))]
+
 export default {
   'canton-connect/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-connect test',
   'canton-dappbooster/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-dappbooster test',
   'example-dapps/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
-    [...new Set(files.map((file) => file.match(/example-dapps\/[^/]+/)?.[0]))].map(
-      (example) => `pnpm -C ${example} test`,
+    examples(files).map((example) => `pnpm -C ${example} test`),
+  'example-dapps/*/{api,scripts}/**/*.{ts,mjs,sh}': (files) =>
+    examples(files).map(
+      (example) => `pnpm -C ${example} exec vitest run --passWithNoTests api scripts`,
     ),
   'canton-create/**/*.{ts,tsx,mjs,sh,json}': () => 'pnpm -C canton-create test',
   '{canton-create/scaffold/*/scripts,scripts}/*.{mjs,sh}': () =>

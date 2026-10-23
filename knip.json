@@ -24,6 +24,10 @@
     },
     "canton-create/scaffold/localnet": {
       "entry": ["scripts/*.mjs!"]
+    },
+    "example-dapps/token-vesting": {
+      "entry": ["api/**/*.ts"],
+      "ignoreDependencies": ["@bootnodedev/canton-token-forge"]
     }
   }
 }

@@ -8,6 +8,10 @@ export const EXAMPLES: Record<string, Omit<RadioOption, 'value'>> = {
     label: 'Amulet Vesting',
     hint: 'A vesting dApp frontend and its contracts.',
   },
+  'token-vesting': {
+    label: 'Token Vesting',
+    hint: 'A vesting dApp over a canton-token-forge token, with its registry.',
+  },
 }
 
 /** Every dApp the list offers: the starter first, then the examples. */

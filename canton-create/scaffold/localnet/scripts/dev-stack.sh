@@ -4,8 +4,10 @@
 #
 # Every step is a script in package.json, which is the contract this file relies on:
 # `mint-token`, `wallet-gateway`, `dev`, `build-dar` and `deploy-dar` when the app has a contract
-# (daml/daml.yaml), and optionally `bootstrap`. `dev` and `bootstrap` are the app's own; the rest
-# run at the pnpm workspace root holding the app, which in a project is the same package.json.
+# (daml/daml.yaml), and optionally `bootstrap`, `stack:up` and `stack:down`. `dev`, `bootstrap`
+# and the two hooks are the app's own; the rest run at the pnpm workspace root holding the app,
+# which in a project is the same package.json. The hooks start and stop whatever else the app
+# runs beside the ledger, and get DEV_STACK_RUN_DIR for its logs.
 #
 # The LocalNet belongs to @bootnodedev/canton-barebones, pinned in
 # package.json and driven from the directory holding its config. `up` scaffolds that
@@ -117,7 +119,7 @@ die() {
 }
 
 # Keep in step with the `step` calls in up(), which are the list.
-STEP_TOTAL=$((8 + 2 * HAS_CONTRACT))
+STEP_TOTAL=$((9 + 2 * HAS_CONTRACT))
 STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
@@ -402,6 +404,10 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   step bootstrap "Running the bootstrap script, if the project defines one..."
   pnpm -C "$APP_DIR" run --if-present bootstrap || die "The bootstrap script failed."
 
+  step services "Starting the app's own services, if the project defines any..."
+  DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:up 3>&- 4>&- \
+    || die "The stack:up script failed."
+
   step wallet-gateway "Starting the Wallet Gateway -> http://localhost:3030"
   start_wallet_gateway
 
@@ -469,6 +475,8 @@ stop_port() { # stop_port <port> <label>
 down() {
   # 1. Background processes
   stop_pidfile "$DAPP_PID" "dApp dev server"
+  DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
+    || warn "The stack:down script reported an error"
   stop_port 3012 "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"
   stop_port 3030 "Wallet Gateway"

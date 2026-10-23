@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "pnpm install",
+  "buildCommand": "cd ../.. && DEPLOYED_BUILD=1 pnpm -r --filter '@bootnodedev/canton-example-token-vesting...' run --if-present build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/registry/:path*", "destination": "/api/registry?path=/:path*" },
+    { "source": "/:path((?!api/).*)", "destination": "/index.html" }
+  ]
+}
