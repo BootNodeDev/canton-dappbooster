@@ -149,8 +149,9 @@ start_registry() {
   mkdir -p "$RUN_DIR"
   log "Starting the token registry -> http://localhost:$port"
   # The token travels in the environment, where `ps` cannot show it; /dev/null keeps the registry off .env.
+  # The bin itself rather than `pnpm exec`: its shim execs node, so the pid on file is the registry.
   LEDGER_API_TOKEN="$token" \
-    nohup env DOTENV_CONFIG_PATH=/dev/null "${registry_env[@]}" pnpm exec canton-token-forge-registry \
+    nohup env DOTENV_CONFIG_PATH=/dev/null "${registry_env[@]}" "$APP_DIR/node_modules/.bin/canton-token-forge-registry" \
     >"$REGISTRY_LOG" 2>&1 &
   echo $! >"$REGISTRY_PID"
 
