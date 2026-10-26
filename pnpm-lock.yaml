@@ -209,6 +209,9 @@ importers:
       '@arethetypeswrong/core':
         specifier: ^0.18.5
         version: 0.18.5
+      '@canton-network/core-rpc-errors':
+        specifier: 1.13.0
+        version: 1.13.0(supports-color@10.2.2)
       '@canton-network/core-types':
         specifier: 1.14.0
         version: 1.14.0

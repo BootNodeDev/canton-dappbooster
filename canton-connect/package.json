@@ -97,6 +97,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.5",
+    "@canton-network/core-rpc-errors": "1.13.0",
     "@canton-network/core-types": "1.14.0",
     "@canton-network/dapp-sdk": "1.8.0",
     "@testing-library/dom": "^10.4.1",

@@ -1,6 +1,7 @@
 // The hook's own state, over a session that answers: the `sdk` opt-in on FakeSessionProvider is
 // what makes a resolving signMessage reachable at all.
 
+import { rpcErrors } from '@canton-network/core-rpc-errors'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -37,7 +38,7 @@ describe('useSignMessage', () => {
   })
 
   it('captures the wallet refusal and rethrows it', async () => {
-    const refused = new Error('user refused to sign')
+    const refused = rpcErrors.transactionRejected('Message signing failed for messageId m-1.')
     const signMessage = vi.fn<DappSdkMethods['signMessage']>().mockRejectedValue(refused)
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))
 
@@ -50,7 +51,7 @@ describe('useSignMessage', () => {
     expect(result.current.isPending).toBe(false)
   })
 
-  it('publishes a refusal that arrived as a JSON-RPC object as an Error', async () => {
+  it('publishes a bare JSON-RPC object a custom adapter rejected with as an Error', async () => {
     const rpcError = { code: 4001, message: 'user refused to sign' }
     const signMessage = vi.fn<DappSdkMethods['signMessage']>().mockRejectedValue(rpcError)
     const { result } = renderHook(() => useSignMessage(), liveSession({ signMessage }, party))

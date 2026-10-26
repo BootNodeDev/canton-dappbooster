@@ -36,7 +36,9 @@ export interface UseExecuteResult {
  * shows rather than the wallet's own primary.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
- * connected or no party is reported. A command that fails throws too, and lands in `error`.
+ * connected or no party is reported. A refused command throws too and lands in `error`: the
+ * SDK's own adapters reject with its `JsonRpcError`, a CIP-103 `code` on it, and a custom
+ * adapter's bare object rides in `cause`.
  *
  * @example
  * const { execute, lastTx } = useExecute()

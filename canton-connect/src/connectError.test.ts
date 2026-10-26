@@ -1,13 +1,8 @@
+import { rpcErrors } from '@canton-network/core-rpc-errors'
 import { describe, expect, it } from 'vitest'
 import { ConnectCancelledError, toConnectError, toError } from '#src/connectError'
 
 const rpcError = { code: -32000, message: 'wallet locked', data: { reason: 'locked' } }
-
-const sdkError = {
-  status: 'error',
-  error: 3,
-  details: 'Transaction with commandId claim-1 failed to execute.',
-}
 
 describe('toConnectError', () => {
   it('translates the picker dismissal, keeping the original as cause', () => {
@@ -52,31 +47,24 @@ describe('toError', () => {
     expect(toError(failure)).toBe(failure)
   })
 
-  it('wraps a JSON-RPC error object into an Error, keeping it as cause', () => {
+  it("passes the SDK's JsonRpcError through untouched, code and all", () => {
+    const failed = rpcErrors.transactionRejected(
+      'Transaction with commandId claim-1 failed to execute.',
+    )
+
+    expect(toError(failed)).toBe(failed)
+    expect(failed).toMatchObject({
+      code: -32003,
+      message: 'Transaction with commandId claim-1 failed to execute.',
+    })
+  })
+
+  it('wraps a bare JSON-RPC object a custom adapter rejected with, keeping it as cause', () => {
     const error = toError(rpcError)
 
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toBe('wallet locked')
     expect(error.cause).toBe(rpcError)
-  })
-
-  it('reads the details off an SDK rejection instead of stringifying it', () => {
-    const error = toError(sdkError)
-
-    expect(error.message).toBe('Transaction with commandId claim-1 failed to execute.')
-    expect(error.cause).toBe(sdkError)
-  })
-
-  it('prefers a message over a details when a rejection carries both', () => {
-    expect(toError({ message: 'wallet locked', details: 'something else' }).message).toBe(
-      'wallet locked',
-    )
-  })
-
-  it('falls back to the details when the message is empty', () => {
-    expect(toError({ message: '', details: 'the wallet refused' }).message).toBe(
-      'the wallet refused',
-    )
   })
 
   it('stringifies a rejection that carries no message', () => {
