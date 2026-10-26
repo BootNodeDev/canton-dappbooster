@@ -21,6 +21,11 @@ const capturePicker =
     throw new Error('cancel')
   }
 
+const Naked = (): JSX.Element => {
+  useCantonConnectContext()
+  return <span />
+}
+
 describe('CantonConnectProvider', () => {
   afterEach(() => {
     clearDiscoveryStorage()
@@ -38,10 +43,6 @@ describe('CantonConnectProvider', () => {
   })
 
   it('useCantonConnectContext throws when used outside the provider', () => {
-    const Naked = (): JSX.Element => {
-      useCantonConnectContext()
-      return <span />
-    }
     expect(() => render(<Naked />)).toThrow(/inside a <CantonConnectProvider>/)
   })
 
