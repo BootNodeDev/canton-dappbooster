@@ -90,8 +90,8 @@
     }
   },
   "peerDependencies": {
-    "@canton-network/core-types": "^1.8.0",
-    "@canton-network/dapp-sdk": "^1.4.0",
+    "@canton-network/core-types": "^1.14.0",
+    "@canton-network/dapp-sdk": "^1.8.0",
     "@walletconnect/sign-client": "^2.23.9",
     "react": "^19.0.0"
   },
