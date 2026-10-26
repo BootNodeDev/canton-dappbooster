@@ -60,7 +60,7 @@ export type ConnectionStatus =
  */
 export type PartyType = 'local' | 'external'
 
-// The account entry as dapp-sdk 1.5.1 declares it.
+// The account entry as dapp-sdk 1.8.0 declares it.
 type PinnedAccount = {
   primary: boolean
   partyId: string

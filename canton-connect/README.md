@@ -29,7 +29,7 @@ Published to npm as `@bootnodedev/canton-connect`. `example-dapps/amulet-vesting
 
 ## Install
 
-Install these peers next to it: `@canton-network/dapp-sdk`, `@canton-network/core-types`, `react` 19 and `@walletconnect/sign-client`. The last one is required here even though `dapp-sdk` marks it optional. `dapp-sdk` imports it statically at the top of its bundle (checked on 1.5.1), so it has to be present whether or not you set `walletConnectProjectId`. Only the session is lazy: `SignClient.init()` runs when a pairing starts, not at import time.
+Install these peers next to it: `@canton-network/dapp-sdk`, `@canton-network/core-types`, `react` 19 and `@walletconnect/sign-client`. The last one is required here even though `dapp-sdk` marks it optional. `dapp-sdk` imports it statically at the top of its bundle (checked on 1.8.0), so it has to be present whether or not you set `walletConnectProjectId`. Only the session is lazy: `SignClient.init()` runs when a pairing starts, not at import time.
 
 ## Usage
 
