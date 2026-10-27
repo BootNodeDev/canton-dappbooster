@@ -62,9 +62,11 @@ Why: [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). S
    when the wallet answers.
 3. Both of those again on a wallet that reuses the popup the SDK left open (a gateway or
    WalletConnect one), where a close after choosing must fail the connect.
-4. Check that `new DappSDK()` still only initializes fields (true on 1.5.1). The machine constructs
-   one inside a plain `assign`; if construction turns effectful, move the ritual into the provider's
-   `createSdk` and dispose the abandoned instance on the same transition, never from an effect.
+4. Check that `new DappSDK()` still only initializes fields (true on 1.8.0, whose
+   `globalThis.__CANTON_DAPP_SDK__` stamp is import-time, not the constructor's). The machine
+   constructs one inside a plain `assign`; if construction turns effectful, move the ritual into the
+   provider's `createSdk` and dispose the abandoned instance on the same transition, never from an
+   effect.
 5. Click Connect, then the Cancel that replaces it, fast enough to beat the popup: the button reads
    Connect again and no picker window appears. One appearing means `connect()` no longer reads
    `walletPicker` off the instance at pick time.

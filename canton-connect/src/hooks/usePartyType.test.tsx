@@ -1,5 +1,6 @@
 // The rule over a session that answers; a refusal reaches the caller as the rejection it was.
 
+import { rpcErrors } from '@canton-network/core-rpc-errors'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -51,7 +52,7 @@ describe('usePartyType', () => {
   })
 
   it('hands a refusal back as the rejection it was', async () => {
-    const refused = new Error('RPC error: -32601 - method not allowed')
+    const refused = rpcErrors.methodNotFound('method not allowed')
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(refused)
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
 

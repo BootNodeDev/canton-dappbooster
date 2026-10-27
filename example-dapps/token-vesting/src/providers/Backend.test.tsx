@@ -22,18 +22,19 @@ const BOOTSTRAP = 'No factory found on the ledger.'
 
 const roots: { unmount: () => void }[] = []
 
+const Probe = ({ seen }: { seen: (string | undefined)[] }): null => {
+  seen.push(useBackend().configError)
+  return null
+}
+
 const mount = (seen: (string | undefined)[]): (() => Promise<void>) => {
-  const Probe = (): null => {
-    seen.push(useBackend().configError)
-    return null
-  }
   const root = createRoot(document.createElement('div'))
   roots.push(root)
   return async () => {
     await act(async () => {
       root.render(
         <Backend>
-          <Probe />
+          <Probe seen={seen} />
         </Backend>,
       )
     })

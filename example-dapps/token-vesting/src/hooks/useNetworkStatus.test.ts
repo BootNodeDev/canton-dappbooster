@@ -26,16 +26,17 @@ const ledgerApi = (() => Promise.resolve(undefined)) as unknown as LedgerApi
 
 const roots: { unmount: () => void }[] = []
 
+const Probe = ({ networkId, seen }: { networkId: string; seen: (string | undefined)[] }): null => {
+  seen.push(useNetworkStatus(ledgerApi, 'party::1', networkId))
+  return null
+}
+
 const mount = (seen: (string | undefined)[]): ((networkId?: string) => Promise<void>) => {
-  const Probe = ({ networkId }: { networkId: string }): null => {
-    seen.push(useNetworkStatus(ledgerApi, 'party::1', networkId))
-    return null
-  }
   const root = createRoot(document.createElement('div'))
   roots.push(root)
   return async (networkId = 'canton:localnet') => {
     await act(async () => {
-      root.render(createElement(Probe, { networkId }))
+      root.render(createElement(Probe, { networkId, seen }))
     })
   }
 }

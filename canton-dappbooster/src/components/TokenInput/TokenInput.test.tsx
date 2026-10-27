@@ -85,6 +85,21 @@ const controlled = (initial = ''): HTMLInputElement => {
   return screen.getByLabelText<HTMLInputElement>('Amount')
 }
 
+const StoredToken = (): React.JSX.Element => {
+  const [token, setToken] = useState<TokenMeta>(CC)
+  return (
+    <TokenListProvider tokens={TOKENS}>
+      <TokenInput
+        label="Amount"
+        onChange={vi.fn()}
+        onTokenSelect={setToken}
+        token={token}
+        value=""
+      />
+    </TokenListProvider>
+  )
+}
+
 describe('TokenInput', () => {
   it('renders the root part and appends a consumer class', () => {
     const { root } = setup({ className: 'extra' })
@@ -339,22 +354,8 @@ describe('TokenInput', () => {
 
   // The trigger reads the `token` prop, so only a consumer that stores the pick shows the new one.
   it('shows the picked token on the trigger once the consumer stores it', async () => {
-    const Harness = (): React.JSX.Element => {
-      const [token, setToken] = useState<TokenMeta>(CC)
-      return (
-        <TokenListProvider tokens={TOKENS}>
-          <TokenInput
-            label="Amount"
-            onChange={vi.fn()}
-            onTokenSelect={setToken}
-            token={token}
-            value=""
-          />
-        </TokenListProvider>
-      )
-    }
     stubViewport(320)
-    render(<Harness />)
+    render(<StoredToken />)
 
     fireEvent.click(screen.getByRole('button', { name: 'CC' }))
     screen.getByRole('button', { name: 'USD Coin USDC' }).click()

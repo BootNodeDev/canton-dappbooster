@@ -36,7 +36,7 @@ export const residualMeetsFloor = (residual: string): boolean =>
   isZero(residual) || compareAmounts(residual, MIN_GRANT_AMOUNT) >= 0
 
 export const toMs = (iso: ISO): number => new Date(iso).getTime()
-const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x)
+const clamp01 = (x: number): number => Math.max(0, Math.min(x, 1))
 
 export const vestedFraction = (schedule: VestingSchedule, nowMs: number): number => {
   if (nowMs < toMs(schedule.cliff)) {

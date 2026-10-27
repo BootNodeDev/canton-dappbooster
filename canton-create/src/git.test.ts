@@ -5,6 +5,9 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gitSkipReason, initGit } from '#src/git'
 
+// git exports these to a commit hook; inherited, they point the temporary repository at the real index.
+const GIT_REPOSITORY_ENV = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE'] as const
+
 let work: string
 let project: string
 
@@ -19,6 +22,10 @@ beforeEach(() => {
   fs.writeFileSync(config, '[user]\n\tname = Test\n\temail = test@example.com\n')
   vi.stubEnv('GIT_CONFIG_GLOBAL', config)
   vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1')
+
+  for (const name of GIT_REPOSITORY_ENV) {
+    vi.stubEnv(name, undefined)
+  }
 })
 
 afterEach(() => {
