@@ -24,12 +24,14 @@ commit, and prints the next steps. If a step fails or you press Ctrl-C, it remov
 Alternatively, you can start with a preselected dApp or local network:
 
 - **Amulet Vesting:** a vesting dApp frontend and its contracts.
+- **Token Vesting:** a vesting dApp over a canton-token-forge token, with its registry.
 - **Barebones:** a minimal local Canton stack for developer workflows.
 
 With npm:
 
 ```shell
 npm create canton-dappbooster -- --example amulet-vesting   # Amulet Vesting dApp
+npm create canton-dappbooster -- --example token-vesting    # Token Vesting dApp
 npm create canton-dappbooster -- --localnet                 # Barebones local network
 ```
 
@@ -37,6 +39,7 @@ With pnpm:
 
 ```shell
 pnpm create canton-dappbooster --example amulet-vesting   # Amulet Vesting dApp
+pnpm create canton-dappbooster --example token-vesting    # Token Vesting dApp
 pnpm create canton-dappbooster --localnet                 # Barebones local network
 ```
 
@@ -65,6 +68,7 @@ pnpm create canton-dappbooster my-dapp --example amulet-vesting --localnet   # A
 |---|---|---|---|
 | `Starter dApp` | none | ✓ | Barebones dApp that connects to a wallet and gives you a sample contract |
 | `Amulet Vesting` | `--example amulet-vesting` | | A vesting dApp frontend and its contracts |
+| `Token Vesting` | `--example token-vesting` | | A vesting dApp over a canton-token-forge token, with its registry |
 
 ### Local networks
 

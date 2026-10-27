@@ -22,6 +22,9 @@ together, see [`architecture.md`](architecture.md).
   sets. Any other overwrite is a design error in `scaffold/`, and `scaffold` throws
   `ScaffoldConflictError`. So does any other field in a layer's `package.json`, apart from the
   layer's own `name`, `private`, `version` and `type`, because the merge would drop it.
+- What an app runs beside the ledger, such as the token example's registry, stays in the app. It
+  starts and stops through the app's own `stack:up` and `stack:down` scripts, which `dev-stack.sh`
+  runs when they exist, so the `localnet/` layer never learns about one app's services.
 - A layer's `README.md` is a section that gets appended, so it starts with a `##` heading and never
   with a title.
 - The root range rule has no exception in `scaffold/`: the tarball ships the folders as they are, so
@@ -30,7 +33,7 @@ together, see [`architecture.md`](architecture.md).
   `_pnpm-workspace.yaml`, and `scaffold` renames it back. npm drops a `.gitignore` from every
   tarball, and a `pnpm-workspace.yaml` inside the monorepo makes pnpm treat the folder as a
   workspace root of its own.
-- The monorepo runs the `daml-tooling/` and `localnet/` scripts on `example-dapps/amulet-vesting`
+- The monorepo runs the `daml-tooling/` and `localnet/` scripts on the examples in `example-dapps/`
   instead of keeping copies. Each script finds the app's `daml/` and `.env` through
   `CANTON_APP_DIR`, which defaults to its own project. A new script reads the app from there, never
   from a path to its own folder. Their tests sit beside them, and `files` keeps the tests out

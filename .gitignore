@@ -22,6 +22,7 @@ typedoc/
 .env
 .env.local
 .env.fivenorth
+.env.registry
 
 # typescript
 *.tsbuildinfo

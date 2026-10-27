@@ -28,8 +28,15 @@ interface Page {
   nextPageToken: string | undefined
 }
 
+// A registry that accepts the socket and never answers would otherwise leave the caller's own
+// `await` pending for good, with nothing to render and no error to show for it.
+const REQUEST_TIMEOUT_MS = 15_000
+
 const get = async (url: string): Promise<unknown> => {
-  const response = await fetch(url, { headers: { accept: 'application/json' } })
+  const response = await fetch(url, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  })
   if (!response.ok) {
     throw new Error(`${url} answered ${response.status}`)
   }
@@ -63,7 +70,8 @@ const toPage = (value: unknown): Page => {
  * Reads a registry's instrument metadata, following its pages up to a limit of 100, so the answer
  * is the registry's whole catalogue and a registry that will not stop paging cannot hang the caller.
  *
- * @throws where either request answers anything but 200, or the reply is not JSON.
+ * @throws where either request answers anything but 200, does not answer within 15s, or replies
+ * with something that is not JSON.
  *
  * @example
  * const instruments = await readInstruments('https://registry.example/api')
