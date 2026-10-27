@@ -20,7 +20,9 @@ export interface UseSignMessageResult {
  * Signs an arbitrary message with the connected wallet; the SDK owns the encoding.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `signMessage` where nothing is
- * connected or no party is reported. A wallet refusal throws too, and lands in `error`.
+ * connected or no party is reported. A wallet refusal throws too and lands in `error`: the SDK's
+ * own adapters reject with its `JsonRpcError`, a CIP-103 `code` on it, and a custom adapter's
+ * bare object rides in `cause`.
  *
  * @example
  * const { signMessage } = useSignMessage()

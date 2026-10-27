@@ -19,7 +19,7 @@
       "groupName": "weekly non-major"
     },
     {
-      "description": "The @canton-network/* SDK graph is pinned in pnpm-workspace.yaml (dapp-sdk 1.1.0) and updated by hand when we choose to. Disabled so Renovate never proposes or nags SDK bumps; re-enable, or bump the pins manually, to update.",
+      "description": "dapp-sdk is pinned exact in canton-connect's devDependencies and in the apps (1.8.0), core-types exact in canton-connect's dependencies; the dapp-sdk peer stays caret. Bumped by hand when we choose to. Disabled so Renovate never proposes or nags SDK bumps; re-enable, or bump the pins manually, to update.",
       "matchPackageNames": ["@canton-network/**"],
       "enabled": false
     },

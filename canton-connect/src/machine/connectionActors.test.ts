@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { providerErrors } from '@canton-network/core-rpc-errors'
 import type { ConnectResult, StatusEvent } from '@canton-network/dapp-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
@@ -334,7 +335,7 @@ describe('connectionActors', () => {
     // A cold visitor's status() rejects too, so this is the ordinary path, not an alarm.
     it('notes an unrestored session at debug and still rejects', async () => {
       const noted = vi.spyOn(console, 'debug').mockImplementation(() => {})
-      const notConnected = new Error('Not connected — call connect() first')
+      const notConnected = providerErrors.unauthorized('Not connected — call connect() first')
       const sdk = sdkAllowing({ status: () => Promise.reject(notConnected) })
       const actor = createActor(restoreActor, { input: { sdk } })
 

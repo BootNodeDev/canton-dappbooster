@@ -1,5 +1,4 @@
-// What the SDK's built-in picker rejects with, and what `guardedConnect` raises in its place when
-// the SDK misses the close — matched here, at the seam that owns the SDK, and never downstream.
+// The SDK picker's own dismissal text, matched here and never downstream.
 const PICKER_DISMISSED = 'User closed the wallet picker'
 
 /**
@@ -50,38 +49,33 @@ export class ConnectCancelledError extends Error {
   }
 }
 
-/** Reads the text off a rejection: `message` as JSON-RPC sends it, `details` as the SDK does. */
-const textOf = (cause: unknown): string | undefined => {
-  if (typeof cause !== 'object' || cause === null) {
+/** Reads the `message` off a rejection, when it carries a non-empty one. */
+const messageOf = (cause: unknown): string | undefined => {
+  if (typeof cause !== 'object' || cause === null || !('message' in cause)) {
     return undefined
   }
 
-  for (const key of ['message', 'details'] as const) {
-    const value = (cause as Record<string, unknown>)[key]
+  const { message } = cause
+  const isValidMessage = typeof message === 'string' && message !== ''
 
-    if (typeof value === 'string' && value !== '') {
-      return value
-    }
-  }
-
-  return undefined
+  return isValidMessage ? message : undefined
 }
 
 /**
- * Hands `cause` back as an `Error`, wrapping what a wallet answered with. Nothing a wallet refuses
- * arrives as an `Error`: the window transport rejects with the bare JSON-RPC object, and the SDK's
- * own controller with a `{ status, error, details }` of its own, so both are read here.
+ * Hands `cause` back as an `Error`. The SDK's transports and controller reject with its
+ * `JsonRpcError`, an `Error` carrying a CIP-103 `code`, which passes through untouched. A custom
+ * adapter may still reject with a bare `{ code, message }`, wrapped here with the object as `cause`.
  *
  * @example
  * const error = toError(await sdk.signMessage(params).catch((cause: unknown) => cause))
- * error.cause // the wallet's `{ code, message }` when that is what it sent
+ * error.cause // the bare object, when a custom adapter rejected with one
  */
 export const toError = (cause: unknown): Error => {
   if (cause instanceof Error) {
     return cause
   }
 
-  return new Error(textOf(cause) ?? String(cause), { cause })
+  return new Error(messageOf(cause) ?? String(cause), { cause })
 }
 
 /** Classifies what `sdk.connect()` threw, so the cancel path is decided once. */
