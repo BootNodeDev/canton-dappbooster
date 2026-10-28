@@ -224,7 +224,7 @@ export const connectionMachine = setup({
     assignError: assign((_, params: { error: unknown }) => ({ lastConnectError: params.error })),
     assignDeclined: assign((_, params: { connection: WalletStatusUpdate['connection'] }) => ({
       lastConnectError: new Error(
-        params.connection.reason ?? params.connection.networkReason ?? 'wallet declined connection',
+        params.connection.reason || params.connection.networkReason || 'wallet declined connection',
       ),
     })),
     forgetError: assign({ lastConnectError: undefined }),
