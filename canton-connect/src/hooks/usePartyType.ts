@@ -1,7 +1,7 @@
 import { useSelector } from '@xstate/react'
 import { useCallback } from 'react'
 import type { CantonConnectProvider } from '#src/CantonConnectProvider'
-import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import { useWalletCall } from '#src/hooks/useWalletCall'
 import type { DappSdkMethods, PartyType } from '#src/types'
 
 const namespaceOf = (id: string): string | undefined => /::(.+)$/.exec(id)?.[1]
@@ -15,15 +15,14 @@ const readParticipantNamespace = async (sdk: DappSdkMethods): Promise<string> =>
     typeof answer.participantId === 'string' ? namespaceOf(answer.participantId) : undefined
 
   if (namespace === undefined) {
-    throw new Error(`participant id not found in ${JSON.stringify(answer)}`)
+    throw new Error('participant id not found in the ledger answer', { cause: answer })
   }
 
   return namespace
 }
 
 /**
- * Return shape of {@link usePartyType}. `readPartyType` throws when nothing is connected or no
- * party is reported, which `isReady` is there to check first.
+ * Return shape of {@link usePartyType}; check `isReady` before calling `readPartyType`.
  *
  * @category Hooks
  */
@@ -39,7 +38,9 @@ export interface UsePartyTypeResult {
  * local party cannot take, such as `signMessage`, which the reference gateway refuses.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `readPartyType` where nothing
- * is connected or no party is reported, which `isReady` is there to check first.
+ * is connected, the wallet is locked or no party is reported, which `isReady` is there to check
+ * first. It throws too when the ledger's answer carries no usable participant id, and on a refused
+ * read, always as an `Error`: see {@link toError}.
  *
  * @example
  * const { readPartyType } = usePartyType()
@@ -50,22 +51,23 @@ export interface UsePartyTypeResult {
  * @category Hooks
  */
 export const usePartyType = (): UsePartyTypeResult => {
-  // Guards without `call`: a stateless query needs no pending/error renders around it.
-  const { connection, sdk, status, isLocked } = useWalletCall()
+  const { connection, read, status, isLocked } = useWalletCall()
   const account = useSelector(connection, (snapshot) => snapshot.context.account)
 
-  const readPartyType = useCallback(async (): Promise<PartyType> => {
-    assertUsable(status, isLocked)
+  const readPartyType = useCallback(
+    (): Promise<PartyType> =>
+      read(async (sdk) => {
+        if (account === undefined) {
+          throw new Error('wallet reports no primary account - select or add one in the wallet')
+        }
 
-    if (account === undefined) {
-      throw new Error('wallet reports no primary account - select or add one in the wallet')
-    }
+        const participantNamespace = await readParticipantNamespace(sdk)
 
-    const participantNamespace = await readParticipantNamespace(sdk)
-
-    // Canton's rule, not a wallet's: a local party shares the participant's namespace.
-    return account.namespace === participantNamespace ? 'local' : 'external'
-  }, [account, isLocked, sdk, status])
+        // Canton's rule, not a wallet's: a local party shares the participant's namespace.
+        return account.namespace === participantNamespace ? 'local' : 'external'
+      }),
+    [account, read],
+  )
 
   return { readPartyType, isReady: status === 'connected' && !isLocked && account !== undefined }
 }

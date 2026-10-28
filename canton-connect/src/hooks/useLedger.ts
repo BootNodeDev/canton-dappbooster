@@ -1,6 +1,6 @@
 import type { LedgerApiParams } from '@canton-network/dapp-sdk'
 import { useCallback } from 'react'
-import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
+import { useWalletCall } from '#src/hooks/useWalletCall'
 
 /**
  * Re-exported so callers need no direct `@canton-network/dapp-sdk` dependency for the type.
@@ -8,8 +8,7 @@ import { assertUsable, useWalletCall } from '#src/hooks/useWalletCall'
 export type { LedgerApiParams }
 
 /**
- * Return shape of {@link useLedger}. `ledgerApi` throws when nothing is connected, which `isReady`
- * is there to check first.
+ * Return shape of {@link useLedger}; check `isReady` before calling `ledgerApi`.
  *
  * @category Hooks
  */
@@ -23,7 +22,8 @@ export interface UseLedgerResult {
  * JSON API, passed through untyped.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `ledgerApi` itself where nothing
- * is connected, which `isReady` is there to check first.
+ * is connected or the wallet is locked, which `isReady` is there to check first. A refused read
+ * throws too, always as an `Error`: see {@link toError}.
  *
  * @example
  * const { ledgerApi } = useLedger()
@@ -36,16 +36,11 @@ export interface UseLedgerResult {
  * @category Hooks
  */
 export const useLedger = (): UseLedgerResult => {
-  // Guards without `call`: a stateless query needs no pending/error renders around it.
-  const { sdk, status, isLocked } = useWalletCall()
+  const { read, status, isLocked } = useWalletCall()
 
   const ledgerApi = useCallback(
-    async (params: LedgerApiParams): Promise<unknown> => {
-      assertUsable(status, isLocked)
-
-      return await sdk.ledgerApi(params)
-    },
-    [isLocked, sdk, status],
+    (params: LedgerApiParams): Promise<unknown> => read((sdk) => sdk.ledgerApi(params)),
+    [read],
   )
 
   return { ledgerApi, isReady: status === 'connected' && !isLocked }

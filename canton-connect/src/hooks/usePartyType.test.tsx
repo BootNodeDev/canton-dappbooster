@@ -1,5 +1,3 @@
-// The rule over a session that answers; a refusal reaches the caller as the rejection it was.
-
 import { rpcErrors } from '@canton-network/core-rpc-errors'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -51,7 +49,7 @@ describe('usePartyType', () => {
     })
   })
 
-  it('hands a refusal back as the rejection it was', async () => {
+  it('hands an Error refusal back as the rejection it was', async () => {
     const refused = rpcErrors.methodNotFound('method not allowed')
     const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(refused)
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
@@ -61,13 +59,26 @@ describe('usePartyType', () => {
     })
   })
 
-  it('rejects an answer carrying no participant id', async () => {
-    const ledgerApi = answering({ parties: [] })
+  it('wraps a bare refusal in an Error, the object as its cause', async () => {
+    const bare = { status: 'error', error: 3 }
+    const ledgerApi = vi.fn<DappSdkMethods['ledgerApi']>().mockRejectedValue(bare)
     const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
 
     await act(async () => {
-      await expect(result.current.readPartyType()).rejects.toThrow(
-        'participant id not found in {"parties":[]}',
+      await expect(result.current.readPartyType()).rejects.toEqual(
+        new Error('Wallet request failed', { cause: bare }),
+      )
+    })
+  })
+
+  it('rejects an answer carrying no participant id, the answer as cause', async () => {
+    const answer = { parties: [] }
+    const ledgerApi = answering(answer)
+    const { result } = renderHook(() => usePartyType(), liveSession({ ledgerApi }, party))
+
+    await act(async () => {
+      await expect(result.current.readPartyType()).rejects.toEqual(
+        new Error('participant id not found in the ledger answer', { cause: answer }),
       )
     })
   })

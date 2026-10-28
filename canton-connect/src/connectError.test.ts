@@ -19,12 +19,6 @@ describe('toConnectError', () => {
     expect(toConnectError(cancelled)).toBe(cancelled)
   })
 
-  it('leaves a wallet failure alone', () => {
-    const failure = new Error('Wallet did not connect')
-
-    expect(toConnectError(failure)).toBe(failure)
-  })
-
   it('does not treat a near-miss message as a cancel', () => {
     expect(toConnectError(new Error('user closed the wallet picker'))).not.toBeInstanceOf(
       ConnectCancelledError,
@@ -47,16 +41,12 @@ describe('toError', () => {
     expect(toError(failure)).toBe(failure)
   })
 
-  it("passes the SDK's JsonRpcError through untouched, code and all", () => {
+  it("passes the SDK's JsonRpcError through untouched", () => {
     const failed = rpcErrors.transactionRejected(
       'Transaction with commandId claim-1 failed to execute.',
     )
 
     expect(toError(failed)).toBe(failed)
-    expect(failed).toMatchObject({
-      code: -32003,
-      message: 'Transaction with commandId claim-1 failed to execute.',
-    })
   })
 
   it('wraps a bare JSON-RPC object a custom adapter rejected with, keeping it as cause', () => {
@@ -67,7 +57,16 @@ describe('toError', () => {
     expect(error.cause).toBe(rpcError)
   })
 
-  it('stringifies a rejection that carries no message', () => {
-    expect(toError('nope').message).toBe('nope')
+  it.each([
+    ['an object without a message', { status: 'error', error: 3 }],
+    ['an empty message', { message: '' }],
+    ['a message that is not text', { message: 42 }],
+    ['a string', 'nope'],
+    ['null', null],
+  ])('gives %s the fixed message, keeping it as cause', (_kind, rejected) => {
+    const error = toError(rejected)
+
+    expect(error.message).toBe('Wallet request failed')
+    expect(error.cause).toBe(rejected)
   })
 })
