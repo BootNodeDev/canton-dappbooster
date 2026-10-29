@@ -83,6 +83,13 @@ const ownNetworkSteps = (
           </Text>,
         ]
       : []),
+    ...(project.hasStackUp
+      ? [
+          <Text key="stack-up">
+            - Run <Command>{run('stack:up')}</Command> to start the app's own services.
+          </Text>,
+        ]
+      : []),
     dev,
   ]
 }

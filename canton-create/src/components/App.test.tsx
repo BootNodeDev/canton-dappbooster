@@ -58,6 +58,17 @@ const pressUntil = async (
 
 const fixture = path.resolve(import.meta.dirname, '../testing/fixtures/example-hello')
 
+const writeExample = (scripts: Record<string, string>): string => {
+  const dir = path.join(work, 'example')
+  fs.mkdirSync(dir)
+  fs.writeFileSync(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ name: '@bootnodedev/canton-example-services', version: '0.0.1', scripts }),
+  )
+
+  return dir
+}
+
 // An npm that never finishes, so a test can cancel the install while it runs.
 const withHangingNpm = async (test: (pidFile: string) => Promise<void>): Promise<void> => {
   const bin = path.join(work, 'bin')
@@ -181,7 +192,19 @@ describe('App', () => {
     expect(screen()).toContain('Fetching')
     expect(screen()).toContain('Point .env at your network')
     expect(screen()).not.toContain('Mock Wallet')
+    expect(screen()).not.toContain('stack:up')
     expect(fs.existsSync(path.join(target, 'src/index.ts'))).toBe(true)
+  })
+
+  it('lists stack:up between bootstrap and dev when the example has that script', async () => {
+    const example = writeExample({ bootstrap: 'true', 'stack:up': 'true' })
+    const target = path.join(work, 'with-services')
+    const { frames } = run({ directory: target, app: example, localnet: false })
+
+    await waitFor(() => frames.join('\n'), 'Post-install instructions')
+    const closing = frames.findLast((frame) => frame.includes('Post-install instructions'))
+
+    expect(closing).toMatch(/npm run bootstrap.*npm run stack:up.*npm run dev/s)
   })
 
   it('refuses a folder that is not empty', async () => {
