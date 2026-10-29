@@ -49,7 +49,6 @@ export class ConnectCancelledError extends Error {
   }
 }
 
-/** Reads the `message` off a rejection, when it carries a non-empty one. */
 const messageOf = (cause: unknown): string | undefined => {
   if (typeof cause !== 'object' || cause === null || !('message' in cause)) {
     return undefined
@@ -62,29 +61,26 @@ const messageOf = (cause: unknown): string | undefined => {
 }
 
 /**
- * Hands `cause` back as an `Error`. The SDK's transports and controller reject with its
- * `JsonRpcError`, an `Error` carrying a CIP-103 `code`, which passes through untouched. A custom
- * adapter may still reject with a bare `{ code, message }`, wrapped here with the object as `cause`.
+ * Hands any rejection back as an `Error`, passing an `Error` (the SDK's `JsonRpcError` too) through
+ * untouched and wrapping anything else with the raw value on `cause`.
  *
  * @example
- * const error = toError(await sdk.signMessage(params).catch((cause: unknown) => cause))
- * error.cause // the bare object, when a custom adapter rejected with one
+ * toError({ code: 4001, message: 'User rejected' }).message // 'User rejected'
+ * toError({ status: 'error', error: 3 }).message // 'Wallet request failed'
+ * toError('nope').cause // 'nope'
+ *
+ * @category Utilities
  */
 export const toError = (cause: unknown): Error => {
   if (cause instanceof Error) {
     return cause
   }
 
-  return new Error(messageOf(cause) ?? String(cause), { cause })
+  return new Error(messageOf(cause) ?? 'Wallet request failed', { cause })
 }
 
 /** Classifies what `sdk.connect()` threw, so the cancel path is decided once. */
-export const toConnectError = (cause: unknown): Error => {
-  if (cause instanceof ConnectCancelledError) {
-    return cause
-  }
-
-  return cause instanceof Error && cause.message === PICKER_DISMISSED
+export const toConnectError = (cause: unknown): Error =>
+  cause instanceof Error && cause.message === PICKER_DISMISSED
     ? new ConnectCancelledError(cause)
     : toError(cause)
-}

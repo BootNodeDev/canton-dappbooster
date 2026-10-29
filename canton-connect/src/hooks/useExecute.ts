@@ -16,9 +16,9 @@ const withActAs = (params: PrepareExecuteParams, partyId: string): PrepareExecut
   params.actAs === undefined ? { ...params, actAs: [partyId] } : params
 
 /**
- * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed rather than
- * at submission, and throws when nothing is connected or no party is reported; `lastTx` follows
- * the wallet's own `txChanged` pushes, so it moves even while `execute` is still pending.
+ * Return shape of {@link useExecute}. `execute` resolves once the ledger has executed, not at
+ * submission; `lastTx` follows the wallet's `txChanged` pushes, so it moves while `execute` is
+ * still pending.
  *
  * @category Hooks
  */
@@ -36,9 +36,8 @@ export interface UseExecuteResult {
  * shows rather than the wallet's own primary.
  *
  * @throws with no {@link CantonConnectProvider} above it, and from `execute` where nothing is
- * connected or no party is reported. A refused command throws too and lands in `error`: the
- * SDK's own adapters reject with its `JsonRpcError`, a CIP-103 `code` on it, and a custom
- * adapter's bare object rides in `cause`.
+ * connected, the wallet is locked or no party is reported. A refused command throws too and lands
+ * in `error`, always as an `Error`: see {@link toError}.
  *
  * @example
  * const { execute, lastTx } = useExecute()

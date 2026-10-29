@@ -410,18 +410,28 @@ describe('connectionMachine', () => {
       actor.stop()
     })
 
-    it('lands in failure when the wallet declines the connection', async () => {
+    it.each([
+      [
+        'its reason over the network reason',
+        { reason: 'user rejected', networkReason: 'network unreachable' },
+        'user rejected',
+      ],
+      [
+        'its network reason over an empty reason',
+        { reason: '', networkReason: 'network unreachable' },
+        'network unreachable',
+      ],
+      [
+        'itself when both reasons are empty',
+        { reason: '', networkReason: '' },
+        'wallet declined connection',
+      ],
+    ])('lands in failure naming %s', async (_case, reasons, expected) => {
       const machine = connectionMachine.provide({
         actors: {
           accounts,
           connect: fromPromise<WalletStatusUpdate, ConnectInput>(() =>
-            Promise.resolve({
-              connection: {
-                isConnected: false,
-                isNetworkConnected: true,
-                reason: 'user rejected',
-              },
-            }),
+            Promise.resolve({ connection: { ...unauthenticatedConnection, ...reasons } }),
           ),
         },
       })
@@ -432,57 +442,7 @@ describe('connectionMachine', () => {
       await pause(0)
 
       expect(actor.getSnapshot().matches('failure')).toBe(true)
-      expect(actor.getSnapshot().context.lastConnectError).toEqual(new Error('user rejected'))
-
-      actor.stop()
-    })
-
-    it('surfaces the network reason when decline carries only that', async () => {
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          connect: fromPromise<WalletStatusUpdate, ConnectInput>(() =>
-            Promise.resolve({
-              connection: {
-                isConnected: false,
-                isNetworkConnected: false,
-                networkReason: 'network unreachable',
-              },
-            }),
-          ),
-        },
-      })
-      const actor = createActor(machine, { input: connectionInput() })
-
-      actor.start()
-      actor.send({ type: 'connect' })
-      await pause(0)
-
-      expect(actor.getSnapshot().matches('failure')).toBe(true)
-      expect(actor.getSnapshot().context.lastConnectError).toEqual(new Error('network unreachable'))
-
-      actor.stop()
-    })
-
-    it('names the decline itself when the wallet gives neither reason', async () => {
-      const machine = connectionMachine.provide({
-        actors: {
-          accounts,
-          connect: fromPromise<WalletStatusUpdate, ConnectInput>(() =>
-            Promise.resolve({ connection: unauthenticatedConnection }),
-          ),
-        },
-      })
-      const actor = createActor(machine, { input: connectionInput() })
-
-      actor.start()
-      actor.send({ type: 'connect' })
-      await pause(0)
-
-      expect(actor.getSnapshot().matches('failure')).toBe(true)
-      expect(actor.getSnapshot().context.lastConnectError).toEqual(
-        new Error('wallet declined connection'),
-      )
+      expect(actor.getSnapshot().context.lastConnectError).toEqual(new Error(expected))
 
       actor.stop()
     })

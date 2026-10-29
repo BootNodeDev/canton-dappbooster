@@ -14,8 +14,11 @@ type WalletCallState = { isPending: boolean; error: Error | undefined }
 /** What a caller hands `call`: the SDK client, and the id of the party the call acts as. */
 type WalletCallRun<T> = (sdk: DappSdkMethods, partyId: string) => Promise<T>
 
+/** What a caller hands `read`: the SDK client alone. */
+type WalletReadRun<T> = (sdk: DappSdkMethods) => Promise<T>
+
 /** Throws when the wallet is disconnected or locked, the guard every SDK-calling hook shares. */
-export const assertUsable = (status: ConnectionStatus, isLocked: boolean): void => {
+const assertUsable = (status: ConnectionStatus, isLocked: boolean): void => {
   if (status !== 'connected') {
     throw new Error('wallet is not connected - call useConnect().connect() first')
   }
@@ -38,6 +41,7 @@ function assertPartyId(partyId: string | undefined): asserts partyId is string {
  */
 export interface UseWalletCallResult {
   call: <T>(run: WalletCallRun<T>) => Promise<T>
+  read: <T>(run: WalletReadRun<T>) => Promise<T>
   isPending: boolean
   error: Error | undefined
   reset: () => void
@@ -47,11 +51,10 @@ export interface UseWalletCallResult {
   isLocked: boolean
 }
 
-// The skeleton shared by the SDK-calling hooks: session selectors, the guards, and the
-// pending/error bookkeeping around one call. Internal; the public hooks shape its pieces.
 /**
  * Selects the session and wraps one SDK call with the connect, lock and party guards plus the
- * pending/error bookkeeping `useExecute` and `useSignMessage` share.
+ * pending/error bookkeeping `useExecute` and `useSignMessage` share. `read` is the stateless
+ * version for a query: the connect and lock guards, and a refusal as an `Error`.
  */
 export const useWalletCall = (): UseWalletCallResult => {
   const { connection } = useCantonConnectContext()
@@ -83,10 +86,22 @@ export const useWalletCall = (): UseWalletCallResult => {
     [isLocked, partyId, sdk, status],
   )
 
+  const read = useCallback(
+    async <T>(run: WalletReadRun<T>): Promise<T> => {
+      assertUsable(status, isLocked)
+
+      return await run(sdk).catch((err: unknown) => {
+        throw toError(err)
+      })
+    },
+    [isLocked, sdk, status],
+  )
+
   const reset = useCallback((): void => setState(IDLE), [])
 
   return {
     call,
+    read,
     isPending: state.isPending,
     error: state.error,
     reset,

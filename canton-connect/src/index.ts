@@ -10,7 +10,7 @@
 
 export type { CantonConnectProviderProps } from '#src/CantonConnectProvider'
 export { CantonConnectProvider, useCantonConnectContext } from '#src/CantonConnectProvider'
-export { ConnectCancelledError } from '#src/connectError'
+export { ConnectCancelledError, toError } from '#src/connectError'
 export type { UseAccountResult } from '#src/hooks/useAccount'
 export { useAccount } from '#src/hooks/useAccount'
 export type { UseConnectResult } from '#src/hooks/useConnect'

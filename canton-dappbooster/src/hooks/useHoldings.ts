@@ -1,4 +1,4 @@
-import { type LedgerApiParams, useAccount, useLedger } from '@bootnodedev/canton-connect'
+import { type LedgerApiParams, toError, useAccount, useLedger } from '@bootnodedev/canton-connect'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { valueAt } from '#src/utils/json'
 import type { Holding } from '#src/utils/sumHoldings'
@@ -81,9 +81,6 @@ interface HoldingsState {
 
 const IDLE: HoldingsState = { error: undefined, holdings: undefined, isLoading: false }
 const LOADING: HoldingsState = { error: undefined, holdings: undefined, isLoading: true }
-
-const toError = (value: unknown): Error =>
-  value instanceof Error ? value : new Error(String(value))
 
 /**
  * Return shape of {@link useHoldings}. `holdings` is `undefined` until the first read answers, and

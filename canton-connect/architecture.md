@@ -24,7 +24,7 @@ src/
   hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
-  connectError.ts           ConnectCancelledError, PickerClosedError, toConnectError
+  connectError.ts           ConnectCancelledError, PickerClosedError, toError, toConnectError
   guardedConnect.ts         sdk.connect() with a closed-popup watchdog
   types.ts                  Account, ConnectionStatus, CantonConnectConfig, DappSdkMethods, context value
   index.ts                  public exports
