@@ -541,6 +541,10 @@ right folder instead of the monorepo root. The root `package.json` is private an
 so it needs none. A manual publish from a laptop has no provenance to verify. That is why 0.3.0
 went out without the field and v0.3.1 was the first to hit this.
 
+**Every published package fills its npm page**: `description`, `keywords`, `homepage`, `bugs`,
+`author`, `license` and `repository`. `scripts/manifests.test.mjs` fails `pnpm test`, and with it
+the release workflow, when one of them is missing. Set them with `pnpm pkg set`.
+
 **A prerelease publishes under the `next` dist-tag**, keyed off `github.event.release.prerelease`,
 so a release candidate never becomes what `npm install` resolves. `pnpm -r publish` skips a package
 whose version is already on npm, so re-running the workflow after a partial failure is safe.
