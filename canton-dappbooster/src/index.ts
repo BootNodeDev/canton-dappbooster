@@ -1,6 +1,6 @@
 /**
  * Everything importable from `@bootnodedev/canton-dappbooster` itself. The exports that read the
- * wallet session import from the `/connect` sub-path instead.
+ * wallet session live on the `/connect` sub-path instead.
  *
  * @module Main
  */
