@@ -73,8 +73,8 @@ the route's `self` branch, whose choice context is the config alone, and the ans
 halves a command needs: `factoryId`, the contract id, and a disclosure whose `templateId` is the
 resolved one, which the package-name filters cannot supply.
 
-Fetched per write rather than cached, for the reason the Amulet context was: one round trip against
-a contract that can be archived underneath us.
+Fetched per write rather than cached: the admin can archive the config at any time, and a cached
+id would then fail the write. It costs one round trip.
 
 The `(admin, instrumentId)` pair the route is asked about is not on the ledger either. The factory
 is this repo's own operator, but the instrument admin is a third party, so
@@ -517,8 +517,8 @@ or a sentence it uses the pure `truncateIdentifier` / `partyHint` formatters ins
 `<Identifier>`'s copy control is itself interactive and cannot nest inside another interactive
 element.
 
-No id links out at the moment. `VITE_EXPLORER_URL` names the explorer and nothing else now that the
-transfer context has its own endpoint, and no `<Identifier>` is given an `href`, so nothing renders
+No id links out at the moment. `VITE_EXPLORER_URL` names the explorer, but no `<Identifier>` is
+given an `href`, so nothing renders
 the kit's external-link affordance and `EXPLORER` is exported for a consumer that does not exist
 yet. Restoring it is passing `href={useExplorerLink(EXPLORER)(partyId)}` again at the call
 sites that want it: the kit composes URLs only from an `ExplorerConfig` because Canton has no

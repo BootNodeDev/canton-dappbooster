@@ -25,7 +25,7 @@ Most of that machinery exists to work around gaps in `@canton-network/dapp-sdk`,
 
 ## Status
 
-Published to npm as `@bootnodedev/canton-connect`. `example-dapps/amulet-vesting` in this repo uses it too, and links the local folder as long as the version satisfies the declared range.
+Published to npm as `@bootnodedev/canton-connect`. `example-dapps/amulet-vesting` and `example-dapps/token-vesting` in this repo use it too, and link the local folder as long as the version satisfies the declared range.
 
 ## Install
 

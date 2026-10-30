@@ -384,7 +384,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   back off the ledger once a wallet connects, so nothing can go stale between the two. Pointing the
   wallet at another participant is the whole of switching networks.
 - **One `.env` per example, in its own folder.** It holds the signing recipe `mint-token.mjs`
-  reads and the token `deploy-dar.sh` and the example's `scripts/bootstrap-vesting.mjs` send. The
+  reads and the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs` and the token
+  example's `scripts/registry.sh` use. The
   root scripts point the scaffold's scripts at `example-dapps/amulet-vesting` through
   `CANTON_APP_DIR`. `mint-token` keeps one the caller already set, which is how
   `dev:token-vesting` mints into its own `.env`. The bootstrap
@@ -415,7 +416,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   with no copy in a consumer tree. pnpm installed nothing and warned about nothing, two of the
   vesting dApp's test files failed, and the bundle rendered a blank page. Its production build still
   exited 0, because Vite 8 turns an unresolved import into a throwing stub, which is how it reached
-  npm. `example-dapps/amulet-vesting` also lists it in `dependencies` on the same range. pnpm and
+  npm. `example-dapps/amulet-vesting` and `example-dapps/token-vesting` also list it in
+  `dependencies` on the same range. pnpm and
   npm install peers on their own, yarn does not, and a consumer can turn that off. It can go back to
   optional once upstream moves that import behind a dynamic one.
 - `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, the three Wallet Gateway compiles natively (`better-sqlite3`, `cbor-extract` and `secp256k1`), and the token example's `@bootnodedev/canton-token-forge`. pnpm blocks anything else until someone adds it. That last one is a git dependency whose `prepare` builds the registry, and pnpm keys it by the commit its tag resolves to. Moving its tag means replacing that commit in the root `pnpm-workspace.yaml` and in the example's `_pnpm-workspace.yaml` together.
@@ -445,9 +447,10 @@ ships the text, and the repo holds one copy.
 
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
 `linkWorkspacePackages: true`. So pnpm links the local folder whenever that folder's own `version`
-satisfies the range, and downloads from npm when it does not. `example-dapps/amulet-vesting` and
-`canton-dappbooster` both ask for `^` plus the version the three folders are on, so every one of
-them links today. That is what lets a single `package.json` serve two readers:
+satisfies the range, and downloads from npm when it does not. `example-dapps/amulet-vesting`,
+`example-dapps/token-vesting` and `canton-dappbooster` all ask for `^` plus the version the three
+folders are on, so every one of them links today. That is what lets a single `package.json` serve
+two readers:
 
 - In this repo the three folders exist and are in range. An edit in `canton-connect/src` then shows
   up in the dApp with no build and no republish.

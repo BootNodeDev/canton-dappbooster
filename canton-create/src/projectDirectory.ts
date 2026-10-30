@@ -8,6 +8,7 @@ export interface ProjectFacts {
   dar: string | undefined
   needsSpliceTag: boolean
   hasBootstrap: boolean
+  hasStackUp: boolean
 }
 
 /** What the closing screen needs to know about the project a run made. */
@@ -24,6 +25,7 @@ export const readProject = (dir: string): ProjectFacts => {
     dar: name && version ? `daml/.daml/dist/${name}-${version}.dar` : undefined,
     needsSpliceTag: /^\s*-\s*deps\//m.test(yaml),
     hasBootstrap: manifest.scripts?.bootstrap !== undefined,
+    hasStackUp: manifest.scripts?.['stack:up'] !== undefined,
   }
 }
 

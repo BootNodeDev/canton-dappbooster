@@ -27,8 +27,9 @@ If the folder existed and was empty, the installer empties it again. Ctrl-C canc
 no later section starts, and the installer exits with 130.
 
 After the last section, `PostInstall` prints the next steps. It reads the finished project
-(`readProject` in `src/projectDirectory.ts`) to name the DAR the contract builds, so the steps fit
-the project the run wrote.
+(`readProject` in `src/projectDirectory.ts`) to name the DAR the contract builds and to print the
+`bootstrap` and `stack:up` steps only when the manifest has those scripts, so the steps fit the
+project the run wrote.
 
 ## Layers
 
