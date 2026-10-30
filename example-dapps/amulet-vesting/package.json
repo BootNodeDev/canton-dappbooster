@@ -68,5 +68,21 @@
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vitest": "^5.0.0"
-  }
+  },
+  "keywords": [
+    "canton",
+    "canton-network",
+    "dapp",
+    "dappbooster",
+    "bootnode",
+    "example",
+    "vesting",
+    "canton-coin",
+    "amulet"
+  ],
+  "homepage": "https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting#readme",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
+  "author": "BootNode (https://canton.bootnode.dev/)"
 }

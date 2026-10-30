@@ -75,5 +75,22 @@
       "types": "./api/*.ts",
       "default": "./api/*"
     }
-  }
+  },
+  "keywords": [
+    "canton",
+    "canton-network",
+    "dapp",
+    "dappbooster",
+    "bootnode",
+    "example",
+    "vesting",
+    "token",
+    "token-standard",
+    "canton-token-forge"
+  ],
+  "homepage": "https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/token-vesting#readme",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
+  "author": "BootNode (https://canton.bootnode.dev/)"
 }

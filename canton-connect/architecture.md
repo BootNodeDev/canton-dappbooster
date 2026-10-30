@@ -21,7 +21,7 @@ src/
     useConnectBridge.ts     connect() as a promise over the machine's tags
     useDisconnectBridge.ts  disconnect() as a promise over the machine's tags
     adapters.ts             buildAdditionalAdapters
-  hooks/                    the seven public hooks, plus useTxFeed and useWalletCall
+  hooks/                    the eight public hooks, plus useTxFeed and useWalletCall
   mock/mockAdapter.ts       createMockAdapter, a ProviderAdapter for dev and tests
   testing/                  the ./testing doubles, plus suite-local helpers
   connectError.ts           ConnectCancelledError, PickerClosedError, toError, toConnectError

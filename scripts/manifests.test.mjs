@@ -3,7 +3,20 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
-import { readManifests } from './manifests.mjs'
+import { libraryNames, readManifests } from './manifests.mjs'
+
+const NPM_PAGE_FIELDS = [
+  'description',
+  'keywords',
+  'homepage',
+  'bugs',
+  'author',
+  'license',
+  'repository',
+]
+
+const isBlank = (value) =>
+  value === undefined || value === '' || (Array.isArray(value) && value.length === 0)
 
 describe('readManifests', () => {
   it('reads every package pnpm finds in the workspace', () => {
@@ -21,5 +34,22 @@ describe('readManifests', () => {
       'example-dapps/probe/package.json',
       'package.json',
     ])
+  })
+})
+
+describe('published manifests', () => {
+  it('fill every field their npm page shows', () => {
+    const manifests = readManifests()
+    const published = libraryNames(manifests)
+
+    const missing = Object.values(manifests)
+      .filter((manifest) => published.has(manifest.name))
+      .flatMap((manifest) =>
+        NPM_PAGE_FIELDS.filter((field) => isBlank(manifest[field])).map(
+          (field) => `${manifest.name}: ${field}`,
+        ),
+      )
+
+    assert.deepEqual(missing, [])
   })
 })
