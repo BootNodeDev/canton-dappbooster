@@ -1,6 +1,6 @@
 /**
- * Everything importable from `@bootnodedev/canton-dappbooster` itself. `<ConnectButton>` is not
- * here: it reads the wallet session, so it lives on the `/connect` sub-path.
+ * Everything importable from `@bootnodedev/canton-dappbooster` itself. The exports that read the
+ * wallet session import from the `/connect` sub-path instead.
  *
  * @module Main
  */
