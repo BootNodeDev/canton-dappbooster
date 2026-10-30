@@ -61,9 +61,9 @@ State boundaries:
 
 - The CIP-0103 path: a dApp talks to the wallet through the provider interface. That is how the vesting dApp in `example-dapps/amulet-vesting` gets its session, its ledger reads, and its submissions.
 - The wallet owns user keys and signs locally.
-- `CANTON_BACKEND_TOKEN` belongs to the scripts and the token example's registry: the DAR upload,
-  the vesting bootstrap, and the registry `scripts/registry.sh` starts. Nothing in the browser ever
-  holds it.
+- `CANTON_BACKEND_TOKEN` belongs to the scripts and two servers: the DAR upload, the vesting
+  bootstrap, the token registry `scripts/registry.sh` starts, and amulet-vesting's dev server, which
+  adds it to its `/registry` proxy. Nothing in the browser ever holds it.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
 - The wallet should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
 
@@ -96,11 +96,11 @@ State boundaries:
 | --- | --- | --- |
 | `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
-| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap and the token example's registry |
+| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap, the token example's registry and amulet-vesting's dev-server `/registry` proxy |
 
 Each example's own `.env` is the one that matters: the signing recipe `mint-token.mjs` reads, plus
-the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs` and the token example's
-`scripts/registry.sh` use. The root scripts
+the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs`, the token example's
+`scripts/registry.sh` and amulet-vesting's `vite.config.ts` use. The root scripts
 point the first two at it through `CANTON_APP_DIR`. Minting is offline, so it needs nothing running, which is what lets
 `pnpm dev:amulet-vesting up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
 LocalNet reads its own `canton-barebones.config.json`, which `dev-stack.sh` scaffolds into
@@ -148,7 +148,7 @@ scaffolds it again when the template moves past the local copy. The config there
 the installed version rather than from a committed file. The Splice checkout and the runtime env
 land in its `.generated/`.
 
-For the bring-up sequence, follow [`README.md`](README.md).
+For the bring-up sequence, follow [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Scaffolding
 
@@ -167,8 +167,8 @@ sit in this repo. Each install picks which copy a consumer gets, by version:
 | a project `create-canton-dappbooster` makes | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
 Both cases read the same `package.json`. Nothing in `example-dapps/amulet-vesting`,
-`example-dapps/token-vesting` or `canton-dappbooster` names a workspace, only a range (`^` plus the
-libraries' version). That is why
+`example-dapps/token-vesting`, `canton-create/scaffold/starter` or `canton-dappbooster` names a
+workspace, only a range (`^` plus the libraries' version). That is why
 the same file works in a repo that has the folders and in one that does not.
 
 What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a

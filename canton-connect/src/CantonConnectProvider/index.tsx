@@ -15,7 +15,7 @@ export const CantonConnectContext = createContext<CantonConnectContextValue | un
 /**
  * The whole context in one read, and the escape hatch behind every other hook here. Reach for a
  * narrower hook unless a component needs several slices at once; this one hands back the config,
- * the connection to select off, and the three actions.
+ * the connection to select off, and the four actions.
  *
  * @throws with no {@link CantonConnectProvider} above it.
  *

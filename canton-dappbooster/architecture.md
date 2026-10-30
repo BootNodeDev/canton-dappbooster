@@ -40,8 +40,9 @@ that is its root, and one `resolveInvalid` in `src/utils/invalid.ts` decides the
 pair cannot drift.
 
 The class strings live in `anatomy.ts`; the theme (a separate package) selects the same strings.
-Keeping them aligned is manual for now — a parity check (the parent's `check:anatomy`) is future
-tooling, not MVP scope.
+The root `check:anatomy` gate fails on a theme `cnc-*` class or `data-*` selector no anatomy
+declares, and on an anatomy that has parts but none the theme styles. A part or state left
+unstyled passes.
 
 ## Behavior: Zag, hand-rolled — one widget at a time
 
@@ -58,10 +59,9 @@ Holding state is not the trigger; everything else is hand-rolled on plain React 
 not only from `Portal`, and declares it a peer of its own, which is why `react-dom` joins `react` as
 a peer dependency here; a consumer already has it, so nothing new is asked of them.
 
-`@bootnodedev/canton-connect` is the third peer, and the one that does ask something. The three
-components behind `/connect` read the wallet session from its hooks rather than from props, so they
-throw without a `<CantonConnectProvider>` above them — the only components here requiring an
-ancestor. That is the
+`@bootnodedev/canton-connect` is the third peer, and the one that does ask something. The four
+components and the `useHoldings` hook behind `/connect` read the wallet session from its hooks
+rather than from props, so they throw without a `<CantonConnectProvider>` above them. That is the
 price of one source of truth for the session: a prop mirroring it would let a caller contradict a
 connect already in flight (see the authoring rules in the root `CLAUDE.md`). Every other component
 in this package stays free of it.
