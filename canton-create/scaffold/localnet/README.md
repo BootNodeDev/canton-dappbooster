@@ -17,7 +17,7 @@ pnpm stack         # interactive menu
 ```
 
 Then pick Wallet Gateway in the dApp's picker and log in with the client secret `unsafe`. Create a
-party in the gateway with `wallet-kernel` as the signing provider.
+party in the gateway.
 
 On its first run, `pnpm stack up` mints `CANTON_BACKEND_TOKEN` into `.env`. When the project has a
 contract, it then builds and deploys it. It runs the `bootstrap` script if there is one, then the
