@@ -91,7 +91,7 @@ A README may state that a contract exists and link to it. It may not restate it.
 | [`example-dapps/token-vesting/`](example-dapps/token-vesting/) | The same vesting dApp over a `DBT` instrument from [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge), published as `@bootnodedev/canton-example-token-vesting`. A canton-token-forge registry serves the instrument and the one `InstrumentConfig` each write discloses, so no Splice reference data reaches a write. Its `vesting` and `canton-token-forge` DARs ship as binaries in `vendor/`, so it needs no `dpm`. Its bootstrap uploads them and writes the registry's settings to the gitignored `.env.registry`. `scripts/registry.sh` runs the registry, from the registry's git dependency. | Vite + React + Ark UI + lucide-react + Tailwind v4 + `zustand` + react-router | 3012, registry 3013 |
 | [`canton-create/`](canton-create/) | The `create-canton-dappbooster` installer, published on its own. [`canton-create/architecture.md`](canton-create/architecture.md) covers how it builds a project. | TypeScript + Ink + React 19 + `tsdown` + `vitest` | n/a (command-line tool) |
 | [`canton-connect/`](canton-connect/) | wagmi-style React hooks wrapping the `dapp-sdk` facade; the SDK owns discovery, the picker, the session and the transports | TypeScript + React 19 + `xstate` 5 + Biome | n/a (library) |
-| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps, built with `tsdown` and carrying no styling. It also holds the light/dark/system theme runtime that drives `data-theme`, and the pure utilities the components build on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API. `src/connect.ts` is the `/connect` sub-path, holding the components that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + `tsdown` + `vitest` + Biome | n/a (library) |
+| [`canton-dappbooster/`](canton-dappbooster/) | L2 headless UI components for Canton dApps, built with `tsdown` and carrying no styling. It also holds the light/dark/system theme runtime that drives `data-theme`, and the pure utilities the components build on, the exact-decimal amount ones included. Styling lives in `canton-theme`. `src/index.ts` is the public API. `src/connect.ts` is the `/connect` sub-path, holding the components and the hook that read the wallet session so the main barrel stays free of the Canton SDK. | TypeScript + React 19 + `tsdown` + `vitest` + Biome | n/a (library) |
 | [`canton-theme/`](canton-theme/) | L3 plain-CSS theme for the kit: `--cnc-*` tokens + styled defaults, consumed by importing its CSS. | CSS | n/a (library) |
 
 Two things the loop needs are not subprojects but dependencies. The LocalNet ships from
@@ -384,8 +384,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   back off the ledger once a wallet connects, so nothing can go stale between the two. Pointing the
   wallet at another participant is the whole of switching networks.
 - **One `.env` per example, in its own folder.** It holds the signing recipe `mint-token.mjs`
-  reads and the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs` and the token
-  example's `scripts/registry.sh` use. The
+  reads and the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs`, the token
+  example's `scripts/registry.sh` and amulet-vesting's `vite.config.ts` use. The
   root scripts point the scaffold's scripts at `example-dapps/amulet-vesting` through
   `CANTON_APP_DIR`. `mint-token` keeps one the caller already set, which is how
   `dev:token-vesting` mints into its own `.env`. The bootstrap
@@ -448,9 +448,9 @@ ships the text, and the repo holds one copy.
 **Depend on a library by version range, never `workspace:*`.** `pnpm-workspace.yaml` sets
 `linkWorkspacePackages: true`. So pnpm links the local folder whenever that folder's own `version`
 satisfies the range, and downloads from npm when it does not. `example-dapps/amulet-vesting`,
-`example-dapps/token-vesting` and `canton-dappbooster` all ask for `^` plus the version the three
-folders are on, so every one of them links today. That is what lets a single `package.json` serve
-two readers:
+`example-dapps/token-vesting`, `canton-create/scaffold/starter` and `canton-dappbooster` all ask for
+`^` plus the version the three folders are on, so every one of them links today. That is what lets
+a single `package.json` serve two readers:
 
 - In this repo the three folders exist and are in range. An edit in `canton-connect/src` then shows
   up in the dApp with no build and no republish.
@@ -679,7 +679,8 @@ Before declaring monorepo-touching work done:
 - Root-level: reproduce the CI `pr` gate locally with `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm knip`, `pnpm docs:check`, `pnpm run check:anatomy`, `pnpm run check:versions`.
 - `git push --dry-run` exercises the pre-push hook (`pnpm typecheck` + gitleaks scan of the outgoing range).
 - Every PR must pass the `.github/workflows/pr.yml` gate and one approval before `main` accepts it.
-- For the full end-to-end loop (LocalNet up, DAR built and deployed, bootstrap, wallet, dApp), follow [`README.md`](README.md).
+- For the full end-to-end loop (LocalNet up, DAR built and deployed, bootstrap, wallet, dApp),
+  follow [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## References
 

@@ -1,8 +1,8 @@
 /**
- * The `/connect` sub-path. Its components read the wallet session, so they are kept off the main
+ * The `/connect` sub-path. Its exports read the wallet session, so they are kept off the main
  * barrel to keep the Canton SDK out of a consumer's graph unless they ask for it. Merged into Main
  * here because a reader browsing components wants them beside the others; the import path is on the
- * components themselves.
+ * exports themselves.
  *
  * @module
  * @mergeModuleWith Main

@@ -39,6 +39,16 @@ The dApp runs on http://localhost:3012 and Wallet Gateway on http://localhost:30
 Connect through Wallet Gateway with `unsafe` as the client secret. Use `wallet-kernel` as the
 signing provider when creating parties.
 
+To rebuild and redeploy the contract alone:
+
+```bash
+pnpm run build-dar
+pnpm run deploy-dar -- example-dapps/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
+```
+
+`<version>` is the one in `example-dapps/amulet-vesting/daml/daml.yaml`, and `deploy-dar` sends the
+token in `example-dapps/amulet-vesting/.env`.
+
 ### Token Vesting dApp
 
 ```bash
