@@ -62,5 +62,19 @@
     "tsdown": "^0.23.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.0"
-  }
+  },
+  "keywords": [
+    "canton",
+    "dapp",
+    "dappbooster",
+    "bootnode",
+    "create",
+    "starter",
+    "cli"
+  ],
+  "homepage": "https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-create#readme",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
+  "author": "BootNode (https://canton.bootnode.dev/)"
 }
