@@ -25,7 +25,7 @@ Use one reader per doc type, layered by scope:
 
 | File | Reader / question | Distribution rule |
 |------|-------------------|-------------------|
-| `README.md` | Human: what is this and how does someone run it? | Every unit that builds, runs, publishes or tests on its own gets one. A subproject's README covers only that unit and links to the root README for shared setup. |
+| `README.md` | Human: what is this, how do I start, and where do I go next? | Every unit that builds, runs, publishes or tests on its own gets one. A subproject's README covers only that unit and links to the root README for shared setup. |
 | `CLAUDE.md` | Agent: what local rules change how an agent edits here? | Root always. Subproject only when local conventions differ from root enough that an agent editing only that directory would get it wrong. Deltas only; link upward for repo-wide rules. |
 | `CONTRIBUTING.md` | Human: how does someone work on this repo? | Root only. Setup, the local development command and the checks to run before a PR. A user creating a project reads the README instead. |
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
@@ -47,16 +47,28 @@ Current distribution:
 
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
 
-**Reference material never goes in a README.** A README answers "what is this and how does someone run it".
-Enumerations belong elsewhere however short they are: token lists, prop tables, exported-symbol
-indexes, config keys.
+**A README is the page a reader meets first, and most try the unit before reading anything else.**
+It introduces the unit, gets the reader running, and says where to go next. It may repeat what
+another document holds whenever that serves those three jobs: an install line, a usage example, a
+gotcha, a short table. The authoritative version stays where the rules below put it, the README
+links to it, and the same-commit sync rule covers both copies.
 
 - When the code *is* the list (a token file, a type, a barrel), the code is the doc. Group it with
   category comments; a prose copy drifts within two PRs.
 - A rule constraining how to author the code goes in the nearest `CLAUDE.md`.
 - A seam between units goes in `architecture.md`.
 
-A README may state that a contract exists and link to it. It may not restate it.
+A caveat a reader could miss in running text goes in a GitHub alert, one fact per block. GitHub and
+TypeDoc render the five kinds; npm shows the tag as text, which is accepted.
+
+Every pointer out of a README names what the reader finds there: the generated reference for the
+API, `architecture.md` for the why, `CLAUDE.md` for the authoring rules, `CONTRIBUTING.md` for
+working on the repo.
+
+**No document is an orphan.** Every `.md` in the repo is linked or named by path from at least one
+other, and every one is reachable from the root `README.md` by following those links and names. The
+number of hops does not matter; a page nothing points at does. Nothing enforces this yet, so it is a
+review check.
 
 ## Stack and conventions (monorepo)
 
