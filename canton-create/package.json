@@ -52,7 +52,7 @@
   },
   "devDependencies": {
     "@inkjs/ui": "^2.0.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.3.0",
     "ink": "^8.0.0",
     "ink-gradient": "^4.0.1",
