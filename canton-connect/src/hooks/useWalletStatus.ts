@@ -23,7 +23,9 @@ export interface UseWalletStatusResult {
  *
  * @example
  * const { isConnected, isLocked } = useWalletStatus()
+ *
  * if (!isConnected) return <p>No session.</p>
+ *
  * return isLocked ? <p>Unlock your wallet to continue.</p> : <p>Ready.</p>
  *
  * @category Hooks

@@ -34,6 +34,8 @@ export class InitFailedError extends Error {
 
 /**
  * A connect the user walked away from: the picker was closed rather than a wallet failing.
+ * `useConnect().error` records it only when the SDK saw the close rather than this package's popup
+ * guard, so detect a cancel on the rejected `connect()` promise and use `error` to exclude it.
  *
  * @example
  * if (error !== undefined && !(error instanceof ConnectCancelledError)) {
