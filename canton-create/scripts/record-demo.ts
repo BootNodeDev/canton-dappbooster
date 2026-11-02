@@ -6,9 +6,11 @@ import { stripVTControlCharacters } from 'node:util'
 
 const COLS = 92
 const ROWS = 26
-const IDLE_CAP_SECONDS = 2
-const TIME_LIMIT_SECONDS = 15
+const IDLE_CAP_SECONDS = 3
 const FRAME_MERGE_SECONDS = 0.15
+const INSTALL_SPINNER_SECONDS = 1
+const TYPING_SECONDS = 0.085
+const COMMAND_TYPING_SECONDS = 0.05
 const PROJECT = 'my-dapp'
 const ENTER = '\r'
 const DOWN = '\u001B[B'
@@ -98,17 +100,17 @@ const expect = async (text: string, timeoutSeconds: number): Promise<void> => {
   throw new Error(`timed out waiting for "${text}"\n--- tail ---\n${seen.slice(-1500)}`)
 }
 
-const typeOut = async (text: string): Promise<void> => {
+const typeOut = async (text: string, perChar = TYPING_SECONDS): Promise<void> => {
   for (const char of text) {
     terminal.write(char)
-    await pause(0.085)
+    await pause(perChar)
   }
 }
 
 try {
   await expect('$ ', 15)
   await pause(0.7)
-  await typeOut('pnpm create canton-dappbooster')
+  await typeOut('pnpm create canton-dappbooster', COMMAND_TYPING_SECONDS)
   await pause(0.5)
   terminal.write(ENTER)
 
@@ -125,20 +127,23 @@ try {
   terminal.write(ENTER)
 
   await expect('Choose the dApp your project starts from', 15)
-  await pause(1.3)
+  await pause(2.5)
   terminal.write(ENTER)
 
-  // Past the time limit on purpose, so the trim lands on a whole frame.
+  // The demo is the wizard, so it ends on the install spinner; a little past the cut is enough.
   await expect('Installing packages', 60)
-  await pause(6)
+  await pause(2)
 } finally {
   terminal.close()
   proc.kill()
   await proc.exited
 }
 
+const INSTALL_SPINNER = /[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] Installing packages/
+const INSTALL_DONE = /✔ Installing packages|Creating a git repository/
 let shift = 0
 let previous = 0
+let installShownAt: number | undefined
 const frames: Chunk[] = []
 for (const [stamp, data] of events) {
   const gap = stamp - previous
@@ -147,7 +152,14 @@ for (const [stamp, data] of events) {
   }
   previous = stamp
   const capped = Number((stamp - shift).toFixed(6))
-  if (capped > TIME_LIMIT_SECONDS) {
+  const text = stripVTControlCharacters(data)
+  if (installShownAt === undefined && INSTALL_SPINNER.test(text)) {
+    installShownAt = capped
+  }
+  if (
+    installShownAt !== undefined &&
+    (capped - installShownAt > INSTALL_SPINNER_SECONDS || INSTALL_DONE.test(text))
+  ) {
     break
   }
   const last = frames.at(-1)
