@@ -6,7 +6,7 @@ Scaffolds a Canton dApp: a React and Vite app on the Canton dApp kit, optionally
 
 ## Requirements
 
-- Node >= 22.12.0 to run the installer, and >= 24.15.0 for the project it makes, which the Canton dApp kit libraries require;
+- Node >= 24.15.0;
 - npm, pnpm, yarn or bun. The installer installs the packages with the one that runs it.
 
 The local network also needs Docker and pnpm, and building a contract needs `dpm`. Check the [documentation](https://docs.dappbooster.cc/) for more info.
