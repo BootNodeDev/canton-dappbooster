@@ -2,7 +2,7 @@
 
 > [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its styling layer: the plain-CSS theme for those components. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
 
-A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/README.md) components. No JavaScript and no runtime. It ships two files:
+A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-dappbooster) components. No JavaScript and no runtime. It ships two files:
 
 | Export | What it is |
 | --- | --- |
@@ -11,6 +11,18 @@ A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://githu
 
 ## Usage
 
+With npm:
+
+```bash
+npm install @bootnodedev/canton-theme
+```
+
+With pnpm:
+
+```bash
+pnpm add @bootnodedev/canton-theme
+```
+
 The components ship no styling. Import the theme once, at your app entry:
 
 ```ts
@@ -18,7 +30,7 @@ import '@bootnodedev/canton-theme/default.css'
 ```
 
 - `default.css` imports `tokens.css`, so that one line is the whole theme. Import `tokens.css` on its own if you want the contract without the prestyled defaults. If you define the `--cnc-*` properties yourself instead, remember to set `color-scheme` too, one explicit value per mode. It is not a `--cnc-*` property, and without it the browser paints scrollbars, form controls and the caret in the wrong mode.
-- Dark mode turns on with `[data-theme="dark"]`. Set that attribute on `<html>` as early as you can, because setting it after first paint flashes. The theme deliberately ignores `prefers-color-scheme` on its own, so that a mode toggle can override the OS preference in either direction. The `<ThemeProvider>` in [`canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/README.md) drives the attribute from React, but nothing here depends on it, and setting the attribute yourself works just as well.
+- Dark mode turns on with `[data-theme="dark"]`. Set that attribute on `<html>` as early as you can, because setting it after first paint flashes. The theme deliberately ignores `prefers-color-scheme` on its own, so that a mode toggle can override the OS preference in either direction. The `<ThemeProvider>` in [`canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-dappbooster) drives the attribute from React, but nothing here depends on it, and setting the attribute yourself works just as well.
 - When you override a token, override it in both modes. Your `:root` block also beats our `[data-theme="dark"]` block, so a light-only override stays in effect in dark mode.
 - Everything in the package sits in `@layer cnc`, so any unlayered CSS of yours wins without a specificity fight, whether you import the theme first or last.
 
