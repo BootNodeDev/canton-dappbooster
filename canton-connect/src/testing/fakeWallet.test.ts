@@ -1,11 +1,12 @@
 import { WalletEvent } from '@canton-network/core-types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { createFakeWallet } from '#src/testing/fakeWallet'
 import { pause } from '#src/testing/pause'
 
 // The only consumer of this pairing is this file, hence a local factory over a testing/ module.
 const createFakeExtension = async (statusResponses?: boolean[]) => {
   const wallet = createFakeWallet({ id: 'test-wallet', target: 'test-wallet', statusResponses })
+  onTestFinished(() => wallet.dispose())
 
   const { ExtensionAdapter } = await import('@canton-network/dapp-sdk')
   const adapter = new ExtensionAdapter({
@@ -18,15 +19,13 @@ const createFakeExtension = async (statusResponses?: boolean[]) => {
 
 describe('createFakeWallet', () => {
   it('answers the extension handshake so detect resolves true', async () => {
-    const { wallet, adapter } = await createFakeExtension()
+    const { adapter } = await createFakeExtension()
 
     expect(await adapter.detect()).toBe(true)
-
-    wallet.dispose()
   })
 
   it('rejects a request for a method it does not implement, naming the method', async () => {
-    const { wallet, adapter } = await createFakeExtension()
+    const { adapter } = await createFakeExtension()
     await adapter.detect()
 
     await expect(
@@ -34,8 +33,6 @@ describe('createFakeWallet', () => {
     ).rejects.toMatchObject({
       message: expect.stringContaining('signMessage'),
     })
-
-    wallet.dispose()
   })
 
   it('delivers a pushed notification as a provider event', async () => {
@@ -48,15 +45,12 @@ describe('createFakeWallet', () => {
     })
 
     wallet.push('accountsChanged', { accounts: [] })
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(received).toHaveLength(1)
-
-    wallet.dispose()
+    await vi.waitFor(() => expect(received).toHaveLength(1))
   })
 
   it('answers status by call count, repeating the last entry once exhausted', async () => {
-    const { wallet, adapter } = await createFakeExtension([true, false])
+    const { adapter } = await createFakeExtension([true, false])
 
     const provider = adapter.provider()
     const askStatus = async (): Promise<boolean> => {
@@ -72,12 +66,11 @@ describe('createFakeWallet', () => {
 
     expect(await askStatus()).toBe(false)
     expect(await askStatus()).toBe(false)
-
-    wallet.dispose()
   })
 
   it('ignores a request frame addressed to another fake', async () => {
     const wallet = createFakeWallet({ id: 'wallet-b', target: 'wallet-b' })
+    onTestFinished(() => wallet.dispose())
 
     const answers: unknown[] = []
     const collect = (event: MessageEvent): void => {
@@ -86,6 +79,7 @@ describe('createFakeWallet', () => {
       }
     }
     window.addEventListener('message', collect)
+    onTestFinished(() => window.removeEventListener('message', collect))
 
     const ask = (target: string, id: number): void => {
       window.postMessage(
@@ -114,8 +108,5 @@ describe('createFakeWallet', () => {
     await settle()
 
     expect(answers).toHaveLength(1)
-
-    window.removeEventListener('message', collect)
-    wallet.dispose()
   })
 })
