@@ -254,6 +254,7 @@ throws rather than guessing a mode the client would then hydrate away from.
   only at `dist`, and `prepack: tsdown` rebuilds `dist` before it ships. The two maps are
   hand-maintained copies: a new sub-path goes in both. See the packaging rules in the root
   [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/CLAUDE.md).
+- An app in this repo whose React resolves to a different copy than the kit's bundles two Reacts: hooks read a null dispatcher and every render throws. Only its production build shows it, because the `development` condition resolves the kit to its source in dev. `resolve.dedupe` in the app's bundler is the fix.
 
 ## Deferred (not this package's concern yet)
 
