@@ -6,6 +6,8 @@ A React and Vite app on the Canton dApp kit:
 - `@bootnodedev/canton-dappbooster` for the headless components;
 - `@bootnodedev/canton-theme` for the default style sheet, which `src/index.css` imports once.
 
+The [documentation](https://docs.dappbooster.cc/) covers the stack and the local network, and the [components documentation](https://components.dappbooster.cc/) is the reference for the kit's hooks and components.
+
 ## Run the app
 
 The dev server serves on http://localhost:3012.
@@ -29,7 +31,3 @@ pnpm dev
 ## Connect a real wallet
 
 Set `VITE_WALLET_GATEWAY_URL` in `.env` to a [Wallet Gateway](https://github.com/canton-network/wallet) and it appears in the picker. The picker also lists any CIP-0103 browser wallet it finds in the page. Unset `VITE_MOCK_WALLET` when you no longer need the mock.
-
-## Learn more
-
-The [documentation](https://docs.dappbooster.cc/) covers the stack and the local network, and the [components documentation](https://components.dappbooster.cc/) is the reference for the kit's hooks and components.
