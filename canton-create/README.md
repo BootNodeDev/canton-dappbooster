@@ -17,7 +17,8 @@ The local network also needs Docker and pnpm, and building a contract needs `dpm
 pnpm create canton-dappbooster
 ```
 
-The wizard asks for the project name, the local network and the dApp. It then copies the dApp, creates `.env` from `.env.example`, installs the packages, makes a git repository with a first commit, and prints the next steps. If a step fails or you press Ctrl-C, it removes what it wrote.
+> [!NOTE]
+> If you cancel with Ctrl-C or a step fails, the installer cleans up after itself.
 
 Alternatively, you can start with a preselected dApp or local network:
 
