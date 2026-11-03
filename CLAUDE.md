@@ -25,7 +25,7 @@ Use one reader per doc type, layered by scope:
 
 | File | Reader / question | Distribution rule |
 |------|-------------------|-------------------|
-| `README.md` | Human: what is this, how do I start, and where do I go next? | Every unit that builds, runs, publishes or tests on its own gets one. A subproject's README covers only that unit and links to the root README for shared setup. |
+| `README.md` | Human: what is this, how do I start, and where do I go next? | Every unit that builds, runs, publishes or tests on its own gets one. A subproject's README covers only that unit. |
 | `CLAUDE.md` | Agent: what local rules change how an agent edits here? | Root always. Subproject only when local conventions differ from root enough that an agent editing only that directory would get it wrong. Deltas only; link upward for repo-wide rules. |
 | `CONTRIBUTING.md` | Human: how does someone work on this repo? | Root only. Setup, the local development command and the checks to run before a PR. A user creating a project reads the README instead. |
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
@@ -48,22 +48,45 @@ Current distribution:
 Subproject docs must not restate root rules. They should describe only their local delta and link upward.
 
 **A README is the page a reader meets first, and most try the unit before reading anything else.**
-It introduces the unit, gets the reader running, and says where to go next. It may repeat what
-another document holds whenever that serves those three jobs: an install line, a usage example, a
-gotcha, a short table. The authoritative version stays where the rules below put it, the README
-links to it, and the same-commit sync rule covers both copies.
+It introduces the unit, gets the reader running, and says where to go next. It is written for a
+human who skims it, so nothing in it is addressed to an agent and it never points at a `CLAUDE.md`.
+It may repeat what another document holds whenever that serves those three jobs: an install line, a
+usage example, a gotcha, a short table. The authoritative version stays where the rules below put
+it, the README links to it, and the same-commit sync rule covers both copies.
 
 - When the code *is* the list (a token file, a type, a barrel), the code is the doc. Group it with
   category comments; a prose copy drifts within two PRs.
 - A rule constraining how to author the code goes in the nearest `CLAUDE.md`.
-- A seam between units goes in `architecture.md`.
+- A seam between units, or how a unit works inside and why, goes in `architecture.md`.
+
+Every README but the root one has the same shape, and leaves out a part that does not apply rather
+than keeping it empty:
+
+1. the title, then the kit blockquote: the same paragraph in every package, with one sentence on
+   what this package is in the kit;
+2. a paragraph on what the unit is, then a line linking its API reference where it has one;
+3. what someone needs to use it, every install command as separate npm and pnpm fences after
+   "With npm:" and "With pnpm:";
+4. `## Working on the package` last: a `| Script | What it does |` table, what running those
+   scripts takes, and the pointer to `architecture.md`, which is for contributors. A README with
+   no such section ends on that pointer instead.
+
+Step 3 follows the kind of unit:
+
+- a library: `## Installation`, then its usage;
+- an example: `## How it works`, `## Run the app`, `## Use the app`, `## Configure the app`;
+- the installer: `## Requirements`, then a section per mode;
+- a README inside a package, like an example's `daml/`: steps 1 and 4 do not apply;
+- the scaffold's: they become the README of the project the installer makes, so steps 1 and 4 do
+  not apply, and a layer's starts at `##` (see `canton-create/CLAUDE.md`).
+
+The root `README.md` is exempt: a short welcome that points to the docs, edited by hand only.
 
 A caveat a reader could miss in running text goes in a GitHub alert, one fact per block. GitHub and
 TypeDoc render the five kinds; npm shows the tag as text, which is accepted.
 
 Every pointer out of a README names what the reader finds there: the generated reference for the
-API, `architecture.md` for the why, `CLAUDE.md` for the authoring rules, `CONTRIBUTING.md` for
-working on the repo.
+API, `architecture.md` for the why, `CONTRIBUTING.md` for working on the repo.
 
 **Never count what the repo can grow.** "The examples", not "the two examples"; "its DARs", not
 "both DARs". The number drifts the day a folder is added, and nothing flags the sentence. A count
