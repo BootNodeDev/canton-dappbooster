@@ -207,6 +207,5 @@ const config = {
 
 Published to npm. The examples in `example-dapps/` use it and link this folder while their range matches its version.
 
-### Why a state machine
-
-Four states on paper. In practice `dapp-sdk` leaves gaps, listed with their cost under [The lifecycle](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#the-lifecycle-machine): a connect that cannot be aborted, an init that caches its failure, a disconnect with no timeout, a lock indistinguishable from a disconnect. Handled one by one, those were five races ([#76](https://github.com/BootNodeDev/canton-dappbooster/issues/76)), so the SDK is wrapped in a state machine to ensure that leaving a state cancels whatever it started. The machine shrinks as the gaps close upstream; the machine itself is in [connection-machine.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture/connection-machine.md).
+> [!NOTE]
+> The wallet SDK leaves gaps a dApp would otherwise have to cover. canton-connect handles them in a state machine, so the UX stays robust. See [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#the-lifecycle-machine) for details.
