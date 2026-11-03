@@ -14,7 +14,7 @@ pnpm deploy-dar -- daml/.daml/dist/amulet-vesting-<version>.dar
 `<version>` is the one in [`daml.yaml`](daml.yaml). `build-dar` needs the Daml SDK (`dpm`). `deploy-dar` uploads to `CANTON_JSON_API_URL` and sends `CANTON_BACKEND_TOKEN`.
 
 > [!WARNING]
-> Any edit to the model changes the package id, and a participant refuses a second package at the same name and version (`KNOWN_PACKAGE_VERSION`). Redeploying after a source change means bumping `version` in [`daml.yaml`](daml.yaml), which the participant accepts only for a valid upgrade, or, with the local network, running `pnpm exec canton-barebones reset` in `.canton-localnet/`.
+> Any edit to the model changes the package id, and a participant refuses a second package at the same name and version (`KNOWN_PACKAGE_VERSION`). Redeploying after a source change means bumping `version` in [`daml.yaml`](daml.yaml), which the participant accepts only for a valid upgrade, or, with the local network, running `pnpm stack reset`.
 
 ## The Splice dependencies
 

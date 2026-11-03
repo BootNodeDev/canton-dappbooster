@@ -25,6 +25,7 @@
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
 #   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, bootstrap, gateway, dApp)
 #   ./scripts/dev-stack.sh down [dir]  # stop the gateway + the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh reset [dir] # stop it all, drop the ledger and the gateway's stores
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -38,7 +39,7 @@
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes.
+# stops the LocalNet, keeping its volumes. `reset` drops them.
 
 set -euo pipefail
 
@@ -179,11 +180,11 @@ LOCALNET_ARG="${2:-}"
 # is normally driven. Only a path-shaped first argument is read that way, so a mistyped
 # subcommand still fails instead of silently opening the menu.
 case "$ACTION" in
-  menu | install | docker-up | docker-down | up | down | status) ;;
+  menu | install | docker-up | docker-down | up | down | reset | status) ;;
   /* | ./* | ../* | ~*) LOCALNET_ARG="$ACTION"; ACTION=menu ;;
   *)
     [ -d "$ACTION" ] \
-      || die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status} [localnet-dir]"
+      || die "Usage: $0 {menu|install|docker-up|up|down|reset|docker-down|status} [localnet-dir]"
     LOCALNET_ARG="$ACTION"
     ACTION=menu
     ;;
@@ -484,7 +485,7 @@ stop_services() {
 down() {
   stop_services
 
-  # Volumes are kept, so the ledger survives a `down`; `canton-barebones reset` drops them.
+  # Volumes are kept, so the ledger survives a `down`; `reset` is what drops them.
   if docker info >/dev/null 2>&1; then
     log "Stopping the LocalNet..."
     localnet stop || warn "canton-barebones stop reported an error"
@@ -499,6 +500,17 @@ down() {
   else
     echo "   (all free)"
   fi
+}
+
+reset() {
+  stop_services
+  docker info >/dev/null 2>&1 \
+    || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
+  log "Dropping the LocalNet and its volumes..."
+  localnet reset || die "canton-barebones reset did not finish."
+  # Its stores list parties and sessions that only the dropped ledger had.
+  rm -rf -- "$ROOT_DIR/.wallet-gateway"
+  log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."
 }
 
 menu() {
@@ -599,6 +611,7 @@ case "$ACTION" in
   docker-up)   docker_up ;;
   up)          up ;;
   down)        down ;;
+  reset)       reset ;;
   docker-down) docker_down ;;
   status)      status ;;
 esac

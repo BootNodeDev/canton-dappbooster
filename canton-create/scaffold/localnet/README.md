@@ -12,6 +12,7 @@ It needs Docker running and pnpm, plus `dpm` when the app has a contract.
 | --- | --- |
 | `pnpm stack up` | LocalNet, the contract if there is one, Wallet Gateway, dev server |
 | `pnpm stack down` | stops everything and keeps the ledger |
+| `pnpm stack reset` | stops everything and drops the ledger and the gateway's parties |
 | `pnpm stack` | interactive menu |
 
 Then pick Wallet Gateway in the dApp's picker and log in with the client secret `unsafe`. Create a party in the gateway.
@@ -21,4 +22,4 @@ Then pick Wallet Gateway in the dApp's picker and log in with the client secret 
 Each step is also a script of its own: `pnpm mint-token` and `pnpm wallet-gateway`.
 
 > [!CAUTION]
-> To wipe the ledger, run `pnpm exec canton-barebones reset` inside `.canton-localnet/`. You then have to create the gateway's parties again.
+> After `pnpm stack reset`, create the gateway's parties again.
