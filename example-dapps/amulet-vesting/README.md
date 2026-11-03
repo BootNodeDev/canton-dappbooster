@@ -9,8 +9,6 @@ Its Daml model is in [`daml/`](daml/), and [`daml/README.md`](daml/README.md) co
 > [!NOTE]
 > The model ships as source, not as a binary: it moves Canton Coin, so it must be built against the Splice release your network runs.
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/CLAUDE.md) has the rules for working on the app, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/PROVENANCE.md) records where the frontend and the model came from.
-
 ## How it works
 
 ```mermaid
@@ -92,3 +90,5 @@ WalletConnect is off unless you set `VITE_WALLET_CONNECT_PROJECT_ID` to a Reown 
 | `pnpm bootstrap` | creates the operator and its factory on the ledger `.env` names |
 
 Published to npm. The installer fetches that package with `npm pack`, not this folder. In the monorepo, `pnpm dev:amulet-vesting` from the root runs the installer's local network scripts against this folder, `build-dar` and `deploy-dar` included, which is why neither is a script here.
+
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/PROVENANCE.md) records where the frontend and the model came from.

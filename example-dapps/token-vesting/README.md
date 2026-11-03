@@ -9,8 +9,6 @@ The Daml packages ship prebuilt in [`vendor/`](vendor/), and `bootstrap` uploads
 > [!NOTE]
 > There is no `daml/` here. Nothing in those packages depends on the Splice release your network runs, so one build works on any network and the app needs no Daml toolchain.
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/CLAUDE.md) has the rules for working on the app, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/PROVENANCE.md) records where the frontend came from.
-
 ## How it works
 
 ```mermaid
@@ -94,3 +92,5 @@ WalletConnect is off unless you set `VITE_WALLET_CONNECT_PROJECT_ID` to a Reown 
 | `pnpm stack:down` | stops it |
 
 Published to npm. The installer fetches that package with `npm pack`, not this folder. In the monorepo, `pnpm dev:token-vesting` from the root runs the installer's local network scripts against this folder, and they call `stack:up` and `stack:down` around the registry.
+
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/PROVENANCE.md) records where the frontend came from.
