@@ -66,7 +66,10 @@ You act as the party the wallet reports, and the wallet restores the session on 
 
 ### Get Amulet
 
-Funding a grant takes Amulet. The **Tap Amulet** faucet in the account menu taps 100 AMT into the connected party. It works on LocalNet and DevNet, where `AmuletRules_DevNet_Tap` exists. It fails until the first mining round opens, about ten minutes after a fresh LocalNet start.
+Funding a grant takes Amulet. The **Tap Amulet** faucet in the account menu taps 100 AMT into the connected party. It works on LocalNet and DevNet, where `AmuletRules_DevNet_Tap` exists.
+
+> [!NOTE]
+> The faucet fails until the first mining round opens, about ten minutes after a fresh LocalNet start.
 
 ## Configure the app
 
