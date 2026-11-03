@@ -69,11 +69,6 @@ working on the repo.
 "both DARs". The number drifts the day a folder is added, and nothing flags the sentence. A count
 stays only where it is the point: a pair the sentence contrasts, or a figure fixed in history.
 
-**No document is an orphan.** Every `.md` in the repo is linked or named by path from at least one
-other, and every one is reachable from the root `README.md` by following those links and names. The
-number of hops does not matter; a page nothing points at does. Nothing enforces this yet, so it is a
-review check.
-
 ## Stack and conventions (monorepo)
 
 | Category | Technology | Notes |

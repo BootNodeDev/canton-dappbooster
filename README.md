@@ -20,7 +20,3 @@ pnpm create canton-dappbooster
 ```
 
 More details are available in the [documentation](https://docs.dappbooster.cc/).
-
-## Contributing
-
-To work on this repository, see [CONTRIBUTING.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/CONTRIBUTING.md).
