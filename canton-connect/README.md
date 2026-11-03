@@ -4,7 +4,7 @@
 
 React hooks for connecting a Canton dApp to a CIP-0103 wallet, in the style of wagmi. They wrap the `DappSDK` facade from `@canton-network/dapp-sdk`. You don't need to call the SDK yourself, and the hooks take its own parameter types. [Coming from wagmi](https://components.dappbooster.cc/documents/_bootnodedev_canton-connect.Coming_from_wagmi.html) maps the hook results to what you already know.
 
-Every hook and config field has JSDoc, shown in your editor and published at [components.dappbooster.cc](https://components.dappbooster.cc/); start with `CantonConnectProvider` and `CantonConnectConfig`. [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md) maps the seams, with a chapter each on the [connection machine](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture/connection-machine.md) and the [popup close guard](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture/popup-close-guard.md). [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/CLAUDE.md) has the rules for working on the hooks.
+The API reference is at [components.dappbooster.cc](https://components.dappbooster.cc/).
 
 ## Installation
 

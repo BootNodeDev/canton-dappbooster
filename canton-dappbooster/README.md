@@ -4,7 +4,7 @@
 
 Reusable UI components for Canton dApps: reading Canton identifiers (display, truncation, copy-to-clipboard, explorer links) and entering them (validated party-id input). Amounts are the other half: a token-amount field, plus the exact-decimal utilities under it, because a `number` cannot carry a Canton amount without losing digits.
 
-Every export carries JSDoc, which your editor shows at the call site and which is published at [components.dappbooster.cc](https://components.dappbooster.cc/). The wallet buttons and the `useHoldings` hook import from `@bootnodedev/canton-dappbooster/connect` instead, because they read the wallet session and that pulls in the Canton SDK. The rules for writing new components are in [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/CLAUDE.md).
+The API reference is at [components.dappbooster.cc](https://components.dappbooster.cc/).
 
 ## Installation
 
