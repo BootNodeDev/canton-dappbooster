@@ -65,6 +65,10 @@ Every pointer out of a README names what the reader finds there: the generated r
 API, `architecture.md` for the why, `CLAUDE.md` for the authoring rules, `CONTRIBUTING.md` for
 working on the repo.
 
+**Never count what the repo can grow.** "The examples", not "the two examples"; "its DARs", not
+"both DARs". The number drifts the day a folder is added, and nothing flags the sentence. A count
+stays only where it is the point: a pair the sentence contrasts, or a figure fixed in history.
+
 **No document is an orphan.** Every `.md` in the repo is linked or named by path from at least one
 other, and every one is reachable from the root `README.md` by following those links and names. The
 number of hops does not matter; a page nothing points at does. Nothing enforces this yet, so it is a

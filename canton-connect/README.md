@@ -205,7 +205,7 @@ const config = {
 | `pnpm coverage` | the same suite under v8, excluding `testing/`, `mock/` and the barrel |
 | `pnpm typecheck` | `tsc --noEmit` |
 
-Published to npm. The two examples in `example-dapps/` use it and link this folder while their range matches its version.
+Published to npm. The examples in `example-dapps/` use it and link this folder while their range matches its version.
 
 ### Why a state machine
 

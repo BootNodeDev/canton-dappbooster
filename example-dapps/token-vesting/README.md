@@ -4,7 +4,7 @@
 
 `@bootnodedev/canton-example-token-vesting` is a dApp for vesting a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, `DBT`. A funder proposes a grant, and the receiver accepts or declines it. The funder can cancel it until the receiver accepts. The receiver claims `DBT` as the grant vests. If the funder cancels an accepted grant, the receiver keeps the vested but unclaimed `DBT` as a residual claim.
 
-The two Daml packages ship prebuilt in [`vendor/`](vendor/), and `bootstrap` uploads them: the vesting model from [canton-vesting-forge](https://github.com/BootNodeDev/canton-vesting-forge) and the token from [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge). A canton-token-forge registry serves the token's metadata. [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) records their releases and checksums.
+The Daml packages ship prebuilt in [`vendor/`](vendor/), and `bootstrap` uploads them: the vesting model from [canton-vesting-forge](https://github.com/BootNodeDev/canton-vesting-forge) and the token from [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge). A canton-token-forge registry serves the token's metadata. [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) records their releases and checksums.
 
 > [!NOTE]
 > There is no `daml/` here. Nothing in those packages depends on the Splice release your network runs, so one build works on any network and the app needs no Daml toolchain.
@@ -45,7 +45,7 @@ Point `.env` at your network first: `CANTON_JSON_API_URL`, `CANTON_BACKEND_TOKEN
 
 | Script | What it does |
 | --- | --- |
-| `pnpm bootstrap` | uploads both DARs, creates the operator, its factory and the DBT instrument |
+| `pnpm bootstrap` | uploads the DARs, creates the operator, its factory and the DBT instrument |
 | `pnpm stack:up` | starts the token registry on http://localhost:3013 |
 | `pnpm dev` | serves http://localhost:3012 |
 
@@ -75,7 +75,7 @@ The app reads its variables from `.env` in the project folder, and [`.env.exampl
 WalletConnect is off unless you set `VITE_WALLET_CONNECT_PROJECT_ID` to a Reown project id. Once you set it, `VITE_NETWORK_ID` must match the network the wallet serves. For the local gateway, that is `canton:localnet`.
 
 > [!NOTE]
-> A build you deploy takes no defaults for the three URLs. With `DEPLOYED_BUILD=1`, an unset URL fails the build rather than baking in a `localhost` address that an https page blocks as mixed content. On Vercel, [`api/registry.ts`](api/registry.ts) forwards the registry's routes from the deployed origin to the registry `REGISTRY_URL` names. The Vercel block in `.env.example` lists what to set.
+> A build you deploy takes no defaults for the URL variables. With `DEPLOYED_BUILD=1`, an unset URL fails the build rather than baking in a `localhost` address that an https page blocks as mixed content. On Vercel, [`api/registry.ts`](api/registry.ts) forwards the registry's routes from the deployed origin to the registry `REGISTRY_URL` names. The Vercel block in `.env.example` lists what to set.
 
 ## Working on the package
 

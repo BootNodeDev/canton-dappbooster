@@ -18,6 +18,6 @@ pnpm deploy-dar -- daml/.daml/dist/amulet-vesting-<version>.dar
 
 ## The Splice dependencies
 
-`amulet-vesting` data-depends on four Splice DARs. They are not committed: `pnpm build-dar` fetches them into the gitignored `deps/` first and skips the work once they are there.
+`amulet-vesting` data-depends on Splice DARs. They are not committed: `pnpm build-dar` fetches them into the gitignored `deps/` first and skips the work once they are there.
 
 Which Splice release they come from is not a choice. An Amulet-moving choice is exercised against the `AmuletRules` the network is running, so the build has to use that network's Amulet. Set `SPLICE_TAG` in `.env` to the release your network runs. Without it, the build reads the release off the local network's config, which a project has only with `--localnet`, so bumping the local network moves the DAR with it. Either way it takes the highest `splice-amulet` version that release ships. Delete `deps/` to force a refetch.

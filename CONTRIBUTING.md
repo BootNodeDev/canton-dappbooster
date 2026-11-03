@@ -53,13 +53,13 @@ token in `example-dapps/amulet-vesting/.env`.
 
 ```bash
 pnpm dev:token-vesting        # interactive menu
-pnpm dev:token-vesting up     # LocalNet, both DARs, token registry, Wallet Gateway and dApp
+pnpm dev:token-vesting up     # LocalNet, its DARs, token registry, Wallet Gateway and dApp
 pnpm dev:token-vesting down   # stop everything and keep the ledger
 ```
 
 The dApp runs on http://localhost:3012, its token registry on http://localhost:3013 and Wallet
-Gateway on http://localhost:3030. Both examples share the LocalNet, so stop one before you start the
-other.
+Gateway on http://localhost:3030. The examples share the LocalNet, so stop one before you start
+another.
 
 ### Installer
 
