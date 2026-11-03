@@ -513,20 +513,27 @@ reset() {
   log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."
 }
 
+confirm() { # confirm <question>
+  local answer
+  read -r -p "  $1 [y/N] " answer
+  [[ "$answer" =~ ^[yY]$ ]]
+}
+
 menu() {
   if [ ! -t 0 ] || [ ! -t 1 ]; then
     die "The menu needs an interactive terminal. Run a subcommand directly instead."
   fi
 
   # Display label per item; `keys` is the matching action dispatched on select.
-  local keys=(install docker-up docker-down up down quit)
-  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Quit")
+  local keys=(install docker-up docker-down up down reset quit)
+  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Stack reset" "Quit")
   local descs=(
     "pnpm install"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
     "start LocalNet, deploy DAR, bootstrap, gateway, dApp"
     "stop the gateway + dApp dev server, stop the LocalNet"
+    "stop it all, drop the ledger and the gateway's parties"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -580,6 +587,11 @@ menu() {
       docker-down) ( docker_down ) || warn "docker-down did not finish cleanly" ;;
       up)          ( up ) || warn "up did not finish cleanly (see output above)" ;;
       down)        ( down ) || warn "down did not finish cleanly" ;;
+      reset)
+        if confirm "Drop the ledger and the Wallet Gateway's parties?"; then
+          ( reset ) || warn "reset did not finish cleanly"
+        fi
+        ;;
     esac
     printf '\n  \033[2mPress Enter to return to the menu...\033[0m'
     read -r _ || true
