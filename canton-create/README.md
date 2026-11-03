@@ -1,5 +1,7 @@
 # Canton dAppBooster installer
 
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its installer. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+
 Scaffolds a Canton dApp: a React and Vite app on the Canton dApp kit, optionally with a local network.
 
 <img src="https://raw.githubusercontent.com/BootNodeDev/canton-dappbooster/main/canton-create/demo.svg" width="600" height="395" alt="Terminal recording of the Canton dAppBooster installer.">
@@ -78,4 +80,4 @@ pnpm create canton-dappbooster my-dapp --example amulet-vesting --localnet   # A
 | `No localnet` | none | ✓ | You provide your own |
 | `Barebones` | `--localnet` | | Minimal local Canton stack for developer workflows |
 
-More details are available in the [documentation](https://docs.dappbooster.cc/). How a run builds a project is in [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-create/architecture.md).
+How a run builds a project is in [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-create/architecture.md).
