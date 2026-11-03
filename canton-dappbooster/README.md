@@ -20,6 +20,8 @@ With pnpm:
 pnpm add @bootnodedev/canton-dappbooster @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sign-client
 ```
 
+It needs React 19.
+
 ## Styling: components carry none
 
 The components (L2) have no styling opinion at all. Styling comes from the separate [`@bootnodedev/canton-theme`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-theme) package (L3), which you import yourself:
@@ -34,9 +36,6 @@ The contract between the two is the DOM each component renders, not code. The re
 ## Light / dark / system
 
 This is the one styling-related runtime the package does ship. `<ThemeProvider>` owns the mode and writes `data-theme` on `<html>`, which is the attribute the theme keys its dark values on. `useTheme()` reads and sets it. No token names live here.
-
-> [!NOTE]
-> On a reload the page background flashes before React applies the attribute, and this package ships nothing to prevent that. See [Theme runtime](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md#theme-runtime) in `architecture.md` for why.
 
 > [!WARNING]
 > Client only: the provider reads the OS preference when it mounts, so a server render throws.
@@ -66,13 +65,7 @@ const ModeToggle = () => {
 | `pnpm test` | vitest with jsdom and Testing Library, run against `src` |
 | `pnpm typecheck` | `tsc --noEmit` |
 
-### Build & dev loop
-
-tsdown emits ESM and `.d.ts` files into `dist/`. The components carry no CSS, so `sideEffects: false` is safe and the bundle tree-shakes. The `exports` map has a `development` condition that points at `src`, so Vite serves the source directly in dev. Production builds and the published package use `dist`.
-
-In dev, a consumer resolves and typechecks against the source, with no kit build needed. Its production build resolves `dist`, so build the kit first, or run `pnpm build` from the repo root, which builds the workspaces in order.
-
-React 19 only, both as a peer and as a dev dependency.
+An app in this repo runs against `src` in dev, with no build. Its production build reads `dist`, so run `pnpm build` here first, or from the repo root to build every workspace in order. How the build works is in [Build & packaging](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md#build--packaging).
 
 > [!WARNING]
 > If the consumer's React resolves to a different copy than the kit's, you get two Reacts in one bundle. Hooks then read a null dispatcher and every render throws. You only see this in a production build, because the `development` condition resolves the kit to its source. The fix is `resolve.dedupe` in the bundler.
