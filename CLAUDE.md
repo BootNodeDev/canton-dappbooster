@@ -411,6 +411,9 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   would otherwise reject. The other is a new Splice tag, which would otherwise pin the stack to a
   version nobody tested the tool against. Anything else set there survives until then, so a standing
   deviation belongs in a directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
+  A new Splice tag with the old ledger still in Docker stops `up` instead, until `reset` drops it:
+  a ledger upgraded in place keeps the Amulet it started with, so a contract built against the new
+  one cannot run there.
 - `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
   in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
   loop described earlier.

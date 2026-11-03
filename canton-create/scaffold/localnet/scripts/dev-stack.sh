@@ -39,7 +39,8 @@
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes. `reset` drops them.
+# stops the LocalNet, keeping its volumes. `reset` drops them; `up` stops and points at it when
+# the pinned Splice release moved while the old ledger is still in Docker.
 
 set -euo pipefail
 
@@ -67,6 +68,9 @@ GW_PID="$RUN_DIR/wallet-gateway.pid"
 
 # Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
+
+# The status localnet-config.mjs exits with when the pinned Splice moved past a ledger in Docker.
+LEDGER_ON_OLD_SPLICE=3
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
@@ -382,8 +386,13 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
   step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
-  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
-    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
+  local config_status=0
+  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" || config_status=$?
+  case "$config_status" in
+    0) ;;
+    "$LEDGER_ON_OLD_SPLICE") die "Run 'reset' to drop that ledger and the Wallet Gateway's parties, then 'up'." ;;
+    *) die "Could not prepare the LocalNet config in $LOCALNET_DIR." ;;
+  esac
 
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
   # containers exist; Splice takes minutes more to answer, and the DAR upload below
