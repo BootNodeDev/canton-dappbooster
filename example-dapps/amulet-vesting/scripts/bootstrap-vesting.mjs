@@ -70,16 +70,14 @@ const createOperator = async (hint) => {
   return party
 }
 
-// Ask the participant which package it would pick for the name, so a stale id cannot silently
-// produce an empty dashboard. Fails loudly with PACKAGE_NAMES_NOT_FOUND if the DAR is not deployed.
+// Asked rather than trusted, so a stale package id cannot silently leave the dashboard empty.
 const resolvePackage = async (party) => {
-  const result = await ledger(
-    'get',
-    '/v2/interactive-submission/preferred-package-version',
-    undefined,
-    { 'package-name': PACKAGE_NAME, parties: party },
-  )
-  const pkg = result?.packagePreference?.packageReference?.packageId
+  const result = await ledger('post', '/v2/interactive-submission/preferred-packages', {
+    packageVettingRequirements: [{ packageName: PACKAGE_NAME, parties: [party] }],
+  })
+  const pkg = result?.packageReferences?.find(
+    (reference) => reference.packageName === PACKAGE_NAME,
+  )?.packageId
   if (typeof pkg !== 'string' || pkg.length === 0) {
     throw new Error(`participant returned no package id for ${PACKAGE_NAME}`)
   }
@@ -96,7 +94,7 @@ const main = async () => {
   const factoryTid = `${pkg}:AmuletVesting:AmuletVestingFactory`
   console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
 
-  await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+  await ledger('post', '/v2/commands/submit-and-wait', {
     commandId: `vesting-factory-${STAMP}`,
     actAs: [operator],
     readAs: [operator],
@@ -110,7 +108,7 @@ const main = async () => {
     throw new Error('participant returned no ledger-end offset')
   }
   const rows = await ledger('post', '/v2/state/active-contracts', {
-    filter: {
+    eventFormat: {
       filtersByParty: {
         [operator]: {
           cumulative: [
@@ -129,9 +127,9 @@ const main = async () => {
           ],
         },
       },
+      verbose: true,
     },
     activeAtOffset: end.offset,
-    verbose: true,
   })
   const active = (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract)

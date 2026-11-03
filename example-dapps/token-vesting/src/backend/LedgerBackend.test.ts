@@ -43,7 +43,9 @@ type PartyFilter = {
 
 type AcsQuery = {
   activeAtOffset?: unknown
-  filter?: { filtersByParty?: Record<string, PartyFilter> }
+  eventFormat?: { filtersByParty?: Record<string, PartyFilter> }
+  filter?: unknown
+  verbose?: unknown
 }
 
 type Read = {
@@ -52,7 +54,8 @@ type Read = {
   body?: AcsQuery
 }
 
-const byParty = (read: Read): Record<string, PartyFilter> => read.body?.filter?.filtersByParty ?? {}
+const byParty = (read: Read): Record<string, PartyFilter> =>
+  read.body?.eventFormat?.filtersByParty ?? {}
 
 // The template a read filters on, which is what a party-scoped ACS query is keyed by here.
 const filteredTemplate = (read: Read): string | undefined =>
@@ -234,10 +237,13 @@ const harness = (
     ledgerApi: async (params) => {
       const read = params as Read
       reads.push(read)
+      if (read.body?.filter !== undefined || read.body?.verbose !== undefined) {
+        throw new Error('DEPRECATED_API_DISABLED')
+      }
       if (readsFailAfterSubmit && submissions.length > 0) {
         throw new Error('the participant is not answering')
       }
-      if (readsFailOnBlobs && read.body?.filter !== undefined && readsBlobs(read)) {
+      if (readsFailOnBlobs && read.body?.eventFormat !== undefined && readsBlobs(read)) {
         throw new Error('the participant is not answering')
       }
       if (read.resource === '/v2/state/ledger-end') {
@@ -436,7 +442,9 @@ describe('LedgerBackend.createVesting', () => {
 
     const withBlobs = reads.filter(
       (read) =>
-        read.body?.filter !== undefined && readsBlobs(read) && filteredTemplate(read) === TOKEN,
+        read.body?.eventFormat !== undefined &&
+        readsBlobs(read) &&
+        filteredTemplate(read) === TOKEN,
     )
     expect(withBlobs).toHaveLength(1)
   })
