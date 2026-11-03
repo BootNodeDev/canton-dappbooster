@@ -45,8 +45,11 @@ dar_name="$(basename "$DAR_PATH")"
 
 echo "Uploading $dar_name to app-user JSON API at $json_api_url"
 
+response="$(mktemp)"
+trap 'rm -f "$response"' EXIT
+
 http_code="$(
-  curl -sS -o /dev/null -w '%{http_code}' \
+  curl -sS -o "$response" -w '%{http_code}' \
     -X POST \
     "$json_api_url/v2/packages" \
     -H "Authorization: Bearer $token" \
@@ -62,7 +65,8 @@ case "$http_code" in
     echo "$dar_name already deployed to app-user"
     ;;
   *)
-    echo "DAR upload failed with HTTP $http_code" >&2
+    body="$(cat "$response")"
+    echo "DAR upload failed with HTTP $http_code${body:+: $body}" >&2
     exit 1
     ;;
 esac
