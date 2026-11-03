@@ -472,18 +472,19 @@ stop_port() { # stop_port <port> <label>
   done
 }
 
-down() {
-  # 1. Background processes
+stop_services() {
   stop_pidfile "$DAPP_PID" "dApp dev server"
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
   stop_port 3012 "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"
   stop_port 3030 "Wallet Gateway"
+}
 
-  # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
-  # survives; drop them with 'canton-barebones reset'. Docker itself is left
-  # running — quit it separately with 'docker-down', the app, or your CLI.
+down() {
+  stop_services
+
+  # Volumes are kept, so the ledger survives a `down`; `canton-barebones reset` drops them.
   if docker info >/dev/null 2>&1; then
     log "Stopping the LocalNet..."
     localnet stop || warn "canton-barebones stop reported an error"
