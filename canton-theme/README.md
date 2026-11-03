@@ -2,7 +2,7 @@
 
 > [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its styling layer: the plain-CSS theme for those components. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
 
-A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-dappbooster) components. No JavaScript and no runtime. It ships two files:
+A plain-CSS theme (L3) for the [`@bootnodedev/canton-dappbooster`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-dappbooster) components. No JavaScript and no runtime. It exports:
 
 | Export | What it is |
 | --- | --- |
