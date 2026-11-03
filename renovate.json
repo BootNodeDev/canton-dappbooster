@@ -28,6 +28,12 @@
       "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "Hold Node.js major bumps (.nvmrc and @types/node) until we choose to move off 24, the engines floor, supported until April 2028. Minor/patch within 24 still flow via the weekly batch.",
+      "matchPackageNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
