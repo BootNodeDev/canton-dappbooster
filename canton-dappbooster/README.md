@@ -1,6 +1,6 @@
 # @bootnodedev/canton-dappbooster
 
-> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its UI components layer, headless and unstyled. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
 Reusable UI components for Canton dApps: reading Canton identifiers (display, truncation, copy-to-clipboard, explorer links) and entering them (validated party-id input). Amounts are the other half: a token-amount field, plus the exact-decimal utilities under it, because a `number` cannot carry a Canton amount without losing digits.
 

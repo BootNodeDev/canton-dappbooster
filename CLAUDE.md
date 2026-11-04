@@ -62,8 +62,7 @@ it, the README links to it, and the same-commit sync rule covers both copies.
 Every README but the root one has the same shape, and leaves out a part that does not apply rather
 than keeping it empty:
 
-1. the title, then the kit blockquote: the same paragraph in every package, with one sentence on
-   what this package is in the kit;
+1. the title, then the Canton dAppBooster blockquote, the same paragraph in every package;
 2. a paragraph on what the unit is, then a line linking its API reference where it has one;
 3. what someone needs to use it, every install command as separate npm and pnpm fences after
    "With npm:" and "With pnpm:";

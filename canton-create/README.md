@@ -1,6 +1,6 @@
 # Canton dAppBooster installer
 
-> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its installer. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
 Scaffolds a Canton dApp: a React and Vite app on the Canton dApp kit, optionally with a local network.
 

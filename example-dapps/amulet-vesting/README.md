@@ -1,6 +1,6 @@
 # Amulet vesting dApp
 
-> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its Canton Coin vesting example. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
 `@bootnodedev/canton-example-amulet-vesting` is a dApp for Amulet vesting. A funder proposes a grant and the receiver accepts it. The receiver claims Amulet as the grant vests. If the funder cancels the grant, the receiver keeps the vested but unclaimed Amulet as a residual claim.
 

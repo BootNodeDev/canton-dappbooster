@@ -1,6 +1,6 @@
 # Token vesting dApp
 
-> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its token vesting example, over a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
 `@bootnodedev/canton-example-token-vesting` is a dApp for vesting a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, `DBT`. A funder proposes a grant, and the receiver accepts or declines it. The funder can cancel it until the receiver accepts. The receiver claims `DBT` as the grant vests. If the funder cancels an accepted grant, the receiver keeps the vested but unclaimed `DBT` as a residual claim.
 
