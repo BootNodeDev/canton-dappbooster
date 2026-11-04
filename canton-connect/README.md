@@ -26,16 +26,7 @@ pnpm add @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sig
 ## Usage
 
 ```tsx
-import {
-  CantonConnectProvider,
-  ConnectCancelledError,
-  useAccount,
-  useConnect,
-  useExecute,
-  usePartyType,
-  useSignMessage,
-  useWalletStatus,
-} from '@bootnodedev/canton-connect'
+import { CantonConnectProvider } from '@bootnodedev/canton-connect'
 
 // Wrap the app once; networkId is the CAIP-2 chain the wallet must serve
 function Root() {
@@ -45,6 +36,21 @@ function Root() {
     </CantonConnectProvider>
   )
 }
+```
+
+<details>
+<summary>Full example: every hook</summary>
+
+```tsx
+import {
+  ConnectCancelledError,
+  useAccount,
+  useConnect,
+  useExecute,
+  usePartyType,
+  useSignMessage,
+  useWalletStatus,
+} from '@bootnodedev/canton-connect'
 
 // Connect
 function Connect() {
@@ -128,6 +134,8 @@ function SignGuard() {
   return <button onClick={check} disabled={!isReady}>Check party</button>
 }
 ```
+
+</details>
 
 ### Reading the ledger directly
 
