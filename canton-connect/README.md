@@ -25,90 +25,34 @@ pnpm add @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sig
 
 ## Usage
 
-```tsx
-import { CantonConnectProvider } from '@bootnodedev/canton-connect'
-
-// Wrap the app once; networkId is the CAIP-2 chain the wallet must serve
-function Root() {
-  return (
-    <CantonConnectProvider config={{ appName: 'My dApp', networkId: 'canton:local' }}>
-      <App />
-    </CantonConnectProvider>
-  )
-}
-```
-
-<details>
-<summary>Full example: every hook</summary>
+Every hook reads the session the provider holds. `useExecute` does the most: it submits commands through the wallet and tracks the transaction.
 
 ```tsx
 import {
-  ConnectCancelledError,
+  CantonConnectProvider,
   useAccount,
   useConnect,
   useExecute,
+  useLedger,
   usePartyType,
   useSignMessage,
   useWalletStatus,
 } from '@bootnodedev/canton-connect'
 
-// Connect
-function Connect() {
-  const { connect, isPending, error } = useConnect()
-
-  // connect() opens the wallet picker; closing it rejects with ConnectCancelledError
-  const open = () => connect().catch(() => undefined)
-
-  // a wallet failure lands in error; a cancel is not worth a message
-  const failure = error instanceof ConnectCancelledError ? undefined : error
-
+// Wrap the app once; networkId is the CAIP-2 chain the wallet must serve
+function App() {
   return (
-    <>
-      <button onClick={open} disabled={isPending}>Connect</button>
-      {failure !== undefined && <p>{failure.message}</p>}
-    </>
+    <CantonConnectProvider config={{ appName: 'My dApp', networkId: 'canton:local' }}>
+      <Claim />
+    </CantonConnectProvider>
   )
 }
 
-// Session state
-function Session() {
-  const { account } = useAccount()
-  const { isLocked } = useWalletStatus()
-
-  // the wallet keeps the session but answers nothing until the user unlocks it
-  if (isLocked) {
-    return <p>Wallet locked. Unlock it to continue.</p>
-  }
-
-  // nothing connected, or the account read still in flight
-  if (account === undefined) {
-    return <p>No session.</p>
-  }
-
-  return <span>{account.partyId}</span>
-}
-
-// Sign a message
-function Sign() {
-  const { signMessage, signature, isPending, error } = useSignMessage()
-
-  // throws without a session, while locked or with no party; a wallet refusal lands in error too
-  const sign = () => signMessage('Approve vesting claim').catch(() => undefined)
-
-  return (
-    <>
-      <button onClick={sign} disabled={isPending}>Sign</button>
-      {signature !== undefined && <code>{signature}</code>}
-      {error !== undefined && <p>{error.message}</p>}
-    </>
-  )
-}
-
-// Submit commands
 function Claim() {
   const { execute, lastTx, isPending } = useExecute()
+  // likewise: connect(), account, isLocked, signMessage(), ledgerApi(), readPartyType()
 
-  // acts as the party useAccount reports and resolves once executed; the same guards as signMessage
+  // resolves once executed; throws without a session, while locked or with no party
   const claim = () => execute({ commandId: 'claim-1', commands }).catch(() => undefined)
 
   // the wallet pushes pending, signed, executed or failed into lastTx as it goes
@@ -119,23 +63,9 @@ function Claim() {
     </>
   )
 }
-
-// Local or external party
-function SignGuard() {
-  const { readPartyType, isReady } = usePartyType()
-
-  // the reference gateway refuses signMessage for a local party, so ask before offering it
-  const check = async () => {
-    if ((await readPartyType()) === 'local') {
-      toast.error('This wallet cannot sign messages for a local party')
-    }
-  }
-
-  return <button onClick={check} disabled={!isReady}>Check party</button>
-}
 ```
 
-</details>
+The [API reference](https://components.dappbooster.cc/) has an example for each hook.
 
 ### Reading the ledger directly
 
@@ -158,6 +88,8 @@ function UserRights() {
 
 ### Connecting through a Wallet Gateway
 
+List a gateway in `additionalAdapters` and its sessions survive a reload. The picker also takes any gateway URL a user pastes, but that session ends on reload.
+
 ```tsx
 import { RemoteAdapter } from '@canton-network/dapp-sdk'
 
@@ -168,9 +100,6 @@ const config = {
   ],
 }
 ```
-
-> [!NOTE]
-> The picker also lets a user paste any gateway URL. That session does not survive a reload; one with a gateway listed here does.
 
 Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-connect/architecture.md#remote-gateway).
 
@@ -188,11 +117,10 @@ Details in [architecture.md](https://github.com/BootNodeDev/canton-dappbooster/b
 
 ## Testing helpers
 
-- `createMockAdapter()`, from the package root: a `ProviderAdapter` that answers `connect`, `disconnect`, `status` and `listAccounts` with no wallet installed, so a dApp or a test can connect and show a party. Every other method throws.
-- `@bootnodedev/canton-connect/testing`: `createFakeWallet()`, a CIP-0103 extension driven over `postMessage` through the SDK's real announce and detect path; `createAutoPicker()`, a headless picker so `connect()` needs no popup; `FakeSessionProvider`, the context at the session you ask for, no SDK behind it; `pause(ms)`, a sleep on real timers.
+To connect with no wallet installed, in a test or a demo, add the mock adapter, which connects and shows a party but throws on anything else, and skip the picker popup with the auto picker:
 
 ```tsx
-import { CantonConnectProvider, createMockAdapter } from '@bootnodedev/canton-connect'
+import { createMockAdapter } from '@bootnodedev/canton-connect'
 import { createAutoPicker } from '@bootnodedev/canton-connect/testing'
 
 const config = {
@@ -201,6 +129,8 @@ const config = {
   walletPicker: createAutoPicker(),
 }
 ```
+
+`@bootnodedev/canton-connect/testing` has more doubles, such as a fake CIP-0103 wallet and a fake session provider. The [API reference](https://components.dappbooster.cc/modules/_bootnodedev_canton-connect.Testing.html) covers each one.
 
 ## Working on the package
 
