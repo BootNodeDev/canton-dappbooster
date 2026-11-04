@@ -35,25 +35,28 @@ The contract between the two is the DOM each component renders, not code. The re
 
 ## Light / dark / system
 
-This is the one styling-related runtime the package does ship. `<ThemeProvider>` owns the mode and writes `data-theme` on `<html>`, which is the attribute the theme keys its dark values on. `useTheme()` reads and sets it. No token names live here.
+`<ThemeProvider>` owns the mode: light, dark or system, the default, which follows the OS. It writes the resolved value, `light` or `dark`, to `data-theme` on `<html>`, the attribute canton-theme keys its dark values on.
 
-> [!WARNING]
-> Client only: the provider reads the OS preference when it mounts, so a server render throws.
+`useTheme()` reads and sets the mode from any component inside the provider:
 
 ```tsx
 import { ThemeProvider, useTheme } from '@bootnodedev/canton-dappbooster'
 
-const App = () => (
-  <ThemeProvider>
-    <Page />
-  </ThemeProvider>
-)
-
 const ModeToggle = () => {
   const { resolved, toggle } = useTheme()
+
   return <button onClick={toggle}>{resolved === 'dark' ? 'Light' : 'Dark'}</button>
 }
+
+const App = () => (
+  <ThemeProvider>
+    <ModeToggle />
+  </ThemeProvider>
+)
 ```
+
+> [!WARNING]
+> Client only: the provider reads the OS preference when it mounts, so a server render throws.
 
 ## Working on the package
 
@@ -66,6 +69,3 @@ const ModeToggle = () => {
 | `pnpm typecheck` | `tsc --noEmit` |
 
 An app in this repo runs against `src` in dev, with no build. Its production build reads `dist`, so run `pnpm build` here first, or from the repo root to build every workspace in order. How the build works is in [Build & packaging](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md#build--packaging).
-
-> [!WARNING]
-> If the consumer's React resolves to a different copy than the kit's, you get two Reacts in one bundle. Hooks then read a null dispatcher and every render throws. You only see this in a production build, because the `development` condition resolves the kit to its source. The fix is `resolve.dedupe` in the bundler.
