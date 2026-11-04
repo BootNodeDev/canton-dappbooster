@@ -61,6 +61,11 @@ The dApp runs on http://localhost:3012, its token registry on http://localhost:3
 Gateway on http://localhost:3030. The examples share the LocalNet, so stop one before you start
 another.
 
+`pnpm dev:amulet-vesting` and `pnpm dev:token-vesting` run the installer's local network scripts
+against the example's own folder, which is why `example-dapps/amulet-vesting` has no `build-dar` or
+`deploy-dar` script of its own. A project the installer makes gets the published example instead,
+fetched with `npm pack`.
+
 ### Installer
 
 ```bash

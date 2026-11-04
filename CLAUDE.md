@@ -65,7 +65,7 @@ than keeping it empty:
 1. the title, then the Canton dAppBooster blockquote, the same paragraph in every package;
 2. a paragraph on what the unit is, then a line linking its API reference where it has one;
 3. what someone needs to use it, every install command as separate npm and pnpm fences after
-   "With npm:" and "With pnpm:";
+   "With npm:" and "With pnpm:", unless the path needs pnpm anyway;
 4. `## Working on the package` last: a `| Script | What it does |` table, what running those
    scripts takes, and the pointer to `architecture.md`, which is for contributors. A README with
    no such section ends on that pointer instead.
@@ -73,7 +73,9 @@ than keeping it empty:
 Step 3 follows the kind of unit:
 
 - a library: `## Installation`, then its usage;
-- an example: `## How it works`, `## Run the app`, `## Use the app`, `## Configure the app`;
+- an example: `## Run the app` as numbered steps, `## How it works`, `## Configure the app` with a
+  subsection per change, and no step 4, since its README becomes the README of the project the
+  installer makes;
 - the installer: `## Requirements`, then a section per mode;
 - a README inside a package, like an example's `daml/`: steps 1 and 4 do not apply;
 - the scaffold's: they become the README of the project the installer makes, so steps 1 and 4 do
