@@ -25,6 +25,7 @@
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
 #   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, bootstrap, gateway, dApp)
 #   ./scripts/dev-stack.sh down [dir]  # stop the gateway + the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh reset [dir] # stop it all, drop the ledger and the gateway's stores
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -38,7 +39,8 @@
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes.
+# stops the LocalNet, keeping its volumes. `reset` drops them; `up` stops and points at it when
+# the pinned Splice release moved while the old ledger is still in Docker.
 
 set -euo pipefail
 
@@ -66,6 +68,9 @@ GW_PID="$RUN_DIR/wallet-gateway.pid"
 
 # Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
+
+# The status localnet-config.mjs exits with when the pinned Splice moved past a ledger in Docker.
+LEDGER_ON_OLD_SPLICE=3
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
@@ -179,11 +184,11 @@ LOCALNET_ARG="${2:-}"
 # is normally driven. Only a path-shaped first argument is read that way, so a mistyped
 # subcommand still fails instead of silently opening the menu.
 case "$ACTION" in
-  menu | install | docker-up | docker-down | up | down | status) ;;
+  menu | install | docker-up | docker-down | up | down | reset | status) ;;
   /* | ./* | ../* | ~*) LOCALNET_ARG="$ACTION"; ACTION=menu ;;
   *)
     [ -d "$ACTION" ] \
-      || die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status} [localnet-dir]"
+      || die "Usage: $0 {menu|install|docker-up|up|down|reset|docker-down|status} [localnet-dir]"
     LOCALNET_ARG="$ACTION"
     ACTION=menu
     ;;
@@ -381,8 +386,13 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
   step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
-  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
-    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
+  local config_status=0
+  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" || config_status=$?
+  case "$config_status" in
+    0) ;;
+    "$LEDGER_ON_OLD_SPLICE") die "Run 'reset' to drop that ledger and the Wallet Gateway's parties, then 'up'." ;;
+    *) die "Could not prepare the LocalNet config in $LOCALNET_DIR." ;;
+  esac
 
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
   # containers exist; Splice takes minutes more to answer, and the DAR upload below
@@ -472,18 +482,19 @@ stop_port() { # stop_port <port> <label>
   done
 }
 
-down() {
-  # 1. Background processes
+stop_services() {
   stop_pidfile "$DAPP_PID" "dApp dev server"
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
   stop_port 3012 "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"
   stop_port 3030 "Wallet Gateway"
+}
 
-  # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
-  # survives; drop them with 'canton-barebones reset'. Docker itself is left
-  # running — quit it separately with 'docker-down', the app, or your CLI.
+down() {
+  stop_services
+
+  # Volumes are kept, so the ledger survives a `down`; `reset` is what drops them.
   if docker info >/dev/null 2>&1; then
     log "Stopping the LocalNet..."
     localnet stop || warn "canton-barebones stop reported an error"
@@ -500,20 +511,38 @@ down() {
   fi
 }
 
+reset() {
+  stop_services
+  docker info >/dev/null 2>&1 \
+    || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
+  log "Dropping the LocalNet and its volumes..."
+  localnet reset || die "canton-barebones reset did not finish."
+  # Its stores list parties and sessions that only the dropped ledger had.
+  rm -rf -- "$ROOT_DIR/.wallet-gateway"
+  log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."
+}
+
+confirm() { # confirm <question>
+  local answer
+  read -r -p "  $1 [y/N] " answer
+  [[ "$answer" =~ ^[yY]$ ]]
+}
+
 menu() {
   if [ ! -t 0 ] || [ ! -t 1 ]; then
     die "The menu needs an interactive terminal. Run a subcommand directly instead."
   fi
 
   # Display label per item; `keys` is the matching action dispatched on select.
-  local keys=(install docker-up docker-down up down quit)
-  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Quit")
+  local keys=(install docker-up docker-down up down reset quit)
+  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Stack reset" "Quit")
   local descs=(
     "pnpm install"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
     "start LocalNet, deploy DAR, bootstrap, gateway, dApp"
     "stop the gateway + dApp dev server, stop the LocalNet"
+    "stop it all, drop the ledger and the gateway's parties"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -567,6 +596,11 @@ menu() {
       docker-down) ( docker_down ) || warn "docker-down did not finish cleanly" ;;
       up)          ( up ) || warn "up did not finish cleanly (see output above)" ;;
       down)        ( down ) || warn "down did not finish cleanly" ;;
+      reset)
+        if confirm "Drop the ledger and the Wallet Gateway's parties?"; then
+          ( reset ) || warn "reset did not finish cleanly"
+        fi
+        ;;
     esac
     printf '\n  \033[2mPress Enter to return to the menu...\033[0m'
     read -r _ || true
@@ -598,6 +632,7 @@ case "$ACTION" in
   docker-up)   docker_up ;;
   up)          up ;;
   down)        down ;;
+  reset)       reset ;;
   docker-down) docker_down ;;
   status)      status ;;
 esac

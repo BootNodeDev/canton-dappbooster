@@ -7,9 +7,10 @@
 // scaffolded config frozen at whatever the tool shipped the day it ran. That matters
 // twice: a config-format bump makes every command fail, and a Splice tag bump would
 // otherwise leave the tool running against a version it was not tested with. So the
-// local copy is re-scaffolded whenever the installed template moves past it, and the
-// flags are re-applied on top. Anything else a developer sets there survives until
-// then; a standing deviation belongs in a directory of its own, via CANTON_LOCALNET_DIR.
+// local copy is re-scaffolded whenever the installed template moves past it, unless a
+// Splice bump finds the old ledger still in Docker, and the flags are re-applied on
+// top. Anything else a developer sets there survives until then; a standing deviation
+// belongs in a directory of its own, via CANTON_LOCALNET_DIR.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
@@ -18,6 +19,9 @@ import path from 'node:path'
 const require = createRequire(import.meta.url)
 
 const CONFIG_NAME = 'canton-barebones.config.json'
+
+// dev-stack.sh tells this exit status apart from any other failure and asks for a reset.
+export const LEDGER_ON_OLD_SPLICE = 3
 
 // nginx serves no /api/validator without appUser.ui and no /api/scan without sv.scanUI,
 // which is how a missing flag surfaces as a caller failing for unrelated reasons.
@@ -47,6 +51,17 @@ export const needsRescaffold = (local, template) => {
   }
   return undefined
 }
+
+/** Whether the scaffolded config names another Splice release than the template pins. */
+export const spliceMoved = (local, template) =>
+  local !== undefined && local.splice?.tag !== template.splice?.tag
+
+const ledgerExists = (projectName) =>
+  execFileSync(
+    'docker',
+    ['volume', 'ls', '--quiet', '--filter', `label=com.docker.compose.project=${projectName}`],
+    { encoding: 'utf8' },
+  ).trim() !== ''
 
 /**
  * Sets each required flag to true, returning whether anything changed. Throws when a
@@ -82,6 +97,16 @@ const main = () => {
 
   fs.mkdirSync(targetDir, { recursive: true })
   const local = fs.existsSync(configPath) ? readJson(configPath) : undefined
+  const projectName = local?.composeProjectName ?? template.composeProjectName
+  if (spliceMoved(local, template) && ledgerExists(projectName)) {
+    console.error(
+      `localnet-config: ${targetDir} was set up for Splice ${local.splice?.tag} and its ledger ` +
+        `is still in Docker, but the project now pins ${template.splice?.tag}. ` +
+        'Upgraded in place, that ledger would keep its old Amulet.',
+    )
+    process.exitCode = LEDGER_ON_OLD_SPLICE
+    return
+  }
   const reason = needsRescaffold(local, template)
 
   // Driving `init` rather than copying the templates here keeps the tool the authority
