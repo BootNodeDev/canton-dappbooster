@@ -22,8 +22,11 @@ export interface UseAccountResult {
  * @throws with no {@link CantonConnectProvider} above it.
  *
  * @example
- * const { account, isConnected } = useAccount()
- * isConnected && <span>{account?.hint}</span>
+ * const { account } = useAccount()
+ *
+ * if (account === undefined) return <p>No session.</p>
+ *
+ * return <span>{account.hint}</span>
  *
  * @category Hooks
  */

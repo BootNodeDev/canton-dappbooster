@@ -61,8 +61,9 @@ flowchart LR
 
 ### The lifecycle: `machine/`
 
-One model of connecting, session, lock and disconnect, so the impossible combinations (an account
-with no live session, an error beside a live session) cannot be built. Three decisions carry the weight:
+The machine is one model of connecting, session, lock and disconnect. On paper that is four states: idle, connecting, connected, disconnected. The hard part is canceling work after the state that started it is gone: a picker the user closed, a lock racing the account read, a connect requested in the middle of a disconnect, a wallet that answers late or never. Handled one by one, those were five separate races (#76). In the machine, work invoked by a state is canceled when that state is left.
+
+The combinations that used to be bugs (connected with no party, an error next to a live session) are named states, such as `session.unauthenticated` and `session.authenticated.unavailable`. Three decisions carry the weight:
 
 - `idle` is not `disconnected`. `idle` means the boot restore has not answered; `disconnected` means
   it has, and there is nothing.
@@ -71,6 +72,15 @@ with no live session, an error beside a live session) cannot be built. Three dec
   heard and the account is read again with no reconnect.
 - The account read is a child machine, so a failed read cannot end the session; only the promise
   carries the failure.
+
+Most of the machine works around gaps in `@canton-network/dapp-sdk`, not domain complexity:
+
+| dapp-sdk gap | what it costs | gone when |
+|---|---|---|
+| `connect()` can't be aborted; a closed popup hangs it (#49) | `guardedConnect`, `settleAbandonedConnect`, `PickerClosedError`, the `retiring` state, `retireSdk`'s picker swap | `connect(signal)` truly aborts |
+| `init()` caches a rejected promise forever | `retireSdk`, the `retiring` state, `InitFailedError` | `init()` retries after a failure |
+| `disconnect()` has no timeout | `DISCONNECT_TIMEOUT_MS`, and `retireSdk` when it fires | `disconnect()` times out itself |
+| lock and wallet-side disconnect are one push | `session.unauthenticated`, and `account` cleared on leaving `session.authenticated` | CIP-0103 separates them (spec, not SDK) |
 
 ### The bridges
 
@@ -178,5 +188,6 @@ announce, detect and connect path. `createAutoPicker` answers the picker headles
 
 - Themed in-page picker (#50): its PR (#63) was closed unmerged, so the SDK popup is still the only
   picker; a new attempt starts from the `walletPicker` seam.
+- A lighter store in place of the machine. Once the gaps in the table under [The lifecycle](#the-lifecycle-machine) close upstream, the machine shrinks to its floor (idle versus disconnected, the account-read states, and the lock/disconnect ambiguity in CIP-0103), where a lighter store wins on bundle size. A zustand rewrite, tried as a spike, reached full behavioral parity, but its only gains were bundle size and one dependency less, not less logic, so the switch waits for those gaps to close.
 
 For the stack around this package: the root [`architecture.md`](../architecture.md).

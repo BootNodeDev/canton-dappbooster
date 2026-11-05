@@ -40,7 +40,11 @@ export interface UseExecuteResult {
  * in `error`, always as an `Error`: see {@link toError}.
  *
  * @example
+ * const { account } = useAccount()
  * const { execute, lastTx } = useExecute()
+ *
+ * if (account === undefined) return <p>Connect and unlock the wallet first.</p>
+ *
  * await execute({ commandId: 'claim-1', commands })
  * lastTx?.status // 'pending' | 'signed' | 'executed' | 'failed'
  *

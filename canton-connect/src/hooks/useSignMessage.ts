@@ -24,7 +24,11 @@ export interface UseSignMessageResult {
  * `error`, always as an `Error`: see {@link toError}.
  *
  * @example
+ * const { account } = useAccount()
  * const { signMessage } = useSignMessage()
+ *
+ * if (account === undefined) return <p>Connect and unlock the wallet first.</p>
+ *
  * const signed = await signMessage('Approve vesting claim')
  *
  * @category Hooks

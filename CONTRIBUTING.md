@@ -53,13 +53,33 @@ token in `example-dapps/amulet-vesting/.env`.
 
 ```bash
 pnpm dev:token-vesting        # interactive menu
-pnpm dev:token-vesting up     # LocalNet, both DARs, token registry, Wallet Gateway and dApp
+pnpm dev:token-vesting up     # LocalNet, its DARs, token registry, Wallet Gateway and dApp
 pnpm dev:token-vesting down   # stop everything and keep the ledger
 ```
 
 The dApp runs on http://localhost:3012, its token registry on http://localhost:3013 and Wallet
-Gateway on http://localhost:3030. Both examples share the LocalNet, so stop one before you start the
-other.
+Gateway on http://localhost:3030. The examples share the LocalNet, so stop one before you start
+another.
+
+`pnpm dev:amulet-vesting` and `pnpm dev:token-vesting` run the installer's local network scripts
+against the example's own folder, which is why `example-dapps/amulet-vesting` has no `build-dar` or
+`deploy-dar` script of its own. A project the installer makes gets the published example instead,
+fetched with `npm pack`.
+
+### Installer
+
+```bash
+pnpm -C canton-create try         # pack the installer and every example into canton-create/.try
+pnpm -C canton-create try:clean   # stop the stack, reset the LocalNet and remove .try
+```
+
+`try` then prints the commands that run them there, as a user would.
+
+## Where to read next
+
+- [`architecture.md`](architecture.md) maps the stack: data flow, services and ports, auth, orchestration and packaging;
+- each package's `README.md` says what it is and how to use it, and its `architecture.md` how it works: [`canton-connect`](canton-connect/architecture.md), [`canton-dappbooster`](canton-dappbooster/architecture.md), [`canton-create`](canton-create/architecture.md), [`amulet-vesting`](example-dapps/amulet-vesting/architecture.md) and [`token-vesting`](example-dapps/token-vesting/architecture.md). `canton-theme` has none: the split between components and theme is in canton-dappbooster's;
+- the `CLAUDE.md` files hold the rules for writing code here. They are addressed to agents and bind humans too: [`CLAUDE.md`](CLAUDE.md) for the repo, and one in each package for its deltas.
 
 ## Before opening a pull request
 

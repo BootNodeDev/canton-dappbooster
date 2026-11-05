@@ -26,7 +26,10 @@ export interface UseLedgerResult {
  * throws too, always as an `Error`: see {@link toError}.
  *
  * @example
- * const { ledgerApi } = useLedger()
+ * const { ledgerApi, isReady } = useLedger()
+ *
+ * if (!isReady) return <p>Connect and unlock the wallet first.</p>
+ *
  * await ledgerApi({
  *   requestMethod: 'get',
  *   resource: '/v2/users/{user-id}/rights',

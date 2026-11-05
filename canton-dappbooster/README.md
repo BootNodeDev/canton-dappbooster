@@ -1,32 +1,30 @@
 # @bootnodedev/canton-dappbooster
 
-> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. This package is its UI components layer, headless and unstyled. The complete kit, the installer and the guides live at [dappbooster.cc](https://dappbooster.cc).
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
 Reusable UI components for Canton dApps: reading Canton identifiers (display, truncation, copy-to-clipboard, explorer links) and entering them (validated party-id input). Amounts are the other half: a token-amount field, plus the exact-decimal utilities under it, because a `number` cannot carry a Canton amount without losing digits.
 
-`src/index.ts` is the public API. Every export has JSDoc, which your editor shows at the call site and which is published at [components.dappbooster.cc](https://components.dappbooster.cc/). The wallet buttons and the `useHoldings` hook live under the `/connect` sub-path instead, because they read the wallet session and that pulls in the Canton SDK. The rules for writing new components are in [`CLAUDE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/CLAUDE.md).
+The API reference is at [components.dappbooster.cc](https://components.dappbooster.cc/).
 
-## Scripts
+## Installation
 
-| Script | What it does |
-| --- | --- |
-| `pnpm build` | tsdown build into `dist/`: ESM `index.js` and `connect.js`, each with its `.d.ts` |
-| `pnpm test` | vitest with jsdom and Testing Library, run against `src` |
-| `pnpm typecheck` | `tsc --noEmit` |
+With npm:
 
-## Build & dev loop
+```bash
+npm install @bootnodedev/canton-dappbooster @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sign-client
+```
 
-tsdown emits ESM and `.d.ts` files into `dist/`. The components carry no CSS, so `sideEffects: false` is safe and the bundle tree-shakes. The `exports` map has a `development` condition that points at `src`, so Vite serves the source directly in dev. Production builds and the published package use `dist`.
+With pnpm:
 
-In dev, a consumer resolves and typechecks against the source, with no kit build needed. Its production build resolves `dist`, so build the kit first, or run `pnpm build` from the repo root, which builds the workspaces in order.
+```bash
+pnpm add @bootnodedev/canton-dappbooster @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sign-client
+```
 
-React 19 only, both as a peer and as a dev dependency.
-
-If the consumer's React resolves to a different copy than the kit's, you get two Reacts in one bundle. Hooks then read a null dispatcher and every render throws. You only see this in a production build, because the `development` condition resolves the kit to its source. The fix is `resolve.dedupe` in the bundler.
+It needs React 19.
 
 ## Styling: components carry none
 
-The components (L2) have no styling opinion at all. Styling comes from the separate [`@bootnodedev/canton-theme`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-theme/README.md) package (L3), which you import yourself:
+The components (L2) have no styling opinion at all. Styling comes from the separate [`@bootnodedev/canton-theme`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-theme) package (L3), which you import yourself:
 
 ```ts
 import '@bootnodedev/canton-theme/tokens.css'
@@ -37,23 +35,37 @@ The contract between the two is the DOM each component renders, not code. The re
 
 ## Light / dark / system
 
-This is the one styling-related runtime the package does ship. `<ThemeProvider>` owns the mode and writes `data-theme` on `<html>`, which is the attribute the theme keys its dark values on. `useTheme()` reads and sets it. No token names live here.
+`<ThemeProvider>` owns the mode: light, dark or system, the default, which follows the OS. It writes the resolved value, `light` or `dark`, to `data-theme` on `<html>`, the attribute canton-theme keys its dark values on.
 
-On a reload the page background flashes before React applies the attribute, and this package ships nothing to prevent that. See [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md) for why.
-
-Client only: the provider reads the OS preference when it mounts, so a server render throws.
+`useTheme()` reads and sets the mode from any component inside the provider:
 
 ```tsx
 import { ThemeProvider, useTheme } from '@bootnodedev/canton-dappbooster'
 
-const App = () => (
-  <ThemeProvider>
-    <Page />
-  </ThemeProvider>
-)
-
 const ModeToggle = () => {
   const { resolved, toggle } = useTheme()
+
   return <button onClick={toggle}>{resolved === 'dark' ? 'Light' : 'Dark'}</button>
 }
+
+const App = () => (
+  <ThemeProvider>
+    <ModeToggle />
+  </ThemeProvider>
+)
 ```
+
+> [!WARNING]
+> Client only: the provider reads the OS preference when it mounts, so a server render throws.
+
+## Working on the package
+
+### Scripts
+
+| Script | What it does |
+| --- | --- |
+| `pnpm build` | tsdown build into `dist/`: ESM `index.js` and `connect.js`, each with its `.d.ts` |
+| `pnpm test` | vitest with jsdom and Testing Library, run against `src` |
+| `pnpm typecheck` | `tsc --noEmit` |
+
+An app in this repo runs against `src` in dev, with no build. Its production build reads `dist`, so run `pnpm build` here first, or from the repo root to build every workspace in order. How the build works is in [Build & packaging](https://github.com/BootNodeDev/canton-dappbooster/blob/main/canton-dappbooster/architecture.md#build--packaging).

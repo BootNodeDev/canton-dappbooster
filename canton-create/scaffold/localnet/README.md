@@ -3,26 +3,22 @@
 
 This project also carries a local Canton stack:
 
-- `@bootnodedev/canton-barebones` runs a Splice LocalNet in Docker, with its config in
-  `.canton-localnet/`
-- `@canton-network/wallet-gateway-remote` is [Wallet Gateway](https://github.com/canton-network/wallet),
-  which the dApp connects to on http://localhost:3030, with its config in `wallet-gateway.config.json`
+- `@bootnodedev/canton-barebones` runs a Splice LocalNet in Docker, with its config in `.canton-localnet/`;
+- `@canton-network/wallet-gateway-remote` is [Wallet Gateway](https://github.com/canton-network/wallet), which the dApp connects to on http://localhost:3030, with its config in `wallet-gateway.config.json`.
 
 It needs Docker running and pnpm, plus `dpm` when the app has a contract.
 
-```bash
-pnpm stack up      # LocalNet, the contract if there is one, Wallet Gateway, dev server
-pnpm stack down    # stop everything and keep the ledger
-pnpm stack         # interactive menu
-```
+| Script | What it does |
+| --- | --- |
+| `pnpm stack up` | LocalNet, the contract if there is one, Wallet Gateway, dev server |
+| `pnpm stack down` | stops everything and keeps the ledger |
+| `pnpm stack` | interactive menu |
 
-Then pick Wallet Gateway in the dApp's picker and log in with the client secret `unsafe`. Create a
-party in the gateway.
+Then pick Wallet Gateway in the dApp's picker and log in with the client secret `unsafe`. Create a party in the gateway.
 
-On its first run, `pnpm stack up` mints `CANTON_BACKEND_TOKEN` into `.env`. When the project has a
-contract, it then builds and deploys it. It runs the `bootstrap` script if there is one, then the
-`stack:up` script, which starts anything else the app needs. `pnpm stack down` runs `stack:down`. To
-wipe the ledger, run `canton-barebones reset` inside `.canton-localnet/`. You then have to create
-the gateway's parties again.
+`pnpm stack up` mints `CANTON_BACKEND_TOKEN` into `.env` when it is missing. When the project has a contract, it builds and deploys it. It then runs the `bootstrap` script if there is one, and the `stack:up` script, which starts anything else the app needs. `pnpm stack down` runs `stack:down`.
 
 Each step is also a script of its own: `pnpm mint-token` and `pnpm wallet-gateway`.
+
+> [!CAUTION]
+> To wipe the ledger, run `pnpm exec canton-barebones reset` inside `.canton-localnet/`. You then have to create the gateway's parties again.

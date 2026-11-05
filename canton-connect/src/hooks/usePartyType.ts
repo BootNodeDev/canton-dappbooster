@@ -43,7 +43,10 @@ export interface UsePartyTypeResult {
  * read, always as an `Error`: see {@link toError}.
  *
  * @example
- * const { readPartyType } = usePartyType()
+ * const { readPartyType, isReady } = usePartyType()
+ *
+ * if (!isReady) return <p>Connect and unlock the wallet first.</p>
+ *
  * if ((await readPartyType()) === 'local') {
  *   toast.error('This wallet cannot sign messages for a local party')
  * }

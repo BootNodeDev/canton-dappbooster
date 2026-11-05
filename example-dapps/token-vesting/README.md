@@ -1,77 +1,62 @@
 # Token vesting dApp
 
-`@bootnodedev/canton-example-token-vesting` is a dApp for vesting a
-[canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, `DBT`. A funder
-proposes a grant, and the receiver accepts or declines it. The funder can cancel it until the
-receiver accepts. The receiver claims `DBT` as the grant vests. If the funder cancels an accepted
-grant, the receiver keeps the vested but unclaimed `DBT` as a residual claim.
+> [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
-Acceptance locks the funder's `DBT` in a `LockedToken` escrow, and each claim releases part of it.
-The figures on screen are therefore real holdings. Each grant shows its vested and claimable amounts
-live, and [`src/utils/schedule.ts`](src/utils/schedule.ts) computes them.
+`@bootnodedev/canton-example-token-vesting` is the [amulet-vesting](https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting) dApp over a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, `DBT`, instead of Canton Coin. This README covers what changes; the rest works as amulet-vesting describes.
 
-Every read and every write goes through the connected CIP-0103 wallet. The app acts as the wallet's
-primary account, and each write raises a real approval prompt. There is no mock mode. If the ledger
-has no vesting operator and factory, or you have not connected a wallet, the pages show a connect
-placeholder.
-
-It needs no Splice reference data and no Daml toolchain. The two Daml packages ship as binaries in
-[`vendor/`](vendor/), and a canton-token-forge registry serves the token's metadata.
-
-> This frontend comes from the Amulet Vesting example. See
-> [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/PROVENANCE.md).
+> [!NOTE]
+> Unlike amulet-vesting, which builds its contract from `daml/`, this app only uses prebuilt DARs in `vendor/`: the vesting contract from [canton-vesting-forge](https://github.com/BootNodeDev/canton-vesting-forge) and the token from canton-token-forge. They depend on no Splice release, so one build works on any network and the app needs no Daml toolchain. [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) records where each one comes from.
 
 ## Run the app
 
-`create-canton-dappbooster --example token-vesting` makes a project from this package. With
-`--localnet`, `pnpm stack up` starts the app and everything it needs. That includes the token
-registry on http://localhost:3013. The installer appends a Local network section to this
-README that describes it.
+You need Node 24.15 or later, pnpm, and Docker running.
 
-Without the local network, point `.env` at your network first: `CANTON_JSON_API_URL`,
-`CANTON_BACKEND_TOKEN` and the `VITE_` URLs. Then run:
+1. Create a project from this example, with the local network.
 
-```bash
-pnpm bootstrap   # uploads both DARs, creates the operator, its factory and the DBT instrument
-pnpm stack:up    # starts the token registry on http://localhost:3013
-pnpm dev         # serves http://localhost:3012
-```
+   ```bash
+   pnpm create canton-dappbooster --example token-vesting --localnet
+   ```
 
-`bootstrap` creates only what is missing, so running it again is safe. The one file it writes is
-`.env.registry`, the registry's settings, which `stack:up` starts the registry from.
-`pnpm stack:down` stops it.
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md)
-explains how the dApp finds the operator and the factory on the ledger.
+2. In the project folder, start everything (LocalNet, DARs, token registry, Wallet Gateway and dApp).
 
-## Get DBT and connect a wallet
+   ```bash
+   pnpm stack up
+   ```
 
-Funding a grant takes `DBT`. The **Tap dAppBooster Token** faucet in the account menu taps 1000 DBT
-into the connected party, straight off the instrument's own config. It refuses an amount over the
-`maxPerTap` that `bootstrap` set, and the failure toast says so.
+3. Open http://localhost:3012, pick Wallet Gateway in the wallet picker and log in with the client secret `unsafe`. Create a party in the gateway.
+4. In the account menu, use **Tap dAppBooster Token** to get 1000 `DBT`.
+5. Create a grant for a second party from the gateway. To accept and claim it, make that party the wallet's primary party: the dApp acts as whichever party the wallet reports.
 
-Connect with a CIP-0103 wallet. With the local network, `pnpm stack up` starts Wallet Gateway on
-http://localhost:3030.
+## How it works
 
-You act as the party the wallet reports, and the wallet restores the session on reload. If you
-change the wallet's primary party, the dApp acts as the new one.
+The vesting flow is the one [amulet-vesting](https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting#how-it-works) shows, with these differences:
+
+- a canton-token-forge registry serves the token and the `InstrumentConfig` each write discloses, where amulet-vesting reads `AmuletRules` and the open mining round from Scan;
+- creating a grant takes one funder approval instead of two;
+- acceptance locks the funder's `DBT` in a `LockedToken` instead of a `LockedAmulet`.
 
 ## Configure the app
 
-The app reads its variables from `.env` in the project folder, and [`.env.example`](.env.example)
-lists them. The explorer, registry and gateway URLs default to the local stack. Open the dApp on any
-address other than http://localhost:3012 and the registry refuses it until `CORS_ORIGINS` lists
-that address.
+The variables work as in [amulet-vesting](https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting#configure-the-app), WalletConnect included, and [`.env.example`](.env.example) lists them. What this app adds:
 
-WalletConnect is off unless you set `VITE_WALLET_CONNECT_PROJECT_ID` to a Reown project id. Once you
-set it, `VITE_NETWORK_ID` must match the network the wallet serves. For the local gateway, that is
-`canton:localnet`.
+### Use your own network
 
-A build you deploy takes no defaults for the three URLs. With `DEPLOYED_BUILD=1`, an
-unset URL fails the build rather than baking in a `localhost` address that an https page blocks as
-mixed content. On Vercel, [`api/registry.ts`](api/registry.ts) forwards the registry's routes from
-the deployed origin, to the registry `REGISTRY_URL` names.
+Point `.env` at your network: `CANTON_JSON_API_URL`, `CANTON_BACKEND_TOKEN` and the `VITE_` URLs. Then run:
 
-## How it fits together
+| Script | What it does |
+| --- | --- |
+| `pnpm bootstrap` | uploads the DARs, creates the operator, its factory and the DBT instrument |
+| `pnpm stack:up` | starts the token registry on http://localhost:3013 (`pnpm stack up` runs it for you on the local network) |
+| `pnpm dev` | serves http://localhost:3012 |
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md)
-describes the app's internal structure and the reasoning behind it.
+`bootstrap` creates only what is missing, so running it again is safe. The one file it writes is `.env.registry`, the registry's settings, which `stack:up` starts the registry from. `pnpm stack:down` stops it.
+
+### Open the dApp on another address
+
+By default the registry accepts only http://localhost:3012. To open the dApp on any other address (`127.0.0.1`, a published port, a LAN name), list it in `CORS_ORIGINS`.
+
+### Deploy a build
+
+Build with `DEPLOYED_BUILD=1` for a host. The URL variables then have no defaults, and an unset one fails the build rather than baking in a `localhost` address that an https page blocks as mixed content.
+
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, including how the dApp finds the operator and its factory on the ledger, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/PROVENANCE.md) records where the frontend came from.

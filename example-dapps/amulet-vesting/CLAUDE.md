@@ -22,6 +22,8 @@ filename casing table and the colocate-then-promote placement rules it layers on
   `BackendProvider`.
 - No server code, and so no folder beside `src/` for it: this app is a static bundle, `vercel.json`
   answers every path with `index.html`, and every call goes straight to the service answering it.
+- The Daml package sits directly in `daml/`, not in a folder named after itself, so a rename
+  touches `daml/daml.yaml` and nothing else.
 
 ## Shared pieces to reach for
 
