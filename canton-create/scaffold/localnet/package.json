@@ -9,7 +9,7 @@
     "wallet-gateway": "mkdir -p .wallet-gateway && wallet-gateway -c ./wallet-gateway.config.json"
   },
   "devDependencies": {
-    "@bootnodedev/canton-barebones": "0.6.0",
+    "@bootnodedev/canton-barebones": "0.7.0",
     "@canton-network/wallet-gateway-remote": "1.13.0"
   }
 }
