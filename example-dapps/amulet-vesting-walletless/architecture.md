@@ -153,7 +153,9 @@ id. The receiver's `AmuletVestingProposal_Accept` then has to disclose that Amul
 receiver cannot read. The wallet example keeps the blob in the funder's browser, which ties both
 sides to one browser. Here `LedgerBackend` puts it in the `escrow_disclosures` table at create,
 reads it back at accept, and drops it once the Amulet is locked, so the funder and the receiver can
-be anywhere.
+be anywhere. The row goes in before the proposal is submitted, since a row nothing pledges is never
+read while a lost one strands the proposal. A funder's grants are created one at a time: a second
+split would spend the first one's escrow before its proposal pledges it.
 
 The split needs no headroom: Splice values an Amulet input at its full `initialAmount`, and only
 `Amulet_Expire` charges the holding fee, as

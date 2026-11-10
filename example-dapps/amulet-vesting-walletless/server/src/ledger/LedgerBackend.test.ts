@@ -302,6 +302,43 @@ describe('LedgerBackend.createVesting', () => {
     ])
   })
 
+  it('funds a second grant sent at once from what the first one left free', async () => {
+    const { backend, submissions } = harness({ acs: { [AMULET]: [amuletRow('am1', '2500')] } })
+
+    await Promise.all([
+      backend.createVesting('funder::1', grant),
+      backend.createVesting('funder::1', grant),
+    ])
+
+    const splits = submissions.flatMap((one) => {
+      const exercise = one.commands?.[0]?.ExerciseCommand
+      return exercise?.choice === 'AmuletRules_Transfer'
+        ? [(exercise.choiceArgument.transfer as { inputs: unknown[] }).inputs]
+        : []
+    })
+    expect(splits).toEqual([
+      [{ tag: 'InputAmulet', value: 'am1' }],
+      [{ tag: 'InputAmulet', value: 'change-1' }],
+    ])
+  })
+
+  it('stores the escrow blob before it submits the proposal', async () => {
+    let submitted = () => -1
+    let atPut: number | undefined
+    disclosures = {
+      ...memoryDisclosures(),
+      put: async () => {
+        atPut = submitted()
+      },
+    }
+    const { backend, submissions } = harness()
+    submitted = () => submissions.length
+
+    await backend.createVesting('funder::1', grant)
+
+    expect(atPut).toBe(1)
+  })
+
   it('refuses a grant the funder holds no Amulet for', async () => {
     const { backend } = harness({ acs: {} })
 
@@ -463,6 +500,28 @@ describe('LedgerBackend.accept', () => {
     expect(submissions[0]?.disclosedContracts).toEqual(
       onSync([...transferContext.disclosed, disclosedAmulet('split-1')]),
     )
+  })
+})
+
+describe('LedgerBackend.claimHistory', () => {
+  it('reads past the first page of the update stream', async () => {
+    const begins: unknown[] = []
+    const page = Array.from({ length: 1000 }, (_, i) => ({
+      update: { Transaction: { value: { offset: i + 1 } } },
+    }))
+    const wallet: WalletFns = {
+      execute: async () => ({}),
+      ledgerApi: async (params) => {
+        if (params.resource === '/v2/state/ledger-end') return { offset: 5000 }
+        const { beginExclusive } = params.body as { beginExclusive: unknown }
+        begins.push(beginExclusive)
+        return beginExclusive === 0 ? page : []
+      },
+    }
+
+    await new LedgerBackend(deployment, wallet, disclosures).claimHistory('receiver::1', 'g1')
+
+    expect(begins).toEqual([0, 1000])
   })
 })
 

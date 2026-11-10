@@ -17,6 +17,7 @@ import {
   amuletValue,
   claimChain,
   composeNote,
+  lastUpdateOffset,
   pledgedAmulets,
   rowToClaim,
   rowToGrant,
@@ -29,10 +30,13 @@ import type { DisclosedContract, LedgerCommand, WalletFns } from '#server/ledger
 const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
 const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
 
-// One page: a demo party's whole vesting history fits in it.
 const CLAIM_HISTORY_LIMIT = 1000
+const CLAIM_HISTORY_PAGES = 20
 // Without it, `/v2/updates` holds the response open waiting for new updates.
 const STREAM_IDLE_MS = 1000
+
+// One grant per funder at a time: a second split would spend the first's escrow before it is pledged.
+const fundingQueue = new Map<string, Promise<unknown>>()
 
 export interface DisclosureStore {
   drop(contractId: string): Promise<void>
@@ -127,6 +131,17 @@ export class LedgerBackend {
   }
 
   async createVesting(proposer: string, args: CreateVestInput): Promise<void> {
+    const turn = (fundingQueue.get(proposer) ?? Promise.resolve()).then(() =>
+      this.splitAndPropose(proposer, args),
+    )
+    fundingQueue.set(
+      proposer,
+      turn.catch(() => undefined),
+    )
+    await turn
+  }
+
+  private async splitAndPropose(proposer: string, args: CreateVestInput): Promise<void> {
     const escrow = await this.splitOff(proposer, args.totalAmount)
     const command = buildCreateVestingCommand(this.factory.templateId, this.factory.contractId, {
       proposer,
@@ -136,8 +151,9 @@ export class LedgerBackend {
       amuletCids: [escrow.contractId],
       note: composeNote(args.title, args.note),
     })
-    await this.submit(proposer, command, [this.factory])
+    // Stored first: no accept reads a row nothing pledges, while a lost row strands the proposal.
     await this.disclosures.put(escrow)
+    await this.submit(proposer, command, [this.factory])
   }
 
   private async freeAmulets(owner: string): Promise<{ free: AcsRow[]; held: AcsRow[] }> {
@@ -200,14 +216,18 @@ export class LedgerBackend {
     return disclosure
   }
 
-  async claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]> {
-    const updates = await this.wallet.ledgerApi({
+  private readUpdates(
+    partyId: string,
+    beginExclusive: string | number,
+    endInclusive: string | number,
+  ): Promise<unknown> {
+    return this.wallet.ledgerApi({
       requestMethod: 'post',
       resource: '/v2/updates',
       query: { limit: CLAIM_HISTORY_LIMIT, stream_idle_timeout_ms: STREAM_IDLE_MS },
       body: {
-        beginExclusive: 0,
-        endInclusive: await this.ledgerEnd(),
+        beginExclusive,
+        endInclusive,
         updateFormat: {
           includeTransactions: {
             transactionShape: 'TRANSACTION_SHAPE_LEDGER_EFFECTS',
@@ -219,7 +239,22 @@ export class LedgerBackend {
         },
       },
     })
-    return claimChain(updatesToClaims(updates), contractCid)
+  }
+
+  async claimHistory(partyId: string, contractCid: string): Promise<ClaimRecord[]> {
+    const endInclusive = await this.ledgerEnd()
+    const records: ClaimRecord[] = []
+    let beginExclusive: string | number = 0
+    for (let page = 0; page < CLAIM_HISTORY_PAGES; page++) {
+      const updates = await this.readUpdates(partyId, beginExclusive, endInclusive)
+      records.push(...updatesToClaims(updates))
+      const last = lastUpdateOffset(updates)
+      if (!Array.isArray(updates) || updates.length < CLAIM_HISTORY_LIMIT || last === undefined) {
+        break
+      }
+      beginExclusive = last
+    }
+    return claimChain(records, contractCid)
   }
 
   async accept(args: { receiver: string; pendingCid: string }): Promise<void> {

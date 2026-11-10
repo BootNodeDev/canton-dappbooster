@@ -137,6 +137,11 @@ type UpdateEntry = {
   }
 }
 
+export const lastUpdateOffset = (updates: unknown): number | undefined => {
+  const entries = Array.isArray(updates) ? (updates as UpdateEntry[]) : []
+  return entries.at(-1)?.update?.Transaction?.value?.offset
+}
+
 export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
   (Array.isArray(updates) ? (updates as UpdateEntry[]) : []).flatMap((entry) => {
     const transaction = entry.update?.Transaction?.value
