@@ -7,13 +7,8 @@ import {
   useMemo,
   useState,
 } from 'react'
+import type { Account } from '#server/domain/types'
 import { ApiError, api, onSessionExpired } from '@/backend/api'
-import type { PartyId } from '@/store/types'
-
-export interface Account {
-  partyId: PartyId
-  username: string
-}
 
 export interface SessionState {
   login: (username: string, password: string) => Promise<void>

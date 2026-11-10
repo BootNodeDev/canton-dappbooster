@@ -15,6 +15,7 @@ vi.mock('@/components/Toaster', () => ({ Toaster: () => null }))
 vi.mock('@/components/TopBar', () => ({ TopBar: () => null }))
 vi.mock('@/hooks/useCreateGrant', () => ({ useCreateGrant: () => [false, () => undefined] }))
 vi.mock('@/providers/Backend', () => ({ useBackend: () => backendState.current }))
+vi.mock('@/providers/Session', () => ({ useSession: () => ({ pending: false }) }))
 
 const { AppShell } = await import('@/components/AppShell')
 
@@ -25,7 +26,6 @@ const render = async (state: Partial<BackendState>): Promise<HTMLElement> => {
     ready: false,
     configError: BOOTSTRAP,
     configPending: false,
-    sessionPending: false,
     ...state,
   } as BackendState
   const container = document.createElement('div')

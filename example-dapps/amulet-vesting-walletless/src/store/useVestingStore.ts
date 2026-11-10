@@ -205,8 +205,8 @@ export const useVestingStore = create<VestingState>((set, get) => {
 })
 
 export const useVesting = (): { partyId: string; ready: boolean; sessionPending: boolean } => {
-  const { ready, sessionPending } = useBackend()
-  const { session } = useSession()
+  const { ready } = useBackend()
+  const { pending: sessionPending, session } = useSession()
   const partyId = session?.partyId ?? ''
   const clear = useVestingStore((state) => state.clear)
   const refresh = useVestingStore((state) => state.refresh)

@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import type { ServerStatus } from '#server/domain/types'
 import { api } from '@/backend/api'
 import { useSession } from '@/providers/Session'
 import { errorText } from '@/utils/errorText'
@@ -17,19 +18,16 @@ export interface BackendState {
   configPending: boolean
   ready: boolean
   retryConfig: () => void
-  sessionPending: boolean
 }
 
 const RECHECK_MS = 5_000
 
-type Status = { error?: string; ready: boolean }
-
 const BackendContext = createContext<BackendState | undefined>(undefined)
 
 export const Backend = ({ children }: { children: ReactNode }): React.JSX.Element => {
-  const { pending: sessionPending, session } = useSession()
+  const { session } = useSession()
   const partyId = session?.partyId
-  const [status, setStatus] = useState<Status | undefined>(undefined)
+  const [status, setStatus] = useState<ServerStatus | undefined>(undefined)
   // Only the newest check may write or schedule the next: a retry starts one while another is out.
   const generation = useRef(0)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -37,7 +35,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const check = useCallback((): void => {
     const mine = ++generation.current
     clearTimeout(timer.current)
-    api<Status>('/status').then(
+    api<ServerStatus>('/status').then(
       (found) => {
         if (generation.current !== mine) return
         setStatus(found)
@@ -75,9 +73,8 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       configPending: partyId !== undefined && status === undefined,
       ready: partyId !== undefined && status?.ready === true,
       retryConfig,
-      sessionPending,
     }),
-    [partyId, retryConfig, sessionPending, status],
+    [partyId, retryConfig, status],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>

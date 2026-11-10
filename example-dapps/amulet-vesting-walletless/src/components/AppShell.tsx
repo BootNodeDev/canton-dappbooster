@@ -10,9 +10,11 @@ import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
+import { useSession } from '@/providers/Session'
 
 export const AppShell = (): React.JSX.Element => {
-  const { configPending, configError, ready, retryConfig, sessionPending } = useBackend()
+  const { configPending, configError, ready, retryConfig } = useBackend()
+  const { pending: sessionPending } = useSession()
   const [creating, setCreating] = useCreateGrant()
 
   const noSession = !sessionPending && !configPending && !ready

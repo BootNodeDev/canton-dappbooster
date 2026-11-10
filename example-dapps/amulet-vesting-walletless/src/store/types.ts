@@ -2,7 +2,6 @@ export type {
   Grant,
   ISO,
   MilestonePoint,
-  PartyId,
   PendingGrant,
   VestedClaim,
   VestingCurve,

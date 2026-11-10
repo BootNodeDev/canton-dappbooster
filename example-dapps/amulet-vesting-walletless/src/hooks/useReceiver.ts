@@ -1,5 +1,6 @@
 import { isValidPartyId } from '@bootnodedev/canton-dappbooster'
 import { useEffect, useState } from 'react'
+import type { Account } from '#server/domain/types'
 import { ApiError, api } from '@/backend/api'
 
 // The server's own rule for a username, so a name it would refuse is never looked up.
@@ -26,7 +27,7 @@ export const useReceiver = (input: string): Receiver => {
     if (!isName) return
     let live = true
     const timer = setTimeout(() => {
-      api<{ partyId: string }>(`/users/${encodeURIComponent(name)}`).then(
+      api<Account>(`/users/${encodeURIComponent(name)}`).then(
         ({ partyId }) => {
           if (live) setLookup({ name, partyId })
         },

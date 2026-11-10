@@ -1,4 +1,4 @@
-import type { ClaimRecord, CreateVestInput, VestingView } from '#server/domain/types'
+import type { Balance, ClaimRecord, CreateVestInput, VestingView } from '#server/domain/types'
 import { api } from '@/backend/api'
 
 const cid = (contractId: string): string => encodeURIComponent(contractId)
@@ -7,7 +7,7 @@ export const vesting = {
   accept: async (pendingCid: string): Promise<void> => {
     await api(`/proposals/${cid(pendingCid)}/accept`, { method: 'POST' })
   },
-  balance: async (): Promise<string> => (await api<{ free: string }>('/balance')).free,
+  balance: async (): Promise<string> => (await api<Balance>('/balance')).free,
   cancel: async (contractCid: string): Promise<void> => {
     await api(`/grants/${cid(contractCid)}/cancel`, { method: 'POST' })
   },
