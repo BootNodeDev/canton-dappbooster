@@ -122,6 +122,7 @@ export const Dashboard = (): React.JSX.Element => {
   }, [rows])
 
   const firstRead = loading && grants.length === 0
+  const grantCount = `${rows.length} ${rows.length === 1 ? 'grant' : 'grants'}`
 
   if (!ready) {
     return sessionPending ? <Loading /> : <SignInPrompt />
@@ -171,7 +172,7 @@ export const Dashboard = (): React.JSX.Element => {
               hero
               label="Claimable now"
               amount={totals.claimable}
-              sub={`Across ${rows.length} grants`}
+              sub={`Across ${grantCount}`}
               subTone="success"
             />
             <KpiCard label="Total granted" amount={totals.total} sub={`${rows.length} active`} />
@@ -184,7 +185,7 @@ export const Dashboard = (): React.JSX.Element => {
               hero
               label="Total committed"
               amount={totals.total}
-              sub={`${rows.length} grants funded`}
+              sub={`${grantCount} funded`}
             />
             <KpiCard label="Vested to date" amount={totals.vested} />
             <KpiCard label="Unvested (clawbackable)" amount={totals.unvested} />
