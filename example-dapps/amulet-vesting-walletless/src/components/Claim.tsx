@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
@@ -31,6 +32,8 @@ export const Claim = ({
 }: ClaimProps): React.JSX.Element => {
   const [raw, setRaw] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Dismissible while the request is out, so closing after it would close whatever replaced it.
+  const onScreen = useOnScreen()
 
   // Recomputed from `available` rather than stored from the last keystroke: it drops each second
   // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
@@ -57,7 +60,9 @@ export const Claim = ({
       // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
       // tooltip to recover the digits from.
       toast.success(`Claimed ${formatFigureFull(raw)} ${AMT.symbol}`)
-      onClose()
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {

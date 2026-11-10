@@ -7,12 +7,14 @@ import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
 import type { PendingGrant } from '@/store/types'
+import type { BusyKind } from '@/store/useVestingStore'
 import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
 // `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
 // funder.
 interface PendingGrantCardProps {
+  busy: BusyKind | undefined
   direction: 'incoming' | 'outgoing'
   nowMs: number
   onAccept: (pendingGrant: PendingGrant) => void
@@ -22,6 +24,7 @@ interface PendingGrantCardProps {
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
+  busy,
   nowMs,
   onAccept,
 }: PendingGrantCardProps): React.JSX.Element => {
@@ -73,7 +76,12 @@ export const PendingGrantCard = ({
           />
         </div>
         {direction === 'incoming' ? (
-          <Button size="sm" onClick={() => onAccept(pendingGrant)}>
+          <Button
+            size="sm"
+            onClick={() => onAccept(pendingGrant)}
+            pending={busy !== undefined}
+            aria-label={`Accept ${pendingGrant.title}`}
+          >
             Accept
           </Button>
         ) : (

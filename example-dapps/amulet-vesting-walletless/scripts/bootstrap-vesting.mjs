@@ -133,7 +133,7 @@ const resolvePackage = async (party) => {
   return pkg
 }
 
-// Observer-less, so only the operator sees it, which is why the server reads it back as the operator.
+// Observer-less, so only the operator sees it, and the server reads it back as the operator.
 const findFactory = async (operator) => {
   const end = await ledger('get', '/v2/state/ledger-end')
   if (end?.offset === undefined) {

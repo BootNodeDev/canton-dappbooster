@@ -24,6 +24,7 @@ export const PendingGrants = (): React.JSX.Element => {
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const loading = useVestingStore((s) => s.loading)
   const accept = useVestingStore((s) => s.accept)
+  const busy = useVestingStore((s) => s.busy)
 
   const direction = role === 'receiver' ? 'incoming' : 'outgoing'
   const visible = useMemo<PendingGrant[]>(
@@ -73,6 +74,7 @@ export const PendingGrants = (): React.JSX.Element => {
               direction={direction}
               nowMs={nowMs}
               onAccept={(p) => void onAccept(p)}
+              busy={busy.get(pendingGrant.id)}
             />
           ))}
         </div>

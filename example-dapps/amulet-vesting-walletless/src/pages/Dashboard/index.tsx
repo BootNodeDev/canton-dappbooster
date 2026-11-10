@@ -79,6 +79,7 @@ export const Dashboard = (): React.JSX.Element => {
   const grants = useVestingStore((s) => s.grants)
   const claims = useVestingStore((s) => s.claims)
   const loading = useVestingStore((s) => s.loading)
+  const busy = useVestingStore((s) => s.busy)
   const withdraw = useVestingStore((s) => s.withdraw)
   const claimResidual = useVestingStore((s) => s.claimResidual)
   const cancel = useVestingStore((s) => s.cancel)
@@ -208,6 +209,7 @@ export const Dashboard = (): React.JSX.Element => {
               className={cn(grant.id === justClaimed && HIGHLIGHT)}
               onClaim={openClaim}
               onCancel={setCancelTarget}
+              busy={busy.get(grant.id)}
             />
           ))}
         </div>
@@ -247,7 +249,11 @@ export const Dashboard = (): React.JSX.Element => {
                     className="text-lg font-semibold text-success"
                   />
                 </div>
-                <Button size="sm" onClick={() => openResidual(claim)}>
+                <Button
+                  size="sm"
+                  onClick={() => openResidual(claim)}
+                  pending={busy.get(claim.id) !== undefined}
+                >
                   Claim
                 </Button>
               </div>

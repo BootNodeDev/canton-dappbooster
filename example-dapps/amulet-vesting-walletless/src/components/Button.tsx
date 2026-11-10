@@ -79,12 +79,15 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
     disabled = false,
     children,
     asLink: _a,
+    'aria-label': ariaLabel,
     ...rest
   } = props
   return (
     <button
       type={type}
       aria-busy={pending || undefined}
+      // Dropped while pending, or it would go on naming an action the button no longer offers.
+      aria-label={pending ? undefined : ariaLabel}
       className={buttonClass(variant, size, className)}
       disabled={disabled || pending}
       {...rest}
@@ -92,7 +95,7 @@ export const Button = (props: ButtonProps): React.JSX.Element => {
       {pending ? (
         <>
           <Spinner size={16} />
-          Submitting…
+          <span role="status">Submitting…</span>
         </>
       ) : (
         children

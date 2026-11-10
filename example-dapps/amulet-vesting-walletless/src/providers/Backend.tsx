@@ -1,4 +1,13 @@
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { api } from '@/backend/api'
 import { useSession } from '@/providers/Session'
 import { errorText } from '@/utils/errorText'
@@ -8,6 +17,7 @@ export interface BackendState {
   configPending: boolean
   // Someone is signed in and the server found the vesting deployment: the API can be called.
   ready: boolean
+  retryConfig: () => void
   sessionPending: boolean
 }
 
@@ -23,6 +33,26 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
   const { pending: sessionPending, session } = useSession()
   const partyId = session?.partyId
   const [status, setStatus] = useState<Status | undefined>(undefined)
+  // Only the newest check may write or schedule the next: a retry starts one while another is out.
+  const generation = useRef(0)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const check = useCallback((): void => {
+    const mine = ++generation.current
+    clearTimeout(timer.current)
+    api<Status>('/status').then(
+      (found) => {
+        if (generation.current !== mine) return
+        setStatus(found)
+        if (!found.ready) timer.current = setTimeout(check, RECHECK_MS)
+      },
+      (err: unknown) => {
+        if (generation.current !== mine) return
+        setStatus({ ready: false, error: errorText(err) })
+        timer.current = setTimeout(check, RECHECK_MS)
+      },
+    )
+  }, [])
 
   // The deployment is the server's to find, but it is only asked about once someone is signed in:
   // until then the pages render the sign-in card rather than a deployment error.
@@ -31,37 +61,28 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
       setStatus(undefined)
       return
     }
-    let live = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const check = (): void => {
-      api<Status>('/status').then(
-        (found) => {
-          if (!live) return
-          setStatus(found)
-          if (!found.ready) timer = setTimeout(check, RECHECK_MS)
-        },
-        (err: unknown) => {
-          if (!live) return
-          setStatus({ ready: false, error: errorText(err) })
-          timer = setTimeout(check, RECHECK_MS)
-        },
-      )
-    }
     check()
     return () => {
-      live = false
-      clearTimeout(timer)
+      generation.current += 1
+      clearTimeout(timer.current)
     }
-  }, [partyId])
+  }, [partyId, check])
+
+  // Asks now rather than at the next recheck, and shows the wait as pending meanwhile.
+  const retryConfig = useCallback(() => {
+    setStatus(undefined)
+    check()
+  }, [check])
 
   const value = useMemo<BackendState>(
     () => ({
       configError: status?.ready === false ? (status.error ?? 'No deployment') : undefined,
       configPending: partyId !== undefined && status === undefined,
       ready: partyId !== undefined && status?.ready === true,
+      retryConfig,
       sessionPending,
     }),
-    [partyId, sessionPending, status],
+    [partyId, retryConfig, sessionPending, status],
   )
 
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>

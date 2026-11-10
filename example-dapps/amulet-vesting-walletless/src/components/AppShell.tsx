@@ -1,16 +1,18 @@
 import { useEffect } from 'react'
 import { Outlet, ScrollRestoration } from 'react-router-dom'
+import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { CreateGrant } from '@/components/CreateGrant'
 import { Footer } from '@/components/Footer'
 import { Loading } from '@/components/Loading'
+import { ReadError } from '@/components/ReadError'
 import { Toaster } from '@/components/Toaster'
 import { TopBar } from '@/components/TopBar'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
-  const { configPending, configError, ready, sessionPending } = useBackend()
+  const { configPending, configError, ready, retryConfig, sessionPending } = useBackend()
   // Mounted here rather than per page, because `?create=1` is route state: every page that offers
   // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
@@ -42,11 +44,15 @@ export const AppShell = (): React.JSX.Element => {
             <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
               <h1 className="text-base font-bold text-danger">No deployment</h1>
               <p className="max-w-lg text-sm text-fg-muted">{configError}</p>
+              <Button variant="secondary" size="sm" onClick={retryConfig}>
+                Try again
+              </Button>
             </Card>
           )}
           {configPending && <Loading />}
           {configError === undefined && !configPending && (
             <>
+              <ReadError />
               <Outlet />
               {creating && ready && <CreateGrant onClose={() => setCreating(false)} />}
             </>

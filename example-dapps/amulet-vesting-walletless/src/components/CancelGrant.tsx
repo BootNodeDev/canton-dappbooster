@@ -3,6 +3,7 @@ import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { FieldError } from '@/components/FieldError'
 import { Modal } from '@/components/Modal'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import type { Grant } from '@/store/types'
 import { deriveGrant } from '@/store/useVestingStore'
 import { errorText } from '@/utils/errorText'
@@ -33,13 +34,17 @@ export const CancelGrant = ({
   // Recomputed each tick with `nowMs`, so a residual growing past the floor re-enables the button
   // on its own rather than sending a submission the contract will assert on.
   const floorOk = residualMeetsFloor(derived.claimable)
+  // Dismissible while the request is out, so closing after it would close whatever replaced it.
+  const onScreen = useOnScreen()
 
   const submit = async (): Promise<void> => {
     setSubmitting(true)
     try {
       await onConfirm()
       toast.success(successMessage)
-      onClose()
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {

@@ -33,6 +33,7 @@ export const GrantDetail = (): React.JSX.Element => {
   const { partyId, ready, sessionPending } = useVesting()
   const grant = useVestingStore((s) => s.grants.find((g) => g.id === id))
   const loading = useVestingStore((s) => s.loading)
+  const busy = useVestingStore((s) => s.busy)
   const withdraw = useVestingStore((s) => s.withdraw)
   const cancel = useVestingStore((s) => s.cancel)
   const [claimOpen, setClaimOpen] = useState(false)
@@ -86,6 +87,7 @@ export const GrantDetail = (): React.JSX.Element => {
   }
 
   const derived = deriveGrant(grant, nowMs)
+  const inFlight = busy.get(grant.id) !== undefined
   const isReceiver = grant.receiver === partyId
   const isCreator = grant.creator === partyId
   const isMilestone = grant.schedule.curve.kind === 'milestone'
@@ -113,12 +115,21 @@ export const GrantDetail = (): React.JSX.Element => {
             (derived.locked ? (
               <GrantLock className="self-center" />
             ) : (
-              <Button disabled={!derived.canClaim} onClick={() => setClaimOpen(true)}>
+              <Button
+                disabled={!derived.canClaim}
+                pending={inFlight}
+                onClick={() => setClaimOpen(true)}
+              >
                 Claim <CompactAmount value={derived.claimable} plain /> AMT
               </Button>
             ))}
           {isCreator && (
-            <Button size="sm" variant="danger" onClick={() => setCancelOpen(true)}>
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={inFlight}
+              onClick={() => setCancelOpen(true)}
+            >
               Cancel grant
             </Button>
           )}

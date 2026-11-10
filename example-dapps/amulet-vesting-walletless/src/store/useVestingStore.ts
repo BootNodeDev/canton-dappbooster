@@ -115,7 +115,12 @@ const trackSuccessor = <T extends { id: string }>(
   return (after) => after.find((item) => !seen.has(item.id) && lineageOf(item) === lineage)?.id
 }
 
+// Which exit a contract already has in flight. A dialog can close with its request still out, and
+// the control behind it would otherwise offer the same exit on a contract about to be archived.
+export type BusyKind = 'accept' | 'cancel' | 'claim'
+
 interface VestingState {
+  busy: ReadonlyMap<string, BusyKind>
   claims: VestedClaim[]
   error: string | undefined
   grants: Grant[]
@@ -135,73 +140,94 @@ interface VestingState {
 // resolve last and clobber the fresh view.
 let refreshEpoch = 0
 
-export const useVestingStore = create<VestingState>((set, get) => ({
-  grants: [],
-  pendingGrants: [],
-  claims: [],
-  loading: false,
-  error: undefined,
-
-  // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
-  clear: () => {
-    refreshEpoch++
-    set({ grants: [], pendingGrants: [], claims: [], loading: false, error: undefined })
-  },
-
-  refresh: async () => {
-    const epoch = ++refreshEpoch
-    set({ loading: true, error: undefined })
+export const useVestingStore = create<VestingState>((set, get) => {
+  // Held by the store rather than the page, because leaving the route unmounts a page mid-request.
+  const busyWith = async <T>(id: string, kind: BusyKind, run: () => Promise<T>): Promise<T> => {
+    set((state) => ({ busy: new Map(state.busy).set(id, kind) }))
     try {
-      const view = await vesting.view()
-      if (epoch !== refreshEpoch) {
-        return
-      }
-      set({
-        grants: sortBy(view.grants, grantLineage),
-        pendingGrants: sortBy(view.pendingGrants, (pendingGrant) => pendingGrant.id),
-        claims: sortBy(view.claims, claimLineage),
-        loading: false,
+      return await run()
+    } finally {
+      set((state) => {
+        const next = new Map(state.busy)
+        next.delete(id)
+        return { busy: next }
       })
-    } catch (err) {
-      if (epoch !== refreshEpoch) {
-        return
-      }
-      set({ loading: false, error: errorText(err) })
     }
-  },
+  }
 
-  createVesting: async (input) => {
-    await vesting.createVesting(input)
-    await get().refresh()
-  },
+  return {
+    busy: new Map(),
+    grants: [],
+    pendingGrants: [],
+    claims: [],
+    loading: false,
+    error: undefined,
 
-  accept: async (pendingCid) => {
-    await vesting.accept(pendingCid)
-    await get().refresh()
-  },
+    // Bumps the epoch too, so a read in flight for the party being dropped cannot land after it.
+    clear: () => {
+      refreshEpoch++
+      set({ grants: [], pendingGrants: [], claims: [], loading: false, error: undefined })
+    },
 
-  // Returns the successor's contract id, since the claim replaced the one the caller passed.
-  withdraw: async (contractCid, amount) => {
-    const successor = trackSuccessor(get().grants, contractCid, grantLineage)
-    await vesting.withdraw(contractCid, amount)
-    await get().refresh()
-    return successor(get().grants)
-  },
+    refresh: async () => {
+      const epoch = ++refreshEpoch
+      set({ loading: true, error: undefined })
+      try {
+        const view = await vesting.view()
+        if (epoch !== refreshEpoch) {
+          return
+        }
+        set({
+          grants: sortBy(view.grants, grantLineage),
+          pendingGrants: sortBy(view.pendingGrants, (pendingGrant) => pendingGrant.id),
+          claims: sortBy(view.claims, claimLineage),
+          loading: false,
+        })
+      } catch (err) {
+        if (epoch !== refreshEpoch) {
+          return
+        }
+        set({ loading: false, error: errorText(err) })
+      }
+    },
 
-  cancel: async (contractCid) => {
-    await vesting.cancel(contractCid)
-    await get().refresh()
-  },
+    createVesting: async (input) => {
+      await vesting.createVesting(input)
+      await get().refresh()
+    },
 
-  // Like withdraw, except a drained claim is archived outright rather than re-created, so undefined
-  // here means there is nothing left to point at.
-  claimResidual: async (claimCid, amount) => {
-    const successor = trackSuccessor(get().claims, claimCid, claimLineage)
-    await vesting.claimResidual(claimCid, amount)
-    await get().refresh()
-    return successor(get().claims)
-  },
-}))
+    accept: (pendingCid) =>
+      busyWith(pendingCid, 'accept', async () => {
+        await vesting.accept(pendingCid)
+        await get().refresh()
+      }),
+
+    // Returns the successor's contract id, since the claim replaced the one the caller passed.
+    withdraw: (contractCid, amount) =>
+      busyWith(contractCid, 'claim', async () => {
+        const successor = trackSuccessor(get().grants, contractCid, grantLineage)
+        await vesting.withdraw(contractCid, amount)
+        await get().refresh()
+        return successor(get().grants)
+      }),
+
+    cancel: (contractCid) =>
+      busyWith(contractCid, 'cancel', async () => {
+        await vesting.cancel(contractCid)
+        await get().refresh()
+      }),
+
+    // Like withdraw, except a drained claim is archived outright rather than re-created, so
+    // undefined here means there is nothing left to point at.
+    claimResidual: (claimCid, amount) =>
+      busyWith(claimCid, 'claim', async () => {
+        const successor = trackSuccessor(get().claims, claimCid, claimLineage)
+        await vesting.claimResidual(claimCid, amount)
+        await get().refresh()
+        return successor(get().claims)
+      }),
+  }
+})
 
 // Re-reads the ledger whenever the signed-in party or the deployment changes. Components call this
 // once near the top of a page; `ready` false means no deployment or nobody signed in yet, so the

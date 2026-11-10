@@ -2,9 +2,9 @@
 #
 # server.sh start|stop: the wallet-less server and the Postgres it keeps accounts in.
 #
-# dev-stack.sh calls it through the `stack:up` and `stack:down` scripts and passes DEV_STACK_RUN_DIR,
-# where the server's log goes. `stop` keeps the Postgres volume, so accounts survive a down and up the
-# way the ledger does. After a LocalNet reset, wipe it too:
+# dev-stack.sh calls it through the `stack:up` and `stack:down` scripts and passes
+# DEV_STACK_RUN_DIR, where the server's log goes. `stop` keeps the Postgres volume, so accounts
+# survive a down and up the way the ledger does. After a LocalNet reset, wipe it too:
 #   docker compose -f server/compose.yaml down -v
 
 set -euo pipefail

@@ -15,6 +15,7 @@ import {
 import { useFundingToken } from '@/components/CreateGrant/useFundingToken'
 import { Modal } from '@/components/Modal'
 import { StepBar } from '@/components/StepBar'
+import { useOnScreen } from '@/hooks/useOnScreen'
 import { useReceiver } from '@/hooks/useReceiver'
 import { useBackend } from '@/providers/Backend'
 import { useSession } from '@/providers/Session'
@@ -43,6 +44,8 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   )
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // `onClose` clears the one `?create=1` slot, which a second dialog may hold by the time this lands.
+  const onScreen = useOnScreen()
   const [step, setStep] = useState(0)
 
   const schedule = toSchedule(scheduleForm)
@@ -73,10 +76,12 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
         schedule: demo === null ? schedule : shiftSchedule(schedule, now() - demo.anchorMs),
         title: title.trim(),
       })
-      onClose()
       toast.success('Grant created', {
         action: { label: 'View pending grants', to: '/pending?role=funder' },
       })
+      if (onScreen.current) {
+        onClose()
+      }
     } catch (err) {
       toast.error(errorText(err))
     } finally {
