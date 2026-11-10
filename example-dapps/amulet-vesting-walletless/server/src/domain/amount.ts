@@ -1,10 +1,10 @@
 // Fixed by this app's Daml domain (`Numeric 10`).
 const PRECISION = 10
-const DECIMAL = /^\d*(\.\d*)?$/
+const DECIMAL = /^(\d+(\.\d*)?|\.\d+)$/
 
 // The kit's parse and format, inlined so the server pulls in no React package for two functions.
 const parseAmount = (value: string): bigint | undefined => {
-  if (value === '' || !DECIMAL.test(value)) return undefined
+  if (!DECIMAL.test(value)) return undefined
   const dot = value.indexOf('.')
   const [int, frac] = dot === -1 ? [value, ''] : [value.slice(0, dot), value.slice(dot + 1)]
   if (frac.length > PRECISION) return undefined

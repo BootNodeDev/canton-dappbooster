@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, SESSION_COOKIE } from '#server/app'
-import { openDb } from '#server/auth/db'
+import { type Db, openDb } from '#server/auth/db'
 import { testDb } from '#server/db/testDb'
 import type { ExecuteParams, LedgerApiParams } from '#server/ledger/wallet'
 
@@ -14,10 +14,10 @@ vi.mock('#server/ledger/transferContext', () => ({
 
 type Call = { as: string; execute?: ExecuteParams; read?: LedgerApiParams }
 
-const setup = async () => {
+const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
   const calls: Call[] = []
   const app = createApp({
-    db: openDb(await testDb()),
+    db: patchDb(openDb(await testDb())),
     deployment: async () => ({
       factoryBlob: 'blob',
       factoryCid: 'factory',
@@ -91,6 +91,28 @@ describe('auth', () => {
       post('/api/auth/signup', { username: '-bob', password: 'hunter22!' }),
     )
     expect(odd.status).toBe(400)
+  })
+
+  it('answers 409 when the name is taken between the check and the insert', async () => {
+    const racy = await setup((db) => ({ ...db, userByUsername: async () => undefined }))
+    await signup(racy.app, 'alice')
+    const again = await racy.app.request(
+      post('/api/auth/signup', { username: 'alice', password: 'hunter22!' }),
+    )
+    expect(again.status).toBe(409)
+  })
+
+  it('reports a failed account write as a failure, not as a taken name', async () => {
+    const broken = await setup((db) => ({
+      ...db,
+      createUser: async () => {
+        throw new Error('connection reset')
+      },
+    }))
+    const response = await broken.app.request(
+      post('/api/auth/signup', { username: 'alice', password: 'hunter22!' }),
+    )
+    expect(response.status).toBe(502)
   })
 
   it('logs in with the right password only, and logs out for good', async () => {
@@ -177,6 +199,30 @@ describe('acting party', () => {
       post('/api/grants', { receiver: 'bob', totalAmount: '1', title: 't' }, cookie),
     )
     expect(response.status).toBe(400)
+    expect(env.calls.filter((call) => call.execute !== undefined)).toEqual([])
+  })
+
+  it('rejects a schedule the ledger could not encode before splitting anything', async () => {
+    const cookie = await signup(env.app, 'alice')
+    for (const schedule of [{}, { cliff: 'x', curve: { kind: 'milestone' } }, 'linear']) {
+      const response = await env.app.request(
+        post(
+          '/api/grants',
+          { receiver: 'wl-bob::fp', totalAmount: '1', title: 't', schedule },
+          cookie,
+        ),
+      )
+      expect(response.status).toBe(400)
+    }
+    expect(env.calls.filter((call) => call.execute !== undefined)).toEqual([])
+  })
+
+  it('rejects an amount that is not a positive figure', async () => {
+    const cookie = await signup(env.app, 'alice')
+    for (const amount of ['.', '0', '0.0', '-1', '']) {
+      const response = await env.app.request(post('/api/grants/g1/withdraw', { amount }, cookie))
+      expect(response.status).toBe(400)
+    }
     expect(env.calls.filter((call) => call.execute !== undefined)).toEqual([])
   })
 

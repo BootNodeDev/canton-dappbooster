@@ -6,17 +6,17 @@ import type { Db, User } from '#server/auth/db'
 import { hashPassword, verifyPassword } from '#server/auth/password'
 import { MIN_PASSWORD, type Provisioned, USERNAME } from '#server/auth/provision'
 import { errorText } from '#server/domain/errorText'
-import type { VestingSchedule } from '#server/domain/types'
 import type { Deployment } from '#server/ledger/config'
 import { LedgerBackend } from '#server/ledger/LedgerBackend'
 import type { WalletFns } from '#server/ledger/wallet'
-import { amount, asBody, BadRequest, optionalText, party, text } from '#server/validate'
+import { amount, asBody, BadRequest, optionalText, party, schedule, text } from '#server/validate'
 
 export const SESSION_COOKIE = 'wl_session'
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000
 
 const LOGIN_ATTEMPTS = 10
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
+const UNIQUE_VIOLATION = '23505'
 
 export type AppDeps = {
   cookieSecure?: boolean
@@ -61,6 +61,9 @@ export const createApp = ({
     const at = now()
     const entry = attempts.get(key)
     if (entry === undefined || entry.resetAt <= at) {
+      for (const [stale, { resetAt }] of attempts) {
+        if (resetAt <= at) attempts.delete(stale)
+      }
       attempts.set(key, { count: 1, resetAt: at + LOGIN_WINDOW_MS })
       return false
     }
@@ -126,7 +129,8 @@ export const createApp = ({
     let user: User
     try {
       user = await db.createUser({ username, ...provisioned }, passwordHash)
-    } catch {
+    } catch (error) {
+      if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION) throw error
       // Lost a race for the name. The new party stays on the ledger, unused and harmless.
       console.warn(`orphaned party ${provisioned.partyId} after a signup race for ${username}`)
       return c.json({ error: 'that username is taken' }, 409)
@@ -212,8 +216,7 @@ export const createApp = ({
     await (await backendFor(user)).createVesting(user.partyId, {
       receiver: party(body, 'receiver'),
       totalAmount: amount(body, 'totalAmount'),
-      // Shape only: the Daml model checks what the curve means, and refuses one that makes none.
-      schedule: asBody(body.schedule) as unknown as VestingSchedule,
+      schedule: schedule(body, 'schedule'),
       title: text(body, 'title', 200),
       note: optionalText(body, 'note', 2000),
     })
