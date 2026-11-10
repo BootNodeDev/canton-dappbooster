@@ -39,7 +39,8 @@
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes. `reset` drops them.
+# stops the LocalNet, keeping its volumes. `reset` drops them. After a Splice bump, `up` keeps
+# the old ledger and closes with a warning that points at the upgrade guide.
 
 set -euo pipefail
 
@@ -67,6 +68,11 @@ GW_PID="$RUN_DIR/wallet-gateway.pid"
 
 # Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
+SCAN_API_URL="http://scan.localhost:4000/api/scan"
+UPGRADE_GUIDE="$(cd "$SCRIPT_DIR/.." && pwd)/splice-upgrade.md"
+
+# The status localnet-config.mjs exits with when it moved a ledger in Docker to a new Splice.
+UPGRADED_IN_PLACE=3
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
@@ -111,6 +117,14 @@ fi
 log()  { printf '%s %s\n' "$P_STEP" "$*" >&5; }
 say()  { printf '%s %s\n' "$P_STEP" "$*" >&3; }
 warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
+# An OSC 8 hyperlink to a local file, which a terminal without support prints as the bare text.
+link() { # link <absolute-path> <text>
+  if [ "$HUMAN_TTY" = 1 ]; then
+    printf '\033]8;;file://%s\033\\%s\033]8;;\033\\' "${1// /%20}" "$2"
+  else
+    printf '%s' "$2"
+  fi
+}
 # The one human line outside the fd scheme: an error belongs on stderr in every mode.
 die() {
   local message="$*"
@@ -335,12 +349,6 @@ up() {
       || die "dpm not found on PATH.
 Install it and add ~/.dpm/bin to your PATH: https://docs.canton.network/sdks-tools/cli-tools/dpm#installation
 Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
-
-    # Before anything starts, so an SDK it cannot build on stops `up` with nothing to undo.
-    step build-dar "Building the $DAR_NAME DAR..."
-    pnpm run build-dar \
-      || die "The $DAR_NAME build failed.
-Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
   fi
 
   # $ENV_FILE is the mint recipe, the DAR upload token and the dApp's VITE_* settings.
@@ -382,8 +390,13 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
   step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
-  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
-    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
+  local config_status=0 upgraded_in_place=0
+  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" || config_status=$?
+  case "$config_status" in
+    0) ;;
+    "$UPGRADED_IN_PLACE") upgraded_in_place=1 ;;
+    *) die "Could not prepare the LocalNet config in $LOCALNET_DIR." ;;
+  esac
 
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
   # containers exist; Splice takes minutes more to answer, and the DAR upload below
@@ -396,6 +409,14 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
   if [ "$HAS_CONTRACT" = 1 ]; then
+    # After Scan answers, because the DAR is built against the Amulet this ledger runs.
+    step build-dar "Building the $DAR_NAME DAR..."
+    wait_for_http 300 "$SCAN_API_URL/v0/dso" "Scan" ok \
+      || die "The LocalNet is up but its Scan never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
+    pnpm run build-dar \
+      || die "The $DAR_NAME build failed.
+Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
+
     step deploy-dar "Deploying $DAR_PATH to Canton..."
     pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
   fi
@@ -445,6 +466,15 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
    PostgreSQL              localhost:5432
 EOF
   echo "   Log in to the Wallet Gateway with client secret 'unsafe', then connect the dApp" >&3
+
+  # Last, below the summary, where the output of the steps cannot scroll it away.
+  if [ "$upgraded_in_place" = 1 ]; then
+    printf '\n' >&3
+    warn "This ledger was upgraded in place to a new Splice release."
+    warn "It keeps the Amulet its DSO voted in last, and the contract builds against that one."
+    warn "To move it to the new release's Amulet, follow $(link "$UPGRADE_GUIDE" "${UPGRADE_GUIDE#"$ROOT_DIR"/}")."
+    warn "To start over on a fresh ledger instead, run 'reset'."
+  fi
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>

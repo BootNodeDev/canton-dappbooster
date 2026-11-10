@@ -19,6 +19,9 @@ const require = createRequire(import.meta.url)
 
 const CONFIG_NAME = 'canton-barebones.config.json'
 
+// dev-stack.sh reads this status as success over a ledger in Docker that moved to a new Splice.
+export const UPGRADED_IN_PLACE = 3
+
 // nginx serves no /api/validator without appUser.ui and no /api/scan without sv.scanUI,
 // which is how a missing flag surfaces as a caller failing for unrelated reasons.
 const REQUIRED_FLAGS = [
@@ -47,6 +50,17 @@ export const needsRescaffold = (local, template) => {
   }
   return undefined
 }
+
+/** Whether the scaffolded config names another Splice release than the template pins. */
+export const spliceMoved = (local, template) =>
+  local !== undefined && local.splice?.tag !== template.splice?.tag
+
+const ledgerExists = (projectName) =>
+  execFileSync(
+    'docker',
+    ['volume', 'ls', '--quiet', '--filter', `label=com.docker.compose.project=${projectName}`],
+    { encoding: 'utf8' },
+  ).trim() !== ''
 
 /**
  * Sets each required flag to true, returning whether anything changed. Throws when a
@@ -82,6 +96,8 @@ const main = () => {
 
   fs.mkdirSync(targetDir, { recursive: true })
   const local = fs.existsSync(configPath) ? readJson(configPath) : undefined
+  const projectName = local?.composeProjectName ?? template.composeProjectName
+  const upgradedInPlace = spliceMoved(local, template) && ledgerExists(projectName)
   const reason = needsRescaffold(local, template)
 
   // Driving `init` rather than copying the templates here keeps the tool the authority
@@ -97,6 +113,9 @@ const main = () => {
   if (applyRequiredFlags(config)) {
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
     console.log(`localnet-config: applied ${REQUIRED_FLAGS.map((k) => k.join('.')).join(', ')}`)
+  }
+  if (upgradedInPlace) {
+    process.exitCode = UPGRADED_IN_PLACE
   }
 }
 

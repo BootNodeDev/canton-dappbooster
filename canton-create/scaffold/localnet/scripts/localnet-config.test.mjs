@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
-import { applyRequiredFlags, needsRescaffold } from './localnet-config.mjs'
+import {
+  applyRequiredFlags,
+  needsRescaffold,
+  spliceMoved,
+  UPGRADED_IN_PLACE,
+} from './localnet-config.mjs'
 
 const template = {
   version: 1,
@@ -30,6 +36,12 @@ describe('LocalNet config scaffolding', () => {
       needsRescaffold({ ...template, splice: { tag: '0.6.10' } }, template),
       /Splice tag 0\.6\.10 -> 0\.6\.11/,
     )
+  })
+
+  it('tells a Splice release moved from a config that merely changed shape', () => {
+    assert.equal(spliceMoved(undefined, template), false)
+    assert.equal(spliceMoved({ ...template, version: 0 }, template), false)
+    assert.equal(spliceMoved({ ...template, splice: { tag: '0.6.10' } }, template), true)
   })
 
   it('turns on the flags nginx needs for /api/validator and /api/scan', () => {
@@ -58,5 +70,69 @@ describe('LocalNet config scaffolding', () => {
     execFileSync(process.execPath, [path.join(link, 'localnet-config.mjs'), target])
 
     assert.ok(fs.existsSync(path.join(target, 'canton-barebones.config.json')))
+  })
+})
+
+describe('LocalNet config after a Splice bump', () => {
+  const installed = JSON.parse(
+    fs.readFileSync(
+      createRequire(import.meta.url).resolve(
+        '@bootnodedev/canton-barebones/templates/canton-barebones.config.json',
+      ),
+      'utf8',
+    ),
+  )
+
+  // A `docker` on PATH that lists the given volumes only for this exact query, as real Docker would.
+  const withDocker = (volumes) => {
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-docker-'))
+    after(() => fs.rmSync(bin, { recursive: true, force: true }))
+    const asked = `"volume ls --quiet --filter label=com.docker.compose.project=${installed.composeProjectName}"`
+    fs.writeFileSync(
+      path.join(bin, 'docker'),
+      `#!/bin/sh\ncase "$*" in ${asked}) printf '%s' '${volumes}' ;; esac\n`,
+      { mode: 0o755 },
+    )
+    return { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` }
+  }
+
+  const scaffoldedOn = (tag) => {
+    const target = fs.mkdtempSync(path.join(os.tmpdir(), 'localnet-'))
+    after(() => fs.rmSync(target, { recursive: true, force: true }))
+    const config = { ...installed, splice: { ...installed.splice, tag } }
+    fs.writeFileSync(path.join(target, 'canton-barebones.config.json'), JSON.stringify(config))
+    return target
+  }
+
+  const run = (target, env) =>
+    spawnSync(process.execPath, [path.join(import.meta.dirname, 'localnet-config.mjs'), target], {
+      env,
+      encoding: 'utf8',
+    })
+
+  it('moves a ledger still in Docker to the pinned Splice, and reports it upgraded in place', () => {
+    const target = scaffoldedOn('0.0.1')
+
+    const { status } = run(target, withDocker('canton-barebones_postgres'))
+
+    assert.equal(status, UPGRADED_IN_PLACE)
+    const config = JSON.parse(fs.readFileSync(path.join(target, 'canton-barebones.config.json')))
+    assert.equal(config.splice.tag, installed.splice.tag)
+  })
+
+  it('exits with the status dev-stack.sh reads as an upgrade in place', () => {
+    const devStack = fs.readFileSync(path.join(import.meta.dirname, 'dev-stack.sh'), 'utf8')
+
+    assert.match(devStack, new RegExp(`^UPGRADED_IN_PLACE=${UPGRADED_IN_PLACE}$`, 'm'))
+  })
+
+  it('moves to the pinned Splice with no warning once no ledger is left', () => {
+    const target = scaffoldedOn('0.0.1')
+
+    const { status } = run(target, withDocker(''))
+
+    assert.equal(status, 0)
+    const config = JSON.parse(fs.readFileSync(path.join(target, 'canton-barebones.config.json')))
+    assert.equal(config.splice.tag, installed.splice.tag)
   })
 })
