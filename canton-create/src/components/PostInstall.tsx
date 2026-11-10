@@ -64,8 +64,8 @@ const ownNetworkSteps = (
   }
   return [
     <Text key="network">
-      - Point .env at your network: CANTON_JSON_API_URL, CANTON_BACKEND_TOKEN and the VITE_ URLs
-      {project.needsSpliceTag ? ', plus SPLICE_TAG for the contract build' : ''}.
+      - Point .env at your network: CANTON_JSON_API_URL, CANTON_BACKEND_TOKEN and the other URLs it
+      lists{project.needsSpliceTag ? ', plus SPLICE_TAG for the contract build' : ''}.
     </Text>,
     ...(dar === undefined
       ? []
