@@ -28,6 +28,11 @@ Deltas for this app only are below.
 
 ## The ledger
 
+- **An account's party is participant-hosted, which the root guardrail on `participant` parties
+  does not cover.** That guardrail is about a party the validator onboards: it gets a
+  `WalletAppInstall`, whose automation merges its Amulets. `/v2/parties` installs nothing. Measured
+  on a LocalNet: no `WalletAppInstall` on either account, and their Amulets still unmerged after
+  160 seconds, a grant's escrow included.
 - **The participant caps a user at 1000 rights, and each account adds one.** Nothing may grant the
   server's participant user a right per request or per grant; that spends the account budget.
 - **An account names a party, so a LocalNet reset orphans every account.** After
