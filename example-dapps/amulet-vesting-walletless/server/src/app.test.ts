@@ -12,7 +12,7 @@ vi.mock('#server/ledger/transferContext', () => ({
   }),
 }))
 
-type Call = { as: string; execute?: ExecuteParams; read?: LedgerApiParams }
+type Call = { execute?: ExecuteParams; read?: LedgerApiParams }
 
 const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
   const calls: Call[] = []
@@ -24,20 +24,17 @@ const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
       pkg: 'pkg1',
       synchronizerId: 'sync::1',
     }),
-    ledgerFor: (user) => ({
+    ledger: {
       execute: async (params) => {
-        calls.push({ as: user.ledgerUserId, execute: params })
+        calls.push({ execute: params })
         return {}
       },
       ledgerApi: async (params) => {
-        calls.push({ as: user.ledgerUserId, read: params })
+        calls.push({ read: params })
         return params.resource === '/v2/state/ledger-end' ? { offset: 1 } : []
       },
-    }),
-    provision: async (username) => ({
-      ledgerUserId: `wl-${username}`,
-      partyId: `wl-${username}::fp`,
-    }),
+    },
+    provision: async (username) => `wl-${username}::fp`,
   })
   return { app, calls }
 }
@@ -166,13 +163,12 @@ describe('auth', () => {
 })
 
 describe('acting party', () => {
-  it('reads as the session user, under that user’s own ledger token', async () => {
+  it('reads as the session party', async () => {
     const cookie = await signup(env.app, 'alice')
     await env.app.request('/api/vesting', { headers: { cookie } })
     const reads = env.calls.filter((call) => call.read?.resource === '/v2/state/active-contracts')
     expect(reads.length).toBeGreaterThan(0)
     for (const call of reads) {
-      expect(call.as).toBe('wl-alice')
       const body = call.read?.body as { filter: { filtersByParty: Record<string, unknown> } }
       expect(Object.keys(body.filter.filtersByParty)).toEqual(['wl-alice::fp'])
     }
@@ -186,7 +182,6 @@ describe('acting party', () => {
     )
     expect(response.status).toBe(200)
     const [submission] = env.calls.filter((call) => call.execute !== undefined)
-    expect(submission?.as).toBe('wl-alice')
     expect(submission?.execute?.actAs).toEqual(['wl-alice::fp'])
     expect(submission?.execute?.commands[0]?.ExerciseCommand.choiceArgument.receiver).toBe(
       'wl-alice::fp',

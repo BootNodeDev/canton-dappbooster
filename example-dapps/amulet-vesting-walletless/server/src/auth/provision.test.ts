@@ -10,11 +10,14 @@ describe('provisionParty', () => {
       return params.resource === '/v2/parties' ? { partyDetails: { party: 'wl-bob-s::abc' } } : {}
     }
 
-    const provisioned = await provisionParty(ledgerApi, 'svc@clients', 'bob', 's')
+    const partyId = await provisionParty(ledgerApi, 'svc@clients', 'bob', 's')
 
-    expect(provisioned).toEqual({ ledgerUserId: 'svc@clients', partyId: 'wl-bob-s::abc' })
-    expect(calls.map((call) => call.resource)).toEqual(['/v2/parties', '/v2/users/{userId}/rights'])
-    expect(calls[1]?.path).toEqual({ userId: 'svc@clients' })
+    expect(partyId).toBe('wl-bob-s::abc')
+    expect(calls.map((call) => call.resource)).toEqual([
+      '/v2/parties',
+      '/v2/users/{user-id}/rights',
+    ])
+    expect(calls[1]?.path).toEqual({ 'user-id': 'svc@clients' })
     expect(calls[1]?.body).toEqual({
       userId: 'svc@clients',
       rights: [{ kind: { CanActAs: { value: { party: 'wl-bob-s::abc' } } } }],

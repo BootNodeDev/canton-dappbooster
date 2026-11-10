@@ -25,6 +25,20 @@ export interface VestingSchedule {
 
 export type PartyId = string
 
+export interface Account {
+  partyId: PartyId
+  username: string
+}
+
+export interface Balance {
+  free: string
+}
+
+export interface ServerStatus {
+  error?: string
+  ready: boolean
+}
+
 export interface Grant {
   alreadyWithdrawn: string
   creator: PartyId

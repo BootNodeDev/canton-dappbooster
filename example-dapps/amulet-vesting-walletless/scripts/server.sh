@@ -13,13 +13,9 @@ die() {
   exit 1
 }
 
-# What the server itself reads: an exported value, else .env, else its default.
+# Read through server/src/env.ts, so the script and the server can never disagree on the port.
 server_port() {
-  local port="${WL_SERVER_PORT:-}"
-  if [ -z "$port" ] && [ -f "$APP_DIR/.env" ]; then
-    port="$(sed -n 's/^WL_SERVER_PORT=//p' "$APP_DIR/.env" | tail -1)"
-  fi
-  printf '%s' "${port:-3040}"
+  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(String(env.PORT)))"
 }
 
 wait_until() { # wait_until <seconds> <command…>
@@ -50,7 +46,6 @@ start() {
 
   log "Starting Postgres (server/compose.yaml)"
   "${COMPOSE[@]}" up -d --wait || die "Postgres did not come up; is port 5433 free?"
-  node "$APP_DIR/server/src/db/migrate.ts" || die "Applying server/src/db/schema.sql failed."
 
   # Restarted rather than reused: a leftover one started before this run's bootstrap.
   if ! port_free "$port"; then

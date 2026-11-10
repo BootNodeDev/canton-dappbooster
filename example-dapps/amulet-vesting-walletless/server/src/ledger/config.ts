@@ -1,5 +1,5 @@
 import { ledgerEnd, readAcs } from '#server/ledger/acs'
-import type { LedgerApiParams } from '#server/ledger/wallet'
+import type { LedgerApi } from '#server/ledger/wallet'
 
 export type Deployment = {
   factoryBlob: string
@@ -7,8 +7,6 @@ export type Deployment = {
   pkg: string
   synchronizerId: string
 }
-
-export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
 
 // A filter takes the package-name reference, never the id it resolves to.
 const FACTORY = '#amulet-vesting:AmuletVesting:AmuletVestingFactory'
@@ -37,12 +35,12 @@ export const authenticatedUser = async (ledgerApi: LedgerApi): Promise<string> =
   return user.id
 }
 
-const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
+const operatorParty = async (ledgerApi: LedgerApi, userId: string): Promise<string> => {
   const { rights } = (await ledgerApi({
     requestMethod: 'get',
     // A gateway allowlists the route, so the id travels in `path` rather than written in here.
     resource: '/v2/users/{user-id}/rights',
-    path: { 'user-id': await authenticatedUser(ledgerApi) },
+    path: { 'user-id': userId },
   })) as { rights?: { kind?: { CanActAs?: { value?: { party?: string } } } }[] }
   const operator = (rights ?? [])
     .map((right) => right.kind?.CanActAs?.value?.party)
@@ -56,8 +54,11 @@ const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   return operator
 }
 
-export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deployment> => {
-  const operator = await operatorParty(ledgerApi)
+export const loadBackendConfig = async (
+  ledgerApi: LedgerApi,
+  userId: string,
+): Promise<Deployment> => {
+  const operator = await operatorParty(ledgerApi, userId)
   const rows = await readAcs<ActiveContract>(
     ledgerApi,
     operator,

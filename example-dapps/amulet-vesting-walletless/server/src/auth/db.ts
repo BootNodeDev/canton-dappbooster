@@ -6,14 +6,12 @@ export type Sql = {
 
 export type User = {
   id: number
-  ledgerUserId: string
   partyId: string
   username: string
 }
 
 type UserRow = {
   id: number
-  ledger_user_id: string
   party_id: string
   password_hash: string
   username: string
@@ -21,7 +19,6 @@ type UserRow = {
 
 const toUser = (row: UserRow): User => ({
   id: row.id,
-  ledgerUserId: row.ledger_user_id,
   partyId: row.party_id,
   username: row.username,
 })
@@ -56,9 +53,9 @@ export const openDb = (sql: Sql) => {
     // The UNIQUE constraint is the real check: two signups racing for one name cannot both pass.
     createUser: async (user: Omit<User, 'id'>, passwordHash: string): Promise<User> => {
       const { rows } = await sql.query<{ id: number }>(
-        `INSERT INTO users (username, password_hash, party_id, ledger_user_id, created_at)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [user.username, passwordHash, user.partyId, user.ledgerUserId, Date.now()],
+        `INSERT INTO users (username, password_hash, party_id, created_at)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [user.username, passwordHash, user.partyId, Date.now()],
       )
       return { ...user, id: rows[0].id }
     },

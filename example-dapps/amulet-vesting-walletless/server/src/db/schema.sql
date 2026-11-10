@@ -1,11 +1,10 @@
--- Rerun on every `scripts/server.sh start`, so it stays idempotent. Times are epoch milliseconds.
+-- Rerun on every server start, so it stays idempotent. Times are epoch milliseconds.
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   party_id TEXT NOT NULL,
-  ledger_user_id TEXT NOT NULL,
   created_at BIGINT NOT NULL
 );
 

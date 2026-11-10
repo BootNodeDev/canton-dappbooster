@@ -30,7 +30,9 @@ export type ExecuteParams = {
   readAs: string[]
 }
 
+export type LedgerApi = (params: LedgerApiParams) => Promise<unknown>
+
 export type WalletFns = {
   execute: (params: ExecuteParams) => Promise<unknown>
-  ledgerApi: (params: LedgerApiParams) => Promise<unknown>
+  ledgerApi: LedgerApi
 }

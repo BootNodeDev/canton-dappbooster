@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { serve } from '@hono/node-server'
 import pg from 'pg'
 import { createApp } from '#server/app'
@@ -8,7 +9,11 @@ import { ledgerClient } from '#server/ledger/client'
 import { authenticatedUser, loadBackendConfig } from '#server/ledger/config'
 import { adminToken } from '#server/ledger/token'
 
-const db = openDb(new pg.Pool({ connectionString: DATABASE_URL }))
+const pool = new pg.Pool({ connectionString: DATABASE_URL })
+// No parameters, so this goes as one simple query, which may hold several statements.
+await pool.query(readFileSync(new URL('db/schema.sql', import.meta.url), 'utf8'))
+const db = openDb(pool)
+
 // Not kept on failure, so a bootstrap run after the server started counts on the next request.
 const keptOnceLoaded = <T>(load: () => Promise<T>): (() => Promise<T>) => {
   let kept: Promise<T> | undefined
@@ -21,16 +26,18 @@ const keptOnceLoaded = <T>(load: () => Promise<T>): (() => Promise<T>) => {
   }
 }
 
-const admin = ledgerClient({ token: adminToken, userId: () => serviceUser() })
-const serviceUser = keptOnceLoaded(() => authenticatedUser(admin.ledgerApi))
-const currentDeployment = keptOnceLoaded(() => loadBackendConfig(admin.ledgerApi))
+const ledger = ledgerClient({ token: adminToken, userId: () => serviceUser() })
+const serviceUser = keptOnceLoaded(() => authenticatedUser(ledger.ledgerApi))
+const currentDeployment = keptOnceLoaded(async () =>
+  loadBackendConfig(ledger.ledgerApi, await serviceUser()),
+)
 
 const app = createApp({
   cookieSecure: COOKIE_SECURE,
   db,
   deployment: currentDeployment,
-  ledgerFor: () => admin,
-  provision: async (username) => provisionParty(admin.ledgerApi, await serviceUser(), username),
+  ledger,
+  provision: async (username) => provisionParty(ledger.ledgerApi, await serviceUser(), username),
 })
 
 serve({ fetch: app.fetch, hostname: 'localhost', port: PORT }, (info) => {

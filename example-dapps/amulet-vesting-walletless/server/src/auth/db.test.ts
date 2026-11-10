@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { type Db, openDb } from '#server/auth/db'
 import { testDb } from '#server/db/testDb'
 
-const alice = { username: 'alice', partyId: 'alice::1', ledgerUserId: 'wl-alice-x' }
+const alice = { username: 'alice', partyId: 'alice::1' }
 
 let db: Db
 

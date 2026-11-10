@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { type Context, Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
-import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { Db, User } from '#server/auth/db'
 import { hashPassword, verifyPassword } from '#server/auth/password'
-import { MIN_PASSWORD, type Provisioned, USERNAME } from '#server/auth/provision'
+import { MIN_PASSWORD, USERNAME } from '#server/auth/provision'
 import { errorText } from '#server/domain/errorText'
+import type { Account, Balance, ServerStatus } from '#server/domain/types'
 import type { Deployment } from '#server/ledger/config'
 import { LedgerBackend } from '#server/ledger/LedgerBackend'
 import type { WalletFns } from '#server/ledger/wallet'
@@ -22,22 +22,21 @@ export type AppDeps = {
   cookieSecure?: boolean
   db: Db
   deployment: () => Promise<Deployment>
-  ledgerFor: (user: User) => WalletFns
+  ledger: WalletFns
   now?: () => number
-  provision: (username: string) => Promise<Provisioned>
+  provision: (username: string) => Promise<string>
 }
 
 type Env = { Variables: { user: User } }
 
-const publicUser = (user: User) => ({ username: user.username, partyId: user.partyId })
+const publicUser = (user: User): Account => ({ username: user.username, partyId: user.partyId })
 
-const readJson = async (c: Context): Promise<Record<string, unknown>> => {
-  try {
-    return asBody(await c.req.json())
-  } catch (error) {
-    throw error instanceof BadRequest ? error : new BadRequest('expected a JSON body')
-  }
-}
+const readJson = async (c: Context): Promise<Record<string, unknown>> =>
+  asBody(
+    await c.req.json().catch(() => {
+      throw new BadRequest('expected a JSON body')
+    }),
+  )
 
 // The socket, not a forwarded-for header any client can set; behind a proxy it is the proxy.
 const clientOf = (c: Context): string => {
@@ -50,7 +49,7 @@ export const createApp = ({
   cookieSecure = false,
   db,
   deployment,
-  ledgerFor,
+  ledger,
   now = Date.now,
   provision,
 }: AppDeps) => {
@@ -85,15 +84,15 @@ export const createApp = ({
     })
   }
 
-  const backendFor = async (user: User): Promise<LedgerBackend> =>
-    new LedgerBackend(await deployment(), ledgerFor(user), db.disclosures)
+  const backendFor = async (): Promise<LedgerBackend> =>
+    new LedgerBackend(await deployment(), ledger, db.disclosures)
 
   app.onError((error, c) => {
     if (error instanceof BadRequest) {
       return c.json({ error: error.message }, 400)
     }
     console.error(error)
-    return c.json({ error: errorText(error) }, 502 as ContentfulStatusCode)
+    return c.json({ error: errorText(error) }, 502)
   })
 
   // A cross-site form cannot post JSON without a preflight, so requiring it is the CSRF check.
@@ -125,14 +124,14 @@ export const createApp = ({
       return c.json({ error: 'that username is taken' }, 409)
     }
     const passwordHash = await hashPassword(password)
-    const provisioned = await provision(username)
+    const partyId = await provision(username)
     let user: User
     try {
-      user = await db.createUser({ username, ...provisioned }, passwordHash)
+      user = await db.createUser({ username, partyId }, passwordHash)
     } catch (error) {
       if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION) throw error
       // Lost a race for the name. The new party stays on the ledger, unused and harmless.
-      console.warn(`orphaned party ${provisioned.partyId} after a signup race for ${username}`)
+      console.warn(`orphaned party ${partyId} after a signup race for ${username}`)
       return c.json({ error: 'that username is taken' }, 409)
     }
     await startSession(c, user)
@@ -143,17 +142,17 @@ export const createApp = ({
     const body = await readJson(c)
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
-    if (limited(`login:${clientOf(c)}:${username}`)) {
+    const key = `login:${clientOf(c)}:${username}`
+    if (limited(key)) {
       return c.json({ error: 'too many attempts, try again later' }, 429)
     }
     const found = await db.userByUsername(username)
     if (found === undefined || !(await verifyPassword(password, found.passwordHash))) {
       return c.json({ error: 'wrong username or password' }, 401)
     }
-    attempts.delete(`login:${clientOf(c)}:${username}`)
-    const { passwordHash: _, ...user } = found
-    await startSession(c, user)
-    return c.json(publicUser(user))
+    attempts.delete(key)
+    await startSession(c, found)
+    return c.json(publicUser(found))
   })
 
   app.post('/api/auth/logout', async (c) => {
@@ -168,9 +167,9 @@ export const createApp = ({
   app.get('/api/status', async (c) => {
     try {
       await deployment()
-      return c.json({ ready: true })
+      return c.json({ ready: true } satisfies ServerStatus)
     } catch (error) {
-      return c.json({ ready: false, error: errorText(error) })
+      return c.json({ ready: false, error: errorText(error) } satisfies ServerStatus)
     }
   })
 
@@ -190,30 +189,28 @@ export const createApp = ({
 
   app.get('/api/users/:username', async (c) => {
     const found = await db.userByUsername(c.req.param('username').toLowerCase())
-    return found === undefined
-      ? c.json({ error: 'no such user' }, 404)
-      : c.json({ username: found.username, partyId: found.partyId })
+    return found === undefined ? c.json({ error: 'no such user' }, 404) : c.json(publicUser(found))
   })
 
   app.get('/api/vesting', async (c) => {
     const user = c.var.user
-    return c.json(await (await backendFor(user)).viewAs(user.partyId))
+    return c.json(await (await backendFor()).viewAs(user.partyId))
   })
 
   app.get('/api/grants/:cid/claims', async (c) => {
     const user = c.var.user
-    return c.json(await (await backendFor(user)).claimHistory(user.partyId, c.req.param('cid')))
+    return c.json(await (await backendFor()).claimHistory(user.partyId, c.req.param('cid')))
   })
 
   app.get('/api/balance', async (c) => {
     const user = c.var.user
-    return c.json({ free: await (await backendFor(user)).balanceOf(user.partyId) })
+    return c.json({ free: await (await backendFor()).balanceOf(user.partyId) } satisfies Balance)
   })
 
   app.post('/api/grants', async (c) => {
     const user = c.var.user
     const body = await readJson(c)
-    await (await backendFor(user)).createVesting(user.partyId, {
+    await (await backendFor()).createVesting(user.partyId, {
       receiver: party(body, 'receiver'),
       totalAmount: amount(body, 'totalAmount'),
       schedule: schedule(body, 'schedule'),
@@ -225,7 +222,7 @@ export const createApp = ({
 
   app.post('/api/proposals/:cid/accept', async (c) => {
     const user = c.var.user
-    await (await backendFor(user)).accept({
+    await (await backendFor()).accept({
       receiver: user.partyId,
       pendingCid: c.req.param('cid'),
     })
@@ -235,7 +232,7 @@ export const createApp = ({
   app.post('/api/grants/:cid/withdraw', async (c) => {
     const user = c.var.user
     const body = await readJson(c)
-    await (await backendFor(user)).withdraw({
+    await (await backendFor()).withdraw({
       receiver: user.partyId,
       contractCid: c.req.param('cid'),
       amount: amount(body, 'amount'),
@@ -245,7 +242,7 @@ export const createApp = ({
 
   app.post('/api/grants/:cid/cancel', async (c) => {
     const user = c.var.user
-    await (await backendFor(user)).cancel({
+    await (await backendFor()).cancel({
       creator: user.partyId,
       contractCid: c.req.param('cid'),
     })
@@ -255,7 +252,7 @@ export const createApp = ({
   app.post('/api/claims/:cid/withdraw', async (c) => {
     const user = c.var.user
     const body = await readJson(c)
-    await (await backendFor(user)).claimResidual({
+    await (await backendFor()).claimResidual({
       receiver: user.partyId,
       claimCid: c.req.param('cid'),
       amount: amount(body, 'amount'),
@@ -265,7 +262,7 @@ export const createApp = ({
 
   app.post('/api/tap', async (c) => {
     const user = c.var.user
-    await (await backendFor(user)).tap(user.partyId)
+    await (await backendFor()).tap(user.partyId)
     return c.json({ ok: true })
   })
 

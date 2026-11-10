@@ -111,7 +111,7 @@ A hosted validator issues its own tokens. Set the `EXTERNAL_OAUTH_*` keys and th
 
 ### Accounts
 
-- Accounts live in the Postgres `server/compose.yaml` starts. Set `DATABASE_URL` to use another one, and `stack:up` applies the schema there.
+- Accounts live in the Postgres `server/compose.yaml` starts. Set `DATABASE_URL` to use another one, and the server applies the schema there as it starts.
 - An account names a party on the ledger. After `canton-barebones reset`, wipe the accounts too: `docker compose -f server/compose.yaml down -v`.
 - Each account adds one right to the server's participant user, and a participant caps a user at 1000 rights, so one deployment holds at most 1000 accounts.
 - `GET /api/users/:username` lets any signed-in account find any other by name, so treat usernames as public.

@@ -43,6 +43,7 @@ describe('ledgerClient', () => {
       baseUrl: 'http://ledger:1',
       fetch: fetchFn,
       token: () => `t${++minted}`,
+      userId: async () => 'u',
     })
     await client.ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
     await client.ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
@@ -73,7 +74,12 @@ describe('ledgerClient', () => {
 
   it('surfaces the ledger cause of a failure', async () => {
     const { fetchFn } = recording(400, { cause: 'DAML_AUTHORIZATION_ERROR' })
-    const client = ledgerClient({ baseUrl: 'http://ledger:1', fetch: fetchFn, token: () => 't' })
+    const client = ledgerClient({
+      baseUrl: 'http://ledger:1',
+      fetch: fetchFn,
+      token: () => 't',
+      userId: async () => 'u',
+    })
     await expect(
       client.ledgerApi({ requestMethod: 'post', resource: '/v2/parties', body: {} }),
     ).rejects.toThrow('POST /v2/parties failed (400): DAML_AUTHORIZATION_ERROR')
@@ -83,7 +89,12 @@ describe('ledgerClient', () => {
     const refused = (async () => {
       throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } })
     }) as unknown as typeof fetch
-    const client = ledgerClient({ baseUrl: 'http://ledger:1', fetch: refused, token: () => 't' })
+    const client = ledgerClient({
+      baseUrl: 'http://ledger:1',
+      fetch: refused,
+      token: () => 't',
+      userId: async () => 'u',
+    })
     await expect(
       client.ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' }),
     ).rejects.toThrow('the ledger at http://ledger:1 is unreachable (ECONNREFUSED)')

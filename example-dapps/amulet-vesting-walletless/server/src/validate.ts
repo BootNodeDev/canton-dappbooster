@@ -12,7 +12,7 @@ export const asBody = (value: unknown): Body => {
   return value as Body
 }
 
-export const text = (body: Body, key: string, max = 1000): string => {
+export const text = (body: Body, key: string, max: number): string => {
   const value = body[key]
   if (typeof value !== 'string' || value.trim() === '' || value.length > max) {
     throw new BadRequest(`${key} must be a non-empty string of at most ${max} characters`)
@@ -20,7 +20,7 @@ export const text = (body: Body, key: string, max = 1000): string => {
   return value
 }
 
-export const optionalText = (body: Body, key: string, max = 1000): string | undefined =>
+export const optionalText = (body: Body, key: string, max: number): string | undefined =>
   body[key] === undefined || body[key] === null || body[key] === ''
     ? undefined
     : text(body, key, max)

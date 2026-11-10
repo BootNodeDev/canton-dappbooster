@@ -7,14 +7,12 @@ const REFRESH_SKEW_MS = 60_000
 
 const b64url = (input: string | Buffer): string => Buffer.from(input).toString('base64url')
 
-export const mintToken = (
-  subject: string,
-  { audience = AUTH_AUDIENCE, secret = AUTH_SECRET, nowMs = Date.now() } = {},
-): string => {
+const mintToken = (): string => {
   const header = { alg: 'HS256', typ: 'JWT' }
-  const payload = { sub: subject, aud: audience, exp: Math.floor(nowMs / 1000) + LIFETIME_S }
+  const exp = Math.floor(Date.now() / 1000) + LIFETIME_S
+  const payload = { sub: LOCALNET_USER, aud: AUTH_AUDIENCE, exp }
   const encoded = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`
-  return `${encoded}.${b64url(createHmac('sha256', secret).update(encoded).digest())}`
+  return `${encoded}.${b64url(createHmac('sha256', AUTH_SECRET).update(encoded).digest())}`
 }
 
 export const oauthToken = (
@@ -77,4 +75,4 @@ export const oauthToken = (
 
 export const adminToken: () => string | Promise<string> = OAUTH
   ? oauthToken(OAUTH)
-  : () => ADMIN_TOKEN ?? mintToken(LOCALNET_USER)
+  : () => ADMIN_TOKEN ?? mintToken()

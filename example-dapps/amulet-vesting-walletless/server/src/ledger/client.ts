@@ -6,7 +6,7 @@ type ClientOptions = {
   baseUrl?: string
   fetch?: typeof fetch
   token: () => string | Promise<string>
-  userId?: () => Promise<string>
+  userId: () => Promise<string>
 }
 
 const TIMEOUT_MS = 30_000
@@ -70,17 +70,13 @@ export const ledgerClient = ({
     return text === '' ? {} : JSON.parse(text)
   }
 
-  const execute = async (params: ExecuteParams): Promise<unknown> => {
-    if (userId === undefined) {
-      throw new Error('this ledger client has no user to submit as')
-    }
-    return ledgerApi({
+  const execute = async (params: ExecuteParams): Promise<unknown> =>
+    ledgerApi({
       requestMethod: 'post',
       resource: '/v2/commands/submit-and-wait',
       // The participant requires `userId` to match the token's user.
       body: { ...params, commandId: randomUUID(), userId: await userId() },
     })
-  }
 
   return { execute, ledgerApi }
 }

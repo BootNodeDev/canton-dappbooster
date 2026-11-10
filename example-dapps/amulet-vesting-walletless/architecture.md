@@ -17,7 +17,7 @@ the ledger as each one's party.
 | `server/src/index.ts` | Wires the app to Postgres and the ledger, caches the deployment, and serves it on `WL_SERVER_PORT`. |
 | `server/src/env.ts` | Every variable the server reads, loaded from this folder's `.env`. |
 | `server/src/auth/` | `db.ts`, the Postgres store for users, sessions and escrow disclosures; `password.ts`, scrypt hashes; `provision.ts`, what a signup creates on the ledger. |
-| `server/src/db/` | `schema.sql`, which `migrate.ts` applies, and `testDb.ts`, the PGlite database the tests run on. |
+| `server/src/db/` | `schema.sql`, which the server applies as it starts, and `testDb.ts`, the PGlite database the tests run on. |
 | `server/src/ledger/` | `LedgerBackend`, the vesting reads and writes; `client.ts`, the JSON Ledger API spoken directly; `token.ts`, where the bearer comes from; `config.ts`, which finds the deployment; `transferContext.ts`, the two Scan reads an Amulet-moving choice needs; the mappers and command builders. |
 | `server/src/domain/` | The types the API hands over, which the dApp imports as types only, and the amount helpers. |
 | `server/compose.yaml` | The local Postgres on 5433, which `scripts/server.sh` starts and stops. |

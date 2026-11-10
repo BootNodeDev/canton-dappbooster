@@ -29,7 +29,7 @@ const post = async <T>(path: string, body: Record<string, unknown>): Promise<T> 
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
-    // A Scan that accepts and never answers would stack the 30-second network poll behind it.
+    // A Scan that accepts and never answers would otherwise hold the write it serves open.
     signal: AbortSignal.timeout(15_000),
   }).catch((error: unknown) => {
     throw new Error(`Scan unreachable for ${path}: ${errorText(error)}`)

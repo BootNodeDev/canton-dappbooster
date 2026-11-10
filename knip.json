@@ -30,7 +30,7 @@
       "ignoreDependencies": ["@bootnodedev/canton-token-forge"]
     },
     "example-dapps/amulet-vesting-walletless": {
-      "entry": ["server/src/index.ts", "server/src/db/migrate.ts"]
+      "entry": ["server/src/index.ts"]
     }
   }
 }

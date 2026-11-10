@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { type LedgerApi, loadBackendConfig } from '#server/ledger/config'
+import { authenticatedUser, loadBackendConfig } from '#server/ledger/config'
+import type { LedgerApi } from '#server/ledger/wallet'
 
 const OPERATOR = 'vesting-operator::ns'
 const STAMPED = 'vesting-operator-1700000000001::ns'
@@ -51,7 +52,7 @@ const ledger = (
 describe('loadBackendConfig', () => {
   it('returns the deployment it reads back, synchronizer id included', async () => {
     const { ledgerApi } = ledger()
-    await expect(loadBackendConfig(ledgerApi)).resolves.toEqual({
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).resolves.toEqual({
       factoryBlob: 'YmxvYg==',
       factoryCid: '00cid',
       pkg: 'abc123',
@@ -61,12 +62,12 @@ describe('loadBackendConfig', () => {
 
   it('refuses a factory row that names no synchronizer', async () => {
     const { ledgerApi } = ledger({ acs: [factoryRow(created)] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no synchronizer id/)
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).rejects.toThrow(/no synchronizer id/)
   })
 
   it('reads as the operator allocated under the bootstrap hint', async () => {
     const { ledgerApi, filteredParty } = ledger()
-    await loadBackendConfig(ledgerApi)
+    await loadBackendConfig(ledgerApi, 'user-1')
     expect(filteredParty()).toBe(OPERATOR)
   })
 
@@ -74,29 +75,29 @@ describe('loadBackendConfig', () => {
     const { ledgerApi } = ledger({
       rights: [{ kind: { CanActAs: { value: { party: STAMPED } } } }],
     })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no vesting operator/)
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).rejects.toThrow(/no vesting operator/)
   })
 
   it('names the bootstrap script when no operator was ever created', async () => {
     const { ledgerApi } = ledger({ rights: [{ kind: { ParticipantAdmin: { value: {} } } }] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).rejects.toThrow(
       /no vesting operator.*pnpm run bootstrap/,
     )
   })
 
   it('rejects a factory row that came back without its disclosure blob', async () => {
     const { ledgerApi } = ledger({ acs: [factoryRow({ contractId: '00cid' })] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).rejects.toThrow(/no factory disclosable/)
   })
 
   it('rejects an empty active-contracts read', async () => {
     const { ledgerApi } = ledger({ acs: [] })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)
+    await expect(loadBackendConfig(ledgerApi, 'user-1')).rejects.toThrow(/no factory disclosable/)
   })
 
   it('throws when the ledger reports no authenticated user', async () => {
     const { ledgerApi } = ledger({ user: {} })
-    await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(
+    await expect(authenticatedUser(ledgerApi)).rejects.toThrow(
       /did not report an authenticated user/,
     )
   })

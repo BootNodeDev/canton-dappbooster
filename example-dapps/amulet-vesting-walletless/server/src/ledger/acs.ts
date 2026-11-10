@@ -1,6 +1,4 @@
-import type { WalletFns } from '#server/ledger/wallet'
-
-type LedgerApi = WalletFns['ledgerApi']
+import type { LedgerApi } from '#server/ledger/wallet'
 
 export const templateFilter = (
   party: string,
