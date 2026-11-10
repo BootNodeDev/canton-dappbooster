@@ -13,7 +13,6 @@ interface PreviewProps {
   schedule: VestingSchedule
 }
 
-// The last step: what will be signed, with the curve drawn against a live clock.
 export const Preview = ({
   amount,
   amountValid,

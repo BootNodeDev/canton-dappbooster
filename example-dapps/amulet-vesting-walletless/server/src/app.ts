@@ -1,6 +1,3 @@
-// The HTTP API. Every route but auth and status runs as the session's user, and the party it acts
-// as is always that user's own: nothing in a request can name another.
-
 import { randomBytes } from 'node:crypto'
 import { type Context, Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -18,16 +15,13 @@ import { amount, asBody, BadRequest, optionalText, party, text } from '#server/v
 export const SESSION_COOKIE = 'wl_session'
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000
 
-// Per client and username: enough for typos, too few to guess a password with.
 const LOGIN_ATTEMPTS = 10
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
 
 export type AppDeps = {
   cookieSecure?: boolean
   db: Db
-  // Cached by the caller; throws while there is no bootstrap on the ledger to find.
   deployment: () => Promise<Deployment>
-  // The ledger as one user, under a token naming that user and no one else.
   ledgerFor: (user: User) => WalletFns
   now?: () => number
   provision: (username: string) => Promise<Provisioned>
@@ -45,8 +39,7 @@ const readJson = async (c: Context): Promise<Record<string, unknown>> => {
   }
 }
 
-// The one address a rate limit can key on. Behind a proxy that is the proxy, which is why this reads
-// the socket and not a header anybody can set.
+// The socket, not a forwarded-for header any client can set; behind a proxy it is the proxy.
 const clientOf = (c: Context): string => {
   const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
     ?.incoming
@@ -100,8 +93,7 @@ export const createApp = ({
     return c.json({ error: errorText(error) }, 502 as ContentfulStatusCode)
   })
 
-  // A cross-site form can post urlencoded, multipart or text, never JSON without a preflight, so
-  // demanding JSON is the CSRF check on top of the SameSite cookie.
+  // A cross-site form cannot post JSON without a preflight, so requiring it is the CSRF check.
   app.use('/api/*', async (c, next) => {
     if (c.req.method !== 'GET' && !c.req.header('content-type')?.startsWith('application/json')) {
       return c.json({ error: 'expected content-type: application/json' }, 415)
@@ -135,7 +127,7 @@ export const createApp = ({
     try {
       user = await db.createUser({ username, ...provisioned }, passwordHash)
     } catch {
-      // Lost a race for the name. The party just allocated stays on the ledger, unused and harmless.
+      // Lost a race for the name. The new party stays on the ledger, unused and harmless.
       console.warn(`orphaned party ${provisioned.partyId} after a signup race for ${username}`)
       return c.json({ error: 'that username is taken' }, 409)
     }

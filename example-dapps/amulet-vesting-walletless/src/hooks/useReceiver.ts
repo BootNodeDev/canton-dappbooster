@@ -5,12 +5,10 @@ import { ApiError, api } from '@/backend/api'
 // The server's own rule for a username, so a name it would refuse is never looked up.
 const USERNAME = /^[a-z0-9][a-z0-9-]{2,31}$/
 
-// Typing pauses this long before a name is looked up, so each keystroke does not cost a request.
 const LOOKUP_DELAY_MS = 300
 
 export interface Receiver {
   message?: string
-  // Set once the input names a party: typed out in full, or resolved from a username.
   partyId?: string
   resolving: boolean
   username?: string
@@ -18,8 +16,6 @@ export interface Receiver {
 
 type Lookup = { name: string; partyId?: string; failed?: string }
 
-// A receiver is typed as a username, since nobody here has a wallet to copy a party id out of, or as
-// a full party id for a party that signed up somewhere else.
 export const useReceiver = (input: string): Receiver => {
   const typed = input.trim()
   const name = typed.toLowerCase()

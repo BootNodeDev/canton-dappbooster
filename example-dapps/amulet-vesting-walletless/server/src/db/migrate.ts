@@ -1,5 +1,3 @@
-// Applies schema.sql to DATABASE_URL: the Postgres `stack:up` starts, or the one that URL names.
-
 import { readFileSync } from 'node:fs'
 import pg from 'pg'
 import { DATABASE_URL } from '#server/env'

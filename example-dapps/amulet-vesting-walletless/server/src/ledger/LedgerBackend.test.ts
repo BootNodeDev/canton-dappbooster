@@ -27,8 +27,6 @@ type Submission = {
   disclosedContracts?: DisclosedContract[]
 }
 
-// As much of the ACS query LedgerBackend builds as these tests read back, named once so the two
-// accessors below share it rather than each casting the body to its own shape.
 type PartyFilter = {
   cumulative?: { identifierFilter?: { TemplateFilter?: { value?: { templateId?: string } } } }[]
 }
@@ -42,7 +40,6 @@ type Read = { requestMethod: string; resource: string; body?: AcsQuery }
 
 const byParty = (read: Read): Record<string, PartyFilter> => read.body?.filter?.filtersByParty ?? {}
 
-// The template a read filters on, which is what a party-scoped ACS query is keyed by here.
 const filteredTemplate = (read: Read): string | undefined =>
   Object.values(byParty(read))[0]?.cumulative?.[0]?.identifierFilter?.TemplateFilter?.value
     ?.templateId
@@ -53,7 +50,6 @@ const row = (contractId: string, arg: Record<string, unknown>): unknown => ({
   contractEntry: { JsActiveContract: { createdEvent: { contractId, createArgument: arg } } },
 })
 
-// A test passes `{}` for `extra` to make a row the split can find no DSO on.
 const amuletRow = (
   contractId: string,
   initialAmount = '1000',
@@ -77,8 +73,6 @@ const disclosedAmulet = (contractId: string): DisclosedContract => ({
   createdEventBlob: `blob-${contractId}`,
 })
 
-// LedgerBackend owes putting whatever comes back into every write, so the fetch is replaced
-// rather than stubbed. Which disclosures resolve is transferContext.test.ts's rule.
 const transferContext = {
   ctx: { amuletRules: 'rules-cid', openMiningRound: 'round-2', featuredAppRight: null },
   rulesTemplateId: 'amuletpkg:Splice.AmuletRules:AmuletRules',
@@ -100,10 +94,6 @@ vi.mock('#server/ledger/transferContext', () => ({
   fetchTransferContext: async () => transferContext,
 }))
 
-// createVesting is two submissions now, so the harness has to behave like the ledger under both:
-// a split archives its inputs and puts the output plus any change in their place, and the factory
-// choice leaves a pending grant behind pledging what it was given. Without that second half every
-// later split would happily spend the Amulet an outstanding grant is waiting on.
 type AmuletFields = { contractId: string; createArgument: { amount: { initialAmount: string } } }
 
 const fields = (one: unknown): AmuletFields =>
@@ -139,7 +129,6 @@ const settle = (acs: Record<string, unknown[]>, submission: Submission, nth: num
   ]
 }
 
-// The submission carries the synchronizer, so everything disclosed on one arrives stamped with it.
 const onSync = <T>(contracts: T[]): (T & { synchronizerId: string })[] =>
   contracts.map((contract) => ({ ...contract, synchronizerId: 'sync::1' }))
 
@@ -195,7 +184,6 @@ const memoryDisclosures = (): DisclosureStore => {
   }
 }
 
-// Shared by every harness in a test, the way one server's store is shared by every user of it.
 let disclosures: DisclosureStore = memoryDisclosures()
 
 beforeEach(() => {
@@ -282,7 +270,7 @@ describe('LedgerBackend.createVesting', () => {
     await expect(backend.createVesting('funder::1', grant)).rejects.toThrow(/only 400 AMT is free/)
   })
 
-  it('exercises the factory choice with the composed note and schedule, disclosing only it', async () => {
+  it('builds the factory choice and discloses the factory the deployment carries', async () => {
     const { backend, submissions } = harness()
 
     await backend.createVesting('funder::1', grant)
@@ -304,8 +292,6 @@ describe('LedgerBackend.createVesting', () => {
         },
       },
     ])
-    // The funder is not a stakeholder of the observer-less factory, so its disclosure is the
-    // deployment's rather than something read back here.
     expect(submissions[1]?.disclosedContracts).toEqual([
       {
         templateId: 'pkg1:AmuletVesting:AmuletVestingFactory',
@@ -322,8 +308,7 @@ describe('LedgerBackend.createVesting', () => {
     await expect(backend.createVesting('funder::1', grant)).rejects.toThrow(/only 0 AMT is free/)
   })
 
-  // A disclosure is an opaque blob, so the split reads the DSO off an Amulet it consumes.
-  it('names the DSO the funder’s own Amulets are signed by', async () => {
+  it('reads the DSO off a funder Amulet, since a disclosure carries no payload', async () => {
     const { backend, submissions } = harness({
       acs: { [AMULET]: [amuletRow('am1', '1200')] },
     })
@@ -335,16 +320,13 @@ describe('LedgerBackend.createVesting', () => {
     })
   })
 
-  it('refuses rather than sending an undefined expectedDso when no Amulet carries one', async () => {
+  it('refuses when no Amulet carries a DSO to name as expectedDso', async () => {
     const { backend } = harness({ acs: { [AMULET]: [amuletRow('am1', '1200', {})] } })
 
     await expect(backend.createVesting('funder::1', grant)).rejects.toThrow(/name no DSO party/)
   })
 })
 
-// Every write goes out as the party the UI is acting as, rather than left to the wallet's own
-// primary account: a mismatch is then a participant rejection, not a submission signed by the
-// wrong key.
 describe('LedgerBackend submissions', () => {
   it('sends actAs for the acting party on every choice, the split included', async () => {
     const { backend, submissions } = harness()
@@ -368,7 +350,7 @@ describe('LedgerBackend submissions', () => {
     ])
   })
 
-  it('discloses the transfer context, stamped with the synchronizer, on every Amulet-moving write', async () => {
+  it('discloses the transfer context on every Amulet-moving write, synchronizer set', async () => {
     const { backend, submissions } = harness()
 
     await backend.withdraw({ receiver: 'receiver::1', contractCid: 'c1', amount: '10' })
@@ -433,8 +415,6 @@ describe('LedgerBackend submissions', () => {
   })
 })
 
-// Accept is the one write disclosing contracts the submitting party cannot read for itself: the
-// funder's Amulets, whose blobs were kept when the funder created the pending grant.
 describe('LedgerBackend.accept', () => {
   const grant = (title: string) => ({
     receiver: 'receiver::1',

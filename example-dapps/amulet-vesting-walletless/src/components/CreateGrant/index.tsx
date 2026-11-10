@@ -44,7 +44,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
   )
   const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  // `onClose` clears the one `?create=1` slot, which a second dialog may hold by the time this lands.
+  // `onClose` clears the one `?create=1` slot, which a newer dialog may hold once this lands.
   const onScreen = useOnScreen()
   const [step, setStep] = useState(0)
 
@@ -95,8 +95,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
       title="Create grant"
       className="max-h-[85vh] max-w-2xl overflow-y-auto"
     >
-      {/* noValidate because the form reports its own errors; the native bubble would fire on Enter
-          from an earlier step. */}
+      {/* noValidate: the native bubble would fire on Enter from an earlier step. */}
       <form
         noValidate
         onSubmit={(event) => {
@@ -135,8 +134,7 @@ export const CreateGrant = ({ onClose }: { onClose: () => void }): React.JSX.Ele
           </Steps.Content>
 
           <Steps.Content index={LAST_STEP} className={panelClass}>
-            {/* Mounted on its own step only, so the curve's clock does not tick behind a hidden
-                panel. */}
+            {/* Only on its own step, so the curve's clock never ticks behind a hidden panel. */}
             {step === LAST_STEP && (
               <Preview
                 amount={amount}

@@ -15,14 +15,11 @@ import { errorText } from '@/utils/errorText'
 export interface BackendState {
   configError: string | undefined
   configPending: boolean
-  // Someone is signed in and the server found the vesting deployment: the API can be called.
   ready: boolean
   retryConfig: () => void
   sessionPending: boolean
 }
 
-// While the server finds no vesting deployment, ask again at this pace: a `pnpm run bootstrap` run
-// after the page loaded then shows up without a reload.
 const RECHECK_MS = 5_000
 
 type Status = { error?: string; ready: boolean }
@@ -54,8 +51,7 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     )
   }, [])
 
-  // The deployment is the server's to find, but it is only asked about once someone is signed in:
-  // until then the pages render the sign-in card rather than a deployment error.
+  // Asked only once someone signs in, so a signed-out page shows sign-in, not a deployment error
   useEffect(() => {
     if (partyId === undefined) {
       setStatus(undefined)
@@ -68,7 +64,6 @@ export const Backend = ({ children }: { children: ReactNode }): React.JSX.Elemen
     }
   }, [partyId, check])
 
-  // Asks now rather than at the next recheck, and shows the wait as pending meanwhile.
   const retryConfig = useCallback(() => {
     setStatus(undefined)
     check()

@@ -11,12 +11,12 @@ describe('toast lifetime', () => {
     expect(toaster.getVisibleToasts()[0].duration).toBe(3200)
   })
 
-  it('keeps an error until it is dismissed, since it has to be read in full and often copied', () => {
+  it('keeps an error until dismissed, since it is read in full and often copied', () => {
     toast.error('Wallet refused the submission')
     expect(toaster.getVisibleToasts()[0].duration).toBe(Number.POSITIVE_INFINITY)
   })
 
-  it('times out a toast carrying an action, since the page it links to is still reachable after', () => {
+  it('times out a toast carrying an action, since the page it links to stays reachable', () => {
     toast.success('Grant created', { action: { label: 'View pending grants', to: '/pending' } })
     expect(toaster.getVisibleToasts()[0].duration).toBe(3200)
   })

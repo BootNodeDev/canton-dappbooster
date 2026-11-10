@@ -11,7 +11,6 @@ interface MilestonesProps {
   value: MilestoneInput[]
 }
 
-// The milestone curve's rows: a date and the cumulative percent vested by it.
 export const Milestones = ({ className, onChange, value }: MilestonesProps): React.JSX.Element => {
   const setRow = (i: number, patch: Partial<MilestoneInput>): void =>
     onChange(value.map((m, idx) => (idx === i ? { ...m, ...patch } : m)))

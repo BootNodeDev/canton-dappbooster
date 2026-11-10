@@ -1,7 +1,3 @@
-// The one way the browser reaches the server: same origin (the dev server proxies /api), the
-// session in an httpOnly cookie the page never sees, and a failure surfaced as the server's own
-// message so a toast can show it as it stands.
-
 export class ApiError extends Error {
   readonly status: number
 
@@ -11,7 +7,6 @@ export class ApiError extends Error {
   }
 }
 
-// A 401 on any call means the session is gone, whichever page noticed first.
 const expiryListeners = new Set<() => void>()
 
 export const onSessionExpired = (listener: () => void): (() => void) => {

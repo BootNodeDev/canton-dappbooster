@@ -29,15 +29,11 @@ import type { DisclosedContract, LedgerCommand, WalletFns } from '#server/ledger
 const vesting = (entity: string): string => `#amulet-vesting:AmuletVesting:${entity}`
 const AMULET = '#splice-amulet:Splice.Amulet:Amulet'
 
-// A demo party's whole vesting history fits one page of updates. The idle timeout ends the read once
-// the ledger has nothing more to send, instead of holding the response open for new updates.
+// One page: a demo party's whole vesting history fits in it.
 const CLAIM_HISTORY_LIMIT = 1000
+// Without it, `/v2/updates` holds the response open waiting for new updates.
 const STREAM_IDLE_MS = 1000
 
-// Where a funder's escrow Amulet waits between the create and the receiver's Accept. The receiver
-// cannot read the funder's Amulet, so its blob has to be handed over: through storage every user of
-// this server shares, which is what lets the two sides sit in different browsers. A grant pledges
-// exactly one Amulet, the one `splitOff` made for it.
 export interface DisclosureStore {
   drop(contractId: string): Promise<void>
   get(contractId: string): Promise<DisclosedContract | undefined>
@@ -239,7 +235,6 @@ export class LedgerBackend {
       (ctx) => buildAcceptCommand(this.tid('AmuletVestingProposal'), args.pendingCid, ctx),
       [amulet],
     )
-    // The submission archived it, so its blob can only mislead a later Accept from here on.
     await this.disclosures.drop(pledged)
   }
 
@@ -261,7 +256,6 @@ export class LedgerBackend {
     )
   }
 
-  // The only write not on an amulet-vesting template: it exercises AmuletRules itself.
   async tap(partyId: string): Promise<void> {
     await this.submitWithContext(partyId, (ctx, rulesTemplateId) =>
       buildTapCommand(rulesTemplateId, ctx.amuletRules, {

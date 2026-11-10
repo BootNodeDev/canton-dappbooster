@@ -1,6 +1,4 @@
--- The server's whole schema. Every statement is idempotent, so `scripts/server.sh start` applies it
--- to a fresh database and leaves an existing one alone. Times are epoch milliseconds, as the server
--- reads its clock.
+-- Rerun on every `scripts/server.sh start`, so it stays idempotent. Times are epoch milliseconds.
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

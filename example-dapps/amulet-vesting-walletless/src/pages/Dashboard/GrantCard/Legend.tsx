@@ -7,8 +7,6 @@ export interface LegendItem {
   value: string
 }
 
-// Compact figure legend under a schedule bar. `swatch` is a Tailwind bg-* class
-// or an arbitrary background value.
 export const Legend = ({
   items,
   className,

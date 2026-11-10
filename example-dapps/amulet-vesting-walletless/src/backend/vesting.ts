@@ -1,6 +1,3 @@
-// Every call the vesting UI makes. None names a party: the server acts as the session's own,
-// whatever a request says, so there is nothing to send.
-
 import type { ClaimRecord, CreateVestInput, VestingView } from '#server/domain/types'
 import { api } from '@/backend/api'
 
@@ -31,6 +28,5 @@ export const vesting = {
   },
 }
 
-// The faucet's fixed amount, set by the server's tap command; one amount, so a tap is a button and
-// not a form.
+// Mirrors TAP_AMOUNT in server/src/ledger/commands.ts, which sets what a tap mints
 export const TAP_AMOUNT = '100'

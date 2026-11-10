@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 
-// The row's gap sets the title-to-lens distance only: `action` is pushed away by its own ml-auto.
 export const PageTitle = ({
   title,
   lens,

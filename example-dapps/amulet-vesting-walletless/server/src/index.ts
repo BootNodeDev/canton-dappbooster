@@ -9,13 +9,12 @@ import { type Deployment, loadBackendConfig } from '#server/ledger/config'
 import { adminToken } from '#server/ledger/token'
 
 const db = openDb(new pg.Pool({ connectionString: DATABASE_URL }))
-// One participant user allocates parties, holds the operator and acts as every signup's party.
 const admin = ledgerClient({ token: adminToken, userId: ADMIN_USER })
 
 let deployment: Promise<Deployment> | undefined
-// A failure is not kept, so a bootstrap run after the server started counts on the next request.
 const currentDeployment = (): Promise<Deployment> => {
   deployment ??= loadBackendConfig(admin.ledgerApi).catch((error: unknown) => {
+    // Not kept, so a bootstrap run after the server started counts on the next request.
     deployment = undefined
     throw error
   })

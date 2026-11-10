@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-// Whether the component is still on screen, for a step that runs after an await.
 export const useOnScreen = (): React.RefObject<boolean> => {
   const onScreen = useRef(true)
   useEffect(() => {

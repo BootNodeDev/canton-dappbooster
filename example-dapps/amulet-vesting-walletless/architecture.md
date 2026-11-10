@@ -83,8 +83,13 @@ carries, and it is the counterparty, never the actor.
 Every write must be `content-type: application/json`, or it gets 415. A cross-site form can post
 urlencoded, multipart or text, but not JSON without a preflight, so this is the CSRF check on top of
 the `SameSite` cookie. `validate.ts` checks every body field and throws a 400 that names it.
-Signups are limited to 10 per client in 15 minutes, and logins to 10 per client and username. The
-limiter keys on the socket address, which behind a proxy is the proxy.
+Signups are limited to 10 per client in 15 minutes, and logins to 10 per client and username:
+room for typos, too few to guess a password. The limiter keys on the socket address, which behind a
+proxy is the proxy.
+
+`GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
+`replaces`, because a withdraw archives the grant and creates its successor. The records come
+newest first.
 
 The Vite dev server proxies `/api` to `WL_SERVER_PORT`, so the dApp and the API share an origin and
 the cookie travels without CORS. The route list is in [`README.md`](README.md#how-it-works).
@@ -150,10 +155,15 @@ sides to one browser. Here `LedgerBackend` puts it in the `escrow_disclosures` t
 reads it back at accept, and drops it once the Amulet is locked, so the funder and the receiver can
 be anywhere.
 
+The split needs no headroom: Splice values an Amulet input at its full `initialAmount`, and only
+`Amulet_Expire` charges the holding fee, as
+[amulet-vesting's](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/architecture.md)
+explains.
+
 ## Where the deployment comes from
 
-Nothing is written to a file. `ledger/config.ts` reads `WL_ADMIN_USER`'s rights, takes the party
-under the `vesting-operator::` hint, and reads that operator's `AmuletVestingFactory` with its
+Nothing is written to a file. The bootstrap grants `WL_ADMIN_USER` `CanActAs` on the operator, so
+`ledger/config.ts` reads that user's rights, takes the party under the `vesting-operator::` hint, and reads that operator's `AmuletVestingFactory` with its
 created-event blob. `index.ts` keeps the result, but not a failure, so a `bootstrap` run after the
 server started counts on the next request. `GET /api/status` reports either.
 
@@ -162,6 +172,25 @@ under a stable hint, because `pnpm stack up` runs it on every start and the Loca
 ledger across a `down`. The match includes the `::` separator, so the stamped
 `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared LocalNet are never
 picked up. Both examples build the same DAR, so either one's upload serves both.
+
+## The store and the pages
+
+- `useVestingStore` reads again after every write. A claim archives the contract and creates its
+  successor with the claimed figure raised, so the store finds the successor by lineage: every field
+  but that figure.
+- `trackSuccessor` records the ids before the write and takes, from the next read, the one new id
+  with the same lineage. That also tells apart two identical grants from one funder.
+- A withdraw that drains a residual claim archives it outright, so it has no successor.
+- `busy` records the exit each contract has in flight. A dialog can close while its request is still
+  out, and the control behind it would otherwise offer the same exit again.
+- A failed read keeps the last good rows on screen, so `ReadError` shows a "may be out of date"
+  banner with a retry above them.
+- The create form has no token picker. A grant always vests Amulet, and the amount is capped at the
+  funder's free Amulet, read from `GET /api/balance` when the form opens.
+- The receiver field shows a format error only once it loses focus, but "No user named …" as soon as
+  the delayed lookup answers.
+- `AmountDisplay` scales the token mark with its figure, except on `KpiCard`, which passes
+  `fixedMark` so the marks stay one size.
 
 ## Custody
 

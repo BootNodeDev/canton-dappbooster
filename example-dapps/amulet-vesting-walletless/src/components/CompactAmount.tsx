@@ -2,10 +2,6 @@ import { InfoTip } from '@/components/InfoTip'
 import { formatFigureCompact, formatFigureFull, isCompacted } from '@/utils/format'
 import { AMT } from '@/utils/tokens'
 
-// An Amulet figure, abbreviated past 10,000 with the exact one still reachable. Carries no unit and
-// no mark, so it suits a line that already spells out AMT; `AmountDisplay` wraps it for the rest.
-// `plain` drops the tooltip for a caller that cannot legally nest its trigger, which is a button:
-// the exact figure then reaches a reader by ear only, and its unit comes from the caller's own text.
 export const CompactAmount = ({
   value,
   plain = false,
@@ -18,6 +14,7 @@ export const CompactAmount = ({
     return <>{figure}</>
   }
   const exact = formatFigureFull(value)
+  // `plain` is for a caller inside a button, where the tooltip trigger cannot legally nest.
   if (plain) {
     return (
       <>
@@ -32,8 +29,7 @@ export const CompactAmount = ({
       <InfoTip label={labelled}>
         <span aria-hidden="true">{figure}</span>
       </InfoTip>
-      {/* The tooltip only reveals on hover, so without this the exact figure reaches nobody reading
-          by ear, and the abbreviation is the only number the page still holds. */}
+      {/* The tooltip shows on hover only, so this is a screen reader's sole exact figure. */}
       <span className="sr-only">{labelled}</span>
     </>
   )

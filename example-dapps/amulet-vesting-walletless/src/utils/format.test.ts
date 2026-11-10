@@ -6,8 +6,7 @@ describe('formatFigureFull', () => {
     expect(formatFigureFull('105.9154321')).toBe('105.9154321')
   })
 
-  it('formats a decimal string exactly at full ledger precision', () => {
-    // The bug a double would introduce: this value cannot round-trip past six integer digits.
+  it('formats a value a double cannot round-trip exactly at full ledger precision', () => {
     expect(formatFigureFull('8421337.1234567891')).toBe('8,421,337.1234567891')
   })
 

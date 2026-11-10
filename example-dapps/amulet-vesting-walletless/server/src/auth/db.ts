@@ -1,9 +1,5 @@
-// Accounts, sessions and escrow disclosures, in Postgres. The schema is `db/schema.sql`; nothing
-// here creates a table.
-
 import type { DisclosureStore } from '#server/ledger/LedgerBackend'
 
-// What the store needs of a connection: `pg`'s Pool in the server, PGlite in the tests.
 export type Sql = {
   query<R>(text: string, params?: unknown[]): Promise<{ rows: R[] }>
 }
@@ -57,8 +53,7 @@ export const openDb = (sql: Sql) => {
   }
 
   return {
-    // Throws on a taken username: the UNIQUE constraint is the check, so two signups racing for one
-    // name cannot both pass it.
+    // The UNIQUE constraint is the real check: two signups racing for one name cannot both pass.
     createUser: async (user: Omit<User, 'id'>, passwordHash: string): Promise<User> => {
       const { rows } = await sql.query<{ id: number }>(
         `INSERT INTO users (username, password_hash, party_id, ledger_user_id, created_at)

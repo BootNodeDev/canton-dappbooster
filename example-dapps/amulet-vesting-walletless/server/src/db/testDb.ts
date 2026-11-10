@@ -1,6 +1,3 @@
-// A real Postgres for the tests, in-process: PGlite answers `query` the way `pg` does, so the store
-// runs unchanged on it, and no test needs Docker.
-
 import { readFileSync } from 'node:fs'
 import { PGlite } from '@electric-sql/pglite'
 

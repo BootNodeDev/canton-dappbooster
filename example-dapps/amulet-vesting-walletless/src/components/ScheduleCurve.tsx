@@ -21,14 +21,10 @@ const W = 100
 const H = 56
 const PAD = 2
 
-// Vested-fraction-over-time plot. Samples vestedFraction so the cliff jump and
-// milestone steps render exactly. A "now" marker tracks the live clock.
 export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JSX.Element => {
   const gradId = useId()
   const titleId = useId()
 
-  // The curve geometry depends only on the schedule, so memoize it; the live
-  // "now" marker below recomputes every tick and must stay out of the memo.
   const { x, y, start, end, d, area, cliffX, milestonePoints } = useMemo(() => {
     const [s, e] = domain(schedule)
     const span = Math.max(1, e - s)
@@ -65,8 +61,7 @@ export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JS
 
   return (
     <div>
-      {/* `role` and `aria-labelledby` both, because a bare <title> is exposed inconsistently: some
-          readers announce the element as a graphic with no name without them. */}
+      {/* `role` and `aria-labelledby` too: screen readers expose a bare <title> inconsistently. */}
       <svg
         aria-labelledby={titleId}
         role="img"

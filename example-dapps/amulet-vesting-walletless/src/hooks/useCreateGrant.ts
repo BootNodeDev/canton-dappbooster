@@ -1,13 +1,11 @@
 import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-// Kept in the URL rather than in page state, so /create can open the dialog on whichever page the
-// reader is already on, and closing frees that link to open it again.
+// In the URL, not page state, so /create opens the dialog over whichever page is showing
 export const useCreateGrant = (): [boolean, (open: boolean) => void] => {
   const [params, setParams] = useSearchParams()
 
-  // Memoized because AppShell closes the dialog from an effect: a new identity every render would
-  // run that effect every render.
+  // Stable identity: AppShell calls it from an effect that would otherwise rerun every render
   const setOpen = useCallback(
     (open: boolean): void =>
       setParams(

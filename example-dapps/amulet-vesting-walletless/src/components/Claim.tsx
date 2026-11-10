@@ -20,9 +20,6 @@ interface ClaimProps {
   title: string
 }
 
-// Amount-entry dialog shared by grant withdraw and residual claim. `available` is the ceiling and
-// `backing` the escrow the re-lock floor is measured against; a residual claim has no schedule, so
-// for it they are one amount.
 export const Claim = ({
   onClose,
   title,
@@ -35,12 +32,8 @@ export const Claim = ({
   // Dismissible while the request is out, so closing after it would close whatever replaced it.
   const onScreen = useOnScreen()
 
-  // Recomputed from `available` rather than stored from the last keystroke: it drops each second
-  // for a live-vesting grant, so a stored code would keep flagging an amount the field itself has
-  // already accepted (and vice versa) until the user typed again. Same bounds the field uses.
   const amountError = validateAmount(raw, { max: available })
   const floorOk = meetsRelockFloor(backing, raw)
-  // The kit's error wins when both apply, so the two sentences are never shown at once.
   const message =
     amountError !== undefined
       ? AMOUNT_ERROR_TEXT[amountError]
@@ -57,8 +50,7 @@ export const Claim = ({
     setSubmitting(true)
     try {
       await onConfirm(raw)
-      // Exact, not abbreviated: this is the only record of what the ledger took and it carries no
-      // tooltip to recover the digits from.
+      // Exact, not abbreviated: a toast has no tooltip to recover the digits from.
       toast.success(`Claimed ${formatFigureFull(raw)} ${AMT.symbol}`)
       if (onScreen.current) {
         onClose()

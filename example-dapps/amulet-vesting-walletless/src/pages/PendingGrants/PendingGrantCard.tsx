@@ -11,8 +11,6 @@ import type { BusyKind } from '@/store/useVestingStore'
 import { formatDate, relativeTime } from '@/utils/format'
 import { vestedFraction } from '@/utils/schedule'
 
-// `direction` incoming means the acting party is the receiver and can accept; outgoing was sent as
-// funder.
 interface PendingGrantCardProps {
   busy: BusyKind | undefined
   direction: 'incoming' | 'outgoing'

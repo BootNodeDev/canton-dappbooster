@@ -13,23 +13,18 @@ interface AmountDisplayProps {
   value: string
 }
 
-// The token mark is the only thing naming the unit, so it carries the name rather than an empty alt.
+// The mark is the only thing naming the unit, so it carries the name rather than an empty alt.
 const UNIT = `${AMT.name} (${AMT.symbol})`
 
-// Neither varies, so hoisting them lets React skip the subtree by element identity. The dashboard
-// re-renders every amount once a second off the live clock, and each mark carries a `useId` tooltip.
-// The mark scales with its figure except on a KPI, where the figures differ in size but their marks
-// should not.
 const mark = (size: string): React.JSX.Element => (
   <InfoTip label={UNIT}>
     <img alt={UNIT} className={size} src={cantonCoin} />
   </InfoTip>
 )
+// Hoisted so the dashboard's once-a-second re-render skips each mark's tooltip subtree.
 const MARK = mark('size-[0.92em]')
 const MARK_FIXED = mark('size-[22px]')
 
-// Mono numeral + the token mark. The canonical way amounts appear; `count` is for a plain tally,
-// which owes neither the mark nor the forced 2 decimals.
 export const AmountDisplay = ({
   value,
   className,

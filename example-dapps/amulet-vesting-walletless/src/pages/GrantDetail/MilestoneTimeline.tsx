@@ -11,8 +11,6 @@ interface MilestoneTimelineProps {
   total: string
 }
 
-// Vertical list of milestone points with reached/pending state and the AMT unlocked
-// at each step (delta of cumulative fractions).
 export const MilestoneTimeline = ({
   schedule,
   total,

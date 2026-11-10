@@ -86,7 +86,6 @@ export const fetchTransferContext = async (): Promise<{
       openMiningRound: round.contract_id,
     },
     disclosed: [rulesContract, round].map(disclose),
-    // The split exercises AmuletRules directly rather than through the factory.
     rulesTemplateId: rulesContract.template_id,
   }
 }

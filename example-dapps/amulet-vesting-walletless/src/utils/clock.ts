@@ -1,8 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-// A single shared clock so every vested/claimable figure recomputes in lockstep. Swapping in a
-// ledger-time source later means changing only this module.
-
+// One shared clock, so every figure on screen recomputes on the same tick
 let nowMs = Date.now()
 const listeners = new Set<() => void>()
 
@@ -31,7 +29,6 @@ const subscribe = (listener: () => void): (() => void) => {
 
 const getSnapshot = (): number => nowMs
 
-// Live "now" in epoch ms; re-renders the caller every second.
 export const useNow = (): number => useSyncExternalStore(subscribe, getSnapshot)
 
 export const now = (): number => Date.now()

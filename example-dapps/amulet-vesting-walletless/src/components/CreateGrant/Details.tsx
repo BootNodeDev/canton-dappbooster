@@ -18,7 +18,6 @@ interface DetailsProps {
   title: string
 }
 
-// What the grant is, who gets it and how much.
 export const Details = ({
   amount,
   funding,
@@ -30,8 +29,6 @@ export const Details = ({
   resolved,
   title,
 }: DetailsProps): React.JSX.Element => {
-  // A half-typed name is not an error yet: the format is judged once the field is left, while a
-  // lookup that found nobody answers after the typing pause anyway.
   const [left, setLeft] = useState(false)
   const receiverMessage = receiverIsSelf
     ? 'Cannot grant to yourself.'

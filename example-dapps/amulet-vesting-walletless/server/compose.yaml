@@ -1,5 +1,3 @@
-# The server's Postgres, started and stopped by scripts/server.sh. 5433, because the LocalNet
-# publishes its own on 5432. A server pointed elsewhere through DATABASE_URL needs none of this.
 name: walletless
 
 services:
@@ -10,6 +8,7 @@ services:
       POSTGRES_PASSWORD: walletless
       POSTGRES_DB: walletless
     ports:
+      # 5433, because the LocalNet publishes its own Postgres on 5432.
       - "5433:5432"
     volumes:
       - walletless-pg:/var/lib/postgresql/data

@@ -16,7 +16,6 @@ import { cn } from '@/utils/cn'
 import { formatDate, formatPct, relativeTime } from '@/utils/format'
 import { nextMilestone } from '@/utils/schedule'
 
-// `busy` is the exit this grant already has in flight, so the controls never offer a second one.
 interface GrantCardProps {
   busy: BusyKind | undefined
   className?: string

@@ -1,5 +1,3 @@
-// The deployment the bootstrap left on the ledger, read back rather than carried in a file.
-
 import { ledgerEnd, readAcs } from '#server/ledger/acs'
 import type { LedgerApiParams } from '#server/ledger/wallet'
 
@@ -28,7 +26,6 @@ type ActiveContract = {
   }
 }
 
-// Sorted only so a hint resolving under two namespaces picks the same one on every load.
 const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   const { user } = (await ledgerApi({
     requestMethod: 'get',
@@ -46,6 +43,7 @@ const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   const operator = (rights ?? [])
     .map((right) => right.kind?.CanActAs?.value?.party)
     .filter((party): party is string => party?.startsWith(OPERATOR_HINT) === true)
+    // Sorted only so a hint resolving under two namespaces picks the same one on every load.
     .sort()
     .at(-1)
   if (operator === undefined) {
@@ -63,7 +61,6 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
     await ledgerEnd(ledgerApi),
     true,
   )
-  // Without the blob a funder cannot disclose the factory, so such a row is no use.
   const factory = rows
     .map((row) => row.contractEntry?.JsActiveContract)
     .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)

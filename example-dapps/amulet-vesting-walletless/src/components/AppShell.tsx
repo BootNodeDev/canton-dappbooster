@@ -13,8 +13,6 @@ import { useBackend } from '@/providers/Backend'
 
 export const AppShell = (): React.JSX.Element => {
   const { configPending, configError, ready, retryConfig, sessionPending } = useBackend()
-  // Mounted here rather than per page, because `?create=1` is route state: every page that offers
-  // the action would otherwise repeat the mount, and a reader can open it from any of them.
   const [creating, setCreating] = useCreateGrant()
 
   const noSession = !sessionPending && !configPending && !ready
@@ -54,6 +52,7 @@ export const AppShell = (): React.JSX.Element => {
             <>
               <ReadError />
               <Outlet />
+              {/* Mounted here, not per page, since any page can set `?create=1`. */}
               {creating && ready && <CreateGrant onClose={() => setCreating(false)} />}
             </>
           )}

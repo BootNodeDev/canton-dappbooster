@@ -1,12 +1,8 @@
-// Active-contract rows and update streams, turned into the domain types the API answers with.
-
 import { isAmount } from '#server/domain/amount'
 import type { ClaimRecord, Grant, PartyId, PendingGrant, VestedClaim } from '#server/domain/types'
 import { decodeSchedule } from '#server/ledger/commands'
 
-// A withdrawal consumes the contract and creates its successor, so one grant's history is its ancestry:
-// walk back from the id asked about. Matching on the fields instead merges two grants a funder made
-// identical, and the walk arrives newest-first, which is the order a caller wants to render.
+// Walks ids, not fields: two grants a funder made identical share every field.
 export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRecord[] => {
   const bySuccessor = new Map(records.map((record) => [record.grant.id, record]))
   const chain: ClaimRecord[] = []
@@ -21,8 +17,6 @@ export const claimChain = (records: ClaimRecord[], contractCid: string): ClaimRe
 }
 
 // ── Domain-mapping convention ──────────────────────────────────────────────────
-// On-ledger `note` is `"${title}\n${note}"`, decimals arrive as strings, and the curve as a
-// JSON-LF variant. Rows come from a `verbose` read, so every one carries its created event.
 
 export type AcsRow = {
   contractEntry?: {
@@ -37,8 +31,7 @@ export type AcsRow = {
   }
 }
 
-// A Daml Numeric arrives as a string and is carried through unparsed, so ledger precision survives.
-// Throws rather than let a surprise here fold into what looks like a real zero balance downstream.
+// Throws rather than fold a bad value into what reads as a real zero balance downstream.
 const amountOf = (value: unknown, field: string, contractId: string): string => {
   if (typeof value !== 'string' || !isAmount(value)) {
     throw new Error(`Contract ${contractId} field '${field}' is not a Numeric string: ${value}`)
@@ -48,11 +41,10 @@ const amountOf = (value: unknown, field: string, contractId: string): string => 
 
 const shortCid = (contractId: string): string => contractId.slice(0, 8)
 
-// Compose the on-ledger note from a UI title + optional note. Mirror of splitNote.
+// The Daml model has no title field, so the title rides on the note's first line.
 export const composeNote = (title: string, note?: string): string =>
   note === undefined || note === '' ? title : `${title}\n${note}`
 
-// Split the on-ledger note back into title + note, on the first newline only.
 export const splitNote = (
   rawNote: unknown,
   contractId: string,
@@ -70,7 +62,6 @@ export const splitNote = (
   return { title: title === '' ? `Vesting ${shortCid(contractId)}` : title, note }
 }
 
-// The fields every template carries alike; each mapper layers its own on top.
 type DecodedBase = {
   arg: Record<string, unknown>
   funder: PartyId
@@ -93,7 +84,6 @@ const decodeBase = (row: AcsRow): DecodedBase => {
     title,
     note,
     provider: String(arg.provider ?? '') as PartyId,
-    // The pending grant names the funder `proposer`; once accepted it is the contract's `creator`.
     funder: String(arg.creator ?? arg.proposer ?? '') as PartyId,
     receiver: String(arg.receiver ?? '') as PartyId,
   }
@@ -128,8 +118,6 @@ export const rowToGrant = (row: AcsRow): Grant => {
   }
 }
 
-// A ledger-effects transaction, as `/v2/updates` returns it. Only the two events a claim produces
-// are read: the exercise carries the amount, the create carries which grant it left behind.
 type UpdateEntry = {
   update?: {
     Transaction?: {
@@ -180,13 +168,11 @@ export const updatesToClaims = (updates: unknown): ClaimRecord[] =>
 
 type AmuletArg = { amount?: { initialAmount?: string }; dso?: string }
 
-// What an Amulet is worth as a transfer input, which is its face value and not a decayed one:
-// `summarizeAndConsumeInput` sums `initialAmount`, and the holding fee is charged only by
-// `Amulet_Expire`. Lenient where the mappers above throw: this feeds a balance, and one odd row
-// must not blank the field.
+// Face value: Splice sums `initialAmount` and charges the holding fee only in `Amulet_Expire`.
 export const amuletValue = (row: AcsRow): string => {
   const { amount } = (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument ??
     {}) as AmuletArg
+  // Lenient where the mappers above throw: one odd row must not blank a balance.
   return amount?.initialAmount ?? '0'
 }
 
@@ -194,8 +180,7 @@ export const amuletValue = (row: AcsRow): string => {
 export const amuletDso = (row: AcsRow): string | undefined =>
   (row.contractEntry?.JsActiveContract?.createdEvent?.createArgument as AmuletArg | undefined)?.dso
 
-// The Amulets a pending grant has already pledged: its Accept consumes exactly these, so nothing
-// else may spend them while it is outstanding.
+// Accept consumes exactly these, so nothing else may spend them while the grant is pending.
 export const pledgedAmulets = (row: AcsRow): string[] => {
   const cids = row.contractEntry?.JsActiveContract?.createdEvent?.createArgument?.amuletCids
   return Array.isArray(cids) ? cids.map(String) : []

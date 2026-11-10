@@ -3,7 +3,6 @@ import { Card } from '@/components/Card'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 
-// A failed read keeps the last good rows, which would otherwise pass for current.
 export const ReadError = (): React.JSX.Element | null => {
   const error = useVestingStore((s) => s.error)
   const loading = useVestingStore((s) => s.loading)

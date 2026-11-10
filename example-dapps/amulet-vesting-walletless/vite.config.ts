@@ -5,8 +5,7 @@ import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig(({ mode }) => {
-  // The empty prefix loads every key in `.env`; only the port is read, and nothing is defined into
-  // the bundle, which reads no variable at all.
+  // The empty prefix loads every key in `.env`; only the port is read, and none reaches the bundle.
   const { WL_SERVER_PORT } = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
   const serverPort = WL_SERVER_PORT === undefined || WL_SERVER_PORT === '' ? '3040' : WL_SERVER_PORT
 

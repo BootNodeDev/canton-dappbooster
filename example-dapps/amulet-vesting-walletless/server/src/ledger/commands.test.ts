@@ -46,7 +46,7 @@ describe('encodeSchedule', () => {
     })
   })
 
-  it('encodes a milestone curve as tagged points with _1/_2 tuple records, Decimal as string', () => {
+  it('encodes a milestone curve as tagged _1/_2 tuple points, Decimal as string', () => {
     expect(encodeSchedule(milestone)).toEqual({
       curve: {
         tag: 'MilestoneVesting',
@@ -170,8 +170,7 @@ describe('command builders', () => {
     })
   })
 
-  it('canonicalizes a trailing-dot amount before it reaches the payload', () => {
-    // A Daml Numeric literal has no trailing-dot form; the input filters upstream let '1000.' through.
+  it('canonicalizes a trailing-dot amount, a form no Daml Numeric has, before the payload', () => {
     const cmd = buildCreateVestingCommand('TID', 'fcid', {
       proposer: 'P',
       receiver: 'B',

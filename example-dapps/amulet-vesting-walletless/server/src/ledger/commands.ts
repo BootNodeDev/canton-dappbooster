@@ -1,15 +1,10 @@
-// JSON-Ledger-API v2 command builders and the one curve encode/decode pair. No I/O, so it is
-// unit-tested directly in commands.test.ts.
-
 import { canonicalAmount } from '#server/domain/amount'
 import type { VestingSchedule } from '#server/domain/types'
 import type { AppTransferContext } from '#server/ledger/transferContext'
 
 // ── Curve variant encoding ────────────────────────────────────────────────────
-// The one place the JSON-LF convention lives, mirrored by decodeSchedule: a variant is
-// `{tag, value}`, a `(Time, Decimal)` tuple `{_1, _2}`, Time an ISO-8601 string and Decimal a
-// string.
 
+// Daml-LF JSON: a variant is `{tag, value}`, a tuple `{_1, _2}`, a Decimal a string.
 type EncodedCurve =
   | { tag: 'LinearVesting'; value: { end: string; start: string } }
   | { tag: 'MilestoneVesting'; value: { points: { _1: string; _2: string }[] } }
@@ -35,9 +30,8 @@ export const encodeSchedule = (schedule: VestingSchedule): EncodedSchedule => {
   }
 }
 
-// Mirror of encodeSchedule. The payload is the ledger's own, typed by the Daml model, so it is read
-// as that shape rather than re-checked.
 export const decodeSchedule = (raw: unknown): VestingSchedule => {
+  // The ledger's own payload, typed by the Daml model, so it is cast rather than re-checked.
   const { cliff, curve } = raw as EncodedSchedule
   return curve.tag === 'MilestoneVesting'
     ? {
@@ -68,8 +62,7 @@ const exercise = (
   choiceArgument: Record<string, unknown>,
 ) => ({ ExerciseCommand: { templateId, contractId, choice, choiceArgument } })
 
-// The only choice taking no transfer context: it moves no Amulet, it only records which of the
-// funder's holdings the eventual Accept will lock.
+// No transfer context: this choice moves no Amulet, it only names the holdings Accept will lock.
 export const buildCreateVestingCommand = (
   templateId: string,
   factoryCid: string,
@@ -84,11 +77,7 @@ export const buildCreateVestingCommand = (
     note: args.note ?? null,
   })
 
-// The funder self-transfers `amount` out of its own holdings, so the grant can name an Amulet
-// nothing else has pledged. sender, provider and receiver are all the funder, which is what makes
-// the funder the only controller and keeps this a one-signature submission. Splice values an input
-// at its full `initialAmount` — the holding fee is charged only by `Amulet_Expire` — so an exact
-// split leaves the eventual Accept exactly covered, with no headroom to guess at.
+// sender, provider and receiver are all the owner, so the owner alone signs the split.
 export const buildSplitCommand = (
   templateId: string,
   amuletRulesCid: string,
@@ -116,15 +105,14 @@ export const buildSplitCommand = (
       ],
       beneficiaries: null,
     },
-    // Both maps are empty because the only input kind here is an Amulet; rewards and validator
-    // rights are what the other kinds need. `expectedDso` is not optional in practice:
-    // `checkExpectedDso` aborts when it is absent.
+    // Empty maps: only reward and validator-right inputs need them, and every input is an Amulet.
     context: {
       openMiningRound: args.openMiningRound,
       issuingMiningRounds: [],
       validatorRights: [],
       featuredAppRight: null,
     },
+    // Not optional in practice: `checkExpectedDso` aborts when it is absent.
     expectedDso: args.dso,
   })
 

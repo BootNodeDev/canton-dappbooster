@@ -19,8 +19,6 @@ const created = {
   templateId: 'abc123:AmuletVesting:AmuletVestingFactory',
 }
 
-// The four reads loadBackendConfig makes, keyed by resource so a test overrides only what it is
-// about. `acs` doubles as the record of which party the last filter named.
 const ledger = (
   overrides: { rights?: unknown[]; acs?: unknown[]; user?: unknown } = {},
 ): { ledgerApi: LedgerApi; filteredParty: () => string | undefined } => {
@@ -86,7 +84,6 @@ describe('loadBackendConfig', () => {
     )
   })
 
-  // A factory with no blob cannot be disclosed, so it is as good as absent.
   it('rejects a factory row that came back without its disclosure blob', async () => {
     const { ledgerApi } = ledger({ acs: [factoryRow({ contractId: '00cid' })] })
     await expect(loadBackendConfig(ledgerApi)).rejects.toThrow(/no factory disclosable/)

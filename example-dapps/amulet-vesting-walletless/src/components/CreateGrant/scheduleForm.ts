@@ -52,8 +52,6 @@ export const newMilestone = (base: Date): MilestoneInput => ({
   pct: '100',
 })
 
-// The demo select's value: 'none' restores the real-time default, a duration in ms compresses the
-// schedule into that window from the anchor.
 export const applyDemoPreset = (
   current: ScheduleForm,
   value: string,
@@ -81,9 +79,7 @@ export const applyDemoPreset = (
   }
 }
 
-// A demo window has to start when the grant is created, not when the preset was picked, so the whole
-// schedule moves by however long the form stayed open. Shifting rather than rebuilding is what keeps
-// a date edited by hand after the pick.
+// Moves a demo window to submit time; shifted, not rebuilt, so a date edited by hand survives.
 export const shiftSchedule = (schedule: VestingSchedule, byMs: number): VestingSchedule => {
   const at = (iso: string): string => new Date(toMs(iso) + byMs).toISOString()
   const curve = schedule.curve

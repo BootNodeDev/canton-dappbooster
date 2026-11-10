@@ -1,16 +1,8 @@
-// Display formatting: amount grouping and relative dates. Identifier truncation lives in
-// the kit (`truncateIdentifier`, `partyHint`) so every dApp shortens party ids the same way.
-
 import { formatAmount, formatFigure, parseAmount } from '@bootnodedev/canton-dappbooster'
 import { roundAmount } from '@/utils/amount'
 
 const NOT_AVAILABLE = 'N/A'
 
-// `Intl.NumberFormat.format` is typed for `number | bigint`, not the decimal strings amounts are
-// here — the kit's `formatAmount` groups the integer part via `BigInt` and carries the fraction as
-// text instead, which is exact where a float would round-trip through IEEE 754 first.
-
-// Full ledger precision, grouped, no trailing zeros.
 export const formatFigureFull = (amount: string): string =>
   parseAmount(amount) === undefined ? NOT_AVAILABLE : formatAmount(roundAmount(amount, 10))
 
@@ -23,10 +15,8 @@ const UNITS = [
   { min: COMPACT_FROM, divisor: 1e3, suffix: 'K' },
 ]
 
-// Headline figures, where ten digits are unreadable at a glance. Exact below 10,000, so an ordinary
-// grant keeps every digit and only the outsized ones are abbreviated. A float is safe here because
-// the result is deliberately approximate; anything submitted or compared uses the decimal string.
 export const formatFigureCompact = (amount: string): string => {
+  // A float is safe here: the result is approximate by design, never submitted or compared
   const value = Number(amount)
   const unit = UNITS.find(({ min }) => Math.abs(value) >= min)
   if (unit === undefined) {
@@ -48,7 +38,6 @@ export const formatDate = (iso: string): string => dateFormatter.format(new Date
 
 const DAY = 86_400_000
 
-// Human relative distance, e.g. "in 84 days", "in 14 months", "3 days ago".
 export const relativeTime = (iso: string, nowMs: number): string => {
   const target = new Date(iso).getTime()
   const diff = target - nowMs
@@ -70,6 +59,4 @@ export const relativeTime = (iso: string, nowMs: number): string => {
   return diff >= 0 ? `in ${value}` : `${value} ago`
 }
 
-// Whether formatFigureCompact dropped digits, which is the only case where showing the exact figure
-// somewhere else earns its keep.
 export const isCompacted = (amount: string): boolean => Math.abs(Number(amount)) >= COMPACT_FROM

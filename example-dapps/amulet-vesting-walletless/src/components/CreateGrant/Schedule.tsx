@@ -32,13 +32,11 @@ interface ScheduleProps {
   value: ScheduleForm
 }
 
-// When the grant vests: the curve, its dates, and the demo presets that compress them into minutes.
 export const Schedule = ({ onChange, value }: ScheduleProps): React.JSX.Element => {
   const edit = (patch: Partial<ScheduleForm>): void => onChange({ ...value, ...patch })
   const { curveKind, cliff, start, end, milestones, demo } = value
 
-  // A curve switch rebuilds the picked preset for the new shape rather than dropping it, so the
-  // dates below stay compressed and the dropdown keeps saying what they are.
+  // Rebuild the picked preset for the new curve rather than drop it, so the dates stay compressed.
   const setCurve = (kind: CurveKind): void => {
     const next = { ...value, curveKind: kind }
     onChange(demo === null ? next : applyDemoPreset(next, String(demo.durationMs), now()))

@@ -37,17 +37,14 @@ describe('multiplyByFraction', () => {
     expect(multiplyByFraction('8421337.1234567891', 1)).toBe('8421337.1234567891')
   })
 
-  it('never overstates the true product for a fraction strictly between 0 and 1', () => {
+  it('never overstates the exact rational product for a fraction between 0 and 1', () => {
     const total = '8421337.1234567891'
     const totalScaled = parseAmount(total, 10) ?? 0n
-    // 0.5 + 5e-11 as an exact rational (50000000005 / 1e11), not derived from the float addition
-    // below, so the ground truth here owes nothing to the float rounding under test.
     const fractionNumerator = 50000000005n
     const fraction = 0.5 + 5e-11
 
     const result = multiplyByFraction(total, fraction)
 
-    // Compare at a common scale (1e10 * 1e11 = 1e21) so neither side rounds before the comparison.
     const resultAtCommonScale = (parseAmount(result, 10) ?? 0n) * 100000000000n
     const trueProductAtCommonScale = totalScaled * fractionNumerator
     expect(resultAtCommonScale <= trueProductAtCommonScale).toBe(true)

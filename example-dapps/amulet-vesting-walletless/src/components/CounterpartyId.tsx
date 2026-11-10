@@ -5,8 +5,6 @@ interface CounterpartyIdProps {
   party: string
 }
 
-// The other party on a grant or pending grant: a from/to prefix and the id, copyable. Renders inline, so
-// it needs a block parent to carry the type styles.
 export const CounterpartyId = ({ party, incoming }: CounterpartyIdProps): React.JSX.Element => {
   return (
     <>

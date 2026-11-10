@@ -22,8 +22,7 @@ const hslToHex = (h: number, s: number, l: number): string => {
   return `#${channel(r)}${channel(g)}${channel(b)}`
 }
 
-// boring-avatars picks one colour per hash, so its five defaults collide on sight; a golden-angle
-// hue spread gives 256 that stay separable, while shape and rotation still use the whole id.
+// boring-avatars picks one colour per hash: its 5 defaults collide, 256 golden-angle hues do not.
 const AVATAR_COLORS = Array.from({ length: 256 }, (_value, i) =>
   hslToHex((i * 137.508) % 360, 0.62 + (i % 3) * 0.08, 0.52 + (i % 2) * 0.08),
 )
@@ -37,8 +36,7 @@ export const PartyAvatar = ({
 }): React.JSX.Element => (
   <span
     aria-hidden="true"
-    // Grid, not inline: an inline SVG sits on the baseline and leaves descender space under it,
-    // which reads as extra padding below the avatar.
+    // Grid, not inline: an inline SVG leaves descender space under the baseline.
     className="grid shrink-0 overflow-hidden rounded-full ring-1 ring-black/10"
     style={{ height: size, width: size }}
   >

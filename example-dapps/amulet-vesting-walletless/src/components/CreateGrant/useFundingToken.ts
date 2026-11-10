@@ -9,8 +9,6 @@ export interface FundingToken {
   token: TokenMeta
 }
 
-// The row the amount field shows and the balance it is bounded by: a grant always vests Amulet, so
-// the figure is the funder's free Amulet, read when the form opens.
 export const useFundingToken = (): FundingToken => {
   const [balance, setBalance] = useState<string>()
   const [failed, setFailed] = useState(false)

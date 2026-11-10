@@ -1,7 +1,3 @@
-// Ledger API bearer tokens. LocalNet trusts HS256 tokens signed with a shared secret (the same scheme
-// `scripts/mint-token.mjs` uses), so they are minted here; a hosted validator trusts only its IdP's,
-// so those are fetched by client-credentials grant and kept until shortly before they expire.
-
 import { createHmac } from 'node:crypto'
 import {
   ADMIN_TOKEN,
@@ -12,9 +8,7 @@ import {
   type OAuthConfig,
 } from '#server/env'
 
-// Short-lived, since one is minted per request anyway.
 const LIFETIME_S = 300
-// A fetched token is replaced this long before it expires, so none is sent on its last second.
 const REFRESH_SKEW_MS = 60_000
 
 const b64url = (input: string | Buffer): string => Buffer.from(input).toString('base64url')
@@ -80,7 +74,6 @@ export const oauthToken = (
 
   return async () => {
     if (cached !== undefined && now() < cached.refreshAt) return cached.token
-    // A burst arriving on an expired token makes one request, not one per caller.
     inFlight ??= request().finally(() => {
       inFlight = undefined
     })
@@ -88,8 +81,6 @@ export const oauthToken = (
   }
 }
 
-// A token pasted into `.env` wins on LocalNet, so a participant whose admin is not
-// `ledger-api-user` still works.
 export const adminToken: () => string | Promise<string> = OAUTH
   ? oauthToken(OAUTH)
   : () => ADMIN_TOKEN ?? mintToken(ADMIN_USER)

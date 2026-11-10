@@ -1,6 +1,3 @@
-// The two reads every ledger lookup here starts from: where the ledger is now, and which contracts
-// of one template a party sees at that point.
-
 import type { WalletFns } from '#server/ledger/wallet'
 
 type LedgerApi = WalletFns['ledgerApi']

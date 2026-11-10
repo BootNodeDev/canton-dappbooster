@@ -9,8 +9,6 @@ const messageOf = (error: unknown): string => {
   return error instanceof Error ? error.message : 'The page could not be rendered.'
 }
 
-// The router's errorElement: anything a render throws lands here instead of react-router's default.
-// Recovery is a full load, not a Link, because the router's own state is what just failed.
 export const ErrorScreen = (): React.JSX.Element => {
   const error = useRouteError()
 
@@ -20,6 +18,7 @@ export const ErrorScreen = (): React.JSX.Element => {
         level={1}
         title="Something broke"
         description={messageOf(error)}
+        // A full load, not a Link, because the router's own state is what just failed.
         action={
           <Button size="sm" onClick={() => window.location.assign('/')}>
             Back to grants

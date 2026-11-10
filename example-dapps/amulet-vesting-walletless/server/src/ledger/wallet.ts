@@ -1,9 +1,4 @@
-// The two ledger calls the backend needs, injected as plain functions so LedgerBackend stays
-// constructible without a network. A wallet dApp takes them off a wallet session; here
-// `client.ts` makes them straight against the JSON Ledger API, as the signed-in user.
-
-// A JSON Ledger API v2 request, in the shape the CIP-0103 `ledgerApi` call takes: `path` fills the
-// `{name}` placeholders in `resource`, `query` becomes the search string.
+// The shape of the CIP-0103 `ledgerApi` call.
 export type LedgerApiParams = {
   body?: unknown
   path?: Record<string, string>
@@ -12,7 +7,6 @@ export type LedgerApiParams = {
   resource: string
 }
 
-// JSON Ledger API v2 command — always an ExerciseCommand in this dApp.
 export type LedgerCommand = {
   ExerciseCommand: {
     choice: string
@@ -22,7 +16,6 @@ export type LedgerCommand = {
   }
 }
 
-// Explicitly-disclosed contract (JSON Ledger API v2 disclosedContracts entry).
 export type DisclosedContract = {
   contractId: string
   createdEventBlob: string

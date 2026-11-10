@@ -1,7 +1,6 @@
 import { type SVGProps, useId } from 'react'
 
-// The mark is the product's own mechanic rather than a tile: a flat cliff, then risers, climbing
-// from the accent into the pink so the gradient runs along the unlock instead of decorating a box.
+// A cliff then risers rather than a tile, so the gradient runs along the unlock.
 export const LogoMark = (props: SVGProps<SVGSVGElement>): React.JSX.Element => {
   // Two marks on one page would otherwise share a gradient id.
   const gradient = useId()

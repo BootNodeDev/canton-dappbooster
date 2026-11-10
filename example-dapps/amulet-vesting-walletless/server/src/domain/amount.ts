@@ -1,12 +1,8 @@
-// Amounts are decimal strings, because a double cannot round-trip 10 dp past six integer digits.
-// Every operation scales to integers, works there, and formats back. The subset of the frontend's
-// `utils/amount.ts` the ledger layer needs, with the kit's parse/format pair inlined so the server
-// does not pull in a React package for two functions.
-
 // Fixed by this app's Daml domain (`Numeric 10`).
 const PRECISION = 10
 const DECIMAL = /^\d*(\.\d*)?$/
 
+// The kit's parse and format, inlined so the server pulls in no React package for two functions.
 const parseAmount = (value: string): bigint | undefined => {
   if (value === '' || !DECIMAL.test(value)) return undefined
   const dot = value.indexOf('.')
@@ -22,14 +18,12 @@ const formatScaled = (scaled: bigint): string => {
   return frac === '' ? digits.slice(0, cut) : `${digits.slice(0, cut)}.${frac}`
 }
 
-// Reads an unparseable value as zero; `canonicalAmount` is the path that must not fold, and throws.
 const scaled = (value: string): bigint => parseAmount(value) ?? 0n
 
 export const addAmounts = (...values: string[]): string =>
   formatScaled(values.reduce((total, value) => total + scaled(value), 0n))
 
-// Canonical form for a value on its way to the ledger; throws rather than silently zeroing. A Daml
-// `Numeric` literal has no trailing-dot form, so `'1000.'` goes out as `'1000'`.
+// A Daml `Numeric` literal has no trailing-dot form, so `'1000.'` goes out as `'1000'`.
 export const canonicalAmount = (value: string): string => {
   const parsed = parseAmount(value)
   if (parsed === undefined) {
@@ -44,5 +38,4 @@ export const compareAmounts = (a: string, b: string): number => {
   return left < right ? -1 : left > right ? 1 : 0
 }
 
-// The ingress guard: reject a value where it arrives, so the caller can name what was wrong with it.
 export const isAmount = (value: string): boolean => parseAmount(value) !== undefined

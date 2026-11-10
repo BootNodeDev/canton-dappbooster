@@ -44,7 +44,7 @@ describe('splitNote / composeNote', () => {
 })
 
 describe('rowToPendingGrant', () => {
-  it('maps proposer→proposer, receiver→receiver, decodes the schedule, splits the note', () => {
+  it('maps proposer, receiver, schedule and note, keeping Numeric padding verbatim', () => {
     const pendingGrant = rowToPendingGrant(
       row('p1', {
         provider: 'OP',
@@ -61,7 +61,6 @@ describe('rowToPendingGrant', () => {
       provider: 'OP',
       proposer: 'funder',
       receiver: 'receiver',
-      // Passed through unparsed: a Daml Numeric arrives as a string, verbatim ledger padding included.
       totalAmount: '1000.0000000000',
       schedule: {
         cliff: '2026-01-01T00:00:00Z',
@@ -102,7 +101,7 @@ describe('rowToGrant', () => {
           creator: 'funder',
           receiver: 'receiver',
           totalAmount: '1000',
-          alreadyWithdrawn: 250, // wrong shape: a Daml Numeric always arrives as a string
+          alreadyWithdrawn: 250,
           schedule: linearEncoded,
         }),
       ),
@@ -116,7 +115,7 @@ describe('rowToGrant', () => {
           provider: 'OP',
           creator: 'funder',
           receiver: 'receiver',
-          totalAmount: '1e3', // right shape, unparseable value
+          totalAmount: '1e3',
           alreadyWithdrawn: '250',
           schedule: linearEncoded,
         }),

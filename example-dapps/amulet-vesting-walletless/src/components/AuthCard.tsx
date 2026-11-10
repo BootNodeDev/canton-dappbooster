@@ -18,8 +18,6 @@ const tabClass = (active: boolean): string =>
     active ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
   )
 
-// Signing up is what gets a user a party: the server allocates one on its participant, and every
-// grant, claim and tap afterwards acts as it without a wallet in sight.
 export const AuthCard = (): React.JSX.Element => {
   const { login, signup } = useSession()
   const [mode, setMode] = useState<Mode>('login')

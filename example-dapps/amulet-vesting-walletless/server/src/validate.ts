@@ -1,6 +1,3 @@
-// Request bodies arrive as unknown JSON. Each reader here either returns the typed value or throws a
-// BadRequest naming the field, which the app turns into a 400 the UI can show as it stands.
-
 import { isAmount } from '#server/domain/amount'
 
 export class BadRequest extends Error {}

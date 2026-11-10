@@ -1,6 +1,3 @@
-// The JSON Ledger API, spoken directly. A wallet dApp reaches the ledger through a wallet session;
-// here the server holds the token, so a signed-in user never needs a wallet.
-
 import { randomUUID } from 'node:crypto'
 import { JSON_API_URL } from '#server/env'
 import type { ExecuteParams, LedgerApiParams, WalletFns } from '#server/ledger/wallet'
@@ -8,15 +5,12 @@ import type { ExecuteParams, LedgerApiParams, WalletFns } from '#server/ledger/w
 type ClientOptions = {
   baseUrl?: string
   fetch?: typeof fetch
-  // Asked per request, so a short-lived token is never held past its expiry.
   token: () => string | Promise<string>
-  // Who a submission is recorded against; the participant requires it to match the token's user.
   userId?: string
 }
 
 const TIMEOUT_MS = 30_000
 
-// The JSON API's error body names the failure in `cause`; anything else is shown raw, trimmed.
 const failure = (params: LedgerApiParams, status: number, text: string): Error => {
   let reason = text.slice(0, 400)
   try {
@@ -83,6 +77,7 @@ export const ledgerClient = ({
     return ledgerApi({
       requestMethod: 'post',
       resource: '/v2/commands/submit-and-wait',
+      // The participant requires `userId` to match the token's user.
       body: { ...params, commandId: randomUUID(), userId },
     })
   }

@@ -19,8 +19,6 @@ interface CancelGrantProps {
   successMessage: string
 }
 
-// Cancel-grant confirmation shared by the dashboard and grant-detail pages. Like Claim, it
-// owns the submit, toast, error and submitting lifecycle so the pages do not.
 export const CancelGrant = ({
   onClose,
   grant,
@@ -31,8 +29,6 @@ export const CancelGrant = ({
 }: CancelGrantProps): React.JSX.Element => {
   const [submitting, setSubmitting] = useState(false)
   const derived = deriveGrant(grant, nowMs)
-  // Recomputed each tick with `nowMs`, so a residual growing past the floor re-enables the button
-  // on its own rather than sending a submission the contract will assert on.
   const floorOk = residualMeetsFloor(derived.claimable)
   // Dismissible while the request is out, so closing after it would close whatever replaced it.
   const onScreen = useOnScreen()

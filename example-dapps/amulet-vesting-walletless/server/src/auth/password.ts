@@ -1,6 +1,3 @@
-// Password hashes as `scrypt$N$r$p$salt$hash`, so a later change of cost still verifies the hashes
-// written under the old one.
-
 import { randomBytes, type ScryptOptions, scrypt, timingSafeEqual } from 'node:crypto'
 
 const COST = { N: 16384, r: 8, p: 1 }

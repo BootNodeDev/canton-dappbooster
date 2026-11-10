@@ -1,9 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import type { Role } from '@/store/types'
 
-// In the URL, not page state: it is who the reader is rather than a per-page filter, so it has to
-// survive a walk into a grant and back, and a link can land on the lens that shows what was just
-// created.
+// In the URL, not page state, so the lens survives a walk into a grant and back
 export const useRoleLens = (): [Role, (role: Role) => void] => {
   const [params, setParams] = useSearchParams()
 

@@ -2,8 +2,7 @@ import { ScheduleCurve } from '@/components/ScheduleCurve'
 import type { VestingSchedule } from '@/store/types'
 import { useNow } from '@/utils/clock'
 
-// Isolates the clock to the preview marker so typing in the form does not reconcile the whole page
-// each tick.
+// A component of its own so each clock tick re-renders the curve, not the whole form.
 export const LiveScheduleCurve = ({
   schedule,
 }: {

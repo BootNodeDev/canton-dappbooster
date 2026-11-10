@@ -1,10 +1,3 @@
-// What a signup creates on the ledger: a party hosted on this participant, so the participant signs
-// for it and the user never holds a key, and a CanActAs right on it for the one participant user the
-// server acts through. A hosted validator's IdP issues tokens for its own clients only, so a user per
-// signup is not an option there; the ledger therefore lets that user act as every signup's party, and
-// keeping each request to its session's party is the server's job (`app.ts`). The participant caps a
-// user at 1000 rights, so at 1000 signups.
-
 import type { WalletFns } from '#server/ledger/wallet'
 
 export const USERNAME = /^[a-z0-9][a-z0-9-]{2,31}$/

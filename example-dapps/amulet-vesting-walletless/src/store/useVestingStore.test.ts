@@ -4,8 +4,6 @@ import type { Grant } from '@/store/types'
 import { deriveGrant, grantBacking, grantLineage, useVestingStore } from '@/store/useVestingStore'
 import { toNumber } from '@/utils/amount'
 
-// The store calls the API module directly, so the tests stand in for it: each one sets `view` (and
-// `withdraw`) to what that test needs.
 const api = vi.hoisted(() => ({
   view: async (): Promise<VestingView> => ({ grants: [], pendingGrants: [], claims: [] }),
   withdraw: async (): Promise<void> => {},
@@ -14,7 +12,6 @@ vi.mock('@/backend/vesting', () => ({ vesting: api }))
 
 const ms = (iso: string): number => new Date(iso).getTime()
 
-// Linear grant: cliff after start, so it is locked until 2025-06-01.
 const grant = (alreadyWithdrawn = '0', totalAmount = '1000'): Grant => ({
   id: 'g1',
   title: 'Test grant',
@@ -61,7 +58,6 @@ describe('deriveGrant', () => {
   })
 
   it('subtracts already-withdrawn from claimable while vesting', () => {
-    // 2025-07-01 is 181/365 of the way through → 495.89 vested.
     const d = deriveGrant(grant('100'), ms('2025-07-01T00:00:00Z'))
     expect(toNumber(d.vested)).toBeCloseTo((1000 * 181) / 365, 2)
     expect(d.claimed).toBe('100')
@@ -89,8 +85,7 @@ describe('deriveGrant', () => {
     expect(d.unvested).toBe('0')
   })
 
-  it('derives vested exactly equal to the total at full precision when fully vested', () => {
-    // The regression the whole migration exists to prevent: a double cannot round-trip this value.
+  it('vests exactly a total a double cannot round-trip once fully vested', () => {
     const fullyVested = grant('0', '8421337.1234567891')
     const d = deriveGrant(fullyVested, ms('2026-02-01T00:00:00Z'))
     expect(d.vested).toBe('8421337.1234567891')
@@ -98,10 +93,8 @@ describe('deriveGrant', () => {
   })
 })
 
-// The escrow still holds the unvested part, so the re-lock floor has a bigger remainder to measure
-// against than the claimable slice the ceiling uses.
 describe('grantBacking', () => {
-  it('reports the whole escrow, not the vested slice', () => {
+  it('reports the whole escrow, unvested part included, above the claimable slice', () => {
     const partial = grant('100')
     expect(grantBacking(partial)).toBe('900')
     expect(toNumber(grantBacking(partial))).toBeGreaterThan(
@@ -121,14 +114,14 @@ const deferred = <T>(): { promise: Promise<T>; resolve: (value: T) => void } => 
 describe('useVestingStore.refresh', () => {
   const someGrant = (id: string): Grant => ({ ...grant(), id })
 
-  it('drops a stale in-flight read so the newest refresh wins', async () => {
+  it('drops an older refresh that resolves after a newer one', async () => {
     const slow = deferred<VestingView>()
     const fast = deferred<VestingView>()
     const { refresh } = useVestingStore.getState()
     api.view = () => slow.promise
-    const pA = refresh() // older epoch, resolves last
+    const pA = refresh()
     api.view = () => fast.promise
-    const pB = refresh() // newer epoch, resolves first
+    const pB = refresh()
 
     fast.resolve({ grants: [someGrant('B')], pendingGrants: [], claims: [] })
     await pB
@@ -182,7 +175,6 @@ describe('grantLineage', () => {
 })
 
 describe('useVestingStore.withdraw', () => {
-  // The successor of the claimed grant: a new contract id, `claimed` raised, nothing else moved.
   const claimedInto = (successorId: string): void => {
     api.view = async () => ({
       grants: [{ ...grant('250'), id: successorId }],

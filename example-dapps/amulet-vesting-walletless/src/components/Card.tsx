@@ -1,7 +1,6 @@
 import type { HTMLAttributes } from 'react'
 import { cn } from '@/utils/cn'
 
-// Surface card with the standard border + soft elevation.
 export const Card = ({ className, ...rest }: HTMLAttributes<HTMLDivElement>): React.JSX.Element => (
   <div
     className={cn(
