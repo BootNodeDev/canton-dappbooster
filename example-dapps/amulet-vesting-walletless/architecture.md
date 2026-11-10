@@ -35,7 +35,7 @@ and `SameSite=Lax`, valid for seven days. Postgres keeps the id and its user, an
 purges the expired ones, so nothing runs on a timer. The password never leaves the server, and the
 browser never sees a ledger token.
 
-`SessionProvider` asks `GET /api/session` once on load, so a reload keeps the session. Any later
+`Session` asks `GET /api/session` once on load, so a reload keeps the session. Any later
 call that comes back 401 tells it the session is gone, through `onSessionExpired` in
 `backend/api.ts`, and every page falls back to the sign-in card. `Backend` only asks
 `GET /api/status` once someone is signed in, and asks again every five seconds while the deployment

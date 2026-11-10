@@ -10,7 +10,7 @@ import {
 import { ApiError, api, onSessionExpired } from '@/backend/api'
 import type { PartyId } from '@/store/types'
 
-export interface Session {
+export interface Account {
   partyId: PartyId
   username: string
 }
@@ -19,19 +19,19 @@ export interface SessionState {
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   pending: boolean
-  session: Session | undefined
+  session: Account | undefined
   signup: (username: string, password: string) => Promise<void>
 }
 
 const SessionContext = createContext<SessionState | undefined>(undefined)
 
-export const SessionProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
-  const [session, setSession] = useState<Session | undefined>(undefined)
+export const Session = ({ children }: { children: ReactNode }): React.JSX.Element => {
+  const [session, setSession] = useState<Account | undefined>(undefined)
   const [pending, setPending] = useState(true)
 
   useEffect(() => {
     let live = true
-    api<Session>('/session')
+    api<Account>('/session')
       .then(
         (found) => {
           if (live) setSession(found)
@@ -50,11 +50,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }): React.JS
   useEffect(() => onSessionExpired(() => setSession(undefined)), [])
 
   const login = useCallback(async (username: string, password: string) => {
-    setSession(await api<Session>('/auth/login', { method: 'POST', body: { username, password } }))
+    setSession(await api<Account>('/auth/login', { method: 'POST', body: { username, password } }))
   }, [])
 
   const signup = useCallback(async (username: string, password: string) => {
-    setSession(await api<Session>('/auth/signup', { method: 'POST', body: { username, password } }))
+    setSession(await api<Account>('/auth/signup', { method: 'POST', body: { username, password } }))
   }, [])
 
   const logout = useCallback(async () => {
@@ -78,7 +78,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }): React.JS
 export const useSession = (): SessionState => {
   const state = useContext(SessionContext)
   if (state === undefined) {
-    throw new Error('useSession must be used within a SessionProvider')
+    throw new Error('useSession must be used within a Session')
   }
   return state
 }

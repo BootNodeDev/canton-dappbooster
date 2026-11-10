@@ -6,7 +6,7 @@ import { TAP_AMOUNT, vesting } from '@/backend/vesting'
 import { CopyButton } from '@/components/CopyButton'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { useBackend } from '@/providers/Backend'
-import { type Session, useSession } from '@/providers/Session'
+import { type Account, useSession } from '@/providers/Session'
 import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
 import { popoverClass } from '@/utils/popover'
@@ -24,7 +24,7 @@ const triggerClass =
 const ruleClass = '-mx-4 border-border'
 
 interface AccountMenuProps {
-  session: Session
+  session: Account
 }
 
 export const AccountMenu = ({ session }: AccountMenuProps): React.JSX.Element => {
