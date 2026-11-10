@@ -1,6 +1,6 @@
 import { Menu } from '@ark-ui/react/menu'
 import { Portal } from '@ark-ui/react/portal'
-import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
+import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { ChevronDown, Droplet, LogOut } from 'lucide-react'
 import type { Account } from '#server/domain/types'
 import { TAP_AMOUNT, vesting } from '@/backend/vesting'
@@ -13,11 +13,6 @@ import { errorText } from '@/utils/errorText'
 import { popoverClass } from '@/utils/popover'
 import { toast } from '@/utils/toast'
 import { AMT } from '@/utils/tokens'
-
-const FINGERPRINT_TRUNCATE = { head: 10, tail: 10 }
-
-const fingerprintOf = (partyId: string): string =>
-  partyId.includes('::') ? partyId.slice(partyId.indexOf('::') + 2) : partyId
 
 const triggerClass =
   'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
@@ -57,9 +52,8 @@ export const AccountMenu = ({ session }: AccountMenuProps): React.JSX.Element =>
                   {session.username}
                 </Menu.ItemGroupLabel>
                 <p className="flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
-                  <code className="truncate font-mono">
-                    {truncateIdentifier(fingerprintOf(session.partyId), FINGERPRINT_TRUNCATE)}
-                  </code>
+                  {/* Not the fingerprint, which every account shares with the participant */}
+                  <code className="truncate font-mono">{partyHint(session.partyId)}</code>
                   <Menu.Item asChild closeOnSelect={false} value="copy-party-id">
                     <CopyButton
                       className="shrink-0"
