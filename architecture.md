@@ -117,11 +117,12 @@ that secret and nothing else.
 
 ## Orchestration
 
-`build-dar`, `deploy-dar`, `bootstrap` and `app:dev` act on `example-dapps/amulet-vesting` only,
-and `deploy-dar` uploads the DAR it is given but reads that app's `.env`. `mint-token` defaults to
-that app too, and keeps an absolute `CANTON_APP_DIR` the caller sets. The token example has no
-`build-dar` or `deploy-dar`: its DARs are vendored and its `bootstrap` uploads them. Its own scripts
-run through `pnpm -C example-dapps/token-vesting run <script>`.
+`mint-token`, `build-dar`, `deploy-dar`, `bootstrap` and `app:dev` act on the example an absolute
+`CANTON_APP_DIR` names, and on `example-dapps/amulet-vesting` when it names none. `deploy-dar`
+uploads the DAR it is given but reads that example's `.env`. Each `dev:<example>` script sets
+`CANTON_APP_DIR`, so the `build-dar` and `deploy-dar` that `dev-stack.sh` runs build and upload that
+example's own contract. The token example has no `build-dar` or `deploy-dar`: its DARs are vendored
+and its `bootstrap` uploads them.
 
 | Command | What it does |
 | --- | --- |
