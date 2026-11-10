@@ -45,11 +45,14 @@ together, see [`architecture.md`](architecture.md).
 ## Examples
 
 An example is a complete app published on its own as `@bootnodedev/canton-example-<name>`, and the
-installer never ships one inside its tarball. Adding one takes:
+installer never ships one inside its tarball. On the installer's side, adding one takes:
 
-- the app in `example-dapps/<name>/`, with a `files` list naming what it publishes and
-  `publishConfig.access: "public"`
 - its name, label and hint in `EXAMPLES` in `src/apps.ts`
+- its line in the README's example list, its `--example` commands and its row in the dApps table
+- `demo.svg` recorded again, since the menu it shows lists the examples
+
+The whole checklist, the app's own folder included, is in
+[`../example-dapps/CLAUDE.md`](../example-dapps/CLAUDE.md#adding-an-example).
 
 `pnpm-workspace.yaml` already lists `example-dapps/*`. So the root `release` script publishes every
 folder there, and the version bump and `check:versions` cover it too.

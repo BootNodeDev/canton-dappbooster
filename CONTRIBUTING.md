@@ -61,10 +61,27 @@ The dApp runs on http://localhost:3012, its token registry on http://localhost:3
 Gateway on http://localhost:3030. The examples share the LocalNet, so stop one before you start
 another.
 
-`pnpm dev:amulet-vesting` and `pnpm dev:token-vesting` run the installer's local network scripts
-against the example's own folder, which is why `example-dapps/amulet-vesting` has no `build-dar` or
-`deploy-dar` script of its own. A project the installer makes gets the published example instead,
-fetched with `npm pack`.
+### Wallet-less Amulet Vesting dApp
+
+```bash
+pnpm dev:amulet-vesting-walletless        # interactive menu
+pnpm dev:amulet-vesting-walletless up     # LocalNet, contract, Postgres, server, Wallet Gateway and dApp
+pnpm dev:amulet-vesting-walletless down   # stop everything and keep the ledger and the accounts
+```
+
+The dApp runs on http://localhost:3012, its server on http://localhost:3040 and the server's
+Postgres in Docker on `localhost:5433`. Create an account in the dApp; the Wallet Gateway the stack
+starts goes unused.
+
+Accounts name parties on the ledger, so a LocalNet reset orphans them. Wipe them with it:
+
+```bash
+docker compose -f example-dapps/amulet-vesting-walletless/server/compose.yaml down -v
+```
+
+Every `pnpm dev:<example>` runs the installer's local network scripts against that example's own
+folder, which is why no example has a `build-dar` or `deploy-dar` script of its own. A project the
+installer makes gets the published example instead, fetched with `npm pack`.
 
 ### Installer
 
@@ -78,8 +95,8 @@ pnpm -C canton-create try:clean   # stop the stack, reset the LocalNet and remov
 ## Where to read next
 
 - [`architecture.md`](architecture.md) maps the stack: data flow, services and ports, auth, orchestration and packaging;
-- each package's `README.md` says what it is and how to use it, and its `architecture.md` how it works: [`canton-connect`](canton-connect/architecture.md), [`canton-dappbooster`](canton-dappbooster/architecture.md), [`canton-create`](canton-create/architecture.md), [`amulet-vesting`](example-dapps/amulet-vesting/architecture.md) and [`token-vesting`](example-dapps/token-vesting/architecture.md). `canton-theme` has none: the split between components and theme is in canton-dappbooster's;
-- the `CLAUDE.md` files hold the rules for writing code here. They are addressed to agents and bind humans too: [`CLAUDE.md`](CLAUDE.md) for the repo, and one in each package for its deltas.
+- each package's `README.md` says what it is and how to use it, and its `architecture.md` how it works: [`canton-connect`](canton-connect/architecture.md), [`canton-dappbooster`](canton-dappbooster/architecture.md), [`canton-create`](canton-create/architecture.md), [`amulet-vesting`](example-dapps/amulet-vesting/architecture.md), [`amulet-vesting-walletless`](example-dapps/amulet-vesting-walletless/architecture.md) and [`token-vesting`](example-dapps/token-vesting/architecture.md). `canton-theme` has none: the split between components and theme is in canton-dappbooster's;
+- the `CLAUDE.md` files hold the rules for writing code here. They are addressed to agents and bind humans too: [`CLAUDE.md`](CLAUDE.md) for the repo, [`example-dapps/CLAUDE.md`](example-dapps/CLAUDE.md) for every example, and one in each package for its deltas.
 
 ## Before opening a pull request
 
