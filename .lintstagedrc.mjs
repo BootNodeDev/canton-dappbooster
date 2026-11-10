@@ -5,9 +5,9 @@ export default {
   'canton-dappbooster/src/**/*.{ts,tsx,js,jsx}': () => 'pnpm -C canton-dappbooster test',
   'example-dapps/*/src/**/*.{ts,tsx,js,jsx}': (files) =>
     examples(files).map((example) => `pnpm -C ${example} test`),
-  'example-dapps/*/{api,scripts}/**/*.{ts,mjs,sh}': (files) =>
+  'example-dapps/*/{api,scripts,server}/**/*.{ts,mjs,sh}': (files) =>
     examples(files).map(
-      (example) => `pnpm -C ${example} exec vitest run --passWithNoTests api scripts`,
+      (example) => `pnpm -C ${example} exec vitest run --passWithNoTests api scripts server`,
     ),
   'canton-create/**/*.{ts,tsx,mjs,sh,json}': () => 'pnpm -C canton-create test',
   '{canton-create/scaffold/*/scripts,scripts}/*.{mjs,sh}': () =>

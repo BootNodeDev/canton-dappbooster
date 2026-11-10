@@ -28,6 +28,9 @@
     "example-dapps/token-vesting": {
       "entry": ["api/**/*.ts"],
       "ignoreDependencies": ["@bootnodedev/canton-token-forge"]
+    },
+    "example-dapps/amulet-vesting-walletless": {
+      "entry": ["server/src/index.ts", "server/src/db/migrate.ts"]
     }
   }
 }

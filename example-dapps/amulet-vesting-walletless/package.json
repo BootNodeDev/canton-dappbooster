@@ -1,0 +1,102 @@
+{
+  "name": "@bootnodedev/canton-example-amulet-vesting-walletless",
+  "version": "0.7.0",
+  "description": "Canton Coin vesting dApp with username and password accounts instead of a wallet: an example app for create-canton-dappbooster",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BootNodeDev/canton-dappbooster.git",
+    "directory": "example-dapps/amulet-vesting-walletless"
+  },
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.html",
+    "public",
+    "src",
+    "server",
+    "daml/AmuletVesting.daml",
+    "daml/AmuletVesting",
+    "daml/daml.yaml",
+    "daml/README.md",
+    "scripts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "tsconfig.server.json",
+    "vite.config.ts",
+    ".env.example",
+    "_gitignore",
+    "_pnpm-workspace.yaml"
+  ],
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit",
+    "bootstrap": "node scripts/bootstrap-vesting.mjs",
+    "stack:up": "bash scripts/server.sh start",
+    "stack:down": "bash scripts/server.sh stop"
+  },
+  "dependencies": {
+    "@ark-ui/react": "^5.39.1",
+    "@bootnodedev/canton-dappbooster": "^0.7.0",
+    "@bootnodedev/canton-theme": "^0.7.0",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/manrope": "^5.2.8",
+    "@hono/node-server": "^2.1.1",
+    "boring-avatars": "^2.0.4",
+    "hono": "^4.13.8",
+    "lucide-react": "^1.39.0",
+    "pg": "^8.23.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.0"
+  },
+  "imports": {
+    "#server/*": {
+      "types": "./server/src/*.ts",
+      "default": "./server/src/*.ts"
+    }
+  },
+  "keywords": [
+    "canton",
+    "canton-network",
+    "dapp",
+    "dappbooster",
+    "bootnode",
+    "example",
+    "vesting",
+    "canton-coin",
+    "amulet",
+    "walletless"
+  ],
+  "homepage": "https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting-walletless#readme",
+  "bugs": {
+    "url": "https://github.com/BootNodeDev/canton-dappbooster/issues"
+  },
+  "author": "BootNode (https://canton.bootnode.dev/)"
+}
