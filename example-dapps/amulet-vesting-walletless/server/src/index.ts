@@ -3,30 +3,34 @@ import pg from 'pg'
 import { createApp } from '#server/app'
 import { openDb } from '#server/auth/db'
 import { provisionParty } from '#server/auth/provision'
-import { ADMIN_USER, COOKIE_SECURE, DATABASE_URL, PORT } from '#server/env'
+import { COOKIE_SECURE, DATABASE_URL, PORT } from '#server/env'
 import { ledgerClient } from '#server/ledger/client'
-import { type Deployment, loadBackendConfig } from '#server/ledger/config'
+import { authenticatedUser, loadBackendConfig } from '#server/ledger/config'
 import { adminToken } from '#server/ledger/token'
 
 const db = openDb(new pg.Pool({ connectionString: DATABASE_URL }))
-const admin = ledgerClient({ token: adminToken, userId: ADMIN_USER })
-
-let deployment: Promise<Deployment> | undefined
-const currentDeployment = (): Promise<Deployment> => {
-  deployment ??= loadBackendConfig(admin.ledgerApi).catch((error: unknown) => {
-    // Not kept, so a bootstrap run after the server started counts on the next request.
-    deployment = undefined
-    throw error
-  })
-  return deployment
+// Not kept on failure, so a bootstrap run after the server started counts on the next request.
+const keptOnceLoaded = <T>(load: () => Promise<T>): (() => Promise<T>) => {
+  let kept: Promise<T> | undefined
+  return () => {
+    kept ??= load().catch((error: unknown) => {
+      kept = undefined
+      throw error
+    })
+    return kept
+  }
 }
+
+const admin = ledgerClient({ token: adminToken, userId: () => serviceUser() })
+const serviceUser = keptOnceLoaded(() => authenticatedUser(admin.ledgerApi))
+const currentDeployment = keptOnceLoaded(() => loadBackendConfig(admin.ledgerApi))
 
 const app = createApp({
   cookieSecure: COOKIE_SECURE,
   db,
   deployment: currentDeployment,
   ledgerFor: () => admin,
-  provision: (username) => provisionParty(admin.ledgerApi, ADMIN_USER, username),
+  provision: async (username) => provisionParty(admin.ledgerApi, await serviceUser(), username),
 })
 
 serve({ fetch: app.fetch, hostname: 'localhost', port: PORT }, (info) => {

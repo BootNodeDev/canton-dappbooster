@@ -26,7 +26,7 @@ type ActiveContract = {
   }
 }
 
-const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
+export const authenticatedUser = async (ledgerApi: LedgerApi): Promise<string> => {
   const { user } = (await ledgerApi({
     requestMethod: 'get',
     resource: '/v2/authenticated-user',
@@ -34,11 +34,15 @@ const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   if (user?.id === undefined) {
     throw new Error('the ledger did not report an authenticated user')
   }
+  return user.id
+}
+
+const operatorParty = async (ledgerApi: LedgerApi): Promise<string> => {
   const { rights } = (await ledgerApi({
     requestMethod: 'get',
     // A gateway allowlists the route, so the id travels in `path` rather than written in here.
     resource: '/v2/users/{user-id}/rights',
-    path: { 'user-id': user.id },
+    path: { 'user-id': await authenticatedUser(ledgerApi) },
   })) as { rights?: { kind?: { CanActAs?: { value?: { party?: string } } } }[] }
   const operator = (rights ?? [])
     .map((right) => right.kind?.CanActAs?.value?.party)

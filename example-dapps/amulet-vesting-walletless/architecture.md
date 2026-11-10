@@ -56,7 +56,7 @@ sequenceDiagram
   Note over S: scrypt hash of the password
   S->>P: POST /v2/parties { partyIdHint: wl-#lt;name#gt;-#lt;stamp#gt; }
   P-->>S: partyId
-  S->>P: POST /v2/users/#lt;WL_ADMIN_USER#gt;/rights { CanActAs party }
+  S->>P: POST /v2/users/#lt;token user#gt;/rights { CanActAs party }
   S->>DB: INSERT user (name, hash, partyId)
   S->>DB: INSERT session (random 32 bytes, 7 days)
   S-->>FE: 201 { username, partyId } + Set-Cookie wl_session
@@ -115,7 +115,7 @@ sequenceDiagram
   Note over S: not JSON: 415 · a bad field: 400
   S->>Scan: transfer context (AmuletRules, open round)
   Scan-->>S: contracts + disclosure blobs
-  S->>P: submit-and-wait, actAs = [session party], userId = WL_ADMIN_USER
+  S->>P: submit-and-wait, actAs = [session party], userId = token user
   Note over P: the participant signs as the hosted party
   P-->>S: committed
   S-->>FE: { ok: true }, or { error } for a toast
@@ -125,25 +125,25 @@ sequenceDiagram
 
 `ledger/client.ts` speaks the JSON Ledger API directly. It fills a `{name}` in the resource from
 `path`, sends the bearer `token.ts` hands it per request, and records each submission against
-`WL_ADMIN_USER`, which the participant requires to match the token's user. `WalletFns` keeps the
+the token's own user, which the participant requires. `index.ts` asks `/v2/authenticated-user` for
+it once, as the bootstrap does, rather than guessing it from the provider. `WalletFns` keeps the
 shape a wallet session has, so `LedgerBackend` takes `execute` and `ledgerApi` as plain functions
 and its tests need no network.
 
-The server acts through one participant user, `WL_ADMIN_USER`. A signup allocates a party hosted on
-the participant, so the participant signs for it and nobody holds a key, and grants that one user
-`CanActAs` on it. There is no ledger user per account, because a hosted validator's identity
+The server acts through one participant user, the one its token names. A signup allocates a party
+hosted on the participant, so the participant signs for it and nobody holds a key, and grants that
+one user `CanActAs` on it. There is no ledger user per account, because a hosted validator's identity
 provider issues tokens to its own clients only. A participant caps a user at 1000 rights, so one
 deployment holds at most 1000 accounts.
 
 Where the token comes from:
 
 - **LocalNet:** `CANTON_BACKEND_TOKEN` from `.env` when it is set, which `pnpm stack up` mints.
-  Otherwise the server signs a short-lived HS256 token for `WL_ADMIN_USER` itself, from
+  Otherwise the server signs a short-lived HS256 token for `ledger-api-user` itself, from
   `CANTON_AUTH_AUDIENCE` and `CANTON_AUTH_SECRET`, the same recipe `mint-token` uses.
 - **A hosted validator:** setting any `EXTERNAL_OAUTH_*` key switches to a client-credentials grant.
   The token is cached until a minute before it expires, and a burst of calls on an expired one makes
-  one request. On this path `CANTON_JSON_API_URL` and `SPLICE_SCAN_API_URL` have no default, and
-  `WL_ADMIN_USER` defaults to `<client id>@clients`.
+  one request. On this path `CANTON_JSON_API_URL` and `SPLICE_SCAN_API_URL` have no default.
 
 ## The escrow disclosure between create and accept
 
@@ -164,7 +164,7 @@ explains.
 
 ## Where the deployment comes from
 
-Nothing is written to a file. The bootstrap grants `WL_ADMIN_USER` `CanActAs` on the operator, so
+Nothing is written to a file. The bootstrap grants the token's user `CanActAs` on the operator, so
 `ledger/config.ts` reads that user's rights, takes the party under the `vesting-operator::` hint, and reads that operator's `AmuletVestingFactory` with its
 created-event blob. `index.ts` keeps the result, but not a failure, so a `bootstrap` run after the
 server started counts on the next request. `GET /api/status` reports either.

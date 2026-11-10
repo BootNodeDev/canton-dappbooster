@@ -1,13 +1,7 @@
 import { createHmac } from 'node:crypto'
-import {
-  ADMIN_TOKEN,
-  ADMIN_USER,
-  AUTH_AUDIENCE,
-  AUTH_SECRET,
-  OAUTH,
-  type OAuthConfig,
-} from '#server/env'
+import { ADMIN_TOKEN, AUTH_AUDIENCE, AUTH_SECRET, OAUTH, type OAuthConfig } from '#server/env'
 
+const LOCALNET_USER = 'ledger-api-user'
 const LIFETIME_S = 300
 const REFRESH_SKEW_MS = 60_000
 
@@ -83,4 +77,4 @@ export const oauthToken = (
 
 export const adminToken: () => string | Promise<string> = OAUTH
   ? oauthToken(OAUTH)
-  : () => ADMIN_TOKEN ?? mintToken(ADMIN_USER)
+  : () => ADMIN_TOKEN ?? mintToken(LOCALNET_USER)

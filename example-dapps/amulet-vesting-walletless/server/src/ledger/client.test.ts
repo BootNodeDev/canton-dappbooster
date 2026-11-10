@@ -55,7 +55,7 @@ describe('ledgerClient', () => {
       baseUrl: 'http://ledger:1',
       fetch: fetchFn,
       token: () => 't',
-      userId: 'wl-alice-x',
+      userId: async () => 'wl-alice-x',
     })
     const params = {
       actAs: ['alice::1'],

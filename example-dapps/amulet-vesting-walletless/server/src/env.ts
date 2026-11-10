@@ -50,11 +50,6 @@ export const SCAN_API_URL = endpoint('SPLICE_SCAN_API_URL', 'http://scan.localho
 export const AUTH_AUDIENCE = read('CANTON_AUTH_AUDIENCE', 'https://canton.network.global')
 export const AUTH_SECRET = read('CANTON_AUTH_SECRET', 'unsafe')
 export const ADMIN_TOKEN: string | undefined = process.env.CANTON_BACKEND_TOKEN || undefined
-// An OAuth client's tokens name their user `<client id>@clients`.
-export const ADMIN_USER = read(
-  'WL_ADMIN_USER',
-  OAUTH ? `${OAUTH.clientId}@clients` : 'ledger-api-user',
-)
 
 export const PORT = Number(read('WL_SERVER_PORT', '3040'))
 export const DATABASE_URL = read(
