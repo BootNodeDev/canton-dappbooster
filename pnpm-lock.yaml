@@ -572,6 +572,79 @@ importers:
         specifier: ^5.0.0
         version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  example-dapps/token-vault:
+    dependencies:
+      '@ark-ui/react':
+        specifier: ^5.39.1
+        version: 5.39.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@bootnodedev/canton-connect':
+        specifier: ^0.7.0
+        version: link:../../canton-connect
+      '@bootnodedev/canton-dappbooster':
+        specifier: ^0.7.0
+        version: link:../../canton-dappbooster
+      '@bootnodedev/canton-theme':
+        specifier: ^0.7.0
+        version: link:../../canton-theme
+      '@canton-network/dapp-sdk':
+        specifier: 1.8.0
+        version: 1.8.0(@walletconnect/sign-client@2.26.0(typescript@5.9.3)(zod@4.6.7))(@walletconnect/types@2.26.0)(supports-color@10.2.2)
+      '@fontsource-variable/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@fontsource-variable/manrope':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@walletconnect/sign-client':
+        specifier: ^2.23.9
+        version: 2.26.0(typescript@5.9.3)(zod@4.6.7)
+      boring-avatars:
+        specifier: ^2.0.4
+        version: 2.0.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      lucide-react:
+        specifier: ^1.39.0
+        version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
+      react:
+        specifier: ^19.1.0
+        version: 19.3.1
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.3.1(react@19.3.1)
+      react-router-dom:
+        specifier: ^7.6.2
+        version: 7.18.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      zustand:
+        specifier: ^5.0.5
+        version: 5.0.16(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.3.0
+        version: 4.3.3(vite@8.3.5(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.0
+        version: 6.1.2(vite@8.3.5(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+      jsdom:
+        specifier: ^30.0.1
+        version: 30.1.3(@noble/hashes@1.8.0)
+      tailwindcss:
+        specifier: ^4.3.0
+        version: 4.3.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^8.0.0
+        version: 8.3.5(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.5(@types/node@25.9.9)(@vitest/coverage-v8@5.0.5)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.5(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   example-dapps/token-vesting:
     dependencies:
       '@ark-ui/react':
