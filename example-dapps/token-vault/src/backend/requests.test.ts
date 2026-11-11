@@ -216,6 +216,17 @@ describe('readVaultRequests', () => {
     expect((await read(ledgerApi)).requests).toEqual([])
   })
 
+  it('drops a request whose leg names no amount rather than owing a zero', async () => {
+    const { amount: _, ...noAmount } = leg('1.0', PARTY, VAULT, USDX)
+    const { ledgerApi } = ledger({
+      requests: [
+        viewRow('00req', { settlement: settlement('dep-1'), transferLegs: { deposit: noAmount } }),
+      ],
+    })
+
+    expect((await read(ledgerApi)).requests).toEqual([])
+  })
+
   it('drops a proposal naming another vault', async () => {
     const { ledgerApi } = ledger({
       deposits: [

@@ -63,7 +63,7 @@ const proposalRow = (proposal: VaultProposal): QueueRow => ({
   state: 'awaiting_vault',
 })
 
-// The ACS carries no order; a request id carries its accept time, so this sorts newest first.
+// The ACS carries no order, so proposals sort by id for a stable list and requests newest first.
 const byKeyDesc = (a: string, b: string): number => (a < b ? 1 : a > b ? -1 : 0)
 
 export const queueRows = ({ proposals, requests }: VaultRequests, nowMs: number): QueueRow[] => [
@@ -71,6 +71,6 @@ export const queueRows = ({ proposals, requests }: VaultRequests, nowMs: number)
     .sort((a, b) => byKeyDesc(a.contractId, b.contractId))
     .map((proposal) => proposalRow(proposal)),
   ...[...requests]
-    .sort((a, b) => byKeyDesc(a.requestId, b.requestId))
+    .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt))
     .map((request) => requestRow(request, nowMs)),
 ]

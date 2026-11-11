@@ -115,7 +115,8 @@ const toRequest = (
   const owed = senderLeg(view?.transferLegs ?? {}, party)
   if (owed === undefined) return undefined
   const { admin, id } = owed.leg.instrumentId ?? {}
-  if (admin === undefined || id === undefined) return undefined
+  const { amount } = owed.leg
+  if (admin === undefined || id === undefined || amount === undefined) return undefined
 
   const { allocateBefore, requestedAt, settleBefore } = settlement
   if (allocateBefore === undefined || requestedAt === undefined || settleBefore === undefined) {
@@ -124,7 +125,7 @@ const toRequest = (
   return {
     allocateBefore,
     allocated: allocated.has(legKey(requestId, owed.transferLegId)),
-    amount: owed.leg.amount ?? '0',
+    amount,
     contractId,
     instrumentId: { admin, id },
     kind: owed.kind,

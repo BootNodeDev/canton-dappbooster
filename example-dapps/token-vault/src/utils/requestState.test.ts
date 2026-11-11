@@ -113,7 +113,7 @@ describe('queueRows', () => {
     ])
   })
 
-  it('puts proposals first and orders requests newest first', () => {
+  it('puts proposals first and orders requests by accept time, newest first, whatever the kind', () => {
     const rows = queueRows(
       {
         proposals: [
@@ -121,13 +121,14 @@ describe('queueRows', () => {
           { amount: '2.0', contractId: '00c', kind: 'withdraw' },
         ],
         requests: [
-          request({ contractId: '00r1', requestId: 'dep-1700000000001' }),
-          request({ contractId: '00r2', requestId: 'dep-1700000000002' }),
+          request({ contractId: '00r1', requestedAt: '2026-09-10T12:00:01Z' }),
+          request({ contractId: '00r2', kind: 'withdraw', requestId: 'wd-1' }),
+          request({ contractId: '00r3', requestedAt: '2026-09-10T12:00:02Z' }),
         ],
       },
       NOON,
     )
 
-    expect(rows.map((row) => row.contractId)).toEqual(['00c', '00b', '00r2', '00r1'])
+    expect(rows.map((row) => row.contractId)).toEqual(['00c', '00b', '00r3', '00r1', '00r2'])
   })
 })
