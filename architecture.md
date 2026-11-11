@@ -10,6 +10,7 @@
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Daml | Canton Coin **vesting** dApp, published as an example. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates. They hold real Canton Coin in escrow as a Splice `LockedAmulet`, and come vendored from [`BootNodeDev/cc-vesting-contracts`](https://github.com/BootNodeDev/cc-vesting-contracts). The build fetches its Splice data-dependencies rather than committing them. `scripts/bootstrap-vesting.mjs` creates the operator and its factory. See [`example-dapps/amulet-vesting/architecture.md`](example-dapps/amulet-vesting/architecture.md) |
 | `example-dapps/amulet-vesting-walletless/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Hono + Postgres + Daml | The same Canton Coin **vesting** dApp with username and password accounts instead of a wallet, published as an example. A Hono server in `server/` allocates a participant-hosted party per account and acts on the ledger as the signed-in account's party; Postgres holds the accounts, the sessions and each grant's escrow disclosure. Its `daml/` is a copy of amulet-vesting's. `scripts/server.sh` starts Postgres and the server. See [`example-dapps/amulet-vesting-walletless/architecture.md`](example-dapps/amulet-vesting-walletless/architecture.md) |
 | `example-dapps/token-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router | The same **vesting** dApp over a `DBT` instrument from [`BootNodeDev/canton-token-forge`](https://github.com/BootNodeDev/canton-token-forge), published as an example. Its `vesting` and `canton-token-forge` DARs ship as binaries in `vendor/`, so it builds no contract. `scripts/bootstrap-vesting.mjs` uploads them and creates the operator, its factory and the instrument; `scripts/registry.sh` runs the canton-token-forge registry the dApp reads the instrument from. See [`example-dapps/token-vesting/architecture.md`](example-dapps/token-vesting/architecture.md) |
+| `example-dapps/token-vault/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router | A token **vault** dApp over a `USDX` instrument from [`BootNodeDev/canton-token-forge`](https://github.com/BootNodeDev/canton-token-forge), published as an example: deposit for `VSH` shares, redeem shares. Its `canton-token-vault` and `canton-token-forge` DARs ship as binaries in `vendor/`. `scripts/bootstrap-vault.mjs` uploads them and creates the issuer and vault parties, both instruments and the Vault; `scripts/operator.sh` runs `scripts/vault-operator.mjs`, which acts as the participant-hosted vault party. See [`example-dapps/token-vault/architecture.md`](example-dapps/token-vault/architecture.md) |
 | `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. Its `scaffold/daml-tooling/` and `scaffold/localnet/` scripts are also the local loop: the Splice dependency fetch, the DAR build and upload, the token mint and `dev-stack.sh`. See [`canton-create/architecture.md`](canton-create/architecture.md) |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the `dapp-sdk` facade. See [`canton-connect/architecture.md`](canton-connect/architecture.md) |
 | `canton-dappbooster/` | TypeScript + React 19 + `tsdown` | L2 headless UI components, zero styling, plus the theme runtime and the pure utilities under the components, exact-decimal amounts included. See [`canton-dappbooster/architecture.md`](canton-dappbooster/architecture.md) |
@@ -51,6 +52,12 @@ flowchart TD
 ledger goes to the canton-token-forge registry on `http://localhost:3013`, for the instrument and the
 `InstrumentConfig` each value-moving choice discloses. The registry reads the ledger with
 `CANTON_BACKEND_TOKEN`, as the scripts do.
+
+`example-dapps/token-vault` takes the same wallet path and makes no call off the ledger. It reads
+the vault, both instruments and their `InstrumentConfig` disclosures through the wallet, as
+`ledger-api-user`, which its bootstrap grants rights on the vault and issuer parties. Its vault
+operator, `scripts/vault-operator.mjs`, reads and writes the JSON API with `CANTON_BACKEND_TOKEN`
+as the participant-hosted vault party. It opens no port.
 
 `example-dapps/amulet-vesting-walletless` has no wallet. The browser holds a session cookie and
 calls its own server on `http://localhost:3040`, through the dev server's `/api` proxy. The server
@@ -133,14 +140,15 @@ that secret and nothing else.
 `CANTON_APP_DIR` names, and on `example-dapps/amulet-vesting` when it names none. `deploy-dar`
 uploads the DAR it is given but reads that example's `.env`. Each `dev:<example>` script sets
 `CANTON_APP_DIR`, so the `build-dar` and `deploy-dar` that `dev-stack.sh` runs build and upload that
-example's own contract. The token example has no `build-dar` or `deploy-dar`: its DARs are vendored
-and its `bootstrap` uploads them.
+example's own contract. The token examples have no `build-dar` or `deploy-dar`: their DARs are
+vendored and their `bootstrap` uploads them.
 
 | Command | What it does |
 | --- | --- |
 | `pnpm dev:amulet-vesting up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
 | `pnpm dev:amulet-vesting down` | stop the gateway and the dApp dev server, stop the LocalNet |
 | `pnpm dev:token-vesting up` / `down` | the same loop on the token example, which also starts and stops its registry |
+| `pnpm dev:token-vault up` / `down` | the same loop on the vault example, which also starts and stops its vault operator |
 | `pnpm dev:amulet-vesting-walletless up` / `down` | the same loop on the wallet-less example, which also starts and stops its server and Postgres |
 | `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
@@ -153,7 +161,8 @@ and its `bootstrap` uploads them.
 
 `dev-stack.sh` runs an app's own `stack:up` script after `bootstrap` and its `stack:down` script on
 `down`, when the app defines them. The token example starts and stops its registry there, from
-the `.env.registry` its bootstrap writes, and the wallet-less example its Postgres and its server.
+the `.env.registry` its bootstrap writes, the vault example its vault operator, and the wallet-less
+example its Postgres and its server.
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
 (`pnpm dev:<example> up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
