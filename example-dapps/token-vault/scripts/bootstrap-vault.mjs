@@ -86,6 +86,7 @@ const PARTY_PAGES = 20
 
 // `isLocal` tells a party this participant hosts from one it merely knows: acting as the latter fails.
 const findParty = async (hint) => {
+  const found = []
   let pageToken
   for (let page = 0; page < PARTY_PAGES; page++) {
     const result = await ledger(
@@ -98,18 +99,19 @@ const findParty = async (hint) => {
     if (!Array.isArray(details)) {
       throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
     }
-    const found = details.find(
-      (one) =>
+    for (const one of details) {
+      if (
         typeof one?.party === 'string' &&
         one.party.startsWith(`${hint}::`) &&
-        one.isLocal !== false,
-    )
-    if (found !== undefined) {
-      return found.party
+        one.isLocal !== false
+      ) {
+        found.push(one.party)
+      }
     }
     pageToken = result?.nextPageToken
     if (typeof pageToken !== 'string' || pageToken === '') {
-      return undefined
+      // The last in sort order, as deployment.ts and the operator pick among two namespaces.
+      return found.sort().at(-1)
     }
   }
   throw new Error(`gave up looking for ${hint} after ${PARTY_PAGES} pages of parties`)
