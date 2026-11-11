@@ -1,77 +1,7 @@
-import { type LedgerApiParams, toError, useAccount, useLedger } from '@bootnodedev/canton-connect'
+import { toError, useAccount, useLedger } from '@bootnodedev/canton-connect'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { valueAt } from '#src/utils/json'
+import { readHoldings } from '#src/utils/readHoldings'
 import type { Holding } from '#src/utils/sumHoldings'
-
-// The v1 interface every standard token implements.`#package-name` form survives a package upgrade
-const HOLDING_INTERFACE = '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
-
-const holdingFromView = (view: unknown): Holding | undefined => {
-  const value = valueAt(view, 'viewValue')
-  const admin = valueAt(value, 'instrumentId', 'admin')
-  const id = valueAt(value, 'instrumentId', 'id')
-  const amount = valueAt(value, 'amount')
-
-  if (typeof admin !== 'string' || typeof id !== 'string' || typeof amount !== 'string') {
-    return undefined
-  }
-
-  const lock = valueAt(value, 'lock')
-
-  return { amount, instrumentId: { admin, id }, isLocked: lock !== null && lock !== undefined }
-}
-
-const holdingsFromAcsRows = (rows: unknown): readonly Holding[] => {
-  if (!Array.isArray(rows)) return []
-
-  return rows.flatMap((row) => {
-    const views = valueAt(
-      row,
-      'contractEntry',
-      'JsActiveContract',
-      'createdEvent',
-      'interfaceViews',
-    )
-    if (!Array.isArray(views)) return []
-    return views.flatMap((view) => holdingFromView(view) ?? [])
-  })
-}
-
-const acsRequest = (partyId: string, offset: string | number): LedgerApiParams => ({
-  requestMethod: 'post',
-  resource: '/v2/state/active-contracts',
-  body: {
-    filter: {
-      filtersByParty: {
-        [partyId]: {
-          cumulative: [
-            {
-              identifierFilter: {
-                InterfaceFilter: {
-                  value: { interfaceId: HOLDING_INTERFACE, includeInterfaceView: true },
-                },
-              },
-            },
-          ],
-        },
-      },
-    },
-    activeAtOffset: offset,
-    verbose: true,
-  },
-})
-
-const readPartyHoldings = async (
-  ledgerApi: (params: LedgerApiParams) => Promise<unknown>,
-  partyId: string,
-): Promise<readonly Holding[]> => {
-  const end = await ledgerApi({ requestMethod: 'get', resource: '/v2/state/ledger-end' })
-  const offset = valueAt(end, 'offset')
-  if (typeof offset !== 'string' && typeof offset !== 'number') {
-    throw new Error('the ledger did not return an offset')
-  }
-  return holdingsFromAcsRows(await ledgerApi(acsRequest(partyId, offset)))
-}
 
 interface HoldingsState {
   error: Error | undefined
@@ -98,7 +28,8 @@ export interface UseHoldingsResult {
 /**
  * Every standard holding the connected party owns, one entry per contract, read again whenever the
  * party changes. Imported from `@bootnodedev/canton-dappbooster/connect`. Pair it with
- * {@link sumHoldings} to get one row per instrument, which is what a token list wants.
+ * {@link sumHoldings} to get one row per instrument, which is what a token list wants. Another
+ * party's holdings come from {@link readHoldings}.
  *
  * @throws with no `<CantonConnectProvider>` above it. A failed read lands in `error` instead.
  *
@@ -124,7 +55,7 @@ export const useHoldings = (): UseHoldingsResult => {
     newest.current += 1
     const request = newest.current
     setState(LOADING)
-    readPartyHoldings(ledgerApi, partyId).then(
+    readHoldings(ledgerApi, partyId).then(
       (holdings) => {
         if (request === newest.current) setState({ error: undefined, holdings, isLoading: false })
       },

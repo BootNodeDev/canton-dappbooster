@@ -3,8 +3,9 @@ import { formatScaled, parseAmount } from '#src/utils/tokenAmount'
 import { tokenKey } from '#src/utils/tokenKey'
 
 /**
- * One holding contract a party owns, as {@link useHoldings} reports it. A locked one is escrowed,
- * which is why the two are summed apart.
+ * One holding contract a party owns, as {@link useHoldings} and {@link readHoldings} report it. A
+ * locked one is escrowed, which is why the two are summed apart, and `contractId` is what a
+ * transfer or an allocation names as its input.
  *
  * @example
  * const spendable = holdings.filter((holding) => !holding.isLocked)
@@ -13,6 +14,7 @@ import { tokenKey } from '#src/utils/tokenKey'
  */
 export interface Holding {
   amount: string
+  contractId: string
   instrumentId: InstrumentId
   isLocked: boolean
 }
@@ -41,7 +43,7 @@ interface Running {
  * Groups a holdings read by instrument and sums it, spendable apart from locked.
  *
  * @example
- * sumHoldings([{ amount: '1.5', instrumentId, isLocked: false }])
+ * sumHoldings([{ amount: '1.5', contractId, instrumentId, isLocked: false }])
  * // [{ balance: '1.5', instrumentId, locked: '0' }]
  *
  * @category Utilities
@@ -50,8 +52,7 @@ export const sumHoldings = (holdings: readonly Holding[]): readonly InstrumentBa
   const totals = new Map<string, Running>()
 
   for (const { amount, instrumentId, isLocked } of holdings) {
-    // A ledger amount is `Numeric 10` and always parses, so this only drops one from a read that
-    // is already broken.
+    // A ledger amount is `Numeric 10`, so only an already broken read fails to parse here
     const scaled = parseAmount(amount)
 
     if (scaled === undefined) continue

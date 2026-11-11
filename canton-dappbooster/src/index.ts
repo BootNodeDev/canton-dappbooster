@@ -47,6 +47,7 @@ export type {
 export { useTokenList } from '#src/providers/TokenListProvider/useTokenList'
 export { mergeTokens, type PartialToken } from '#src/utils/mergeTokens'
 export { isValidPartyId, type PartyIdError, validatePartyId } from '#src/utils/partyId'
+export { readHoldings } from '#src/utils/readHoldings'
 export { type Instrument, readInstruments } from '#src/utils/readInstruments'
 export { type Holding, type InstrumentBalance, sumHoldings } from '#src/utils/sumHoldings'
 export {
