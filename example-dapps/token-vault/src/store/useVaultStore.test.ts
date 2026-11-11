@@ -3,14 +3,13 @@ import type { VaultProposal, VaultRequest, VaultRequests } from '@/backend/reque
 import type { VaultBackend } from '@/backend/VaultBackend'
 import { useVaultStore } from '@/store/useVaultStore'
 
-const request = (requestId: string): VaultRequest => ({
+const request = (contractId: string): VaultRequest => ({
   allocateBefore: '2026-09-10T13:00:00Z',
   allocated: false,
   amount: '25.0',
-  contractId: `00${requestId}`,
+  contractId,
   instrumentId: { admin: 'token-issuer::ns', id: 'USDX' },
   kind: 'deposit',
-  requestId,
   requestedAt: '2026-09-10T12:00:00Z',
   settleBefore: '2026-09-10T14:00:00Z',
   spec: { settlement: {}, transferLeg: {}, transferLegId: 'deposit' },
@@ -30,9 +29,8 @@ const backendOf = (overrides: Partial<VaultBackend> = {}): VaultBackend =>
   ({
     allocate: vi.fn(async () => {}),
     cancelProposal: vi.fn(async () => {}),
-    deposit: vi.fn(async () => {}),
-    withdraw: vi.fn(async () => {}),
     holdingsOf: async () => [],
+    propose: vi.fn(async () => {}),
     requestsOf: async () => ({ proposals: [], requests: [] }),
     tap: async () => {},
     ...overrides,
@@ -53,11 +51,11 @@ describe('useVaultStore.refresh', () => {
 
     fast.resolve({ proposals: [], requests: [request('dep-B')] })
     await pB
-    expect(useVaultStore.getState().requests.map((one) => one.requestId)).toEqual(['dep-B'])
+    expect(useVaultStore.getState().requests.map((one) => one.contractId)).toEqual(['dep-B'])
 
     slow.resolve({ proposals: [], requests: [request('dep-A')] })
     await pA
-    expect(useVaultStore.getState().requests.map((one) => one.requestId)).toEqual(['dep-B'])
+    expect(useVaultStore.getState().requests.map((one) => one.contractId)).toEqual(['dep-B'])
   })
 
   it('drops a read still in flight when the store is cleared', async () => {
@@ -70,7 +68,6 @@ describe('useVaultStore.refresh', () => {
     slow.resolve({ proposals: [], requests: [request('dep-A')] })
     await pending
     expect(useVaultStore.getState().requests).toEqual([])
-    expect(useVaultStore.getState().loading).toBe(false)
   })
 
   it('marks itself loaded once a read answers, and unloaded again on clear', async () => {
@@ -104,10 +101,7 @@ describe('useVaultStore.refresh', () => {
 
     await useVaultStore.getState().refresh(backend, 'A')
 
-    expect(useVaultStore.getState()).toMatchObject({
-      error: 'claims do not authorize',
-      loading: false,
-    })
+    expect(useVaultStore.getState().error).toBe('claims do not authorize')
   })
 })
 
@@ -133,15 +127,15 @@ describe('useVaultStore writes', () => {
   it('re-reads after every write', async () => {
     const requestsOf = vi.fn(async () => ({ proposals: [], requests: [] }))
     const backend = backendOf({ requestsOf })
-    const { allocate, cancel, deposit, withdraw } = useVaultStore.getState()
+    const { allocate, cancel, propose } = useVaultStore.getState()
 
-    await deposit(backend, 'A', '25.0')
-    await withdraw(backend, 'A', '15.0')
+    await propose(backend, 'A', 'deposit', '25.0')
+    await propose(backend, 'A', 'withdraw', '15.0')
     await cancel(backend, 'A', proposal)
     await allocate(backend, 'A', request('dep-1'))
 
-    expect(backend.deposit).toHaveBeenCalledWith('A', '25.0')
-    expect(backend.withdraw).toHaveBeenCalledWith('A', '15.0')
+    expect(backend.propose).toHaveBeenCalledWith('A', 'deposit', '25.0')
+    expect(backend.propose).toHaveBeenCalledWith('A', 'withdraw', '15.0')
     expect(backend.cancelProposal).toHaveBeenCalledWith('A', proposal)
     expect(backend.allocate).toHaveBeenCalledWith('A', request('dep-1'))
     expect(requestsOf).toHaveBeenCalledTimes(4)
@@ -150,13 +144,13 @@ describe('useVaultStore writes', () => {
   it('leaves a failed write to the caller, with the rows untouched', async () => {
     const requestsOf = vi.fn(async () => ({ proposals: [], requests: [] }))
     const backend = backendOf({
-      deposit: async () => {
+      propose: async () => {
         throw new Error('the wallet refused')
       },
       requestsOf,
     })
 
-    await expect(useVaultStore.getState().deposit(backend, 'A', '25.0')).rejects.toThrow(
+    await expect(useVaultStore.getState().propose(backend, 'A', 'deposit', '25.0')).rejects.toThrow(
       'the wallet refused',
     )
     expect(requestsOf).not.toHaveBeenCalled()

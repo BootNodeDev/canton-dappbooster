@@ -32,7 +32,7 @@ export const AppShell = (): React.JSX.Element => {
           <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">
             <h1 className="text-base font-bold text-danger">No vault</h1>
             <p className="max-w-lg text-sm text-fg-muted">{deploymentError}</p>
-            <Button variant="secondary" size="sm" onClick={retryDeployment}>
+            <Button variant="secondary" onClick={retryDeployment}>
               Try again
             </Button>
           </Card>

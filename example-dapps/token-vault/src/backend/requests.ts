@@ -1,3 +1,4 @@
+import type { InstrumentId } from '@bootnodedev/canton-dappbooster'
 import {
   type AcsEntry,
   interfaceFilter,
@@ -7,7 +8,7 @@ import {
   templateFilter,
   viewOf,
 } from '@/backend/acs'
-import type { AllocationSpec, RequestKind } from '@/backend/commands'
+import { type AllocationSpec, PROPOSAL_ENTITY, type RequestKind } from '@/backend/commands'
 
 // The leg ids the settle choices compare; another leg is from a package this app does not drive.
 const KIND_BY_LEG: Record<string, RequestKind> = {
@@ -15,10 +16,8 @@ const KIND_BY_LEG: Record<string, RequestKind> = {
   'withdraw-shares-in': 'withdraw',
 }
 
-const PROPOSAL_FILTERS: Record<RequestKind, string> = {
-  deposit: '#canton-token-vault:Canton.TokenVault.DepositProposal:DepositProposal',
-  withdraw: '#canton-token-vault:Canton.TokenVault.WithdrawProposal:WithdrawProposal',
-}
+const proposalFilter = (kind: RequestKind) =>
+  templateFilter(`#canton-token-vault:${PROPOSAL_ENTITY[kind]}`)
 
 const REQUEST_FILTER =
   '#splice-api-token-allocation-request-v1:Splice.Api.Token.AllocationRequestV1:AllocationRequest'
@@ -35,9 +34,8 @@ export type VaultRequest = {
   allocated: boolean
   amount: string
   contractId: string
-  instrumentId: { admin: string; id: string }
+  instrumentId: InstrumentId
   kind: RequestKind
-  requestId: string
   requestedAt: string
   settleBefore: string
   spec: AllocationSpec
@@ -129,7 +127,6 @@ const toRequest = (
     contractId,
     instrumentId: { admin, id },
     kind: owed.kind,
-    requestId,
     requestedAt,
     settleBefore,
     spec: { settlement, transferLeg: owed.leg, transferLegId: owed.transferLegId },
@@ -154,8 +151,8 @@ export const readVaultRequests = async (
 ): Promise<VaultRequests> => {
   const offset = await ledgerEnd(ledgerApi)
   const [deposits, withdrawals, requests, allocations] = await Promise.all([
-    readAcs(ledgerApi, { filter: templateFilter(PROPOSAL_FILTERS.deposit), offset, party }),
-    readAcs(ledgerApi, { filter: templateFilter(PROPOSAL_FILTERS.withdraw), offset, party }),
+    readAcs(ledgerApi, { filter: proposalFilter('deposit'), offset, party }),
+    readAcs(ledgerApi, { filter: proposalFilter('withdraw'), offset, party }),
     readAcs(ledgerApi, { filter: interfaceFilter(REQUEST_FILTER), offset, party }),
     readAcs(ledgerApi, { filter: interfaceFilter(ALLOCATION_FILTER), offset, party }),
   ])

@@ -1,4 +1,9 @@
-import { type Holding, parseAmount, tokenKey } from '@bootnodedev/canton-dappbooster'
+import {
+  type Holding,
+  type InstrumentId,
+  parseAmount,
+  tokenKey,
+} from '@bootnodedev/canton-dappbooster'
 
 type Candidate = { cid: string; scaled: bigint }
 
@@ -15,7 +20,7 @@ export const selectInputs = ({
 }: {
   amount: string
   holdings: readonly Holding[]
-  instrumentId: { admin: string; id: string }
+  instrumentId: InstrumentId
 }): readonly string[] | undefined => {
   const target = parseAmount(amount)
   if (target === undefined || target <= 0n) return undefined

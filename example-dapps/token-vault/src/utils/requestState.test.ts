@@ -12,7 +12,6 @@ const request = (overrides: Partial<VaultRequest> = {}): VaultRequest => ({
   contractId: '00req',
   instrumentId: { admin: 'token-issuer::ns', id: 'USDX' },
   kind: 'deposit',
-  requestId: 'dep-1',
   requestedAt: '2026-09-10T12:00:00Z',
   settleBefore: '2026-09-10T14:00:00Z',
   spec: { settlement: {}, transferLeg: {}, transferLegId: 'deposit' },
@@ -53,7 +52,7 @@ describe('queueRows', () => {
     const rows = queueRows(
       {
         proposals: [{ amount: '4.0', contractId: '00wd', kind: 'withdraw' }],
-        requests: [request({ contractId: '00r', kind: 'withdraw', requestId: 'wd-1' })],
+        requests: [request({ contractId: '00r', kind: 'withdraw' })],
       },
       NOON,
     )
@@ -99,10 +98,7 @@ describe('queueRows', () => {
     const rows = queueRows(
       {
         proposals: [],
-        requests: [
-          request({ allocated: true }),
-          request({ contractId: '00b', requestId: 'dep-0' }),
-        ],
+        requests: [request({ allocated: true }), request({ contractId: '00b' })],
       },
       NOON + 3 * HOUR,
     )
@@ -122,7 +118,7 @@ describe('queueRows', () => {
         ],
         requests: [
           request({ contractId: '00r1', requestedAt: '2026-09-10T12:00:01Z' }),
-          request({ contractId: '00r2', kind: 'withdraw', requestId: 'wd-1' }),
+          request({ contractId: '00r2', kind: 'withdraw' }),
           request({ contractId: '00r3', requestedAt: '2026-09-10T12:00:02Z' }),
         ],
       },

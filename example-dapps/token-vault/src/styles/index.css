@@ -9,7 +9,6 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
@@ -19,8 +18,6 @@
   --color-fg-soft: var(--fg-soft);
 
   --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-soft: var(--primary-soft);
   --color-primary-fg: var(--primary-fg);
   --color-primary-strong: var(--primary-strong);
   --color-accent: var(--accent);
@@ -29,11 +26,7 @@
   --color-pink-strong: var(--pink-strong);
 
   --color-success: var(--success);
-  --color-success-soft: var(--success-soft);
-  --color-warning: var(--warning);
-  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
-  --color-danger-soft: var(--danger-soft);
 
   --font-sans: "Manrope Variable", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
@@ -42,22 +35,6 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
-
-  --animate-claimed: claimed 5s linear both;
-}
-
-@keyframes claimed {
-  0%,
-  100% {
-    background-color: var(--surface);
-    box-shadow: var(--shadow-card);
-  }
-
-  5%,
-  85% {
-    background-color: var(--primary-soft);
-    box-shadow: 0 0 16px color-mix(in oklab, var(--primary) 40%, transparent);
-  }
 }
 
 @layer base {
@@ -120,15 +97,6 @@ body {
   }
 }
 
-.cnc-token-input__field,
-.cnc-party-id-input {
+.cnc-token-input__field {
   border-radius: 8px;
-}
-
-.gradient-text {
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
 }

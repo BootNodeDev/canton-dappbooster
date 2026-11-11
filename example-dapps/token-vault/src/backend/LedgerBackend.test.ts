@@ -67,7 +67,6 @@ const request: VaultRequest = {
   contractId: '00req',
   instrumentId: { admin: ISSUER, id: 'USDX' },
   kind: 'deposit',
-  requestId: 'dep-1',
   requestedAt: '2026-09-10T12:00:00Z',
   settleBefore: '2026-09-10T14:00:00Z',
   spec: {
@@ -138,11 +137,11 @@ describe('LedgerBackend.holdingsOf', () => {
   })
 })
 
-describe('LedgerBackend.deposit and withdraw', () => {
+describe('LedgerBackend.propose', () => {
   it('creates a deposit proposal with nothing disclosed, the depositor its only signatory', async () => {
     const fns = wallet()
 
-    await new LedgerBackend(deployment, fns).deposit(PARTY, '25')
+    await new LedgerBackend(deployment, fns).propose(PARTY, 'deposit', '25')
 
     expect(fns.sent()).toMatchObject({
       actAs: [PARTY],
@@ -161,7 +160,7 @@ describe('LedgerBackend.deposit and withdraw', () => {
   it('creates a withdraw proposal under its own template', async () => {
     const fns = wallet()
 
-    await new LedgerBackend(deployment, fns).withdraw(PARTY, '15')
+    await new LedgerBackend(deployment, fns).propose(PARTY, 'withdraw', '15')
 
     expect(fns.sent()?.commands[0]).toEqual({
       CreateCommand: {

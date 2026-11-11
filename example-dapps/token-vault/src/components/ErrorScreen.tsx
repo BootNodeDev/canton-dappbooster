@@ -19,11 +19,7 @@ export const ErrorScreen = (): React.JSX.Element => {
         level={1}
         title="Something broke"
         description={messageOf(error)}
-        action={
-          <Button size="sm" onClick={() => window.location.assign('/')}>
-            Back to the vault
-          </Button>
-        }
+        action={<Button onClick={() => window.location.assign('/')}>Back to the vault</Button>}
       />
       {import.meta.env.DEV && error instanceof Error && error.stack !== undefined && (
         <pre className="max-h-72 overflow-auto rounded-[12px] border border-border bg-surface p-4 font-mono text-xs text-fg-muted">

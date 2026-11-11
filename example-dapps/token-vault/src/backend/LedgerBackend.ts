@@ -1,4 +1,9 @@
-import { type Holding, readHoldings } from '@bootnodedev/canton-dappbooster'
+import {
+  type Holding,
+  type InstrumentId,
+  readHoldings,
+  tokenKey,
+} from '@bootnodedev/canton-dappbooster'
 import {
   buildAllocateCommand,
   buildCancelProposalCommand,
@@ -50,14 +55,6 @@ export class LedgerBackend implements VaultBackend {
     )
   }
 
-  deposit(partyId: string, amount: string): Promise<void> {
-    return this.propose(partyId, amount, 'deposit')
-  }
-
-  withdraw(partyId: string, amount: string): Promise<void> {
-    return this.propose(partyId, amount, 'withdraw')
-  }
-
   async cancelProposal(partyId: string, proposal: VaultProposal): Promise<void> {
     await this.submit(
       partyId,
@@ -94,7 +91,7 @@ export class LedgerBackend implements VaultBackend {
     )
   }
 
-  private async propose(partyId: string, amount: string, kind: RequestKind): Promise<void> {
+  async propose(partyId: string, kind: RequestKind, amount: string): Promise<void> {
     const { vault, vaultPkg } = this.deployment
     await this.submit(
       partyId,
@@ -104,11 +101,13 @@ export class LedgerBackend implements VaultBackend {
   }
 
   // Only the two the Vault names, so an allocation never lands on a factory discovery did not find.
-  private instrumentFor({ admin, id }: { admin: string; id: string }): Instrument {
+  private instrumentFor(instrumentId: InstrumentId): Instrument {
+    const key = tokenKey(instrumentId)
     const found = [this.deployment.underlying, this.deployment.share].find(
-      (one) => one.admin === admin && one.id === id,
+      (one) => tokenKey(one) === key,
     )
     if (found === undefined) {
+      const { admin, id } = instrumentId
       throw new Error(`this vault does not name an instrument ${id} issued by ${admin}`)
     }
     return found

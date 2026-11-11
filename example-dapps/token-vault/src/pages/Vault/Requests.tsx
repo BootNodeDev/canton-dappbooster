@@ -1,17 +1,16 @@
 import { formatFigure } from '@bootnodedev/canton-dappbooster'
 import { useState } from 'react'
-import type { RequestKind } from '@/backend/commands'
 import type { VaultBackend } from '@/backend/VaultBackend'
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { Loading } from '@/components/Loading'
+import { KIND_TEXT, SENT } from '@/pages/Vault/requestKind'
 import { useVaultStore } from '@/store/useVaultStore'
 import { errorText } from '@/utils/errorText'
 import { type QueueRow, type QueueState, queueRows } from '@/utils/requestState'
 import { toast } from '@/utils/toast'
-import { USDX, VSH } from '@/utils/tokens'
 
 const STATE_TEXT: Record<QueueState, string> = {
   awaiting_allocation: 'Waiting for your funds',
@@ -29,10 +28,8 @@ const STATE_TONE: Record<QueueState, string> = {
 
 const ACTION_TEXT = { allocate: 'Fund', cancel: 'Cancel' }
 
-const KIND_TEXT: Record<RequestKind, string> = { deposit: 'Deposit', withdraw: 'Withdraw' }
-
-// A deposit sends the underlying and a withdraw the shares, at either stage.
-const TOKEN = { deposit: USDX, withdraw: VSH }
+const figureOf = (row: QueueRow): string =>
+  `${formatFigure(row.amount)} ${SENT[row.kind].symbol} ${row.kind}`
 
 const Row = ({
   onAct,
@@ -43,21 +40,19 @@ const Row = ({
   pending: boolean
   row: QueueRow
 }): React.JSX.Element => {
-  const token = TOKEN[row.kind]
   return (
     <li className="flex flex-wrap items-center gap-3 border-b border-border py-3 last:border-0">
       <span className="w-20 shrink-0 text-sm text-fg-muted">{KIND_TEXT[row.kind]}</span>
-      <AmountDisplay className="text-sm font-bold" token={token} value={row.amount} />
+      <AmountDisplay className="text-sm font-bold" token={SENT[row.kind]} value={row.amount} />
       <span className={`rounded-full border px-2 py-0.5 text-xs ${STATE_TONE[row.state]}`}>
         {STATE_TEXT[row.state]}
       </span>
       <span className="ml-auto">
         {row.action === 'none' ? null : (
           <Button
-            aria-label={`${ACTION_TEXT[row.action]} the ${formatFigure(row.amount)} ${token.symbol} ${row.kind}`}
+            aria-label={`${ACTION_TEXT[row.action]} the ${figureOf(row)}`}
             onClick={() => onAct(row)}
             pending={pending}
-            size="sm"
             variant={row.action === 'cancel' ? 'secondary' : 'primary'}
           >
             {ACTION_TEXT[row.action]}
@@ -75,7 +70,6 @@ export const Requests = ({
   backend: VaultBackend
   partyId: string
 }): React.JSX.Element => {
-  // One by one rather than the whole store: the poll flips `loading` every tick.
   const allocate = useVaultStore((state) => state.allocate)
   const cancel = useVaultStore((state) => state.cancel)
   const error = useVaultStore((state) => state.error)
@@ -86,7 +80,7 @@ export const Requests = ({
 
   const act = async (row: QueueRow): Promise<void> => {
     setActing(row.contractId)
-    const figure = `${formatFigure(row.amount)} ${TOKEN[row.kind].symbol} ${row.kind}`
+    const figure = figureOf(row)
     try {
       if (row.stage === 'proposal') {
         await cancel(backend, partyId, row.proposal)

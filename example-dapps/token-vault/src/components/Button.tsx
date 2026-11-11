@@ -2,8 +2,8 @@ import type { ButtonHTMLAttributes } from 'react'
 import { Spinner } from '@/components/Spinner'
 import { cn } from '@/utils/cn'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost'
-type Size = 'sm' | 'md' | 'lg' | 'icon'
+type Variant = 'primary' | 'secondary' | 'ghost'
+type Size = 'sm' | 'lg'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   pending?: boolean
@@ -13,9 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const sizes: Record<Size, string> = {
   sm: 'h-9 px-4 text-sm',
-  md: 'h-11 px-6 text-[0.95rem]',
   lg: 'h-12 px-7 text-base',
-  icon: 'size-8',
 }
 
 const variants: Record<Variant, string> = {
@@ -28,8 +26,6 @@ const variants: Record<Variant, string> = {
     'border border-border-strong bg-surface text-fg not-disabled:hover:border-primary not-disabled:hover:text-primary-strong',
   ghost:
     'border border-transparent text-fg-muted not-disabled:hover:bg-muted not-disabled:hover:text-fg',
-  danger: 'border border-danger bg-danger text-white not-disabled:hover:bg-danger/90',
-  'danger-ghost': 'border border-transparent text-danger not-disabled:hover:bg-danger-soft',
 }
 
 export const buttonClass = (variant: Variant, size: Size, className?: string): string =>
@@ -44,7 +40,7 @@ export const buttonClass = (variant: Variant, size: Size, className?: string): s
 
 export const Button = ({
   variant = 'primary',
-  size = 'md',
+  size = 'sm',
   className,
   type = 'button',
   pending = false,

@@ -117,19 +117,17 @@ export const ConnectGuide = (): React.JSX.Element => {
                 <div className="mt-6 flex items-center gap-3">
                   {api.hasPrevStep && (
                     <Steps.PrevTrigger asChild>
-                      <Button variant="ghost" size="sm" className="px-0">
+                      <Button variant="ghost" className="px-0">
                         Back
                       </Button>
                     </Steps.PrevTrigger>
                   )}
                   {api.value < api.count - 1 ? (
                     <Steps.NextTrigger asChild>
-                      <Button className="ml-auto" size="sm">
-                        Next
-                      </Button>
+                      <Button className="ml-auto">Next</Button>
                     </Steps.NextTrigger>
                   ) : (
-                    <Button className="ml-auto" size="sm" onClick={close}>
+                    <Button className="ml-auto" onClick={close}>
                       Done
                     </Button>
                   )}

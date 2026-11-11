@@ -1,4 +1,5 @@
 import {
+  type InstrumentId,
   mergeTokens,
   type PartialToken,
   sumHoldings,
@@ -21,7 +22,7 @@ import type { Deployment, Instrument } from '@/backend/deployment'
 import { useBackend } from '@/providers/Backend'
 import { USDX, type VaultToken, VSH } from '@/utils/tokens'
 
-const idOf = ({ admin, id }: Instrument): { admin: string; id: string } => ({ admin, id })
+const idOf = ({ admin, id }: Instrument): InstrumentId => ({ admin, id })
 
 const row = (instrument: Instrument, token: VaultToken): PartialToken => ({
   instrumentId: idOf(instrument),
@@ -60,7 +61,7 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
     setVaultBalance(undefined)
     setVaultFailed(false)
     if (backend === undefined || deployment === undefined) return
-    const underlying = tokenKey(idOf(deployment.underlying))
+    const underlying = tokenKey(deployment.underlying)
     backend.holdingsOf(deployment.vault).then(
       (held) => {
         if (request !== newest.current) return
@@ -96,9 +97,7 @@ export const Tokens = ({ children }: { children: ReactNode }): React.JSX.Element
   const tokens = useMemo<readonly Token[]>(() => {
     if (deployment === undefined) return []
     // Scoped to this vault's pair: an older deployment's token shares an id under another admin.
-    const keys = new Set(
-      [deployment.underlying, deployment.share].map((one) => tokenKey(idOf(one))),
-    )
+    const keys = new Set([deployment.underlying, deployment.share].map((one) => tokenKey(one)))
     const held = sumHoldings(holdings ?? []).filter(({ instrumentId }) =>
       keys.has(tokenKey(instrumentId)),
     )

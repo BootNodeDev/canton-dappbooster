@@ -6,14 +6,13 @@ import type { VaultBackend } from '@/backend/VaultBackend'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { FieldError } from '@/pages/Vault/FieldError'
+import { KIND_TEXT, SENT } from '@/pages/Vault/requestKind'
 import { useVaultStore } from '@/store/useVaultStore'
 import { isPositive } from '@/utils/amount'
 import { AMOUNT_ERROR_TEXT } from '@/utils/amountErrorText'
 import { errorText } from '@/utils/errorText'
 import { toast } from '@/utils/toast'
 import { USDX, VSH } from '@/utils/tokens'
-
-const TITLE: Record<RequestKind, string> = { deposit: 'Deposit', withdraw: 'Withdraw' }
 
 export const ProposalForm = ({
   backend,
@@ -27,11 +26,12 @@ export const ProposalForm = ({
   partyId: string
 }): React.JSX.Element => {
   const { byKey } = useTokenList()
-  const propose = useVaultStore((state) => state[kind])
+  const propose = useVaultStore((state) => state.propose)
   const [raw, setRaw] = useState('')
   const [pending, setPending] = useState(false)
 
-  const [send, receive] = kind === 'deposit' ? [USDX, VSH] : [VSH, USDX]
+  const send = SENT[kind]
+  const receive = kind === 'deposit' ? VSH : USDX
   const sent = kind === 'deposit' ? deployment.underlying : deployment.share
   const balance = byKey.get(tokenKey(sent))?.balance
   const errorId = `${kind}-amount-error`
@@ -43,7 +43,7 @@ export const ProposalForm = ({
   const submit = async (): Promise<void> => {
     setPending(true)
     try {
-      await propose(backend, partyId, raw)
+      await propose(backend, partyId, kind, raw)
       setRaw('')
       toast.success(`Proposed a ${kind} of ${raw} ${send.symbol}`)
     } catch (err: unknown) {
@@ -55,7 +55,7 @@ export const ProposalForm = ({
 
   return (
     <Card className="p-5">
-      <h2 className="mb-3 text-base font-bold">{TITLE[kind]}</h2>
+      <h2 className="mb-3 text-base font-bold">{KIND_TEXT[kind]}</h2>
       <TokenInput
         aria-describedby={message === undefined ? undefined : errorId}
         balance={balance}
@@ -75,9 +75,8 @@ export const ProposalForm = ({
         disabled={!valid}
         onClick={() => void submit()}
         pending={pending}
-        size="sm"
       >
-        {`${TITLE[kind]} ${send.symbol}`}
+        {`${KIND_TEXT[kind]} ${send.symbol}`}
       </Button>
       <p className="mt-3 text-xs text-fg-muted">
         {`The vault accepts the proposal, then you fund it. You get ${receive.symbol} one for one.`}

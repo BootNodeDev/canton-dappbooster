@@ -127,7 +127,6 @@ describe('readVaultRequests', () => {
         contractId: '00req',
         instrumentId: USDX,
         kind: 'deposit',
-        requestId: 'dep-1',
         requestedAt: '2026-09-10T12:00:00Z',
         settleBefore: '2026-09-10T14:00:00Z',
         spec: {
@@ -162,7 +161,6 @@ describe('readVaultRequests', () => {
       amount: '15.0',
       instrumentId: VSH,
       kind: 'withdraw',
-      requestId: 'wd-1',
     })
     expect(request?.spec.transferLegId).toBe('withdraw-shares-in')
     expect(request?.spec.transferLeg).toEqual(leg('15.0', PARTY, VAULT, VSH))

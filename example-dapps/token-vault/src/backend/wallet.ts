@@ -1,6 +1,7 @@
 // The two wallet-session calls, injected so LedgerBackend is constructible outside React.
 
-import type { LedgerApiParams, PrepareExecuteParams } from '@bootnodedev/canton-connect'
+import type { PrepareExecuteParams } from '@bootnodedev/canton-connect'
+import type { LedgerApi } from '@/backend/acs'
 
 export type LedgerCommand =
   | {
@@ -27,5 +28,5 @@ export type DisclosedContract = {
 
 export type WalletFns = {
   execute: (params: PrepareExecuteParams) => Promise<unknown>
-  ledgerApi: (params: LedgerApiParams) => Promise<unknown>
+  ledgerApi: LedgerApi
 }

@@ -184,8 +184,9 @@ between:
   - past either deadline, the request is dead.
 - **Every write reads again rather than editing a row.** A proposal becomes a request under a new
   contract id, and an allocation is a contract of its own that the row only reports on.
-- **The balances read again when the queue changes**, not on every tick. A settle archives the
-  request and moves the tokens in one transaction, so a queue change is a balance change.
+- **The balances read again when a request changes**, not on every tick. Funding a leg locks the
+  party's tokens, and a settle archives the request and moves the tokens in one transaction. A
+  proposal moves no tokens, so a change to one reads nothing.
 
 ## The bootstrap
 

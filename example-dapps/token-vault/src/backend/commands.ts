@@ -11,7 +11,7 @@ export type AllocationSpec = {
   transferLegId: string
 }
 
-const PROPOSAL_ENTITY: Record<RequestKind, string> = {
+export const PROPOSAL_ENTITY: Record<RequestKind, string> = {
   deposit: 'Canton.TokenVault.DepositProposal:DepositProposal',
   withdraw: 'Canton.TokenVault.WithdrawProposal:WithdrawProposal',
 }

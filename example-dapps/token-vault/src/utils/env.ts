@@ -1,12 +1,10 @@
 export interface Env {
-  VITE_EXPLORER_URL: string
   VITE_NETWORK_ID: string
   VITE_WALLET_CONNECT_PROJECT_ID: string
   VITE_WALLET_GATEWAY_URL: string
 }
 
 const DEFAULTS: Env = {
-  VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_NETWORK_ID: 'canton:local',
   VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
@@ -45,7 +43,6 @@ export const parseEnv = (source: unknown): Env => {
   const values = source as Record<string, unknown>
 
   return {
-    VITE_EXPLORER_URL: read(values, 'VITE_EXPLORER_URL', isHttpUrl, 'an http(s) url'),
     VITE_NETWORK_ID: read(values, 'VITE_NETWORK_ID', isCantonChainId, 'a canton CAIP-2 chain id'),
     VITE_WALLET_CONNECT_PROJECT_ID: read(
       values,

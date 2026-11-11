@@ -1,6 +1,7 @@
 import { useAccount } from '@bootnodedev/canton-connect'
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import type { RequestKind } from '@/backend/commands'
 import type { VaultProposal, VaultRequest } from '@/backend/requests'
 import type { VaultBackend } from '@/backend/VaultBackend'
 import { useBackend } from '@/providers/Backend'
@@ -8,18 +9,21 @@ import { errorText } from '@/utils/errorText'
 
 interface VaultState {
   error: string | undefined
-  // Turns true once, so an empty queue is told apart from a first read: `loading` flips every poll.
+  // Turns true once, so an empty queue is told apart from a first read.
   loaded: boolean
-  loading: boolean
   proposals: readonly VaultProposal[]
   requests: readonly VaultRequest[]
 
   allocate: (backend: VaultBackend, partyId: string, request: VaultRequest) => Promise<void>
   cancel: (backend: VaultBackend, partyId: string, proposal: VaultProposal) => Promise<void>
   clear: () => void
-  deposit: (backend: VaultBackend, partyId: string, amount: string) => Promise<void>
+  propose: (
+    backend: VaultBackend,
+    partyId: string,
+    kind: RequestKind,
+    amount: string,
+  ) => Promise<void>
   refresh: (backend: VaultBackend, partyId: string) => Promise<void>
-  withdraw: (backend: VaultBackend, partyId: string, amount: string) => Promise<void>
 }
 
 // Only the newest refresh may commit: a slow read for the previous party can resolve last.
@@ -31,41 +35,34 @@ const POLL_MS = 5000
 export const useVaultStore = create<VaultState>((set, get) => ({
   error: undefined,
   loaded: false,
-  loading: false,
   proposals: [],
   requests: [],
 
   clear: () => {
     refreshEpoch++
-    set({ error: undefined, loaded: false, loading: false, proposals: [], requests: [] })
+    set({ error: undefined, loaded: false, proposals: [], requests: [] })
   },
 
   refresh: async (backend, partyId) => {
     const epoch = ++refreshEpoch
-    set({ error: undefined, loading: true })
     try {
       const { proposals, requests } = await backend.requestsOf(partyId)
       if (epoch !== refreshEpoch) return
-      set({ loaded: true, loading: false, proposals, requests })
+      set({ error: undefined, loaded: true, proposals, requests })
     } catch (err) {
       if (epoch !== refreshEpoch) return
-      set({ error: errorText(err), loading: false })
+      set({ error: errorText(err) })
     }
   },
 
   // A write re-reads rather than mutating a row: a proposal becomes a request under a new id.
-  deposit: async (backend, partyId, amount) => {
-    await backend.deposit(partyId, amount)
+  propose: async (backend, partyId, kind, amount) => {
+    await backend.propose(partyId, kind, amount)
     await get().refresh(backend, partyId)
   },
 
   cancel: async (backend, partyId, proposal) => {
     await backend.cancelProposal(partyId, proposal)
-    await get().refresh(backend, partyId)
-  },
-
-  withdraw: async (backend, partyId, amount) => {
-    await backend.withdraw(partyId, amount)
     await get().refresh(backend, partyId)
   },
 

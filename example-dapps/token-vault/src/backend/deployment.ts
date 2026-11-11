@@ -1,3 +1,4 @@
+import type { InstrumentId } from '@bootnodedev/canton-dappbooster'
 import {
   type AcsEntry,
   call,
@@ -25,8 +26,6 @@ export type Deployment = {
   vaultCid: string
   vaultPkg: string
 }
-
-type InstrumentId = { admin: string; id: string }
 
 const VAULT_FILTER = '#canton-token-vault:Canton.TokenVault.Vault:Vault'
 const CONFIG_FILTER = '#canton-token-forge:Canton.TokenForge.Registry:InstrumentConfig'
@@ -111,8 +110,7 @@ const readInstrument = async (
 }
 
 export const loadDeployment = async (ledgerApi: LedgerApi): Promise<Deployment> => {
-  const vault = await vaultParty(ledgerApi)
-  const offset = await ledgerEnd(ledgerApi)
+  const [vault, offset] = await Promise.all([vaultParty(ledgerApi), ledgerEnd(ledgerApi)])
 
   const vaults = await readAcs(ledgerApi, {
     filter: templateFilter(VAULT_FILTER),

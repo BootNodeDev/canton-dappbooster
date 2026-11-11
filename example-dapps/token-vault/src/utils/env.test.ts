@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { parseEnv } from '@/utils/env'
 
 const DEFAULTS = {
-  VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_NETWORK_ID: 'canton:local',
   VITE_WALLET_CONNECT_PROJECT_ID: '',
   VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
@@ -21,19 +20,11 @@ describe('parseEnv', () => {
     expect(parseEnv({})).toEqual(DEFAULTS)
   })
 
-  it.each(['VITE_EXPLORER_URL', 'VITE_WALLET_GATEWAY_URL'])(
-    'names %s and rejects an empty value',
-    (key) => {
-      expect(() => parseEnv({ ...DEFAULTS, [key]: '' })).toThrow(new RegExp(key))
-    },
-  )
-
-  it.each(['scan.localhost', 'javascript:alert(1)', 'file:///etc/passwd'])(
-    'rejects %j as the explorer url',
-    (VITE_EXPLORER_URL) => {
-      expect(() => parseEnv({ VITE_EXPLORER_URL })).toThrow(/VITE_EXPLORER_URL/)
-    },
-  )
+  it('names the gateway url and rejects an empty value', () => {
+    expect(() => parseEnv({ ...DEFAULTS, VITE_WALLET_GATEWAY_URL: '' })).toThrow(
+      /VITE_WALLET_GATEWAY_URL/,
+    )
+  })
 
   it.each(['/api/v0/dapp', '//evil.example/api/v0/dapp', 'javascript:alert(1)'])(
     'rejects %j as the gateway url',

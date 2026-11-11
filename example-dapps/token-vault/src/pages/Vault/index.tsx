@@ -1,5 +1,6 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
 import { type ReactNode, useEffect, useRef } from 'react'
+import type { VaultRequest } from '@/backend/requests'
 import { buttonClass } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { ConnectFace } from '@/components/ConnectFace'
@@ -20,28 +21,33 @@ const Fact = ({ children, label }: { children: ReactNode; label: string }): Reac
   </div>
 )
 
-// A settle archives the request and mints at once, so a queue change means a balance change.
-const signatureOf = (rows: readonly { allocated?: boolean; contractId: string }[]): string =>
-  rows.map((row) => `${row.contractId}:${row.allocated === true}`).join('|')
+// Funding locks a balance and a settle moves it; a proposal moves nothing until it is a request.
+const signatureOf = (requests: readonly VaultRequest[]): string =>
+  requests.map((request) => `${request.contractId}:${request.allocated}`).join('|')
 
 export const Vault = (): React.JSX.Element => {
   useDocumentTitle('Vault')
   const { deployment, sessionPending } = useBackend()
   const { backend, partyId } = useVault()
-  const proposals = useVaultStore((state) => state.proposals)
+  const loaded = useVaultStore((state) => state.loaded)
   const requests = useVaultStore((state) => state.requests)
   const { refresh: refreshFigures } = useTokenFigures()
-  const signature = `${signatureOf(proposals)}/${signatureOf(requests)}`
+  const signature = signatureOf(requests)
   const seen = useRef<string>(undefined)
 
   // On a change only: a figure blanks while it is read, so a read per tick would flash it.
   useEffect(() => {
+    // The first read after a load or a party switch only records: the figures were just read.
+    if (!loaded) {
+      seen.current = undefined
+      return
+    }
     const previous = seen.current
     seen.current = signature
     if (previous !== undefined && previous !== signature) {
       refreshFigures()
     }
-  }, [refreshFigures, signature])
+  }, [loaded, refreshFigures, signature])
 
   if (deployment === undefined || backend === undefined || partyId === undefined) {
     return sessionPending ? (
