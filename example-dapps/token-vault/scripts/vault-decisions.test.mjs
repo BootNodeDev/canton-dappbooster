@@ -5,6 +5,7 @@ import {
   allocationsFrom,
   isRaceLost,
   LEGS,
+  openRequests,
   pairForSettle,
   payoutToAllocate,
   proposalsFrom,
@@ -148,6 +149,21 @@ describe('requestsFrom', () => {
     ]
 
     assert.deepEqual(requestsFrom(events, VAULT), [])
+  })
+})
+
+describe('openRequests', () => {
+  const requests = requestsFrom([depositEvent('00req', 'dep-1', '25.0')], VAULT)
+  const settleBefore = Date.parse('2026-09-10T14:00:00Z')
+
+  it('keeps a request until its settleBefore and drops it from that instant', () => {
+    assert.deepEqual(openRequests(requests, settleBefore - 1), requests)
+    assert.deepEqual(openRequests(requests, settleBefore), [])
+  })
+
+  it('keeps a request whose deadline does not parse, so the ledger is the one to say no', () => {
+    const odd = [{ ...requests[0], settlement: { ...requests[0].settlement, settleBefore: 'x' } }]
+    assert.deepEqual(openRequests(odd, settleBefore), odd)
   })
 })
 

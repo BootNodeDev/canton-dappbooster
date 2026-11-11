@@ -53,14 +53,18 @@ export const interfaceFilter = (interfaceId) => ({
   identifierFilter: { InterfaceFilter: { value: { interfaceId, includeInterfaceView: true } } },
 })
 
-export const activeContracts = async (party, filter) => {
+export const ledgerEnd = async () => {
   const end = await ledger('get', '/v2/state/ledger-end')
   if (end?.offset === undefined) {
     throw new Error('the participant returned no ledger-end offset')
   }
+  return end.offset
+}
+
+export const activeContracts = async (party, filter, offset) => {
   const rows = await ledger('post', '/v2/state/active-contracts', {
     filter: { filtersByParty: { [party]: { cumulative: [filter] } } },
-    activeAtOffset: end.offset,
+    activeAtOffset: offset ?? (await ledgerEnd()),
     verbose: true,
   })
   if (!Array.isArray(rows)) {

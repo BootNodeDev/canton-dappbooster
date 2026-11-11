@@ -212,7 +212,13 @@ vault. A vault that issued its own `USDX` too would hide the disclosure a deposi
 no I/O and no state, so their tests need no ledger. The loop in
 [`scripts/vault-operator.mjs`](scripts/vault-operator.mjs) acts on them:
 
-- It finds the vault the way the dApp does, then reads both configs once, at start.
+- It finds the vault the way the dApp does, and reads both configs, again on every tick. A Vault
+  or a config made again while it runs would otherwise leave it acting on archived ids.
+- Each tick reads the proposals, the requests and the allocations at one ledger offset. A request
+  is then never paired against allocations from a later snapshot. The vault's own holdings are the
+  exception: each payout reads them again, since an earlier payout in the tick may have spent some.
+- It leaves a request past its `settleBefore` alone. The ledger refuses that settle, so a payout
+  put in escrow then would lock the vault's `USDX` for nothing.
 - It needs no lock. Every choice it exercises consumes its contract, so of two attempts on one
   contract the second fails with `CONTRACT_NOT_FOUND`, which the loop logs and skips.
 - Every command id carries a fresh timestamp, so the participant never drops a genuine retry as a

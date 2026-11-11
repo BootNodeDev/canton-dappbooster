@@ -61,6 +61,13 @@ export const requestsFrom = (events, vault) =>
     ]
   })
 
+// Past `settleBefore` the ledger refuses the settle, so a payout escrowed then could never land.
+export const openRequests = (requests, nowMs) =>
+  requests.filter((request) => {
+    const at = Date.parse(request.settlement.settleBefore)
+    return Number.isNaN(at) || nowMs < at
+  })
+
 // The escrow is readable as the admin of its leg's instrument, which differs across a withdraw.
 export const allocationsFrom = (events) =>
   events.flatMap((event) => {

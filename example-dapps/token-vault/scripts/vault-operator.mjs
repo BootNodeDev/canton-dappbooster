@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 // The vault's backstage signer; architecture.md's "The operator's own guards" says how it works.
 
-import { activeContracts, interfaceFilter, ledger, submit, templateFilter } from './ledger-api.mjs'
+import {
+  activeContracts,
+  interfaceFilter,
+  ledger,
+  ledgerEnd,
+  submit,
+  templateFilter,
+} from './ledger-api.mjs'
 import {
   allocationsFrom,
   isRaceLost,
+  openRequests,
   pairForSettle,
   payoutToAllocate,
   proposalsFrom,
@@ -47,7 +55,7 @@ const advice = (reason) => new Error(`${reason}: run pnpm run bootstrap`)
 const withSynchronizer = (deployment) =>
   deployment.synchronizerId === undefined ? {} : { synchronizerId: deployment.synchronizerId }
 
-const discover = async () => {
+const discover = async (offset) => {
   const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
   if (typeof userId !== 'string' || userId === '') {
     throw new Error('the participant reported no authenticated user')
@@ -62,7 +70,7 @@ const discover = async () => {
     throw advice('no vault operator party on this ledger')
   }
 
-  const vaultRow = (await activeContracts(vault, templateFilter(VAULT_FILTER))).find(
+  const vaultRow = (await activeContracts(vault, templateFilter(VAULT_FILTER), offset)).find(
     (event) => event.createArgument?.vault === vault,
   )
   if (vaultRow === undefined) {
@@ -72,7 +80,7 @@ const discover = async () => {
   // Both instruments off the Vault, so its pair is never mixed with another issuer's.
   const { instrumentId, vaultInstrumentId } = vaultRow.createArgument
   const configOf = async ({ admin, id }) => {
-    const found = (await activeContracts(admin, templateFilter(CONFIG_FILTER, true))).find(
+    const found = (await activeContracts(admin, templateFilter(CONFIG_FILTER, true), offset)).find(
       (event) => event.createArgument?.instrumentId === id,
     )
     if (found?.createdEventBlob === undefined) {
@@ -245,13 +253,18 @@ const attempt = async (what, action) => {
   }
 }
 
-const tick = async (deployment) => {
+// One offset per tick, so the requests and the allocations paired against them are one snapshot.
+const tick = async () => {
+  const offset = await ledgerEnd()
+  // Found again every tick: a Vault or config made again since start would leave an id here stale.
+  const deployment = await discover(offset)
   const { vault } = deployment
 
   for (const kind of ['deposit', 'withdraw']) {
     const events = await activeContracts(
       vault,
       templateFilter(`#canton-token-vault:${PROPOSAL_ENTITY[kind]}`),
+      offset,
     )
     for (const proposal of proposalsFrom(events, kind, vault)) {
       await attempt(`accept ${kind} ${proposal.contractId.slice(0, 10)}`, () =>
@@ -260,15 +273,15 @@ const tick = async (deployment) => {
     }
   }
 
-  const requests = requestsFrom(
-    await activeContracts(vault, interfaceFilter(REQUEST_FILTER)),
-    vault,
+  const requests = openRequests(
+    requestsFrom(await activeContracts(vault, interfaceFilter(REQUEST_FILTER), offset), vault),
+    Date.now(),
   )
   if (requests.length === 0) {
     return
   }
   const allocations = allocationsFrom(
-    await activeContracts(vault, interfaceFilter(ALLOCATION_FILTER)),
+    await activeContracts(vault, interfaceFilter(ALLOCATION_FILTER), offset),
   )
 
   // The payout first, so a withdraw funded this tick settles on the next one.
@@ -282,7 +295,7 @@ const tick = async (deployment) => {
 }
 
 const main = async () => {
-  const deployment = await discover()
+  const deployment = await discover(await ledgerEnd())
   log(`vault    ${deployment.vault}`)
   log(`vaultCid ${deployment.vaultCid}`)
   log(`polling every ${POLL_MS}ms`)
@@ -309,7 +322,7 @@ const main = async () => {
 
   // Sequential rather than on an interval, so a slow tick never overlaps itself.
   while (!stop) {
-    await attempt('tick', () => tick(deployment))
+    await attempt('tick', tick)
     if (stop) break
     await waitOrWake()
   }
