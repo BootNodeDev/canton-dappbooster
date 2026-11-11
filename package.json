@@ -28,6 +28,7 @@
     "dev:amulet-vesting": "CANTON_APP_DIR=$PWD/example-dapps/amulet-vesting bash canton-create/scaffold/localnet/scripts/dev-stack.sh",
     "dev:amulet-vesting-walletless": "CANTON_APP_DIR=$PWD/example-dapps/amulet-vesting-walletless bash canton-create/scaffold/localnet/scripts/dev-stack.sh",
     "dev:token-vesting": "CANTON_APP_DIR=$PWD/example-dapps/token-vesting bash canton-create/scaffold/localnet/scripts/dev-stack.sh",
+    "dev:token-vault": "CANTON_APP_DIR=$PWD/example-dapps/token-vault bash canton-create/scaffold/localnet/scripts/dev-stack.sh",
     "starter:dev": "pnpm -C canton-create/scaffold/starter run dev",
     "test": "pnpm -r run --if-present test && node --test \"canton-create/scaffold/*/scripts/*.test.mjs\" \"scripts/*.test.mjs\"",
     "typecheck": "pnpm -r run --if-present typecheck",

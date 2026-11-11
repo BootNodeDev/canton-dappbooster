@@ -29,6 +29,9 @@
       "entry": ["api/**/*.ts"],
       "ignoreDependencies": ["@bootnodedev/canton-token-forge"]
     },
+    "example-dapps/token-vault": {
+      "entry": ["scripts/*.mjs!"]
+    },
     "example-dapps/amulet-vesting-walletless": {
       "entry": ["server/src/index.ts"]
     }
