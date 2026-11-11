@@ -73,7 +73,7 @@ const uploadDars = async () => {
       headers: { authorization: bearer(), 'content-type': 'application/octet-stream' },
       body: readFileSync(path.join(import.meta.dirname, '..', 'vendor', dar)),
     })
-    // A participant that already holds the package answers 409.
+    // A LocalNet takes an identical package again with a 200; some participants answer 409.
     if (!response.ok && response.status !== 409) {
       const text = await response.text()
       throw new Error(`uploading ${dar} failed: HTTP ${response.status} ${text.slice(0, 400)}`)
