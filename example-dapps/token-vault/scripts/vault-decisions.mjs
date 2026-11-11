@@ -25,7 +25,7 @@ export const scaled = (value) => {
   return BigInt(`${int}${frac.padEnd(PRECISION, '0')}`)
 }
 
-const viewOf = (event) => event?.interfaceViews?.[0]?.viewValue
+export const viewOf = (event) => event?.interfaceViews?.[0]?.viewValue
 
 export const proposalsFrom = (events, kind, vault) =>
   events.flatMap((event) => {
@@ -81,7 +81,6 @@ export const allocationsFrom = (events) =>
       {
         contractId: event.contractId,
         escrow: { admin, cid },
-        requestId: allocation.settlement?.settlementRef?.id,
         settlement: allocation.settlement,
         transferLeg: allocation.transferLeg,
         transferLegId: allocation.transferLegId,
@@ -89,12 +88,11 @@ export const allocationsFrom = (events) =>
     ]
   })
 
-// The whole of what a settle compares, since a match on the reference alone is a refused settle.
+// The whole of what a settle compares, the reference inside it, since less is a refused settle.
 const allocationFor = (allocations, request, legId) =>
   allocations.find(
     (allocation) =>
       allocation.transferLegId === legId &&
-      allocation.requestId === request.requestId &&
       isDeepStrictEqual(allocation.settlement, request.settlement) &&
       isDeepStrictEqual(allocation.transferLeg, request.legs[legId]),
   )

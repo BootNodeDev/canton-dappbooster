@@ -173,7 +173,7 @@ describe('allocationsFrom', () => {
 
     assert.equal(allocation.contractId, '00alloc')
     assert.deepEqual(allocation.escrow, { admin: USDX.admin, cid: '00escrow-00alloc' })
-    assert.equal(allocation.requestId, 'dep-1')
+    assert.deepEqual(allocation.settlement, settlement('dep-1'))
     assert.equal(allocation.transferLegId, 'deposit')
   })
 

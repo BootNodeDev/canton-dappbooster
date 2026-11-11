@@ -3,6 +3,7 @@
 
 import {
   activeContracts,
+  authenticatedUser,
   interfaceFilter,
   ledger,
   ledgerEnd,
@@ -19,6 +20,7 @@ import {
   requestIdFor,
   requestsFrom,
   selectInputs,
+  viewOf,
 } from './vault-decisions.mjs'
 
 const POLL_MS = Number(process.env.VAULT_OPERATOR_POLL_MS || 3000)
@@ -52,14 +54,7 @@ const warn = (message) => process.stderr.write(`[vault-operator] ${message}\n`)
 
 const advice = (reason) => new Error(`${reason}: run pnpm run bootstrap`)
 
-const withSynchronizer = (deployment) =>
-  deployment.synchronizerId === undefined ? {} : { synchronizerId: deployment.synchronizerId }
-
-const discover = async (offset) => {
-  const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
-  if (typeof userId !== 'string' || userId === '') {
-    throw new Error('the participant reported no authenticated user')
-  }
+const discover = async (userId, offset) => {
   const { rights } = await ledger('get', `/v2/users/${encodeURIComponent(userId)}/rights`)
   const vault = (rights ?? [])
     .map((right) => right?.kind?.CanActAs?.value?.party)
@@ -147,7 +142,7 @@ const escrowDisclosure = async (deployment, { admin: party, cid: contractId }) =
     contractId,
     createdEventBlob: created.createdEventBlob,
     templateId: created.templateId,
-    ...withSynchronizer(deployment),
+    synchronizerId: deployment.synchronizerId,
   }
 }
 
@@ -187,10 +182,11 @@ const settle = async (deployment, pair) => {
   log(`settled ${kind} ${request.requestId}`)
 }
 
-const vaultHoldings = async (deployment) =>
-  (await activeContracts(deployment.vault, interfaceFilter(HOLDING_FILTER))).flatMap((event) => {
-    const view = event.interfaceViews?.[0]?.viewValue
-    if (view === undefined) return []
+// The vault administers VSH and sees every holder's, so the owner is checked, not assumed.
+const vaultHoldings = async ({ vault }) =>
+  (await activeContracts(vault, interfaceFilter(HOLDING_FILTER))).flatMap((event) => {
+    const view = viewOf(event)
+    if (view?.owner !== vault) return []
     return [
       {
         amount: view.amount,
@@ -208,7 +204,7 @@ const allocatePayout = async (deployment, { request, spec }) => {
   const inputHoldingCids = selectInputs({
     amount: spec.transferLeg.amount,
     holdings: await vaultHoldings(deployment),
-    instrumentId: { admin: underlying.admin, id: underlying.id },
+    instrumentId: underlying,
   })
   if (inputHoldingCids === undefined) {
     throw new Error(`not enough ${underlying.id} held to pay out ${spec.transferLeg.amount}`)
@@ -231,7 +227,7 @@ const allocatePayout = async (deployment, { request, spec }) => {
         contractId: underlying.config.contractId,
         createdEventBlob: underlying.config.createdEventBlob,
         templateId: underlying.config.templateId,
-        ...withSynchronizer(deployment),
+        synchronizerId: deployment.synchronizerId,
       },
     ],
   )
@@ -254,35 +250,33 @@ const attempt = async (what, action) => {
 }
 
 // One offset per tick, so the requests and the allocations paired against them are one snapshot.
-const tick = async () => {
+const tick = async (userId) => {
   const offset = await ledgerEnd()
   // Found again every tick: a Vault or config made again since start would leave an id here stale.
-  const deployment = await discover(offset)
+  const deployment = await discover(userId, offset)
   const { vault } = deployment
+  const read = (filter) => activeContracts(vault, filter, offset)
+  const proposalFilter = (kind) => templateFilter(`#canton-token-vault:${PROPOSAL_ENTITY[kind]}`)
 
-  for (const kind of ['deposit', 'withdraw']) {
-    const events = await activeContracts(
-      vault,
-      templateFilter(`#canton-token-vault:${PROPOSAL_ENTITY[kind]}`),
-      offset,
+  const [deposits, withdrawals, requestEvents, allocationEvents] = await Promise.all([
+    read(proposalFilter('deposit')),
+    read(proposalFilter('withdraw')),
+    read(interfaceFilter(REQUEST_FILTER)),
+    read(interfaceFilter(ALLOCATION_FILTER)),
+  ])
+
+  const proposals = [
+    ...proposalsFrom(deposits, 'deposit', vault),
+    ...proposalsFrom(withdrawals, 'withdraw', vault),
+  ]
+  for (const proposal of proposals) {
+    await attempt(`accept ${proposal.kind} ${proposal.contractId.slice(0, 10)}`, () =>
+      accept(deployment, proposal),
     )
-    for (const proposal of proposalsFrom(events, kind, vault)) {
-      await attempt(`accept ${kind} ${proposal.contractId.slice(0, 10)}`, () =>
-        accept(deployment, proposal),
-      )
-    }
   }
 
-  const requests = openRequests(
-    requestsFrom(await activeContracts(vault, interfaceFilter(REQUEST_FILTER), offset), vault),
-    Date.now(),
-  )
-  if (requests.length === 0) {
-    return
-  }
-  const allocations = allocationsFrom(
-    await activeContracts(vault, interfaceFilter(ALLOCATION_FILTER), offset),
-  )
+  const requests = openRequests(requestsFrom(requestEvents, vault), Date.now())
+  const allocations = allocationsFrom(allocationEvents)
 
   // The payout first, so a withdraw funded this tick settles on the next one.
   for (const owed of payoutToAllocate({ allocations, requests })) {
@@ -295,7 +289,9 @@ const tick = async () => {
 }
 
 const main = async () => {
-  const deployment = await discover(await ledgerEnd())
+  // Once: the user is the token's subject, which cannot change while the process runs.
+  const userId = await authenticatedUser()
+  const deployment = await discover(userId, await ledgerEnd())
   log(`vault    ${deployment.vault}`)
   log(`vaultCid ${deployment.vaultCid}`)
   log(`polling every ${POLL_MS}ms`)
@@ -322,7 +318,7 @@ const main = async () => {
 
   // Sequential rather than on an interval, so a slow tick never overlaps itself.
   while (!stop) {
-    await attempt('tick', tick)
+    await attempt('tick', () => tick(userId))
     if (stop) break
     await waitOrWake()
   }

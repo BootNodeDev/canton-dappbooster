@@ -28,7 +28,7 @@ export const ledger = async (requestMethod, resource, body, query) => {
       authorization: bearer(),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    body: JSON.stringify(body),
   })
   const text = await response.text()
   // Status before parse: an error page would otherwise surface as a JSON syntax error.
@@ -42,6 +42,14 @@ export const ledger = async (requestMethod, resource, body, query) => {
   } catch {
     throw new Error(`${requestMethod} ${resource} returned no JSON: ${text.slice(0, 400)}`)
   }
+}
+
+export const authenticatedUser = async () => {
+  const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
+  if (typeof userId !== 'string' || userId === '') {
+    throw new Error('the participant reported no authenticated user')
+  }
+  return userId
 }
 
 // A filter takes the package-name reference; given a resolved package id it reads empty in silence.

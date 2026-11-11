@@ -4,7 +4,15 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
-import { activeContracts, bearer, JSON_API_URL, ledger, templateFilter } from './ledger-api.mjs'
+import {
+  activeContracts,
+  authenticatedUser,
+  bearer,
+  JSON_API_URL,
+  ledger,
+  submit,
+  templateFilter,
+} from './ledger-api.mjs'
 
 const STAMP = Date.now()
 const FORGE_PACKAGE = 'canton-token-forge'
@@ -128,10 +136,7 @@ const ensureParty = async (hint) => {
       throw new Error(`no party id for hint ${hint}: ${JSON.stringify(result)}`)
     }
   }
-  const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
-  if (typeof userId !== 'string' || userId.length === 0) {
-    throw new Error('participant did not report an authenticated user')
-  }
+  const userId = await authenticatedUser()
   await ledger('post', `/v2/users/${encodeURIComponent(userId)}/rights`, {
     userId,
     identityProviderId: '',
@@ -156,12 +161,7 @@ const resolvePackage = async (party, packageName) => {
 }
 
 const create = (commandId, party, templateId, createArguments) =>
-  ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
-    commandId,
-    actAs: [party],
-    readAs: [party],
-    commands: [{ CreateCommand: { templateId, createArguments } }],
-  })
+  submit(commandId, party, [{ CreateCommand: { templateId, createArguments } }])
 
 // More than one is a state the dApp cannot pick from, so it is refused rather than guessed.
 const findOne = async (party, templateId, matches, what) => {
@@ -226,8 +226,10 @@ const main = async () => {
   const { party: vault, reused: hadVault } = await ensureParty('vault-operator')
   console.log(`vault      ${vault}${hadVault ? ' (existing)' : ''}`)
 
-  const forgePkg = await resolvePackage(issuer, FORGE_PACKAGE)
-  const vaultPkg = await resolvePackage(vault, VAULT_PACKAGE)
+  const [forgePkg, vaultPkg] = await Promise.all([
+    resolvePackage(issuer, FORGE_PACKAGE),
+    resolvePackage(vault, VAULT_PACKAGE),
+  ])
   console.log(`forge pkg  ${forgePkg}`)
   console.log(`vault pkg  ${vaultPkg}`)
 
