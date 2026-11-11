@@ -46,7 +46,7 @@ const holdingRow = (
     JsActiveContract: {
       createdEvent: {
         contractId,
-        interfaceViews: [{ viewValue: { amount, instrumentId, lock: null } }],
+        interfaceViews: [{ viewValue: { amount, instrumentId, lock: null, owner: PARTY } }],
       },
     },
   },

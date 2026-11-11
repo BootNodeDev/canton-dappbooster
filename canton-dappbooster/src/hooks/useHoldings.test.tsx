@@ -112,6 +112,15 @@ describe('useHoldings', () => {
     expect(result.current.holdings?.[0]?.amount).toBe('2')
   })
 
+  it('leaves out a holding the party sees but another party owns', async () => {
+    const theirs = { viewValue: { ...view(amulet, '7').viewValue, owner: 'bob::1220ab' } }
+    const ledgerApi = answering([row('00a', theirs), row('00b', view(amulet, '2'))])
+    const { result } = renderHook(() => useHoldings(), session(ledgerApi))
+
+    await waitFor(() => expect(result.current.holdings).toHaveLength(1))
+    expect(result.current.holdings?.[0]?.contractId).toBe('00b')
+  })
+
   it('reports an empty list for a party that holds nothing', async () => {
     const { result } = renderHook(() => useHoldings(), session(answering([])))
     await waitFor(() => expect(result.current.holdings).toEqual([]))

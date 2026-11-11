@@ -43,12 +43,14 @@ interface Running {
  * Groups a holdings read by instrument and sums it, spendable apart from locked.
  *
  * @example
- * sumHoldings([{ amount: '1.5', contractId, instrumentId, isLocked: false }])
+ * sumHoldings([{ amount: '1.5', instrumentId, isLocked: false }])
  * // [{ balance: '1.5', instrumentId, locked: '0' }]
  *
  * @category Utilities
  */
-export const sumHoldings = (holdings: readonly Holding[]): readonly InstrumentBalance[] => {
+export const sumHoldings = (
+  holdings: readonly Omit<Holding, 'contractId'>[],
+): readonly InstrumentBalance[] => {
   const totals = new Map<string, Running>()
 
   for (const { amount, instrumentId, isLocked } of holdings) {

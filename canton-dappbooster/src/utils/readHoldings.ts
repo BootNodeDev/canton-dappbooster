@@ -5,8 +5,11 @@ import type { Holding } from '#src/utils/sumHoldings'
 // The v1 interface every standard token implements. `#package-name` form survives a package upgrade
 const HOLDING_INTERFACE = '#splice-api-token-holding-v1:Splice.Api.Token.HoldingV1:Holding'
 
-const holdingFromView = (view: unknown, contractId: string): Holding | undefined => {
+// A party sees every holding of an instrument it administers, so the owner is checked, not assumed
+const holdingFromView = (view: unknown, contractId: string, owner: string): Holding | undefined => {
   const value = valueAt(view, 'viewValue')
+  if (valueAt(value, 'owner') !== owner) return undefined
+
   const admin = valueAt(value, 'instrumentId', 'admin')
   const id = valueAt(value, 'instrumentId', 'id')
   const amount = valueAt(value, 'amount')
@@ -25,7 +28,7 @@ const holdingFromView = (view: unknown, contractId: string): Holding | undefined
   }
 }
 
-const holdingsFromAcsRows = (rows: unknown): readonly Holding[] => {
+const holdingsFromAcsRows = (rows: unknown, owner: string): readonly Holding[] => {
   if (!Array.isArray(rows)) return []
 
   return rows.flatMap((row) => {
@@ -33,7 +36,7 @@ const holdingsFromAcsRows = (rows: unknown): readonly Holding[] => {
     const contractId = valueAt(created, 'contractId')
     const views = valueAt(created, 'interfaceViews')
     if (typeof contractId !== 'string' || !Array.isArray(views)) return []
-    return views.flatMap((view) => holdingFromView(view, contractId) ?? [])
+    return views.flatMap((view) => holdingFromView(view, contractId, owner) ?? [])
   })
 }
 
@@ -83,5 +86,5 @@ export const readHoldings = async (
   if (typeof offset !== 'string' && typeof offset !== 'number') {
     throw new Error('the ledger did not return an offset')
   }
-  return holdingsFromAcsRows(await ledgerApi(acsRequest(partyId, offset)))
+  return holdingsFromAcsRows(await ledgerApi(acsRequest(partyId, offset)), partyId)
 }
