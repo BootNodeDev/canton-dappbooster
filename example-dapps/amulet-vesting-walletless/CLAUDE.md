@@ -25,6 +25,8 @@ Deltas for this app only are below.
   the Vite dev server proxies `/api` so the session cookie stays same-origin.
 - **Server tests run on PGlite**, an in-process Postgres (`server/src/db/testDb.ts`), so
   `pnpm test` needs no Docker. A test never reaches the compose Postgres.
+- **The app does not depend on `canton-connect`**, so `src/utils/errorText.ts` is its own copy
+  where `amulet-vesting` imports the library's.
 
 ## The ledger
 
@@ -39,6 +41,14 @@ Deltas for this app only are below.
   `canton-barebones reset`, the accounts go too: `docker compose -f server/compose.yaml down -v`.
   `scripts/server.sh stop` keeps the volume on purpose, so accounts survive a `down` and `up` the way
   the ledger does.
+- **`daml/` is `amulet-vesting`'s, unchanged, and the two stay identical.** Both upload
+  `amulet-vesting` at the same version to one LocalNet. A participant refuses a second package at a
+  name and version it already holds, so a change goes to both in the same commit. Where the Daml came
+  from, and the edits a fresh copy needs, are in
+  [`amulet-vesting`'s `CLAUDE.md`](../amulet-vesting/CLAUDE.md).
+- **Fixes ported from token-vesting leave out what the Amulet contract has no counterpart for.** That
+  means the proposal cancel and reject. It also means the amount-reservation hint, because a grant
+  here locks its Amulet at accept, not at proposal.
 - **`bootstrap` and `server/src/ledger/config.ts` agree on the `vesting-operator` hint.** The
   bootstrap reuses that party and its factory, and the server matches `vesting-operator::` only, so
   the stamped operators the wallet example creates on a shared LocalNet are never picked up.

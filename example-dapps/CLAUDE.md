@@ -29,9 +29,7 @@ filename casing table and the colocate-then-promote placement rules these layer 
 - **Tests run through the `test` block in the example's `vite.config.ts`**, with no separate
   `vitest.config.ts`.
 - **The docs every example carries:** a `README.md` in the example shape the root `CLAUDE.md` gives,
-  a `CLAUDE.md` with its deltas only, the `AGENTS.md` shim, an `architecture.md` for its seams, and a
-  `PROVENANCE.md`. An example imported from another repository records that repository and the
-  commit it came from there.
+  a `CLAUDE.md` with its deltas only, the `AGENTS.md` shim, and an `architecture.md` for its seams.
 
 ## Layout
 

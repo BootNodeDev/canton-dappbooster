@@ -71,4 +71,4 @@ Point `.env` at your network: `CANTON_JSON_API_URL`, `CANTON_BACKEND_TOKEN`, the
 
 WalletConnect is off by default. Set `VITE_WALLET_CONNECT_PROJECT_ID` to a [Reown](https://cloud.reown.com) project id to turn it on, and `VITE_NETWORK_ID` to the network the wallet serves: `canton:localnet` for the local gateway.
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, including how the dApp finds the operator and its factory on the ledger, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/PROVENANCE.md) records where the frontend and the model came from.
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, including how the dApp finds the operator and its factory on the ledger.

@@ -1,6 +1,6 @@
 # dApp Daml
 
-The vesting dApp's Daml model: the `amulet-vesting` package, holding the factory, the proposal, the contract and the residual claim. It escrows real Canton Coin as a Splice `LockedAmulet`. Its scenarios stay in the repository it was vendored from; see [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting/daml/PROVENANCE.md).
+The vesting dApp's Daml model: the `amulet-vesting` package, holding the factory, the proposal, the contract and the residual claim. It escrows real Canton Coin as a Splice `LockedAmulet`. Its scenarios stay in [cc-vesting-contracts](https://github.com/BootNodeDev/cc-vesting-contracts), the repository it came from.
 
 ## Build and deploy
 

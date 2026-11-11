@@ -5,7 +5,7 @@
 `@bootnodedev/canton-example-token-vesting` is the [amulet-vesting](https://github.com/BootNodeDev/canton-dappbooster/tree/main/example-dapps/amulet-vesting) dApp over a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, `DBT`, instead of Canton Coin. This README covers what changes; the rest works as amulet-vesting describes.
 
 > [!NOTE]
-> Unlike amulet-vesting, which builds its contract from `daml/`, this app only uses prebuilt DARs in `vendor/`: the vesting contract from [canton-vesting-forge](https://github.com/BootNodeDev/canton-vesting-forge) and the token from canton-token-forge. They depend on no Splice release, so one build works on any network and the app needs no Daml toolchain. [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) records where each one comes from.
+> Unlike amulet-vesting, which builds its contract from `daml/`, this app only uses prebuilt DARs in `vendor/`: the vesting contract from [canton-vesting-forge](https://github.com/BootNodeDev/canton-vesting-forge) and the token from canton-token-forge. They depend on no Splice release, so one build works on any network and the app needs no Daml toolchain. [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md#the-committed-dars) records where each one comes from.
 
 ## Run the app
 
@@ -59,4 +59,4 @@ By default the registry accepts only http://localhost:3012. To open the dApp on 
 
 Build with `DEPLOYED_BUILD=1` for a host. The URL variables then have no defaults, and an unset one fails the build rather than baking in a `localhost` address that an https page blocks as mixed content.
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, including how the dApp finds the operator and its factory on the ledger, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/PROVENANCE.md) records where the frontend came from.
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vesting/architecture.md) describes the app's internal structure and the reasoning behind it, including how the dApp finds the operator and its factory on the ledger.

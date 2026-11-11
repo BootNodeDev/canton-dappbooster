@@ -16,5 +16,13 @@ internal seams are in [`architecture.md`](architecture.md). Deltas for this app 
 - The token's mark on every figure is the instrument mark, `icons/TokenMark`, through `DBT` in
   `utils/tokens.tsx`.
 - The Daml packages are binaries in `vendor/`, built elsewhere. A new one, or a new release of
-  either, lands with its row in [`vendor/PROVENANCE.md`](vendor/PROVENANCE.md) in the same change:
-  source, release, size, sha256 and package id.
+  either, lands with its column in [`architecture.md`](architecture.md#the-committed-dars) in the same
+  change: source, release, size, sha256 and package id. There is no automated path: replace the
+  binary, run `sha256sum vendor/canton-token-forge.dar vendor/vesting.dar`, and update the column by
+  hand.
+- `canton-token-forge.dar` comes from the tag `package.json` pins the registry to, so moving that tag
+  replaces the DAR in the same change.
+- A LocalNet that already vetted an older release refuses a new one that is not a valid upgrade, with
+  `NOT_VALID_UPGRADE_PACKAGE`, and nothing uploads past it. Drop the ledger and let the stack deploy
+  both DARs again: `pnpm dev:token-vesting down`, `pnpm exec canton-barebones reset` in
+  `.canton-localnet/`, then `pnpm dev:token-vesting up`.

@@ -117,4 +117,4 @@ A hosted validator issues its own tokens. Set the `EXTERNAL_OAUTH_*` keys and th
 - `GET /api/users/:username` lets any signed-in account find any other by name, so treat usernames as public.
 - Set `WL_COOKIE_SECURE=true` once the app is served over https.
 
-[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting-walletless/architecture.md) describes the server, the session and the reasoning behind them, and [`PROVENANCE.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting-walletless/PROVENANCE.md) records where the app came from.
+[`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting-walletless/architecture.md) describes the server, the session and the reasoning behind them.
