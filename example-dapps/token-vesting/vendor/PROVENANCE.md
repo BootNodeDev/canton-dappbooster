@@ -61,6 +61,5 @@ LocalNet carrying 0.0.1 answers the upload with
 `NOT_VALID_UPGRADE_PACKAGE`. Nothing can be uploaded past that; drop the ledger
 first and let the stack redeploy both DARs onto it:
 
-    pnpm stack down
-    ( cd .canton-localnet && ../node_modules/.bin/canton-barebones reset )
+    pnpm stack reset
     pnpm stack up

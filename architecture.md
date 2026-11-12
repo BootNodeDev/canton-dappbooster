@@ -127,10 +127,11 @@ run through `pnpm -C example-dapps/token-vesting run <script>`.
 | --- | --- |
 | `pnpm dev:amulet-vesting up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
 | `pnpm dev:amulet-vesting down` | stop the gateway and the dApp dev server, stop the LocalNet |
-| `pnpm dev:token-vesting up` / `down` | the same loop on the token example, which also starts and stops its registry |
+| `pnpm dev:amulet-vesting reset` | stop it all, then drop the LocalNet's ledger and the Wallet Gateway's stores |
+| `pnpm dev:token-vesting up` / `down` / `reset` | the same loop on the token example, which also starts and stops its registry |
 | `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
-| `node canton-create/scaffold/localnet/scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs |
+| `node canton-create/scaffold/localnet/scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs; after a move to a newer Splice it leaves an `upgraded-in-place` marker there for `up` to warn about; a run where Docker reports no ledger writes none and drops any it finds |
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | fetch the Splice dependencies, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |

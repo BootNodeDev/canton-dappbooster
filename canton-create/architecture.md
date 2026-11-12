@@ -40,7 +40,7 @@ excludes.
 |---|---|---|
 | `starter/` | the dApp is the starter | the complete starter app and a sample contract in `daml/` |
 | `daml-tooling/` | the app has `daml/daml.yaml` | `build-dar`, `deploy-dar` and `fetch-daml-deps` |
-| `localnet/` | `--localnet` or Barebones | `dev-stack.sh`, `localnet-config.mjs`, `mint-token.mjs`, `wallet-gateway.config.json`, and `canton-barebones` and the gateway in `devDependencies`. `dev-stack.sh` runs the app's own `bootstrap`, `stack:up` and `stack:down` scripts when it has them |
+| `localnet/` | `--localnet` or Barebones | `dev-stack.sh`, `localnet-config.mjs`, `mint-token.mjs`, `wallet-gateway.config.json`, `splice-upgrade.md`, and `canton-barebones` and the gateway in `devDependencies`. `dev-stack.sh` runs the app's own `bootstrap`, `stack:up` and `stack:down` scripts when it has them |
 
 `scaffold` in `src/scaffold.ts` copies the app first, then applies `daml-tooling/` and `localnet/`
 on top of it in that order. `src/merge.ts` decides how each layer file lands: merged into the
