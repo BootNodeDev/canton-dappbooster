@@ -21,7 +21,7 @@ These steps move the ledger to the new release's Amulet with one DSO vote. To st
 
 4. Wait 11 minutes. The app-user validator reads the new configuration from Scan through a 10-minute cache and vets the new versions only then. Until it does, the participant refuses any transaction that needs them.
 
-5. Bump `version` in `daml/daml.yaml`. Built against the new Amulet, the contract is a new package, and the participant refuses a second package at the same name and version (`KNOWN_PACKAGE_VERSION`).
+5. If the project has a contract, bump `version` in `daml/daml.yaml`. Built against the new Amulet, the contract is a new package, and the participant refuses a second package at the same name and version (`KNOWN_PACKAGE_VERSION`).
 
 6. Restart the stack. `pnpm stack up` builds the contract against the new Amulet, deploys it as an upgrade, and runs the `bootstrap` script on it.
 

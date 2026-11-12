@@ -19,8 +19,8 @@ const require = createRequire(import.meta.url)
 
 const CONFIG_NAME = 'canton-barebones.config.json'
 
-// dev-stack.sh reads this status as success over a ledger in Docker that moved to a new Splice.
-export const UPGRADED_IN_PLACE = 3
+// dev-stack.sh warns while this file stands at the root of the LocalNet directory.
+export const UPGRADE_MARKER = 'upgraded-in-place'
 
 // nginx serves no /api/validator without appUser.ui and no /api/scan without sv.scanUI,
 // which is how a missing flag surfaces as a caller failing for unrelated reasons.
@@ -51,16 +51,38 @@ export const needsRescaffold = (local, template) => {
   return undefined
 }
 
-/** Whether the scaffolded config names another Splice release than the template pins. */
-export const spliceMoved = (local, template) =>
-  local !== undefined && local.splice?.tag !== template.splice?.tag
+const RELEASE_TAG = /^\d+(\.\d+)*$/
 
-const ledgerExists = (projectName) =>
-  execFileSync(
-    'docker',
-    ['volume', 'ls', '--quiet', '--filter', `label=com.docker.compose.project=${projectName}`],
-    { encoding: 'utf8' },
-  ).trim() !== ''
+/**
+ * Whether the template pins a newer Splice release than the scaffolded config names. A pair of
+ * tags it cannot order counts as newer, so only a provable downgrade goes unmarked.
+ */
+export const spliceUpgraded = (local, template) => {
+  const from = local?.splice?.tag
+  const to = template.splice?.tag
+  if (local === undefined || from === to) {
+    return false
+  }
+  if (!RELEASE_TAG.test(from ?? '') || !RELEASE_TAG.test(to ?? '')) {
+    return true
+  }
+  return from.localeCompare(to, undefined, { numeric: true }) < 0
+}
+
+// Docker not answering proves nothing, so only an empty answer counts as no ledger.
+const ledgerGone = (projectName) => {
+  try {
+    return (
+      execFileSync(
+        'docker',
+        ['volume', 'ls', '--quiet', '--filter', `label=com.docker.compose.project=${projectName}`],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+      ).trim() === ''
+    )
+  } catch {
+    return false
+  }
+}
 
 /**
  * Sets each required flag to true, returning whether anything changed. Throws when a
@@ -93,12 +115,25 @@ const main = () => {
 
   const template = readJson(templatePath())
   const configPath = path.join(targetDir, CONFIG_NAME)
+  const markerPath = path.join(targetDir, UPGRADE_MARKER)
 
   fs.mkdirSync(targetDir, { recursive: true })
   const local = fs.existsSync(configPath) ? readJson(configPath) : undefined
-  const projectName = local?.composeProjectName ?? template.composeProjectName
-  const upgradedInPlace = spliceMoved(local, template) && ledgerExists(projectName)
   const reason = needsRescaffold(local, template)
+  // The project `start` will run: a re-scaffold replaces the local config with the template.
+  const projectName =
+    reason === undefined
+      ? (local.composeProjectName ?? template.composeProjectName)
+      : template.composeProjectName
+
+  // Before anything moves, so a run that fails past this point has already settled the marker.
+  if (spliceUpgraded(local, template) || fs.existsSync(markerPath)) {
+    if (ledgerGone(projectName)) {
+      fs.rmSync(markerPath, { force: true })
+    } else {
+      fs.writeFileSync(markerPath, '')
+    }
+  }
 
   // Driving `init` rather than copying the templates here keeps the tool the authority
   // on which files a scaffold is made of.
@@ -113,9 +148,6 @@ const main = () => {
   if (applyRequiredFlags(config)) {
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
     console.log(`localnet-config: applied ${REQUIRED_FLAGS.map((k) => k.join('.')).join(', ')}`)
-  }
-  if (upgradedInPlace) {
-    process.exitCode = UPGRADED_IN_PLACE
   }
 }
 

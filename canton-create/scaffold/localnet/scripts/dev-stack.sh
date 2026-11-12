@@ -34,13 +34,16 @@
 # Flags, for `up` only and never both at once:
 #   --json    one JSON object per line on stdout, the human log on stderr. A step
 #             opens with 'start' and closes with 'ok' or 'error'; the run itself
-#             closes with 'done', so the stream never stops without saying why
+#             closes with 'done', so the stream never stops without saying why.
+#             'error' and 'done' carry the upgrade warning below in a 'warnings'
+#             list while it is due, and leave the list out otherwise
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes. `reset` drops them. After a Splice bump, `up` keeps
-# the old ledger and closes with a warning that points at the upgrade guide.
+# stops the LocalNet, keeping its volumes. `reset` drops them. After a move to a newer Splice,
+# `up` keeps the old ledger and warns, pointing at the upgrade guide, on every run until one
+# finishes or `reset` drops the ledger.
 
 set -euo pipefail
 
@@ -70,9 +73,6 @@ GW_PID="$RUN_DIR/wallet-gateway.pid"
 JSON_API_URL=""
 SCAN_API_URL="http://scan.localhost:4000/api/scan"
 UPGRADE_GUIDE="$(cd "$SCRIPT_DIR/.." && pwd)/splice-upgrade.md"
-
-# The status localnet-config.mjs exits with when it moved a ledger in Docker to a new Splice.
-UPGRADED_IN_PLACE=3
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
@@ -125,11 +125,30 @@ link() { # link <absolute-path> <text>
     printf '%s' "$2"
   fi
 }
+upgrade_warning() { # upgrade_warning <guide, as a link or a bare path>
+  echo "This ledger was upgraded in place to a new Splice release."
+  if [ "$HAS_CONTRACT" = 1 ]; then
+    echo "It keeps the Amulet its DSO voted in last, and the contract builds against that one."
+  else
+    echo "It keeps the Amulet its DSO voted in last."
+  fi
+  echo "To move it to the new release's Amulet, follow $1."
+  echo "To start over on a fresh ledger instead, run 'reset'."
+}
+upgrade_warning_due() { [ "$ACTION" = up ] && [ -f "$UPGRADE_MARKER" ]; }
+warn_upgraded_in_place() {
+  local line
+  printf '\n' >&3
+  while IFS= read -r line; do
+    warn "$line"
+  done < <(upgrade_warning "$(link "$UPGRADE_GUIDE" "${UPGRADE_GUIDE#"$ROOT_DIR"/}")")
+}
 # The one human line outside the fd scheme: an error belongs on stderr in every mode.
 die() {
   local message="$*"
   json_event error "${message//$'\n'/ }"
   printf '%s %s\n' "$P_ERR" "${message//$'\n'/$'\n'    }" >&2
+  if upgrade_warning_due; then warn_upgraded_in_place; fi
   exit 1
 }
 
@@ -139,14 +158,32 @@ STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
 
+json_string() { # json_string <text>
+  local value="${1//\\/\\\\}"
+  printf '"%s"' "${value//\"/\\\"}"
+}
+
+json_list() { # json_list <name> [item…]
+  [ "$#" -gt 1 ] || return 0
+  local name="$1" separator="" item
+  shift
+  printf ',"%s":[' "$name"
+  for item in "$@"; do
+    printf '%s%s' "$separator" "$(json_string "$item")"
+    separator=,
+  done
+  printf ']'
+}
+
 json_event() { # json_event <status> [message]
   [ "$JSON_MODE" = 1 ] || return 0
-  local message
+  local warning
   printf '{"step":"%s","index":%d,"total":%d,"status":"%s","elapsed":%d' \
     "$STEP_NAME" "$STEP_INDEX" "$STEP_TOTAL" "$1" "$((SECONDS - STEP_START))" >&4
-  if [ -n "${2:-}" ]; then
-    message="${2//\\/\\\\}"
-    printf ',"message":"%s"' "${message//\"/\\\"}" >&4
+  [ -z "${2:-}" ] || printf ',"message":%s' "$(json_string "$2")" >&4
+  if { [ "$1" = error ] || [ "$1" = done ]; } && upgrade_warning_due; then
+    warning="$(upgrade_warning "${UPGRADE_GUIDE#"$ROOT_DIR"/}")"
+    json_list warnings "${warning//$'\n'/ }" >&4
   fi
   printf '}\n' >&4
 }
@@ -180,13 +217,6 @@ tick_end() {
   if [ "$HUMAN_TTY" = 1 ]; then printf '\r\033[2K' >&5; fi
 }
 
-# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
-if [ "$HAS_CONTRACT" = 1 ]; then
-  case "$DAR_NAME" in
-    -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
-  esac
-fi
-
 ACTION="${1:-menu}"
 LOCALNET_ARG="${2:-}"
 
@@ -204,6 +234,12 @@ case "$ACTION" in
     ;;
 esac
 
+LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
+# A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
+LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
+# localnet-config.mjs writes it after a move to a newer Splice and drops it once no ledger is left.
+UPGRADE_MARKER="$LOCALNET_DIR/upgraded-in-place"
+
 if [ "$JSON_MODE" = 1 ] || [ "$QUIET_MODE" = 1 ]; then
   [ "$ACTION" = up ] || die "--json and --quiet only apply to 'up'."
   if [ "$JSON_MODE$QUIET_MODE" = 11 ]; then
@@ -211,9 +247,12 @@ if [ "$JSON_MODE" = 1 ] || [ "$QUIET_MODE" = 1 ]; then
   fi
 fi
 
-LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
-# A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
-LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
+# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
+if [ "$HAS_CONTRACT" = 1 ]; then
+  case "$DAR_NAME" in
+    -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
+  esac
+fi
 
 wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   local timeout="$1" file="$2" pattern="$3" label="$4" i
@@ -328,6 +367,8 @@ start_wallet_gateway() {
 up() {
   local stack_start=$SECONDS total holder
   mkdir -p "$RUN_DIR"
+  # The menu runs up() under its own action.
+  ACTION=up
 
   if [ "$HAS_CONTRACT" = 1 ]; then
     step preflight "Checking Docker, dpm and the dependencies..."
@@ -390,13 +431,8 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
   step localnet-config "Preparing the LocalNet config in $LOCALNET_DIR..."
-  local config_status=0 upgraded_in_place=0
-  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" || config_status=$?
-  case "$config_status" in
-    0) ;;
-    "$UPGRADED_IN_PLACE") upgraded_in_place=1 ;;
-    *) die "Could not prepare the LocalNet config in $LOCALNET_DIR." ;;
-  esac
+  node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
+    || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
   # containers exist; Splice takes minutes more to answer, and the DAR upload below
@@ -468,12 +504,9 @@ EOF
   echo "   Log in to the Wallet Gateway with client secret 'unsafe', then connect the dApp" >&3
 
   # Last, below the summary, where the output of the steps cannot scroll it away.
-  if [ "$upgraded_in_place" = 1 ]; then
-    printf '\n' >&3
-    warn "This ledger was upgraded in place to a new Splice release."
-    warn "It keeps the Amulet its DSO voted in last, and the contract builds against that one."
-    warn "To move it to the new release's Amulet, follow $(link "$UPGRADE_GUIDE" "${UPGRADE_GUIDE#"$ROOT_DIR"/}")."
-    warn "To start over on a fresh ledger instead, run 'reset'."
+  if upgrade_warning_due; then
+    warn_upgraded_in_place
+    rm -f -- "$UPGRADE_MARKER"
   fi
 }
 
@@ -538,6 +571,7 @@ reset() {
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
   log "Dropping the LocalNet and its volumes..."
   localnet reset || die "canton-barebones reset did not finish."
+  rm -f -- "$UPGRADE_MARKER"
   # Its stores list parties and sessions that only the dropped ledger had.
   rm -rf -- "$ROOT_DIR/.wallet-gateway"
   log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."
