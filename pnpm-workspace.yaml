@@ -22,3 +22,5 @@ allowBuilds:
   protobufjs: true
   secp256k1: true
 
+overrides:
+  '@types/node': ^24.0.0
