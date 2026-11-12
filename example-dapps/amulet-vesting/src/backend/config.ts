@@ -70,7 +70,7 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
     requestMethod: 'post',
     resource: '/v2/state/active-contracts',
     body: {
-      filter: {
+      eventFormat: {
         filtersByParty: {
           [operator]: {
             cumulative: [
@@ -82,9 +82,9 @@ export const loadBackendConfig = async (ledgerApi: LedgerApi): Promise<Deploymen
             ],
           },
         },
+        verbose: true,
       },
       activeAtOffset: offset,
-      verbose: true,
     },
   })
   // Without the blob a funder cannot disclose the factory, so such a row is no use.

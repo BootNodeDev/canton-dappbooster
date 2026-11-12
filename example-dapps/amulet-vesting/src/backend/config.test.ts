@@ -42,9 +42,15 @@ const ledger = (
     if (resource === '/v2/state/ledger-end') {
       return { offset: 42 }
     }
-    const filter = (params.body as { filter?: { filtersByParty?: Record<string, unknown> } })
-      ?.filter
-    filteredParty = Object.keys(filter?.filtersByParty ?? {})[0]
+    const body = params.body as {
+      eventFormat?: { filtersByParty?: Record<string, unknown> }
+      filter?: unknown
+      verbose?: unknown
+    }
+    if (body.filter !== undefined || body.verbose !== undefined) {
+      throw new Error('DEPRECATED_API_DISABLED')
+    }
+    filteredParty = Object.keys(body.eventFormat?.filtersByParty ?? {})[0]
     return overrides.acs ?? [factoryRow(created, 'sync::1')]
   }
   return { ledgerApi, filteredParty: () => filteredParty }

@@ -94,7 +94,7 @@ const resolveRelease = () => {
     template = createRequire(import.meta.url).resolve(LOCALNET_TEMPLATE)
   } catch {
     throw new Error(
-      'daml/daml.yaml depends on Splice DARs: set SPLICE_TAG in .env to the Splice release your network runs, e.g. 0.8.1',
+      'daml/daml.yaml depends on Splice DARs: set SPLICE_TAG in .env to the Splice release your network runs, e.g. 0.9.4',
     )
   }
   const tag = JSON.parse(fs.readFileSync(template, 'utf8')).splice?.tag
