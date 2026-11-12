@@ -48,7 +48,7 @@ describe('dev-stack.sh after an upgrade in place', () => {
     const bin = path.join(app, 'bin')
     executable(path.join(bin, 'docker'), '[ -z "$DOCKER_DOWN" ] || exit 1\nprintf ledger')
     executable(path.join(bin, 'curl'), 'printf 200')
-    executable(path.join(bin, 'lsof'), 'exit 1')
+    executable(path.join(bin, 'lsof'), '[ -n "$PORTS_HELD" ] || exit 1\necho 4242')
     executable(path.join(bin, 'dpm'), 'exit 0')
     executable(
       path.join(app, 'node_modules/.bin/canton-barebones'),
@@ -119,16 +119,19 @@ describe('dev-stack.sh after an upgrade in place', () => {
     assert.doesNotMatch(next.stdout, upgradedInPlace)
   })
 
-  it('lists the warning on the --json error and done events only', () => {
+  it('lists every warning of an up, the upgrade warning last, on the --json error and done only', () => {
     const stack = appAfterSpliceBump()
 
     const failed = events(stack.run(['up', '--json'], localnetDoesNotStart).stdout)
-    const finished = events(stack.run(['up', '--json']).stdout)
+    const finished = events(stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } }).stdout)
 
     assert.deepEqual(warnedOn(failed), ['error'])
     assert.deepEqual(warnedOn(finished), ['done'])
-    assert.equal(finished.at(-1).warnings.length, 1)
-    assert.match(finished.at(-1).warnings[0], /upgraded in place .* run 'reset'\.$/)
+    const { warnings } = finished.at(-1)
+    assert.equal(warnings.length, 3)
+    assert.match(warnings[0], /^Port 3030 is held by pid 4242/)
+    assert.match(warnings[1], /^Port 3012 is held by pid 4242/)
+    assert.match(warnings[2], /^This ledger was upgraded in place .* run 'reset'\.$/)
   })
 
   it('warns only on the LocalNet whose ledger was upgraded', () => {

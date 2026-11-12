@@ -35,8 +35,8 @@
 #   --json    one JSON object per line on stdout, the human log on stderr. A step
 #             opens with 'start' and closes with 'ok' or 'error'; the run itself
 #             closes with 'done', so the stream never stops without saying why.
-#             'error' and 'done' carry the upgrade warning below in a 'warnings'
-#             list while it is due, and leave the list out otherwise
+#             'error' and 'done' carry every warning so far in a 'warnings' list,
+#             in the order given, and leave the list out when there is none
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
@@ -114,9 +114,10 @@ else
   P_STEP='==>' P_WARN='[!]' P_ERR='[x]'
 fi
 
+WARNINGS=()
 log()  { printf '%s %s\n' "$P_STEP" "$*" >&5; }
 say()  { printf '%s %s\n' "$P_STEP" "$*" >&3; }
-warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
+warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; WARNINGS+=("$*"); }
 # An OSC 8 hyperlink to a local file, which a terminal without support prints as the bare text.
 link() { # link <absolute-path> <text>
   if [ "$HUMAN_TTY" = 1 ]; then
@@ -177,13 +178,14 @@ json_list() { # json_list <name> [item…]
 
 json_event() { # json_event <status> [message]
   [ "$JSON_MODE" = 1 ] || return 0
-  local warning
+  local warning=""
   printf '{"step":"%s","index":%d,"total":%d,"status":"%s","elapsed":%d' \
     "$STEP_NAME" "$STEP_INDEX" "$STEP_TOTAL" "$1" "$((SECONDS - STEP_START))" >&4
   [ -z "${2:-}" ] || printf ',"message":%s' "$(json_string "$2")" >&4
-  if { [ "$1" = error ] || [ "$1" = done ]; } && upgrade_warning_due; then
-    warning="$(upgrade_warning "${UPGRADE_GUIDE#"$ROOT_DIR"/}")"
-    json_list warnings "${warning//$'\n'/ }" >&4
+  if [ "$1" = error ] || [ "$1" = done ]; then
+    # Last, as in the human log, which prints it after the error or the summary.
+    if upgrade_warning_due; then warning="$(upgrade_warning "${UPGRADE_GUIDE#"$ROOT_DIR"/}")"; fi
+    json_list warnings ${WARNINGS[@]+"${WARNINGS[@]}"} ${warning:+"${warning//$'\n'/ }"} >&4
   fi
   printf '}\n' >&4
 }
