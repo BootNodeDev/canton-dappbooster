@@ -107,7 +107,7 @@
     "@vitest/coverage-v8": "^5.0.0",
     "@walletconnect/sign-client": "^2.23.9",
     "@walletconnect/types": "^2.23.9",
-    "jsdom": "^30.0.0",
+    "jsdom": "^31.0.0",
     "publint": "^0.3.25",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
