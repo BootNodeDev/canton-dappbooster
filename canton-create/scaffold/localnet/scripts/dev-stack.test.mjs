@@ -207,11 +207,14 @@ describe('dev-stack.sh after an upgrade in place', () => {
   it('stops warning after reset, even on an up that fails before reaching the LocalNet config', () => {
     const stack = appAfterSpliceBump()
     stack.run(['up'], localnetDoesNotStart)
+    const stores = path.join(stack.app, '.wallet-gateway')
+    fs.mkdirSync(stores)
     const reset = stack.run(['reset'])
 
     const failed = stack.run(['up', '--json'], { env: { DOCKER_DOWN: '1' } })
 
     assert.equal(reset.status, 0)
+    assert.ok(!fs.existsSync(stores))
     assert.match(failed.stderr, /Docker daemon not reachable/)
     assert.doesNotMatch(failed.stderr, upgradedInPlace)
     assert.deepEqual(warnedOn(events(failed.stdout)), [])
@@ -220,11 +223,14 @@ describe('dev-stack.sh after an upgrade in place', () => {
   it('keeps warning after a reset that fails to drop the ledger', () => {
     const stack = appAfterSpliceBump()
     stack.run(['up'], localnetDoesNotStart)
+    const stores = path.join(stack.app, '.wallet-gateway')
+    fs.mkdirSync(stores)
     const reset = stack.run(['reset'], localnetDoesNotStart)
 
     const next = stack.run(['up'], localnetDoesNotStart)
 
     assert.match(reset.stderr, /canton-barebones reset did not finish/)
+    assert.ok(fs.existsSync(stores))
     assert.match(next.stdout, upgradedInPlace)
   })
 
