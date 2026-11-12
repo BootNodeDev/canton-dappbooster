@@ -161,8 +161,18 @@ STEP_NAME=stack
 STEP_START=$SECONDS
 
 json_string() { # json_string <text>
-  local value="${1//\\/\\\\}"
-  printf '"%s"' "${value//\"/\\\"}"
+  local value="${1//\\/\\\\}" code hex char
+  value="${value//\"/\\\"}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\n'/\\n}"
+  # JSON takes no raw control character, so the rest get a \u escape; printf -v spares a fork each.
+  for code in {1..31}; do
+    printf -v hex '%02x' "$code"
+    printf -v char "\\x$hex"
+    value="${value//"$char"/\\u00$hex}"
+  done
+  printf '"%s"' "$value"
 }
 
 json_list() { # json_list <name> [item…]

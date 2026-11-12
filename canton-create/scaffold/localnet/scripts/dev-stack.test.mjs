@@ -33,6 +33,23 @@ describe('dev-stack.sh arguments', () => {
     assert.equal(status, 1)
     assert.match(stderr, /--json and --quiet only apply to 'up'/)
   })
+
+  it('writes a --json line JSON reads back, whatever text the message carries', () => {
+    const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
+    after(() => fs.rmSync(app, { recursive: true, force: true }))
+    const damlDir = path.join(app, 'da"m\\l\x01\t\r\x1f')
+    fs.mkdirSync(damlDir)
+    fs.writeFileSync(path.join(damlDir, 'daml.yaml'), 'version: 1.0.0\n')
+
+    const { stdout } = spawnSync('bash', [script, 'up', '--json'], {
+      env: { ...process.env, CANTON_APP_DIR: app, DAML_DIR: damlDir },
+      encoding: 'utf8',
+    })
+
+    const message = `Could not derive DAR name from ${damlDir}/daml.yaml (got '-1.0.0.dar')`
+    assert.equal(JSON.parse(stdout).message, message)
+    assert.ok(stdout.includes(JSON.stringify(message)))
+  })
 })
 
 describe('dev-stack.sh after an upgrade in place', () => {
