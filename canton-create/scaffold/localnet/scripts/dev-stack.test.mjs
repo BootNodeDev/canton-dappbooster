@@ -46,7 +46,10 @@ describe('dev-stack.sh after an upgrade in place', () => {
     const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
     after(() => fs.rmSync(app, { recursive: true, force: true }))
     const bin = path.join(app, 'bin')
-    executable(path.join(bin, 'docker'), '[ -z "$DOCKER_DOWN" ] || exit 1\nprintf ledger')
+    executable(
+      path.join(bin, 'docker'),
+      '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\nprintf ledger',
+    )
     executable(path.join(bin, 'curl'), 'printf 200')
     executable(path.join(bin, 'lsof'), '[ -n "$PORTS_HELD" ] || exit 1\necho 4242')
     executable(path.join(bin, 'dpm'), 'exit 0')
@@ -71,6 +74,7 @@ describe('dev-stack.sh after an upgrade in place', () => {
     )
 
     return {
+      app,
       run: (args, options = {}) =>
         spawnSync('bash', [script, ...args, options.localnet ?? localnet], {
           env: {
@@ -132,6 +136,34 @@ describe('dev-stack.sh after an upgrade in place', () => {
     assert.match(warnings[0], /^Port 3030 is held by pid 4242/)
     assert.match(warnings[1], /^Port 3012 is held by pid 4242/)
     assert.match(warnings[2], /^This ledger was upgraded in place .* run 'reset'\.$/)
+  })
+
+  it('closes an up that stops outside die with an error and a failing status, still warning', () => {
+    const stack = appAfterSpliceBump()
+    stack.run(['up'], localnetDoesNotStart)
+    fs.writeFileSync(
+      path.join(stack.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nVITE_APP_TITLE=Vesting demo\n',
+    )
+
+    const stopped = stack.run(['up', '--json'])
+
+    const last = events(stopped.stdout).at(-1)
+    assert.equal(stopped.status, 127)
+    assert.equal(last.status, 'error')
+    assert.match(last.message, /exit status 127/)
+    assert.match(last.warnings.at(-1), /^This ledger was upgraded in place/)
+    fs.writeFileSync(path.join(stack.app, '.env'), 'CANTON_BACKEND_TOKEN=test\nFOO=$NOT_SET\n')
+    assert.equal(stack.run(['up', '--json']).status, 1)
+  })
+
+  it('closes an up stopped by TERM with an error, and still ends on the signal', () => {
+    const stack = appAfterSpliceBump()
+
+    const terminated = stack.run(['up', '--json'], { env: { TERM_UP: '1' } })
+
+    assert.equal(terminated.signal, 'SIGTERM')
+    assert.equal(events(terminated.stdout).at(-1).message, 'The run stopped.')
   })
 
   it('warns only on the LocalNet whose ledger was upgraded', () => {

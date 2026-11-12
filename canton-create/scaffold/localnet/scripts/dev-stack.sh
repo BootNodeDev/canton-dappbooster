@@ -34,7 +34,7 @@
 # Flags, for `up` only and never both at once:
 #   --json    one JSON object per line on stdout, the human log on stderr. A step
 #             opens with 'start' and closes with 'ok' or 'error'; the run itself
-#             closes with 'done', so the stream never stops without saying why.
+#             closes with 'done' or with the 'error' that stops it, even on INT or TERM.
 #             'error' and 'done' carry every warning so far in a 'warnings' list,
 #             in the order given, and leave the list out when there is none
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
@@ -145,13 +145,14 @@ warn_upgraded_in_place() {
   done < <(upgrade_warning "$(link "$UPGRADE_GUIDE" "${UPGRADE_GUIDE#"$ROOT_DIR"/}")")
 }
 # The one human line outside the fd scheme: an error belongs on stderr in every mode.
-die() {
+report_error() { # report_error <message>
   local message="$*"
+  trap - EXIT
   json_event error "${message//$'\n'/ }"
   printf '%s %s\n' "$P_ERR" "${message//$'\n'/$'\n'    }" >&2
   if upgrade_warning_due; then warn_upgraded_in_place; fi
-  exit 1
 }
+die() { report_error "$@"; exit 1; }
 
 # Keep in step with the `step` calls in up(), which are the list.
 STEP_TOTAL=$((9 + 2 * HAS_CONTRACT))
@@ -366,11 +367,21 @@ start_wallet_gateway() {
     || die "The Wallet Gateway is not answering on 3030 (log: $GW_LOG)."
 }
 
+# An exit of up that skipped die, which bash then ends with its own status.
+stopped() { # stopped <status>
+  local clause=""
+  [ "$1" = 0 ] || clause=" with exit status $1"
+  report_error "The run stopped$clause." || true
+  # bash 3.2 ends an unbound variable with the trap's status, which would read as success.
+  [ "$1" != 0 ] || exit 1
+}
+
 up() {
   local stack_start=$SECONDS total holder
-  mkdir -p "$RUN_DIR"
   # The menu runs up() under its own action.
   ACTION=up
+  trap 'stopped $?' EXIT
+  mkdir -p "$RUN_DIR"
 
   if [ "$HAS_CONTRACT" = 1 ]; then
     step preflight "Checking Docker, dpm and the dependencies..."
@@ -487,6 +498,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # The run as a whole, in the shape of a step. 'done' rather than a tenth 'ok', so
   # counting the ok events still counts steps.
   STEP_NAME=stack STEP_START=$stack_start
+  trap - EXIT
   json_event done
 
   # Shown even under --quiet: it is the one thing that run was for.
