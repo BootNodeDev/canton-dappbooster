@@ -71,9 +71,8 @@ export const ledgerEnd = async () => {
 
 export const activeContracts = async (party, filter, offset) => {
   const rows = await ledger('post', '/v2/state/active-contracts', {
-    filter: { filtersByParty: { [party]: { cumulative: [filter] } } },
+    eventFormat: { filtersByParty: { [party]: { cumulative: [filter] } }, verbose: true },
     activeAtOffset: offset ?? (await ledgerEnd()),
-    verbose: true,
   })
   if (!Array.isArray(rows)) {
     throw new Error('the participant did not answer with a list of contracts')
@@ -85,7 +84,7 @@ export const activeContracts = async (party, filter, offset) => {
 }
 
 export const submit = (commandId, actAs, commands, disclosedContracts = []) =>
-  ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+  ledger('post', '/v2/commands/submit-and-wait', {
     commandId,
     actAs: [actAs],
     readAs: [actAs],

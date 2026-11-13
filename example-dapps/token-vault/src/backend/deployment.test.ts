@@ -44,8 +44,15 @@ const ledger = (
       return { rights: overrides.rights ?? [right(STAMPED), right(VAULT), right(ISSUER)] }
     }
     if (params.resource === '/v2/state/ledger-end') return { offset: 42 }
-    const byParty = (params.body as { filter: { filtersByParty: Record<string, unknown> } }).filter
-      .filtersByParty
+    const body = params.body as {
+      eventFormat: { filtersByParty: Record<string, unknown> }
+      filter?: unknown
+      verbose?: unknown
+    }
+    if (body.filter !== undefined || body.verbose !== undefined) {
+      throw new Error('DEPRECATED_API_DISABLED')
+    }
+    const byParty = body.eventFormat.filtersByParty
     const party = Object.keys(byParty)[0] ?? ''
     parties.push(party)
     if (JSON.stringify(byParty).includes('TokenVault.Vault')) {

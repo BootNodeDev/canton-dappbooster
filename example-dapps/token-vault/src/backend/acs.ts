@@ -52,9 +52,8 @@ export const readAcs = async (
     requestMethod: 'post',
     resource: '/v2/state/active-contracts',
     body: {
-      filter: { filtersByParty: { [party]: { cumulative: [filter] } } },
+      eventFormat: { filtersByParty: { [party]: { cumulative: [filter] } }, verbose: true },
       activeAtOffset: offset,
-      verbose: true,
     },
   })
   if (!Array.isArray(rows)) {

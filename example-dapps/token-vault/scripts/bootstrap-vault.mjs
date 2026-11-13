@@ -147,13 +147,12 @@ const ensureParty = async (hint) => {
 
 // Fails with PACKAGE_NAMES_NOT_FOUND when a DAR is missing, before anything is created.
 const resolvePackage = async (party, packageName) => {
-  const result = await ledger(
-    'get',
-    '/v2/interactive-submission/preferred-package-version',
-    undefined,
-    { 'package-name': packageName, parties: party },
-  )
-  const pkg = result?.packagePreference?.packageReference?.packageId
+  const result = await ledger('post', '/v2/interactive-submission/preferred-packages', {
+    packageVettingRequirements: [{ packageName, parties: [party] }],
+  })
+  const pkg = result?.packageReferences?.find(
+    (reference) => reference.packageName === packageName,
+  )?.packageId
   if (typeof pkg !== 'string' || pkg.length === 0) {
     throw new Error(`participant returned no package id for ${packageName}`)
   }

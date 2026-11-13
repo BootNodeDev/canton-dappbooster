@@ -83,12 +83,18 @@ const ledger = (
     if (params.resource === '/v2/state/ledger-end') return { offset: OFFSET }
     const body = params.body as {
       activeAtOffset?: unknown
-      filter?: {
+      eventFormat?: {
         filtersByParty?: Record<string, { cumulative?: { identifierFilter?: unknown }[] }>
       }
+      filter?: unknown
+      verbose?: unknown
+    }
+    if (body.filter !== undefined || body.verbose !== undefined) {
+      throw new Error('DEPRECATED_API_DISABLED')
     }
     offsets.push(body.activeAtOffset)
-    const identifier = body.filter?.filtersByParty?.[PARTY]?.cumulative?.[0]?.identifierFilter as
+    const identifier = body.eventFormat?.filtersByParty?.[PARTY]?.cumulative?.[0]
+      ?.identifierFilter as
       | {
           InterfaceFilter?: { value?: { interfaceId?: string } }
           TemplateFilter?: { value?: { templateId?: string } }
