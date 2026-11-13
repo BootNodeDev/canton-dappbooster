@@ -23,6 +23,32 @@ interfaces carry that, and every other decision hangs off them.
 | `src/styles/` | The single stylesheet entry and the app's own tokens. |
 | `api/` | Vercel functions, published off the deployed origin. `registry.ts` is the only one, and it forwards three read-only registry routes that `vercel.json` rewrites onto it. Not part of the bundle and not reachable in `pnpm dev`. |
 
+## The committed DARs
+
+`vendor/` holds the app's two Daml packages as binaries, so running it needs no `dpm`. Both are
+byte-reproducible from a clean checkout at the release below, so anyone can rebuild one and compare
+it rather than trust it.
+
+| | `canton-token-forge.dar` | `vesting.dar` |
+|---|---|---|
+| Source | [`canton-token-forge`](https://github.com/BootNodeDev/canton-token-forge) | [`canton-vesting-forge`](https://github.com/BootNodeDev/canton-vesting-forge) |
+| Release | `v0.3.1` | `v0.2.0` |
+| Asset | `canton-token-forge-0.0.1.dar` | `vesting-0.0.2.dar` |
+| Size | 725807 bytes | 688686 bytes |
+| sha256 | `147835e775e523f78c784996c43500c57e1ed97bcab97c97df6515b65f9332da` | `b78439bafdfb4c2e38666d3d99ac73e8c27722dada41d52876d997f16858d5b3` |
+| Package id | `20d54824dc4d76694c70ac51dd5f0b9e063ab789ffa02d07432abb848c8360cc` | `e96e3b9b70a12538cc3bba264480dca9e88e87593706cc3f2e638e877ff99f67` |
+| Built against | Splice `0.6.7` (commit `c8d8d977794c514ed2ee9eb64de322a6779898f3`) | `canton-token-forge` 0.0.1, bundled at package id `20d54824…` |
+| Daml SDK | 3.4.11 | 3.4.11 |
+| LF target | 2.1 | 2.1 |
+
+`canton-token-forge.dar` is byte-identical on `v0.1.0`, `v0.2.0`, `v0.3.0` and `v0.3.1`. It comes
+from `v0.3.1`, the tag `package.json` pins the registry to, so one tag pins both the DAR and the
+registry. It bundles all six `splice-api-token-*` interface packages it links against, at the
+package ids its build used. The app therefore carries no Splice DAR of its own.
+
+`vesting` data-depends on `canton-token-forge`, so the participant needs `canton-token-forge.dar`
+first, and `scripts/bootstrap-vesting.mjs` uploads them in that order.
+
 ## The two seams
 
 **`VestingBackend`** ([`src/backend/VestingBackend.ts`](src/backend/VestingBackend.ts)) is what the

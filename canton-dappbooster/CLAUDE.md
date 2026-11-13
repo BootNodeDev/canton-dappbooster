@@ -98,8 +98,9 @@ saves the typing.
   from an earlier build is sitting there.
 - Keep this package app-agnostic: do not import from `example-dapps/`.
 - React 19 only, peer and dev alike.
-- `example-dapps/amulet-vesting` keeps its own copy/check icons in its `src/icons/`. Leave them: the
-  kit's icons are internal, and exporting them is a public-API decision, not a deduplication chore.
+- The examples take their generic icons, copy and check included, from `lucide-react` rather than
+  from the kit. Leave it so: the kit's icons are internal, and exporting them is a public-API
+  decision, not a deduplication chore.
 
 ## Testing
 

@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+try {
+  process.loadEnvFile(new URL('../.env', import.meta.url))
+} catch {
+  // No .env: the caller's environment is the whole configuration.
+}
+
+const JSON_API_URL = process.env.CANTON_JSON_API_URL || 'http://localhost:2975'
+const TOKEN = process.env.CANTON_BACKEND_TOKEN
+const PACKAGE_NAME = 'amulet-vesting'
+const OPERATOR_HINT = 'vesting-operator'
+const STAMP = Date.now()
+
+// Checked on first use, not at import, so the test can import this file without a .env.
+const bearer = () => {
+  if (!TOKEN) {
+    throw new Error('CANTON_BACKEND_TOKEN is required. Generate one with: pnpm run mint-token')
+  }
+  return `Bearer ${TOKEN}`
+}
+
+const ledger = async (requestMethod, resource, body, query) => {
+  const url = new URL(JSON_API_URL + resource)
+  for (const [key, value] of Object.entries(query ?? {})) {
+    url.searchParams.set(key, value)
+  }
+  const response = await fetch(url, {
+    method: requestMethod.toUpperCase(),
+    headers: {
+      authorization: bearer(),
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+  const text = await response.text()
+  // Status before parse: an error page would otherwise surface as a JSON syntax error.
+  if (!response.ok) {
+    throw new Error(
+      `${requestMethod} ${resource} failed: HTTP ${response.status} ${text.slice(0, 400)}`,
+    )
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(`${requestMethod} ${resource} returned no JSON: ${text.slice(0, 400)}`)
+  }
+}
+
+// Ids are `<hint>::<fingerprint>`; `isLocal` false is a party this participant only knows about.
+export const hostedParty = (details, hint) =>
+  details.find(
+    (one) =>
+      typeof one?.party === 'string' && one.party.startsWith(`${hint}::`) && one.isLocal !== false,
+  )?.party
+
+const PARTY_PAGES = 20
+
+const findParty = async (hint) => {
+  let pageToken
+  for (let page = 0; page < PARTY_PAGES; page++) {
+    const result = await ledger(
+      'get',
+      '/v2/parties',
+      undefined,
+      pageToken === undefined ? undefined : { pageToken },
+    )
+    const details = result?.partyDetails
+    if (!Array.isArray(details)) {
+      throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
+    }
+    const found = hostedParty(details, hint)
+    if (found !== undefined) {
+      return found
+    }
+    pageToken = result?.nextPageToken
+    if (typeof pageToken !== 'string' || pageToken === '') {
+      return undefined
+    }
+  }
+  // Not undefined: the caller would allocate the hint again, which the participant refuses.
+  throw new Error(`gave up looking for ${hint} after ${PARTY_PAGES} pages of parties`)
+}
+
+const ensureParty = async (hint) => {
+  const existing = await findParty(hint)
+  let party = existing
+  if (party === undefined) {
+    const result = await ledger('post', '/v2/parties', { partyIdHint: hint })
+    party = result?.partyDetails?.party
+    if (typeof party !== 'string' || party.length === 0) {
+      throw new Error(`no party id for hint ${hint}: ${JSON.stringify(result)}`)
+    }
+  }
+  // Asked rather than decoded off the token, so a token minted for another subject still works.
+  const userId = (await ledger('get', '/v2/authenticated-user'))?.user?.id
+  if (typeof userId !== 'string' || userId.length === 0) {
+    throw new Error('participant did not report an authenticated user')
+  }
+  // Granted on every run, which is harmless and completes a re-run against an earlier party.
+  await ledger('post', `/v2/users/${userId}/rights`, {
+    userId,
+    identityProviderId: '',
+    rights: [{ kind: { CanActAs: { value: { party } } } }],
+  })
+  return { party, reused: existing !== undefined }
+}
+
+const resolvePackage = async (party) => {
+  // Asked of the participant, so a stale package id cannot quietly empty the dashboard.
+  const result = await ledger('post', '/v2/interactive-submission/preferred-packages', {
+    packageVettingRequirements: [{ packageName: PACKAGE_NAME, parties: [party] }],
+  })
+  const pkg = result?.packageReferences?.find(
+    (reference) => reference.packageName === PACKAGE_NAME,
+  )?.packageId
+  if (typeof pkg !== 'string' || pkg.length === 0) {
+    throw new Error(`participant returned no package id for ${PACKAGE_NAME}`)
+  }
+  return pkg
+}
+
+const findFactory = async (operator) => {
+  const end = await ledger('get', '/v2/state/ledger-end')
+  if (end?.offset === undefined) {
+    throw new Error('participant returned no ledger-end offset')
+  }
+  const rows = await ledger('post', '/v2/state/active-contracts', {
+    eventFormat: {
+      filtersByParty: {
+        // Observer-less, so only the operator sees the factory.
+        [operator]: {
+          cumulative: [
+            {
+              identifierFilter: {
+                // A filter takes the package name; the participant rejects a package id here.
+                TemplateFilter: {
+                  value: {
+                    templateId: `#${PACKAGE_NAME}:AmuletVesting:AmuletVestingFactory`,
+                    includeCreatedEventBlob: true,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      verbose: true,
+    },
+    activeAtOffset: end.offset,
+  })
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => row?.contractEntry?.JsActiveContract)
+    .find((entry) => entry?.createdEvent?.createdEventBlob !== undefined)
+}
+
+const main = async () => {
+  // Stable hint: `up` runs this on every start, and the ledger outlives a `down`.
+  const { party: operator, reused: hadOperator } = await ensureParty(OPERATOR_HINT)
+  console.log(`operator   ${operator}${hadOperator ? ' (existing)' : ''}`)
+
+  const pkg = process.env.PKG ?? (await resolvePackage(operator))
+  const factoryTid = `${pkg}:AmuletVesting:AmuletVestingFactory`
+  console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
+
+  let active = await findFactory(operator)
+  const hadFactory = active !== undefined
+  if (!hadFactory) {
+    await ledger('post', '/v2/commands/submit-and-wait', {
+      commandId: `vesting-factory-${STAMP}`,
+      actAs: [operator],
+      readAs: [operator],
+      commands: [
+        { CreateCommand: { templateId: factoryTid, createArguments: { factoryOwner: operator } } },
+      ],
+    })
+    // Read back rather than taken from the submission response, whose shape varies by version.
+    active = await findFactory(operator)
+  }
+  if (active === undefined) {
+    throw new Error('factory created but no createdEventBlob came back from the ACS read')
+  }
+  console.log(`factory    ${active.createdEvent.contractId}${hadFactory ? ' (existing)' : ''}`)
+  // The filter takes the package name, so a factory signed under an older version is reused too.
+  const factoryPkg = active.createdEvent.templateId?.split(':')[0]
+  if (hadFactory && factoryPkg !== pkg) {
+    console.warn(`warning:   that factory is on package ${factoryPkg}, not the preferred ${pkg}.`)
+    console.warn('           The server follows the contract, so a newly deployed DAR takes effect')
+    console.warn('           only after `canton-barebones reset`.')
+  }
+}
+
+// import.meta.main, not a comparison against argv[1], which keeps symlinks the loader resolves.
+if (import.meta.main) {
+  await main()
+}

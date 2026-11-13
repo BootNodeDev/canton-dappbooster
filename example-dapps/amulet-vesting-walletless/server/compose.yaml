@@ -1,0 +1,22 @@
+name: walletless
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: walletless
+      POSTGRES_PASSWORD: walletless
+      POSTGRES_DB: walletless
+    ports:
+      # 5433, because the LocalNet publishes its own Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - walletless-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U walletless -d walletless"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  walletless-pg:
