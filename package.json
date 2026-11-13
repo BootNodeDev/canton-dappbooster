@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.7.0",
   "type": "module",
-  "packageManager": "pnpm@12.15.0",
+  "packageManager": "pnpm@12.18.0",
   "engines": {
     "node": ">=24.15.0"
   },
@@ -34,12 +34,12 @@
     "wallet-gateway": "mkdir -p .wallet-gateway && wallet-gateway -c canton-create/scaffold/localnet/wallet-gateway.config.json"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
+    "@biomejs/biome": "2.6.6",
     "@canton-network/wallet-gateway-remote": "1.13.0",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "husky": "^9.1.7",
-    "knip": "6.42.1",
+    "knip": "6.44.2",
     "lint-staged": "^17.0.4",
     "postcss": "^8.5.26",
     "typedoc": "^0.28.20",

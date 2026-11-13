@@ -25,6 +25,7 @@
 #   ./scripts/dev-stack.sh docker-up   # macOS only: launch Docker Desktop, wait for the daemon
 #   ./scripts/dev-stack.sh up [dir]    # start the stack (LocalNet, DAR, bootstrap, gateway, dApp)
 #   ./scripts/dev-stack.sh down [dir]  # stop the gateway + the dApp dev server, stop the LocalNet
+#   ./scripts/dev-stack.sh reset [dir] # stop it all, drop the ledger and the gateway's stores
 #   ./scripts/dev-stack.sh docker-down # macOS only: quit Docker Desktop
 #   ./scripts/dev-stack.sh status [dir] # show what is currently running
 #
@@ -33,12 +34,16 @@
 # Flags, for `up` only and never both at once:
 #   --json    one JSON object per line on stdout, the human log on stderr. A step
 #             opens with 'start' and closes with 'ok' or 'error'; the run itself
-#             closes with 'done', so the stream never stops without saying why
+#             closes with 'done' or with the 'error' that stops it, even on INT or TERM.
+#             'error' and 'done' carry every warning so far in a 'warnings' list,
+#             in the order given, and leave the list out when there is none
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
-# stops the LocalNet, keeping its volumes.
+# stops the LocalNet, keeping its volumes. `reset` drops them. After a move to a newer Splice,
+# `up` keeps the old ledger and warns, pointing at the upgrade guide, on every run until one
+# finishes or `reset` drops the ledger.
 
 set -euo pipefail
 
@@ -66,6 +71,8 @@ GW_PID="$RUN_DIR/wallet-gateway.pid"
 
 # Resolved in up(), once $ENV_FILE has been read.
 JSON_API_URL=""
+SCAN_API_URL="http://scan.localhost:4000/api/scan"
+UPGRADE_GUIDE="$(cd "$SCRIPT_DIR/.." && pwd)/splice-upgrade.md"
 
 # Derive the DAR name from daml.yaml so renames and version bumps need no edit here.
 DAML_DIR="${DAML_DIR:-${APP_PREFIX}daml}"
@@ -107,16 +114,45 @@ else
   P_STEP='==>' P_WARN='[!]' P_ERR='[x]'
 fi
 
+WARNINGS=()
 log()  { printf '%s %s\n' "$P_STEP" "$*" >&5; }
 say()  { printf '%s %s\n' "$P_STEP" "$*" >&3; }
-warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; }
+warn() { printf '%s %s\n' "$P_WARN" "$*" >&3; WARNINGS+=("$*"); }
+# An OSC 8 hyperlink to a local file, which a terminal without support prints as the bare text.
+link() { # link <absolute-path> <text>
+  if [ "$HUMAN_TTY" = 1 ]; then
+    printf '\033]8;;file://%s\033\\%s\033]8;;\033\\' "${1// /%20}" "$2"
+  else
+    printf '%s' "$2"
+  fi
+}
+upgrade_warning() { # upgrade_warning <guide, as a link or a bare path>
+  echo "This ledger was upgraded in place to a new Splice release."
+  if [ "$HAS_CONTRACT" = 1 ]; then
+    echo "It keeps the Amulet its DSO voted in last, and the contract builds against that one."
+  else
+    echo "It keeps the Amulet its DSO voted in last."
+  fi
+  echo "To move it to the new release's Amulet, follow $1."
+  echo "To start over on a fresh ledger instead, run 'reset'."
+}
+upgrade_warning_due() { [ "$ACTION" = up ] && [ -f "$UPGRADE_MARKER" ]; }
+warn_upgraded_in_place() {
+  local line
+  printf '\n' >&3
+  while IFS= read -r line; do
+    warn "$line"
+  done < <(upgrade_warning "$(link "$UPGRADE_GUIDE" "${UPGRADE_GUIDE#"$ROOT_DIR"/}")")
+}
 # The one human line outside the fd scheme: an error belongs on stderr in every mode.
-die() {
+report_error() { # report_error <message>
   local message="$*"
+  trap - EXIT
   json_event error "${message//$'\n'/ }"
   printf '%s %s\n' "$P_ERR" "${message//$'\n'/$'\n'    }" >&2
-  exit 1
+  if upgrade_warning_due; then warn_upgraded_in_place; fi
 }
+die() { report_error "$@"; exit 1; }
 
 # Keep in step with the `step` calls in up(), which are the list.
 STEP_TOTAL=$((9 + 2 * HAS_CONTRACT))
@@ -124,14 +160,43 @@ STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
 
+json_string() { # json_string <text>
+  local value="${1//\\/\\\\}" code hex char
+  value="${value//\"/\\\"}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\n'/\\n}"
+  # JSON takes no raw control character, so the rest get a \u escape; printf -v spares a fork each.
+  for code in {1..31}; do
+    printf -v hex '%02x' "$code"
+    printf -v char "\\x$hex"
+    value="${value//"$char"/\\u00$hex}"
+  done
+  printf '"%s"' "$value"
+}
+
+json_list() { # json_list <name> [item…]
+  [ "$#" -gt 1 ] || return 0
+  local name="$1" separator="" item
+  shift
+  printf ',"%s":[' "$name"
+  for item in "$@"; do
+    printf '%s%s' "$separator" "$(json_string "$item")"
+    separator=,
+  done
+  printf ']'
+}
+
 json_event() { # json_event <status> [message]
   [ "$JSON_MODE" = 1 ] || return 0
-  local message
+  local warning=""
   printf '{"step":"%s","index":%d,"total":%d,"status":"%s","elapsed":%d' \
     "$STEP_NAME" "$STEP_INDEX" "$STEP_TOTAL" "$1" "$((SECONDS - STEP_START))" >&4
-  if [ -n "${2:-}" ]; then
-    message="${2//\\/\\\\}"
-    printf ',"message":"%s"' "${message//\"/\\\"}" >&4
+  [ -z "${2:-}" ] || printf ',"message":%s' "$(json_string "$2")" >&4
+  if [ "$1" = error ] || [ "$1" = done ]; then
+    # Last, as in the human log, which prints it after the error or the summary.
+    if upgrade_warning_due; then warning="$(upgrade_warning "${UPGRADE_GUIDE#"$ROOT_DIR"/}")"; fi
+    json_list warnings ${WARNINGS[@]+"${WARNINGS[@]}"} ${warning:+"${warning//$'\n'/ }"} >&4
   fi
   printf '}\n' >&4
 }
@@ -165,13 +230,6 @@ tick_end() {
   if [ "$HUMAN_TTY" = 1 ]; then printf '\r\033[2K' >&5; fi
 }
 
-# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
-if [ "$HAS_CONTRACT" = 1 ]; then
-  case "$DAR_NAME" in
-    -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
-  esac
-fi
-
 ACTION="${1:-menu}"
 LOCALNET_ARG="${2:-}"
 
@@ -179,15 +237,21 @@ LOCALNET_ARG="${2:-}"
 # is normally driven. Only a path-shaped first argument is read that way, so a mistyped
 # subcommand still fails instead of silently opening the menu.
 case "$ACTION" in
-  menu | install | docker-up | docker-down | up | down | status) ;;
+  menu | install | docker-up | docker-down | up | down | reset | status) ;;
   /* | ./* | ../* | ~*) LOCALNET_ARG="$ACTION"; ACTION=menu ;;
   *)
     [ -d "$ACTION" ] \
-      || die "Usage: $0 {menu|install|docker-up|up|down|docker-down|status} [localnet-dir]"
+      || die "Usage: $0 {menu|install|docker-up|up|down|reset|docker-down|status} [localnet-dir]"
     LOCALNET_ARG="$ACTION"
     ACTION=menu
     ;;
 esac
+
+LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
+# A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
+LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
+# localnet-config.mjs writes it after a move to a newer Splice and drops it once no ledger is left.
+UPGRADE_MARKER="$LOCALNET_DIR/upgraded-in-place"
 
 if [ "$JSON_MODE" = 1 ] || [ "$QUIET_MODE" = 1 ]; then
   [ "$ACTION" = up ] || die "--json and --quiet only apply to 'up'."
@@ -196,9 +260,12 @@ if [ "$JSON_MODE" = 1 ] || [ "$QUIET_MODE" = 1 ]; then
   fi
 fi
 
-LOCALNET_DIR="${LOCALNET_ARG:-${CANTON_LOCALNET_DIR:-$ROOT_DIR/.canton-localnet}}"
-# A quoted '~/dir' reaches us unexpanded, and bash never expands a tilde held in a variable.
-LOCALNET_DIR="${LOCALNET_DIR/#\~/$HOME}"
+# A half-parsed daml.yaml yields a name like '-.dar', which would deploy nothing.
+if [ "$HAS_CONTRACT" = 1 ]; then
+  case "$DAR_NAME" in
+    -.dar | -*.dar | *-.dar) die "Could not derive DAR name from $DAML_DIR/daml.yaml (got '$DAR_NAME')" ;;
+  esac
+fi
 
 wait_for() { # wait_for <seconds> <logfile> <grep-pattern> <label>
   local timeout="$1" file="$2" pattern="$3" label="$4" i
@@ -310,8 +377,20 @@ start_wallet_gateway() {
     || die "The Wallet Gateway is not answering on 3030 (log: $GW_LOG)."
 }
 
+# An exit of up that skipped die, which bash then ends with its own status.
+stopped() { # stopped <status>
+  local clause=""
+  [ "$1" = 0 ] || clause=" with exit status $1"
+  report_error "The run stopped$clause." || true
+  # bash 3.2 ends an unbound variable with the trap's status, which would read as success.
+  [ "$1" != 0 ] || exit 1
+}
+
 up() {
   local stack_start=$SECONDS total holder
+  # The menu runs up() under its own action.
+  ACTION=up
+  trap 'stopped $?' EXIT
   mkdir -p "$RUN_DIR"
 
   if [ "$HAS_CONTRACT" = 1 ]; then
@@ -334,12 +413,6 @@ up() {
       || die "dpm not found on PATH.
 Install it and add ~/.dpm/bin to your PATH: https://docs.canton.network/sdks-tools/cli-tools/dpm#installation
 Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
-
-    # Before anything starts, so an SDK it cannot build on stops `up` with nothing to undo.
-    step build-dar "Building the $DAR_NAME DAR..."
-    pnpm run build-dar \
-      || die "The $DAR_NAME build failed.
-Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
   fi
 
   # $ENV_FILE is the mint recipe, the DAR upload token and the dApp's VITE_* settings.
@@ -395,6 +468,14 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
     || die "The LocalNet is up but its JSON API never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
 
   if [ "$HAS_CONTRACT" = 1 ]; then
+    # After Scan answers, because the DAR is built against the Amulet this ledger runs.
+    step build-dar "Building the $DAR_NAME DAR..."
+    wait_for_http 300 "$SCAN_API_URL/v0/dso" "Scan" ok \
+      || die "The LocalNet is up but its Scan never answered. Check 'canton-barebones logs' in $LOCALNET_DIR, then run 'up' again."
+    pnpm run build-dar \
+      || die "The $DAR_NAME build failed.
+Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up)."
+
     step deploy-dar "Deploying $DAR_PATH to Canton..."
     pnpm run deploy-dar -- "$DAR_PATH" || die "Uploading $DAR_PATH to Canton failed."
   fi
@@ -427,6 +508,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   # The run as a whole, in the shape of a step. 'done' rather than a tenth 'ok', so
   # counting the ok events still counts steps.
   STEP_NAME=stack STEP_START=$stack_start
+  trap - EXIT
   json_event done
 
   # Shown even under --quiet: it is the one thing that run was for.
@@ -444,6 +526,12 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
    PostgreSQL              localhost:5432
 EOF
   echo "   A dApp that connects a wallet: log in to the Wallet Gateway with client secret 'unsafe'" >&3
+
+  # Last, below the summary, where the output of the steps cannot scroll it away.
+  if upgrade_warning_due; then
+    warn_upgraded_in_place
+    rm -f -- "$UPGRADE_MARKER"
+  fi
 }
 
 stop_pidfile() { # stop_pidfile <pidfile> <label>
@@ -472,18 +560,19 @@ stop_port() { # stop_port <port> <label>
   done
 }
 
-down() {
-  # 1. Background processes
+stop_services() {
   stop_pidfile "$DAPP_PID" "dApp dev server"
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
   stop_port 3012 "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"
   stop_port 3030 "Wallet Gateway"
+}
 
-  # 2. LocalNet (only if the daemon is reachable). Volumes are kept, so the ledger
-  # survives; drop them with 'canton-barebones reset'. Docker itself is left
-  # running — quit it separately with 'docker-down', the app, or your CLI.
+down() {
+  stop_services
+
+  # Volumes are kept, so the ledger survives a `down`; `reset` is what drops them.
   if docker info >/dev/null 2>&1; then
     log "Stopping the LocalNet..."
     localnet stop || warn "canton-barebones stop reported an error"
@@ -500,20 +589,39 @@ down() {
   fi
 }
 
+reset() {
+  stop_services
+  docker info >/dev/null 2>&1 \
+    || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
+  log "Dropping the LocalNet and its volumes..."
+  localnet reset || die "canton-barebones reset did not finish."
+  rm -f -- "$UPGRADE_MARKER"
+  # Its stores list parties and sessions that only the dropped ledger had.
+  rm -rf -- "$ROOT_DIR/.wallet-gateway"
+  log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."
+}
+
+confirm() { # confirm <question>
+  local answer
+  read -r -p "  $1 [y/N] " answer
+  [[ "$answer" =~ ^[yY]$ ]]
+}
+
 menu() {
   if [ ! -t 0 ] || [ ! -t 1 ]; then
     die "The menu needs an interactive terminal. Run a subcommand directly instead."
   fi
 
   # Display label per item; `keys` is the matching action dispatched on select.
-  local keys=(install docker-up docker-down up down quit)
-  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Quit")
+  local keys=(install docker-up docker-down up down reset quit)
+  local labels=("Install" "Docker up" "Docker down" "Stack up" "Stack down" "Stack reset" "Quit")
   local descs=(
     "pnpm install"
     "start Docker Desktop (macOS)"
     "quit Docker Desktop (macOS)"
     "start LocalNet, deploy DAR, bootstrap, gateway, dApp"
     "stop the gateway + dApp dev server, stop the LocalNet"
+    "stop it all, drop the ledger and the gateway's parties"
     "exit"
   )
   local n=${#keys[@]} sel=0 key rest i num choice
@@ -567,6 +675,11 @@ menu() {
       docker-down) ( docker_down ) || warn "docker-down did not finish cleanly" ;;
       up)          ( up ) || warn "up did not finish cleanly (see output above)" ;;
       down)        ( down ) || warn "down did not finish cleanly" ;;
+      reset)
+        if confirm "Drop the ledger and the Wallet Gateway's parties?"; then
+          ( reset ) || warn "reset did not finish cleanly"
+        fi
+        ;;
     esac
     printf '\n  \033[2mPress Enter to return to the menu...\033[0m'
     read -r _ || true
@@ -598,6 +711,7 @@ case "$ACTION" in
   docker-up)   docker_up ;;
   up)          up ;;
   down)        down ;;
+  reset)       reset ;;
   docker-down) docker_down ;;
   status)      status ;;
 esac

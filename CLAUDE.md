@@ -33,6 +33,7 @@ Use one reader per doc type, layered by scope:
 | `AGENTS.md` | Agent compatibility loader | Three-line shim beside every `CLAUDE.md`, pointing to the sibling `CLAUDE.md`. It is never canonical. |
 | `architecture.md` | Human or agent: what are the structural seams and internal subsystems? | Root always for cross-component seams. Subproject only when internals outgrow the README: three or more interacting subsystems, control flow that takes explaining, or named abstractions. |
 | `architecture/<topic>.md` | Human or agent editing one subsystem: how does it behave in full? | Only beside an `architecture.md` that indexes it, when a section outgrows the seam it describes. The index keeps the seam and links the page; no page without its index entry. |
+| `splice-upgrade.md` | Human whose LocalNet ledger was upgraded in place: how do I move it to the new Splice's Amulet? | Only in `canton-create/scaffold/localnet/`, which ships it to every project with a local network. `up`'s upgrade warning is what points at it. |
 | Generated reference | Human: what does this export do and how does someone call it? | Not hand-maintained and not a file anyone edits. `scripts/typedoc.json` builds it from the JSDoc on the barrels of `canton-dappbooster` and `canton-connect`, and `@internal` keeps a symbol off it. Fix the doc block, never the site. `canton-connect/coming-from-wagmi.md`, published through `projectDocuments`, is the one hand-written page in it: an exception for a mapping to another library's API, not a pattern to repeat. |
 
 Current distribution:
@@ -41,7 +42,7 @@ Current distribution:
 |-------|--------|--------|--------|--------------|----------|
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. `CONTRIBUTING.md` covers working on the repo. |
 | `canton-connect/` | yes | shim | yes | yes, plus `architecture/` | Public hook API, the machine-owned lifecycle, the picker/adapter seams; pages for the connection machine and the popup close guard. |
-| `canton-create/` | yes | shim | yes | yes | The `create-canton-dappbooster` installer. `CLAUDE.md` carries the flag rule, the scaffold rules and the demo recording, and `architecture.md` how a run and the scaffold layers fit together. A project reads the `README.md` files in `scaffold/`: `starter/`'s whole, and `daml-tooling/`'s and `localnet/`'s as sections appended to the app's. |
+| `canton-create/` | yes | shim | yes | yes | The `create-canton-dappbooster` installer. `CLAUDE.md` carries the flag rule, the scaffold rules and the demo recording, and `architecture.md` how a run and the scaffold layers fit together. A project reads the `README.md` files in `scaffold/`: `starter/`'s whole, and `daml-tooling/`'s and `localnet/`'s as sections appended to the app's. `localnet/` also ships `splice-upgrade.md`. |
 | `example-dapps/` | no | shim | yes | no | The rules every example shares: what an example is, the page-owns-its-components layout, the shared pieces, the naming an agent would otherwise get wrong, and the checklist for adding one. No README, since each example is a unit of its own. |
 | `example-dapps/amulet-vesting/` | yes | shim | yes | yes | Canton Coin vesting example, published on its own. `CLAUDE.md` carries its deltas, and architecture.md its internal seams. Its single Daml package (`amulet-vesting`) sits in `daml/` with a `README.md` of its own. Its `CLAUDE.md` names the repository and commit `daml/` came from. |
 | `example-dapps/amulet-vesting-walletless/` | yes | shim | yes | yes | The Canton Coin vesting example with accounts instead of a wallet, published on its own. `CLAUDE.md` carries the server's rules, and architecture.md the session, the API and the ledger seams. Its `daml/` is an identical copy of `amulet-vesting`'s. |
@@ -103,7 +104,7 @@ stays only where it is the point: a pair the sentence contrasts, or a figure fix
 |----------|-----------|-------|
 | Languages | TypeScript, Daml, Bash | TypeScript across the JS subprojects; Daml in each app's `daml/`; Bash and Node for the root `scripts/` and the scaffold's |
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
-| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and the examples declare `engines.node` at `>=24.15.0`, which is what `jsdom` 30 requires. `canton-create` and its starter declare the same, since the project the installer installs depends on the libraries |
+| Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and the examples declare `engines.node` at `>=24.15.0`, which is what `jsdom` 31 requires. `canton-create` and its starter declare the same, since the project the installer installs depends on the libraries |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
 | Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies`, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. Each wallet example registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | `@bootnodedev/canton-barebones` | Pinned exact in `canton-create/scaffold/localnet/package.json`, the only manifest that declares it. `publicHoistPattern` in `pnpm-workspace.yaml` links it and its command into the root `node_modules`, so `pnpm exec canton-barebones` and the scaffold's scripts reach that one copy from the root. The repo commits none of its config. `canton-create/scaffold/localnet/scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`. Without them, nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
@@ -416,6 +417,10 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   would otherwise reject. The other is a new Splice tag, which would otherwise pin the stack to a
   version nobody tested the tool against. Anything else set there survives until then, so a standing
   deviation belongs in a directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
+  A newer Splice tag with the old ledger still in Docker upgrades that ledger in place. It keeps
+  the Amulet its DSO voted in last, `build-dar` builds against that one through Scan, and `up`
+  warns, pointing at `canton-create/scaffold/localnet/splice-upgrade.md`, until one finishes or
+  `reset` drops the ledger.
 - `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
   in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
   loop described earlier.

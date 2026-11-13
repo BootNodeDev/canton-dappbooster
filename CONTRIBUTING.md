@@ -32,6 +32,7 @@ Command line:
 ```bash
 pnpm dev:amulet-vesting up     # LocalNet, contract, Wallet Gateway and dApp
 pnpm dev:amulet-vesting down   # stop everything and keep the ledger
+pnpm dev:amulet-vesting reset  # stop everything and drop the ledger and the gateway's parties
 ```
 
 The dApp runs on http://localhost:3012 and Wallet Gateway on http://localhost:3030.
@@ -55,6 +56,7 @@ token in `example-dapps/amulet-vesting/.env`.
 pnpm dev:token-vesting        # interactive menu
 pnpm dev:token-vesting up     # LocalNet, its DARs, token registry, Wallet Gateway and dApp
 pnpm dev:token-vesting down   # stop everything and keep the ledger
+pnpm dev:token-vesting reset  # stop everything and drop the ledger and the gateway's parties
 ```
 
 The dApp runs on http://localhost:3012, its token registry on http://localhost:3013 and Wallet

@@ -120,9 +120,11 @@ export class LedgerBackend implements VestingBackend {
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
       body: {
-        filter: templateFilter(party, templateId, includeCreatedEventBlob),
+        eventFormat: {
+          verbose: true,
+          ...templateFilter(party, templateId, includeCreatedEventBlob),
+        },
         activeAtOffset: offset,
-        verbose: true,
       },
     })
     return Array.isArray(rows) ? rows : []

@@ -24,5 +24,4 @@ internal seams are in [`architecture.md`](architecture.md). Deltas for this app 
   replaces the DAR in the same change.
 - A LocalNet that already vetted an older release refuses a new one that is not a valid upgrade, with
   `NOT_VALID_UPGRADE_PACKAGE`, and nothing uploads past it. Drop the ledger and let the stack deploy
-  both DARs again: `pnpm dev:token-vesting down`, `pnpm exec canton-barebones reset` in
-  `.canton-localnet/`, then `pnpm dev:token-vesting up`.
+  both DARs again: `pnpm dev:token-vesting reset`, then `pnpm dev:token-vesting up`.
