@@ -16,6 +16,10 @@ export const EXAMPLES: Record<string, Omit<RadioOption, 'value'>> = {
     label: 'Token Vesting',
     hint: 'A vesting dApp over a canton-token-forge token, with its registry.',
   },
+  'token-vault': {
+    label: 'Token Vault',
+    hint: 'A token vault dApp over a canton-token-forge token: deposit for shares, redeem shares.',
+  },
 }
 
 /** Every dApp the list offers: the starter first, then the examples. */

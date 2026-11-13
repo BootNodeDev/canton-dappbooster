@@ -49,8 +49,12 @@ declare const darkSheet: string
 
 declare const instrumentId: FixtureInstrumentId
 declare const registryUrl: string
+declare const ledgerApi: (
+  params: import('@bootnodedev/canton-connect').LedgerApiParams,
+) => Promise<unknown>
 declare const holdings: readonly {
   amount: string
+  contractId: string
   instrumentId: FixtureInstrumentId
   isLocked: boolean
 }[]

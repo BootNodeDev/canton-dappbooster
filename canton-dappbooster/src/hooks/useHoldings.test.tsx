@@ -28,8 +28,8 @@ const view = (instrumentId: typeof amulet, amount: string, lock: unknown = null)
   viewValue: { owner: account.partyId, instrumentId, amount, lock },
 })
 
-const row = (...views: unknown[]) => ({
-  contractEntry: { JsActiveContract: { createdEvent: { interfaceViews: views } } },
+const row = (contractId: string, ...views: unknown[]) => ({
+  contractEntry: { JsActiveContract: { createdEvent: { contractId, interfaceViews: views } } },
 })
 
 const session = (ledgerApi: LedgerApi, usable = true) => ({
@@ -53,13 +53,13 @@ const answering = (rows: LedgerAnswer) =>
 
 describe('useHoldings', () => {
   it('reads the party holdings and reports one entry per contract', async () => {
-    const ledgerApi = answering([row(view(amulet, '10.5')), row(view(amulet, '4'))])
+    const ledgerApi = answering([row('00a', view(amulet, '10.5')), row('00b', view(amulet, '4'))])
     const { result } = renderHook(() => useHoldings(), session(ledgerApi))
 
     await waitFor(() => expect(result.current.holdings).toHaveLength(2))
     expect(result.current.holdings).toEqual([
-      { amount: '10.5', instrumentId: amulet, isLocked: false },
-      { amount: '4', instrumentId: amulet, isLocked: false },
+      { amount: '10.5', contractId: '00a', instrumentId: amulet, isLocked: false },
+      { amount: '4', contractId: '00b', instrumentId: amulet, isLocked: false },
     ])
     expect(result.current.error).toBeUndefined()
   })
@@ -98,7 +98,7 @@ describe('useHoldings', () => {
   })
 
   it('reports a locked holding as locked', async () => {
-    const ledgerApi = answering([row(view(amulet, '1', { holders: ['escrow::1220cd'] }))])
+    const ledgerApi = answering([row('00a', view(amulet, '1', { holders: ['escrow::1220cd'] }))])
     const { result } = renderHook(() => useHoldings(), session(ledgerApi))
 
     await waitFor(() => expect(result.current.holdings?.[0]?.isLocked).toBe(true))
@@ -106,13 +106,22 @@ describe('useHoldings', () => {
 
   it('drops a view it cannot read rather than reporting a holding with no amount', async () => {
     const ledgerApi = answering([
-      row({ viewValue: { instrumentId: amulet } }),
-      row(view(amulet, '2')),
+      row('00a', { viewValue: { instrumentId: amulet } }),
+      row('00b', view(amulet, '2')),
     ])
     const { result } = renderHook(() => useHoldings(), session(ledgerApi))
 
     await waitFor(() => expect(result.current.holdings).toHaveLength(1))
     expect(result.current.holdings?.[0]?.amount).toBe('2')
+  })
+
+  it('leaves out a holding the party sees but another party owns', async () => {
+    const theirs = { viewValue: { ...view(amulet, '7').viewValue, owner: 'bob::1220ab' } }
+    const ledgerApi = answering([row('00a', theirs), row('00b', view(amulet, '2'))])
+    const { result } = renderHook(() => useHoldings(), session(ledgerApi))
+
+    await waitFor(() => expect(result.current.holdings).toHaveLength(1))
+    expect(result.current.holdings?.[0]?.contractId).toBe('00b')
   })
 
   it('reports an empty list for a party that holds nothing', async () => {

@@ -22,7 +22,7 @@ together, see [`architecture.md`](architecture.md).
   sets. Any other overwrite is a design error in `scaffold/`, and `scaffold` throws
   `ScaffoldConflictError`. So does any other field in a layer's `package.json`, apart from the
   layer's own `name`, `private`, `version` and `type`, because the merge would drop it.
-- What an app runs beside the ledger, such as the token example's registry, stays in the app. It
+- What an app runs beside the ledger, such as token-vesting's registry, stays in the app. It
   starts and stops through the app's own `stack:up` and `stack:down` scripts, which `dev-stack.sh`
   runs when they exist, so the `localnet/` layer never learns about one app's services.
 - A layer's `README.md` is a section that gets appended, so it starts with a `##` heading and never
