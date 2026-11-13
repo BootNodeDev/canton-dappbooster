@@ -525,7 +525,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
    SV UI                   http://sv.localhost:4000
    PostgreSQL              localhost:5432
 EOF
-  echo "   Log in to the Wallet Gateway with client secret 'unsafe', then connect the dApp" >&3
+  echo "   A dApp that connects a wallet: log in to the Wallet Gateway with client secret 'unsafe'" >&3
 
   # Last, below the summary, where the output of the steps cannot scroll it away.
   if upgrade_warning_due; then

@@ -4,10 +4,11 @@
 
 | Subproject | Stack | Purpose |
 | --- | --- | --- |
-| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm dev:amulet-vesting` scaffolds its config into the gitignored `.canton-localnet/` |
-| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm dev:amulet-vesting` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
+| LocalNet (external: [`BootNodeDev/canton-barebones`](https://github.com/BootNodeDev/canton-barebones)) | Node command-line tool over Docker Compose + the official Splice LocalNet bundle | Starts `sv + app-user`. A pinned dev dependency; `pnpm dev:<example>` scaffolds its config into the gitignored `.canton-localnet/` |
+| Wallet Gateway (external: [`canton-network/wallet`](https://github.com/canton-network/wallet)) | Node + Express + SQLite | The CIP-0103 wallet the dApp connects to: it holds the session, signs through the participant, and serves its own user UI. A root dev dependency, which `pnpm dev:<example>` runs on the host from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `scripts/` | Node + Bash + JSON | The root tooling: the doc, anatomy and version checks, the release bump, the `typedoc` configs and the gitleaks installer. See [`CLAUDE.md`](CLAUDE.md) |
 | `example-dapps/amulet-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Daml | Canton Coin **vesting** dApp, published as an example. Every read and write goes through the connected CIP-0103 wallet via `canton-connect`. Its `daml/` holds the `amulet-vesting` DAR: the vesting factory, proposal, contract and residual-claim templates. They hold real Canton Coin in escrow as a Splice `LockedAmulet`, and come vendored from [`BootNodeDev/cc-vesting-contracts`](https://github.com/BootNodeDev/cc-vesting-contracts). The build fetches its Splice data-dependencies rather than committing them. `scripts/bootstrap-vesting.mjs` creates the operator and its factory. See [`example-dapps/amulet-vesting/architecture.md`](example-dapps/amulet-vesting/architecture.md) |
+| `example-dapps/amulet-vesting-walletless/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router + Hono + Postgres + Daml | The same Canton Coin **vesting** dApp with username and password accounts instead of a wallet, published as an example. A Hono server in `server/` allocates a participant-hosted party per account and acts on the ledger as the signed-in account's party; Postgres holds the accounts, the sessions and each grant's escrow disclosure. Its `daml/` is a copy of amulet-vesting's. `scripts/server.sh` starts Postgres and the server. See [`example-dapps/amulet-vesting-walletless/architecture.md`](example-dapps/amulet-vesting-walletless/architecture.md) |
 | `example-dapps/token-vesting/` | Vite + React + Ark UI + Tailwind v4 + `zustand` + react-router | The same **vesting** dApp over a `DBT` instrument from [`BootNodeDev/canton-token-forge`](https://github.com/BootNodeDev/canton-token-forge), published as an example. Its `vesting` and `canton-token-forge` DARs ship as binaries in `vendor/`, so it builds no contract. `scripts/bootstrap-vesting.mjs` uploads them and creates the operator, its factory and the instrument; `scripts/registry.sh` runs the canton-token-forge registry the dApp reads the instrument from. See [`example-dapps/token-vesting/architecture.md`](example-dapps/token-vesting/architecture.md) |
 | `canton-create/` | TypeScript + Ink + React 19 + `tsdown` | The `create-canton-dappbooster` installer. Its `scaffold/daml-tooling/` and `scaffold/localnet/` scripts are also the local loop: the Splice dependency fetch, the DAR build and upload, the token mint and `dev-stack.sh`. See [`canton-create/architecture.md`](canton-create/architecture.md) |
 | `canton-connect/` | TypeScript + React 19 | wagmi-style hooks wrapping the `dapp-sdk` facade. See [`canton-connect/architecture.md`](canton-connect/architecture.md) |
@@ -51,6 +52,12 @@ ledger goes to the canton-token-forge registry on `http://localhost:3013`, for t
 `InstrumentConfig` each value-moving choice discloses. The registry reads the ledger with
 `CANTON_BACKEND_TOKEN`, as the scripts do.
 
+`example-dapps/amulet-vesting-walletless` has no wallet. The browser holds a session cookie and
+calls its own server on `http://localhost:3040`, through the dev server's `/api` proxy. The server
+keeps accounts, sessions and escrow disclosures in a Postgres on `localhost:5433`. It reads Scan and
+the participant's JSON API itself, as one participant user that may act as every account's
+participant-hosted party, and the participant signs.
+
 `app-user` is the primary local validator from the official Splice LocalNet
 bundle. It is not a product user. `sv` provides the Super Validator / DSO side
 needed by Splice and Canton Coin. The local stack does not start the app-provider
@@ -59,11 +66,14 @@ containers still expose app-provider backend ports.
 
 State boundaries:
 
-- The CIP-0103 path: a dApp talks to the wallet through the provider interface. That is how the vesting dApp in `example-dapps/amulet-vesting` gets its session, its ledger reads, and its submissions.
+- The CIP-0103 path: a dApp talks to the wallet through the provider interface. That is how the wallet examples get their session, their ledger reads, and their submissions.
 - The wallet owns user keys and signs locally.
-- `CANTON_BACKEND_TOKEN` belongs to the scripts and two servers: the DAR upload, the vesting
-  bootstrap, the token registry `scripts/registry.sh` starts, and amulet-vesting's dev server, which
-  adds it to its `/registry` proxy. Nothing in the browser ever holds it.
+- The wallet-less path: the example's server owns the session and the ledger token, and the
+  participant holds the keys of every account's party.
+- `CANTON_BACKEND_TOKEN` belongs to the scripts and the servers beside the dApps: the DAR upload,
+  the vesting bootstrap, the token registry `scripts/registry.sh` starts, the wallet-less example's
+  server, and amulet-vesting's dev server, which adds it to its `/registry` proxy. Nothing in the
+  browser ever holds it.
 - Splice LocalNet owns the app-user participant/validator, Scan, SV, and CC infrastructure.
 - The wallet should use generated bearer tokens for direct LocalNet endpoints; it should not copy `CANTON_AUTH_SECRET` into the browser.
 
@@ -74,6 +84,8 @@ State boundaries:
 | dApp frontend | `http://localhost:3012` | example dApp |
 | Wallet Gateway | `http://localhost:3030` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
 | Token registry | `http://localhost:3013` | the token example's canton-token-forge registry |
+| Wallet-less server | `http://localhost:3040` | the wallet-less example's API, behind the dApp's `/api` proxy |
+| Wallet-less Postgres | `localhost:5433` | the wallet-less example's accounts, sessions and escrow disclosures |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
 | app-user administration API | `grpc://localhost:2902` | SDK/tools |
@@ -96,13 +108,13 @@ State boundaries:
 | --- | --- | --- |
 | `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
-| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap, the token example's registry and amulet-vesting's dev-server `/registry` proxy |
+| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap, the token example's registry, the wallet-less example's server and amulet-vesting's dev-server `/registry` proxy |
 
 Each example's own `.env` is the one that matters: the signing recipe `mint-token.mjs` reads, plus
-the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs`, the token example's
-`scripts/registry.sh` and amulet-vesting's `vite.config.ts` use. The root scripts
+the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs`, whatever its `stack:up`
+starts and its `vite.config.ts` use. The root scripts
 point the first two at it through `CANTON_APP_DIR`. Minting is offline, so it needs nothing running, which is what lets
-`pnpm dev:amulet-vesting up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
+`pnpm dev:<example> up` mint `CANTON_BACKEND_TOKEN` into a fresh `.env` before anything is up. The
 LocalNet reads its own `canton-barebones.config.json`, which `dev-stack.sh` scaffolds into
 `.canton-localnet/` and git does not track.
 
@@ -117,11 +129,12 @@ that secret and nothing else.
 
 ## Orchestration
 
-`build-dar`, `deploy-dar`, `bootstrap` and `app:dev` act on `example-dapps/amulet-vesting` only,
-and `deploy-dar` uploads the DAR it is given but reads that app's `.env`. `mint-token` defaults to
-that app too, and keeps an absolute `CANTON_APP_DIR` the caller sets. The token example has no
-`build-dar` or `deploy-dar`: its DARs are vendored and its `bootstrap` uploads them. Its own scripts
-run through `pnpm -C example-dapps/token-vesting run <script>`.
+`mint-token`, `build-dar`, `deploy-dar`, `bootstrap` and `app:dev` act on the example an absolute
+`CANTON_APP_DIR` names, and on `example-dapps/amulet-vesting` when it names none. `deploy-dar`
+uploads the DAR it is given but reads that example's `.env`. Each `dev:<example>` script sets
+`CANTON_APP_DIR`, so the `build-dar` and `deploy-dar` that `dev-stack.sh` runs build and upload that
+example's own contract. The token example has no `build-dar` or `deploy-dar`: its DARs are vendored
+and its `bootstrap` uploads them.
 
 | Command | What it does |
 | --- | --- |
@@ -129,6 +142,7 @@ run through `pnpm -C example-dapps/token-vesting run <script>`.
 | `pnpm dev:amulet-vesting down` | stop the gateway and the dApp dev server, stop the LocalNet |
 | `pnpm dev:amulet-vesting reset` | stop it all, then drop the LocalNet's ledger and the Wallet Gateway's stores |
 | `pnpm dev:token-vesting up` / `down` / `reset` | the same loop on the token example, which also starts and stops its registry |
+| `pnpm dev:amulet-vesting-walletless up` / `down` | the same loop on the wallet-less example, which also starts and stops its server and Postgres |
 | `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
 | `pnpm exec canton-barebones start` / `stop` / `reset` / `status` | the LocalNet itself, run from `.canton-localnet/` |
 | `node canton-create/scaffold/localnet/scripts/localnet-config.mjs <dir>` | scaffold that directory and apply the flags nginx needs; after a move to a newer Splice it leaves an `upgraded-in-place` marker there for `up` to warn about; a run where Docker reports no ledger writes none and drops any it finds |
@@ -140,10 +154,10 @@ run through `pnpm -C example-dapps/token-vesting run <script>`.
 
 `dev-stack.sh` runs an app's own `stack:up` script after `bootstrap` and its `stack:down` script on
 `down`, when the app defines them. The token example starts and stops its registry there, from
-the `.env.registry` its bootstrap writes.
+the `.env.registry` its bootstrap writes, and the wallet-less example its Postgres and its server.
 
 `dev-stack.sh` shells out to the LocalNet tool in the directory passed as its second argument
-(`pnpm dev:amulet-vesting up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
+(`pnpm dev:<example> up <dir>`). Otherwise it uses `CANTON_LOCALNET_DIR`, and then
 `.canton-localnet/`. It scaffolds that directory on `up` from the pinned tool's own template, and
 scaffolds it again when the template moves past the local copy. The config therefore drifts from
 the installed version rather than from a committed file. The Splice checkout and the runtime env
@@ -167,9 +181,8 @@ sit in this repo. Each install picks which copy a consumer gets, by version:
 | this repo | the local folder, symlinked into `node_modules` | `linkWorkspacePackages: true` in `pnpm-workspace.yaml`, and the folder's `version` satisfies the declared range |
 | a project `create-canton-dappbooster` makes | the published package, downloaded from npm | the folder is not there, so pnpm falls back to the registry |
 
-Both cases read the same `package.json`. Nothing in `example-dapps/amulet-vesting`,
-`example-dapps/token-vesting`, `canton-create/scaffold/starter` or `canton-dappbooster` names a
-workspace, only a range (`^` plus the libraries' version). That is why
+Both cases read the same `package.json`. Nothing in an example, `canton-create/scaffold/starter` or
+`canton-dappbooster` names a workspace, only a range (`^` plus the libraries' version). That is why
 the same file works in a repo that has the folders and in one that does not.
 
 What the two cases resolve *to* differs as well. Each TypeScript library's `exports` carries a

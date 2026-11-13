@@ -25,23 +25,26 @@ pnpm create canton-dappbooster
 Alternatively, you can start with a preselected dApp or local network:
 
 - **Amulet Vesting:** a vesting dApp frontend and its contracts;
+- **Wallet-less Amulet Vesting:** the Amulet vesting dApp with sign-in accounts instead of a wallet;
 - **Token Vesting:** a vesting dApp over a canton-token-forge token, with its registry;
 - **Barebones:** a minimal local Canton stack for developer workflows.
 
 With npm:
 
 ```shell
-npm create canton-dappbooster -- --example amulet-vesting   # Amulet Vesting dApp
-npm create canton-dappbooster -- --example token-vesting    # Token Vesting dApp
-npm create canton-dappbooster -- --localnet                 # Barebones local network
+npm create canton-dappbooster -- --example amulet-vesting              # Amulet Vesting dApp
+npm create canton-dappbooster -- --example amulet-vesting-walletless   # Wallet-less Amulet Vesting dApp
+npm create canton-dappbooster -- --example token-vesting               # Token Vesting dApp
+npm create canton-dappbooster -- --localnet                            # Barebones local network
 ```
 
 With pnpm:
 
 ```shell
-pnpm create canton-dappbooster --example amulet-vesting   # Amulet Vesting dApp
-pnpm create canton-dappbooster --example token-vesting    # Token Vesting dApp
-pnpm create canton-dappbooster --localnet                 # Barebones local network
+pnpm create canton-dappbooster --example amulet-vesting              # Amulet Vesting dApp
+pnpm create canton-dappbooster --example amulet-vesting-walletless   # Wallet-less Amulet Vesting dApp
+pnpm create canton-dappbooster --example token-vesting               # Token Vesting dApp
+pnpm create canton-dappbooster --localnet                            # Barebones local network
 ```
 
 ## Non-interactive mode (agents and CI)
@@ -71,6 +74,7 @@ pnpm create canton-dappbooster my-dapp --example amulet-vesting --localnet   # A
 |---|---|---|---|
 | `Starter dApp` | none | ✓ | Barebones dApp that connects to a wallet and gives you a sample contract |
 | `Amulet Vesting` | `--example amulet-vesting` | | A vesting dApp frontend and its contracts |
+| `Wallet-less Amulet Vesting` | `--example amulet-vesting-walletless` | | The Amulet vesting dApp with sign-in accounts instead of a wallet |
 | `Token Vesting` | `--example token-vesting` | | A vesting dApp over a canton-token-forge token, with its registry |
 
 ### Local networks

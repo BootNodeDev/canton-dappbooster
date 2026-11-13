@@ -1,0 +1,381 @@
+module AmuletVesting where
+
+import Splice.Amulet
+import Splice.AmuletRules
+import Splice.Expiry (TimeLock(..), maxTime)
+import AmuletVesting.Schedule (VestingSchedule, vestedAmount, validVestingSchedule, minGrantAmount)
+
+-- ---------------------------------------------------------------------------
+-- Shared escrow mechanic
+-- ---------------------------------------------------------------------------
+
+-- | The one tricky escrow mechanic, shared by both withdraw choices:
+-- unlock the escrow, push `releaseAmount` to the receiver, re-lock the remainder
+-- back to the owner. The re-lock holders are {provider, receiver} minus the owner, so the
+-- unlock controller is always {owner, provider, receiver} -- collusion-resistant:
+-- the live escrow has owner=creator (holders [provider, receiver]); a AmuletVestedClaim has
+-- owner=receiver (holders [provider]). expiresAt = maxTime in both cases.
+-- `backing` is the amount currently in the lock (caller knows it).
+-- Returns the receiver's unlocked Amulet and the optional re-locked remainder.
+-- Authority must be supplied by the calling choice (owner + provider + receiver for the
+-- unlock; transfer controllers for the re-transfer).
+releaseAndRelock
+  :  AppTransferContext
+  -> Party  -- dso
+  -> Party  -- provider
+  -> Party  -- owner (creator)
+  -> Party  -- receiver
+  -> ContractId LockedAmulet
+  -> Decimal  -- backing
+  -> Decimal  -- releaseAmount
+  -> Text     -- relockContext: on-ledger optContext tag for the re-locked remainder
+  -> Update (ContractId Amulet, Optional (ContractId LockedAmulet))
+releaseAndRelock ctx dso provider owner receiver lockedCid backing releaseAmount relockContext = do
+  unlockRes <- exercise lockedCid LockedAmulet_UnlockV2
+  -- `remainder` is exact by construction: releaseAmount + remainder == backing ==
+  -- the unlocked input's initialAmount, so the transfer is an exact split (inputs ==
+  -- outputs, no sender-change). Any positive sub-dust remainder re-locks rather than
+  -- being discarded; a zero remainder means the escrow is fully drained.
+  --
+  -- ZERO-FEE DEPENDENCY (CIP-78): this exact split leaves no headroom for Amulet
+  -- transfer/create/lock fees. If any were charged, `leftOverAmount < 0` and the
+  -- AmuletRules balance check would abort with InsufficientFunds, stranding the grant.
+  -- This is safe because CIP-78 removed those fees at the protocol level: a valid
+  -- AmuletRules contract MUST satisfy `validTransferConfig`, which forces
+  -- createFee == transferFee == lockHolderFee == 0 (Splice.AmuletConfig.validTransferConfig,
+  -- enforced by the AmuletRules `ensure`). The only non-zero fee the protocol still
+  -- permits is the holding fee, which is not charged on transfers (only on Amulet_Expire).
+  -- If a future Splice version reintroduces non-zero transfer/create/lock fees, this
+  -- model must add explicit fee headroom (e.g. a receiverFeeRatio or a fee allowance
+  -- passed in by the off-ledger backend). See docs/ARCHITECTURE.md.
+  let remainder = backing - releaseAmount
+  -- Never leave a sub-`minGrantAmount` dust remainder re-locked. A tiny LockedAmulet
+  -- is DSO-expirable within ~minutes (amountExpiresAt grows with the locked amount), which
+  -- would archive the backing lock and strand the tail. The caller must either drain fully
+  -- (remainder == 0) or leave at least a viable floor.
+  assertMsg "re-lock remainder is below minGrantAmount (drain fully or leave >= the floor)"
+    (remainder == 0.0 || remainder >= minGrantAmount)
+  let relockOutputs =
+        if remainder > 0.0
+        then [ TransferOutput with
+                 receiver = owner
+                 receiverFeeRatio = 0.0
+                 amount = remainder
+                 meta = None
+                 lock = Some TimeLock with
+                   -- Hold the remainder for {provider, receiver} minus the owner. The owner is
+                   -- already an unlock controller (owner :: holders), so listing the other two
+                   -- makes the unlock require all of {owner, provider, receiver}:
+                   --   escrow re-lock (owner=creator) -> holders [provider, receiver]
+                   --   claim  re-lock (owner=receiver) -> holders [provider]
+                   holders = filter (/= owner) [provider, receiver]
+                   expiresAt = maxTime
+                   optContext = Some relockContext ]
+        else []
+      outputs =
+        TransferOutput with
+          receiver = receiver
+          receiverFeeRatio = 0.0
+          amount = releaseAmount
+          lock = None
+          meta = None
+        :: relockOutputs
+  result <- exerciseAppTransfer dso ctx Transfer with
+    sender = owner
+    provider = provider
+    inputs = [InputAmulet unlockRes.amuletCid]
+    outputs
+    beneficiaries = None
+  -- createdAmulets follows outputs order: [receiver Amulet] (++ [re-locked LockedAmulet]).
+  case result.createdAmulets of
+    [TransferResultAmulet rcv] -> pure (rcv, None)
+    [TransferResultAmulet rcv, TransferResultLockedAmulet relocked] -> pure (rcv, Some relocked)
+    _ -> abort "releaseAndRelock: unexpected transfer outputs"
+
+-- ---------------------------------------------------------------------------
+-- Main vesting contract
+-- ---------------------------------------------------------------------------
+template AmuletVestingContract
+  with
+    provider         : Party    -- ^ the app provider Party
+    creator          : Party    -- ^ locked the CC; gets unvested CC on cancel; is the lock owner
+    receiver         : Party    -- ^ beneficiary; can withdraw vested CC; co-holder of the escrow lock
+    dso              : Party    -- ^ Canton Coin DSO (Amulet admin); passed as expectedDso to AmuletRules. Not a signatory or lock holder.
+    totalAmount      : Decimal  -- ^ total CC originally locked
+    schedule         : VestingSchedule
+    alreadyWithdrawn : Decimal  -- ^ running total already sent to receiver
+    lockedAmuletCid  : ContractId LockedAmulet  -- ^ the single locked holding backing this contract
+    note             : Optional Text
+  where
+    -- The receiver is a signatory (not merely an observer): this makes the receiver's
+    -- authority ambient in every choice on this contract, including the creator-controlled
+    -- Cancel. That, in turn, lets the escrow lock list the receiver as a holder
+    -- (holders = [provider, receiver]) so LockedAmulet_UnlockV2's controller becomes
+    -- {creator, provider, receiver} -- all three are required to unlock. Creator + provider
+    -- alone can therefore NOT drain the escrow out-of-band, while the creator still cancels
+    -- unilaterally (the receiver's consent was given once, at Accept). The receiver signs
+    -- by exercising Accept on the proposal.
+    signatory provider, creator, receiver
+
+    -- Re-assert schedule well-formedness here (not only in the Factory) so a malformed
+    -- schedule can never back a live contract, even via a direct create that bypasses the
+    -- validating Factory. The schedule is immutable, so this holds across every withdraw
+    -- successor too. `validVestingSchedule` is a pure Bool, usable in `ensure`.
+    -- `alreadyWithdrawn < totalAmount` is STRICT. A live contract therefore always has
+    -- backing = totalAmount - alreadyWithdrawn > 0, which makes the Cancel `[] -> (None, None)`
+    -- branch provably unreachable (a zero-backing Cancel would silently return the residual to
+    -- the creator as sender-change). The full-drain Withdraw archives instead of creating a
+    -- zero-backing successor, so the strict bound never rejects a legitimate successor.
+    ensure
+      totalAmount > 0.0
+      && alreadyWithdrawn >= 0.0
+      && alreadyWithdrawn < totalAmount
+      && validVestingSchedule schedule
+
+    -- -----------------------------------------------------------------------
+    -- Receiver withdraws currently-available Amulet (vested - alreadyWithdrawn)
+    -- -----------------------------------------------------------------------
+    choice AmuletVestingContract_Withdraw : AmuletVestingContract_WithdrawResult
+      with
+        withdrawAmount : Decimal
+        ctx            : AppTransferContext
+      controller receiver
+      do
+        now <- getTime
+        assertMsg "cliff not reached" (now >= schedule.cliff)
+        let vested    = vestedAmount schedule totalAmount now
+            available = vested - alreadyWithdrawn
+            backing   = totalAmount - alreadyWithdrawn
+        assertMsg "withdrawAmount must be positive" (withdrawAmount > 0.0)
+        assertMsg "withdrawAmount exceeds available vested amount" (withdrawAmount <= available)
+        (receivedAmuletCid, optRelocked) <-
+          releaseAndRelock ctx dso provider creator receiver lockedAmuletCid backing withdrawAmount "vesting-withdraw-remainder"
+        vestingCid <- case optRelocked of
+          None -> pure None   -- fully withdrawn (only possible once fully vested); contract archived
+          Some newLockedCid -> fmap Some $ create this with
+            alreadyWithdrawn = alreadyWithdrawn + withdrawAmount
+            lockedAmuletCid = newLockedCid
+        pure AmuletVestingContract_WithdrawResult with vestingCid; receivedAmuletCid
+
+    -- -----------------------------------------------------------------------
+    -- Creator cancels: receiver keeps accrued share, creator gets the rest
+    -- -----------------------------------------------------------------------
+    choice AmuletVestingContract_Cancel : AmuletVestingContract_CancelResult
+      with
+        ctx : AppTransferContext
+      controller creator
+      do
+        now <- getTime
+        let vested    = vestedAmount schedule totalAmount now
+            clawback  = totalAmount - vested            -- unvested -> creator (unlocked)
+            owed      = vested - alreadyWithdrawn        -- earned, unwithdrawn -> AmuletVestedClaim
+        -- clawback + owed == totalAmount - alreadyWithdrawn == backing of the escrow
+        -- The owed leg is re-locked into the AmuletVestedClaim; forbid a sub-floor dust
+        -- lock the DSO could expire out from under the receiver. Either nothing is owed
+        -- (owed == 0) or the residual must be at least minGrantAmount. The clawback leg is
+        -- handed back unlocked, so it needs no floor.
+        assertMsg "owed residual is below minGrantAmount (would re-lock as expirable dust)"
+          (owed == 0.0 || owed >= minGrantAmount)
+        unlockRes <- exercise lockedAmuletCid LockedAmulet_UnlockV2
+        let clawbackOutputs =
+              if clawback > 0.0
+              then [ TransferOutput with
+                       receiver = creator; receiverFeeRatio = 0.0; amount = clawback; lock = None
+                       meta = None ]
+              else []
+            owedOutputs =
+              if owed > 0.0
+              -- The owed residual is unconditionally the receiver's, so re-lock it with
+              -- owner = receiver (holders = [provider]); unlock controller = {receiver, provider}.
+              -- The creator can no longer reach it. Feasible because the receiver is a signatory
+              -- of this contract, so its authority is present in this creator-controlled Cancel.
+              then [ TransferOutput with
+                       receiver = receiver; receiverFeeRatio = 0.0; amount = owed
+                       meta = None
+                       lock = Some TimeLock with
+                         holders = [provider]; expiresAt = maxTime
+                         optContext = Some "vesting-cancel-owed" ]
+              else []
+        result <- exerciseAppTransfer dso ctx Transfer with
+          sender = creator
+          provider = provider
+          inputs = [InputAmulet unlockRes.amuletCid]
+          outputs = clawbackOutputs ++ owedOutputs
+          beneficiaries = None
+        -- createdAmulets order: [clawback Amulet?] ++ [owed LockedAmulet?]
+        let (clawbackAmuletCid, owedLockedCid) = case result.createdAmulets of
+              [] -> (None, None)
+              [TransferResultAmulet cb] -> (Some cb, None)
+              [TransferResultLockedAmulet ow] -> (None, Some ow)
+              [TransferResultAmulet cb, TransferResultLockedAmulet ow] -> (Some cb, Some ow)
+              _ -> error "AmuletVestingContract_Cancel: unexpected transfer outputs"
+        vestedClaimCid <- case owedLockedCid of
+          None -> pure None
+          Some ow -> fmap Some $ create AmuletVestedClaim with
+            provider; creator; receiver; dso
+            amount = owed; withdrawn = 0.0
+            lockedAmuletCid = ow; note
+        pure AmuletVestingContract_CancelResult with clawbackAmuletCid; vestedClaimCid
+
+-- ---------------------------------------------------------------------------
+-- Vested residual handed to the receiver at cancel time
+-- ---------------------------------------------------------------------------
+template AmuletVestedClaim
+  with
+    provider        : Party
+    creator         : Party
+    receiver        : Party
+    dso             : Party
+    amount          : Decimal   -- total earned residual handed over at cancel
+    withdrawn       : Decimal   -- running total already pulled by receiver
+    lockedAmuletCid : ContractId LockedAmulet
+    note            : Optional Text
+  where
+    signatory provider, creator
+    observer receiver
+
+    ensure
+      amount > 0.0
+      && withdrawn >= 0.0
+      && withdrawn <= amount
+
+    -- Receiver pulls the fully-earned residual. No cliff, no schedule.
+    choice AmuletVestedClaim_Withdraw : AmuletVestedClaim_WithdrawResult
+      with
+        withdrawAmount : Decimal
+        ctx            : AppTransferContext
+      controller receiver
+      do
+        -- The claim has no schedule, so the whole un-withdrawn residual is available, and it
+        -- is also exactly what backs the lock: available == backing == amount - withdrawn.
+        let available = amount - withdrawn
+        assertMsg "withdrawAmount must be positive" (withdrawAmount > 0.0)
+        assertMsg "withdrawAmount exceeds available amount" (withdrawAmount <= available)
+        -- owner = receiver: the claim residual is wholly the receiver's, so the lock (and any
+        -- re-locked remainder) is receiver-owned; unlock controller = {receiver, provider}.
+        (receivedAmuletCid, optRelocked) <-
+          releaseAndRelock ctx dso provider receiver receiver lockedAmuletCid available withdrawAmount "vesting-claim-remainder"
+        claimCid <- case optRelocked of
+          None -> pure None
+          Some newLockedCid -> fmap Some $ create this with
+            withdrawn = withdrawn + withdrawAmount
+            lockedAmuletCid = newLockedCid
+        pure AmuletVestedClaim_WithdrawResult with claimCid; receivedAmuletCid
+
+template AmuletVestingProposal
+  with
+    provider    : Party
+    proposer    : Party
+    receiver    : Party
+    totalAmount : Decimal
+    schedule    : VestingSchedule
+    amuletCids  : [ContractId Amulet]
+    note        : Optional Text
+  where
+    signatory provider, proposer
+    observer receiver
+
+    choice AmuletVestingProposal_Accept : ContractId AmuletVestingContract
+      with
+        ctx : AppTransferContext   -- supplied off-ledger by the app backend
+      controller receiver
+      do
+        -- Derive the DSO from the funder's own input Amulets rather than trusting a
+        -- caller-supplied `dso`. An `Amulet` is signed by `{dso, owner}`, and the proposer
+        -- (owner of these amulets) is a signatory of this proposal, so fetching one is
+        -- authorized - whereas the DSO-signed `AmuletRules` is NOT fetchable by us. The
+        -- derived `dso` is the actual admin of the very CC being locked, so the stored `dso`
+        -- is correct by construction and consistent with the transfer's `expectedDso`; this
+        -- removes the footgun where a typo'd `dso` produced a proposal that could never Accept.
+        dso <- case amuletCids of
+          (cid :: _) -> (.dso) <$> fetch cid
+          []         -> abort "AmuletVestingProposal_Accept: no input amulets to fund the grant"
+        -- Self-transfer the funder's CC into a single LockedAmulet escrow:
+        --   owner = proposer (creator), holders = [provider, receiver], expiresAt = maxTime.
+        -- Listing the receiver as a holder makes LockedAmulet_UnlockV2's controller
+        -- {creator, provider, receiver}, so creator+provider cannot unlock it out-of-band.
+        -- Authority present: {provider, proposer, receiver} (proposal sigs + Accept controller);
+        -- the transfer needs {sender=proposer, lock-holders=provider,receiver} -- all present.
+        result <- exerciseAppTransfer dso ctx Transfer with
+          sender = proposer
+          provider = provider
+          inputs = map InputAmulet amuletCids
+          outputs =
+            [ TransferOutput with
+                receiver = proposer
+                receiverFeeRatio = 0.0
+                amount = totalAmount
+                meta = None
+                lock = Some TimeLock with
+                  holders = [provider, receiver]
+                  expiresAt = maxTime
+                  optContext = Some "vesting-escrow"
+            ]
+          beneficiaries = None
+        lockedCid <- case result.createdAmulets of
+          [TransferResultLockedAmulet cid] -> pure cid
+          _ -> abort "AmuletVestingProposal_Accept: expected exactly one locked output"
+        create AmuletVestingContract with
+          provider
+          creator = proposer
+          receiver
+          dso
+          totalAmount
+          schedule
+          alreadyWithdrawn = 0.0
+          lockedAmuletCid = lockedCid
+          note
+
+-- | Provider-signed, observer-less factory. Because there are no on-ledger observers,
+-- proposers cannot see this contract through normal visibility rules; instead the app
+-- backend hands them the factory contract via explicit disclosure so they can exercise
+-- AmuletVestingFactory_CreateVesting without requiring on-ledger visibility.
+--
+-- The factory is a long-lived, reusable singleton: AmuletVestingFactory_CreateVesting is
+-- nonconsuming, so a single factory contract originates many vestings and is not archived
+-- per grant (mirroring the upstream AmuletRules / ExternalPartyAmuletRules / TransferFactory
+-- nonconsuming-factory pattern). One factory per provider, reused for every grant.
+template AmuletVestingFactory
+  with
+    factoryOwner : Party
+  where
+    signatory factoryOwner
+
+    nonconsuming choice AmuletVestingFactory_CreateVesting : ContractId AmuletVestingProposal
+      with
+        proposer    : Party
+        receiver    : Party
+        totalAmount : Decimal
+        schedule    : VestingSchedule
+        amuletCids  : [ContractId Amulet]
+        note        : Optional Text
+      controller proposer
+      do
+        assertMsg "schedule is not well-formed" (validVestingSchedule schedule)
+        assertMsg "grant total below minimum" (totalAmount >= minGrantAmount)
+        create AmuletVestingProposal with
+          provider = factoryOwner
+          proposer
+          receiver
+          totalAmount
+          schedule
+          amuletCids
+          note
+
+-- Result records --------------------------------------------------------------
+
+data AmuletVestingContract_WithdrawResult = AmuletVestingContract_WithdrawResult
+  with
+    vestingCid        : Optional (ContractId AmuletVestingContract)
+    receivedAmuletCid : ContractId Amulet
+  deriving (Eq, Show)
+
+data AmuletVestingContract_CancelResult = AmuletVestingContract_CancelResult with
+    clawbackAmuletCid : Optional (ContractId Amulet)     -- unvested CC returned to creator
+    vestedClaimCid    : Optional (ContractId AmuletVestedClaim) -- earned residual for the receiver
+  deriving (Eq, Show)
+
+data AmuletVestedClaim_WithdrawResult = AmuletVestedClaim_WithdrawResult with
+    claimCid          : Optional (ContractId AmuletVestedClaim)
+    receivedAmuletCid : ContractId Amulet
+  deriving (Eq, Show)
