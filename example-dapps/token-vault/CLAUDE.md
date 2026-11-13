@@ -31,11 +31,13 @@ internal structure is in [`architecture.md`](architecture.md). Deltas for this a
   `AllocationFactory_Allocate` names
   `#splice-api-token-allocation-instruction-v1:…:AllocationFactory`, with the `InstrumentConfig`'s
   contract id.
-- **`deployment.ts` reads the `InstrumentConfig` disclosure off the ledger, and nothing else does.**
-  A depositor is no stakeholder of the config, so every tap and allocation discloses it. On the
-  local network the wallet's user may read as the issuer. token-vesting takes the same shortcut to
-  read its factory as the operator, and it is why this stack runs no registry. With a second
-  reader, swapping a registry back in becomes a rewrite.
+- **In `src/`, `deployment.ts` reads the `InstrumentConfig` disclosure off the ledger, and nothing
+  else does.** A depositor is no stakeholder of the config, so every tap and allocation discloses
+  it. On the local network the wallet's user may read as the issuer. token-vesting takes the same
+  shortcut to read its factory as the operator, and it is why this stack runs no registry. With a
+  second reader, swapping a registry back in becomes a rewrite. Outside `src/`, the operator reads
+  it too, to disclose it in its payout allocation, so a swap changes `scripts/vault-operator.mjs`
+  as well.
 - **`src/backend/requests.ts` reads the queue through the `AllocationRequest` interface, never the
   vault's templates.** The view carries the settlement and the leg. Both go into the allocation
   unchanged, because `*_Settle` compares them field by field. The filter matches every

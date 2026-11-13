@@ -61,6 +61,7 @@ pnpm dev:token-vesting reset  # stop everything and drop the ledger and the gate
 
 The dApp runs on http://localhost:3012, its token registry on http://localhost:3013 and Wallet
 Gateway on http://localhost:3030. The examples share the LocalNet, so stop one before you start
+another.
 
 ### Token Vault dApp
 
@@ -72,7 +73,6 @@ pnpm dev:token-vault down   # stop everything and keep the ledger
 
 The dApp runs on http://localhost:3012 and Wallet Gateway on http://localhost:3030. The vault
 operator opens no port; its log is `.dev-stack/vault-operator.log`.
-another.
 
 ### Wallet-less Amulet Vesting dApp
 

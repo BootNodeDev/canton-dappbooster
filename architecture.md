@@ -90,7 +90,7 @@ State boundaries:
 | --- | --- | --- |
 | dApp frontend | `http://localhost:3012` | example dApp |
 | Wallet Gateway | `http://localhost:3030` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
-| Token registry | `http://localhost:3013` | the token example's canton-token-forge registry |
+| Token registry | `http://localhost:3013` | token-vesting's canton-token-forge registry |
 | Wallet-less server | `http://localhost:3040` | the wallet-less example's API, behind the dApp's `/api` proxy |
 | Wallet-less Postgres | `localhost:5433` | the wallet-less example's accounts, sessions and escrow disclosures |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
@@ -115,7 +115,7 @@ State boundaries:
 | --- | --- | --- |
 | `CANTON_AUTH_AUDIENCE` | `.env` | JWT audience recipe used by `mint-token.mjs` |
 | `CANTON_AUTH_SECRET` | `.env` | unsafe local signing secret used only by the token script |
-| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap, the token example's registry, the wallet-less example's server and amulet-vesting's dev-server `/registry` proxy |
+| `CANTON_BACKEND_TOKEN` | `.env` | generated JWT consumed by the DAR upload, the vesting bootstrap, token-vesting's registry, the wallet-less example's server and amulet-vesting's dev-server `/registry` proxy |
 
 Each example's own `.env` is the one that matters: the signing recipe `mint-token.mjs` reads, plus
 the token `deploy-dar.sh`, the example's `scripts/bootstrap-vesting.mjs`, whatever its `stack:up`
@@ -148,7 +148,7 @@ vendored and their `bootstrap` uploads them.
 | `pnpm dev:amulet-vesting up` | the whole local loop: LocalNet, DAR, bootstrap, Wallet Gateway, dApp dev server |
 | `pnpm dev:amulet-vesting down` | stop the gateway and the dApp dev server, stop the LocalNet |
 | `pnpm dev:amulet-vesting reset` | stop it all, then drop the LocalNet's ledger and the Wallet Gateway's stores |
-| `pnpm dev:token-vesting up` / `down` / `reset` | the same loop on the token example, which also starts and stops its registry |
+| `pnpm dev:token-vesting up` / `down` / `reset` | the same loop on token-vesting, which also starts and stops its registry |
 | `pnpm dev:token-vault up` / `down` | the same loop on the vault example, which also starts and stops its vault operator |
 | `pnpm dev:amulet-vesting-walletless up` / `down` | the same loop on the wallet-less example, which also starts and stops its server and Postgres |
 | `pnpm run wallet-gateway` | the gateway alone, from `canton-create/scaffold/localnet/wallet-gateway.config.json` |
@@ -161,7 +161,7 @@ vendored and their `bootstrap` uploads them.
 | `pnpm run app:dev` | start the dApp frontend |
 
 `dev-stack.sh` runs an app's own `stack:up` script after `bootstrap` and its `stack:down` script on
-`down`, when the app defines them. The token example starts and stops its registry there, from
+`down`, when the app defines them. token-vesting starts and stops its registry there, from
 the `.env.registry` its bootstrap writes, the vault example its vault operator, and the wallet-less
 example its Postgres and its server.
 

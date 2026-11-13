@@ -2,7 +2,7 @@
 
 > [Canton dAppBooster](https://dappbooster.cc) is an open-source stack by BootNode for building Canton dApps on your own machine: a local Canton Network stack, wagmi-style hooks, UI components and CIP-0103 wallet support, wired together from the local network up to the UI. The installer, the guides and the rest of the stack live at [dappbooster.cc](https://dappbooster.cc).
 
-`@bootnodedev/canton-example-token-vault` is a token vault dApp. You deposit `USDX`, a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, and get `VSH` vault shares one for one. You return shares and get `USDX` back. Every read and write goes through your CIP-0103 wallet, as your own party.
+`@bootnodedev/canton-example-token-vault` is a token vault dApp. You deposit `USDX`, a [canton-token-forge](https://github.com/BootNodeDev/canton-token-forge) token, and get `VSH` vault shares one for one. You return shares and get `USDX` back. Every read and write goes through your CIP-0103 wallet, and every write acts as your own party.
 
 > [!NOTE]
 > This app builds no contract. Its two Daml packages, the vault and the canton-token-forge token, are prebuilt DARs in `vendor/`, so it needs no Daml toolchain. [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/token-vault/architecture.md#the-committed-dars) records each one.
@@ -40,7 +40,7 @@ A deposit or a withdraw takes two parties, you and the vault, and neither can fi
 
 The vault operator is `scripts/vault-operator.mjs`, a small process that acts as the vault party. It reads the ledger every three seconds. The page reads it every five, so a request changes state on its own while you watch.
 
-Until the operator accepts a proposal, you can cancel it from its row. The operator usually accepts within seconds, so a cancel often arrives too late, and the wallet then reports the proposal as gone.
+Until the operator accepts a proposal, you can cancel it from its row. The operator usually accepts within seconds, so a cancel often arrives too late and fails.
 
 The dApp keeps no configuration about the vault. Each time a party connects, it finds the vault, both tokens and their contract ids on the ledger.
 

@@ -14,7 +14,7 @@ Each subproject can layer its own `CLAUDE.md` for stack-specific deltas:
 - [`example-dapps/amulet-vesting/CLAUDE.md`](example-dapps/amulet-vesting/CLAUDE.md): the vesting example's deltas. Its seams are in [`example-dapps/amulet-vesting/architecture.md`](example-dapps/amulet-vesting/architecture.md), and its Daml in `daml/README.md`
 - [`example-dapps/amulet-vesting-walletless/CLAUDE.md`](example-dapps/amulet-vesting-walletless/CLAUDE.md): the wallet-less vesting example's deltas: its server, the session and the participant user's rights. Its seams are in [`example-dapps/amulet-vesting-walletless/architecture.md`](example-dapps/amulet-vesting-walletless/architecture.md)
 - [`example-dapps/token-vesting/CLAUDE.md`](example-dapps/token-vesting/CLAUDE.md): the token vesting example's deltas. Its seams are in [`example-dapps/token-vesting/architecture.md`](example-dapps/token-vesting/architecture.md), its committed DARs included
-- [`example-dapps/token-vault/CLAUDE.md`](example-dapps/token-vault/CLAUDE.md): the token vault example's deltas: the participant-hosted vault party, the two template-id spellings and the one module that reads the `InstrumentConfig` disclosure. How it works inside is in [`example-dapps/token-vault/architecture.md`](example-dapps/token-vault/architecture.md), its committed DARs included
+- [`example-dapps/token-vault/CLAUDE.md`](example-dapps/token-vault/CLAUDE.md): the token vault example's deltas: the participant-hosted vault party, the two template-id spellings and the one dApp module that reads the `InstrumentConfig` disclosure. How it works inside is in [`example-dapps/token-vault/architecture.md`](example-dapps/token-vault/architecture.md), its committed DARs included
 
 The dApp connects through any CIP-0103 wallet; no wallet lives in this monorepo.
 
@@ -449,7 +449,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   with `[ "$1" = "--" ] && shift`, which is what lets it take `-- <dar>`, and `dev-stack.sh` drops
   a `--` wherever it sits. `create-canton-dappbooster` drops it too, because `pnpm create` forwards
   it the same way.
-- Local ports: the dApp dev server on 3012, Wallet Gateway on 3030, the token example's registry on 3013, set in its `scripts/bootstrap-vesting.mjs`, and the wallet-less example's server on 3040 and its Postgres on 5433, set in its `.env.example` and `server/compose.yaml`. Do not change the dApp's or the gateway's without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
+- Local ports: the dApp dev server on 3012, Wallet Gateway on 3030, token-vesting's registry on 3013, set in its `scripts/bootstrap-vesting.mjs`, and the wallet-less example's server on 3040 and its Postgres on 5433, set in its `.env.example` and `server/compose.yaml`. Do not change the dApp's or the gateway's without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
 - **A new workspace package gets a line in both pre-commit configs, in the same change.**
   `.lintstagedrc.format.mjs` lists every folder Biome formats, and `.lintstagedrc.mjs` maps each
   package's files to its tests. Neither finds a package by itself, and CI still passing hides the
@@ -468,7 +468,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   `dependencies` on the same range. pnpm and
   npm install peers on their own, yarn does not, and a consumer can turn that off. It can go back to
   optional once upstream moves that import behind a dynamic one.
-- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, the three Wallet Gateway compiles natively (`better-sqlite3`, `cbor-extract` and `secp256k1`), and the token example's `@bootnodedev/canton-token-forge`. pnpm blocks anything else until someone adds it. That last one is a git dependency whose `prepare` builds the registry, and pnpm keys it by the commit its tag resolves to. Moving its tag means replacing that commit in the root `pnpm-workspace.yaml` and in the example's `_pnpm-workspace.yaml` together.
+- `pnpm-workspace.yaml` lists the packages allowed to run build scripts under `allowBuilds`: `esbuild`, `protobufjs`, the three Wallet Gateway compiles natively (`better-sqlite3`, `cbor-extract` and `secp256k1`), and token-vesting's `@bootnodedev/canton-token-forge`. pnpm blocks anything else until someone adds it. That last one is a git dependency whose `prepare` builds the registry, and pnpm keys it by the commit its tag resolves to. Moving its tag means replacing that commit in the root `pnpm-workspace.yaml` and in the example's `_pnpm-workspace.yaml` together.
 - Do not commit `.env.local`, `node_modules`, `dist/`, `dist-extension/`, or `.claude/settings.local.json` (covered by root `.gitignore`).
 
 ## `scripts/`

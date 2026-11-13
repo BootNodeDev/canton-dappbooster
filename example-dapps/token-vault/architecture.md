@@ -6,8 +6,9 @@ the repo-wide ones, and [`../../architecture.md`](../../architecture.md) the cro
 
 Two constraints shape everything below:
 
-- **The wallet is the only way in.** The browser reads and submits only as the party the wallet
-  reports.
+- **The wallet is the only way in.** The browser reads and submits through it. It submits only as
+  the party the wallet reports, but also reads as the vault party and the issuer (see
+  [Discovery](#discovery)).
 - **The vault party is not a wallet account.** Both `*_Settle` choices are its to exercise, and a
   withdraw needs it to escrow its own `USDX`. So it is a participant-hosted party, and
   [`scripts/vault-operator.mjs`](scripts/vault-operator.mjs) acts as it.
