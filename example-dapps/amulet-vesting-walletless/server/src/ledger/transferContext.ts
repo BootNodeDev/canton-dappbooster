@@ -2,6 +2,8 @@ import { errorText } from '#server/domain/errorText'
 import { SCAN_API_URL } from '#server/env'
 import type { DisclosedContract } from '#server/ledger/wallet'
 
+const AMULET_RULES = '#splice-amulet:Splice.AmuletRules:AmuletRules'
+
 // Flat, not nested under a `context` key: nesting fails preprocessing on the missing field.
 export type AppTransferContext = {
   amuletRules: string
@@ -86,6 +88,6 @@ export const fetchTransferContext = async (): Promise<{
       openMiningRound: round.contract_id,
     },
     disclosed: [rulesContract, round].map(disclose),
-    rulesTemplateId: rulesContract.template_id,
+    rulesTemplateId: AMULET_RULES,
   }
 }
