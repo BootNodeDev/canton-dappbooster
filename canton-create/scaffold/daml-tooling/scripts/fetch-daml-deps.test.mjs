@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { newest, targets } from './fetch-daml-deps.mjs'
+import { newest, pick, targets } from './fetch-daml-deps.mjs'
 
 const EXAMPLE_DAML = path.resolve(
   import.meta.dirname,
@@ -34,6 +34,32 @@ describe('Splice DAR selection', () => {
 
   it('reports nothing rather than guessing when the release ships no such DAR', () => {
     assert.equal(newest(RELEASE, 'splice-api-token-metadata-v1'), undefined)
+  })
+})
+
+describe('the version a network runs', () => {
+  const packageConfig = { amulet: '0.1.9', amuletNameService: '0.1.21' }
+
+  it('builds a governed DAR at the version the network runs, not the newest', () => {
+    assert.equal(pick(RELEASE, 'splice-amulet', packageConfig), 'splice-amulet-0.1.9.dar')
+  })
+
+  it('takes the newest of a DAR the package config does not govern', () => {
+    assert.equal(
+      pick(RELEASE, 'splice-api-token-holding-v1', packageConfig),
+      'splice-api-token-holding-v1-1.0.0.dar',
+    )
+  })
+
+  it('takes the newest when no network answered', () => {
+    assert.equal(pick(RELEASE, 'splice-amulet', undefined), 'splice-amulet-0.1.21.dar')
+  })
+
+  it('names the version the network runs even when the release does not ship it', () => {
+    assert.equal(
+      pick(RELEASE, 'splice-amulet', { ...packageConfig, amulet: '0.1.99' }),
+      'splice-amulet-0.1.99.dar',
+    )
   })
 })
 

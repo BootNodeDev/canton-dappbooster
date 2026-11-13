@@ -129,7 +129,7 @@ describe('LedgerBackend.holdingsOf', () => {
 
     const parties = fns.ledgerApi.mock.calls.flatMap(([params]) =>
       Object.keys(
-        (params.body as { filter?: { filtersByParty?: object } } | undefined)?.filter
+        (params.body as { eventFormat?: { filtersByParty?: object } } | undefined)?.eventFormat
           ?.filtersByParty ?? {},
       ),
     )

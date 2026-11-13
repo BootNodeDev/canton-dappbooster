@@ -169,8 +169,8 @@ describe('acting party', () => {
     const reads = env.calls.filter((call) => call.read?.resource === '/v2/state/active-contracts')
     expect(reads.length).toBeGreaterThan(0)
     for (const call of reads) {
-      const body = call.read?.body as { filter: { filtersByParty: Record<string, unknown> } }
-      expect(Object.keys(body.filter.filtersByParty)).toEqual(['wl-alice::fp'])
+      const body = call.read?.body as { eventFormat: { filtersByParty: Record<string, unknown> } }
+      expect(Object.keys(body.eventFormat.filtersByParty)).toEqual(['wl-alice::fp'])
     }
   })
 

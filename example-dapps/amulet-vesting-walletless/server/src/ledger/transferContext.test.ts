@@ -53,7 +53,7 @@ describe('fetchTransferContext', () => {
   it('turns the two Scan answers into the context and its disclosures', async () => {
     stubScan(withRules(RULES_ANSWER, [round('round-2', '2')]))
 
-    const { ctx, disclosed, rulesTemplateId } = await fetchTransferContext()
+    const { ctx, disclosed } = await fetchTransferContext()
 
     expect(ctx).toEqual({
       amuletRules: 'rules-cid',
@@ -72,7 +72,14 @@ describe('fetchTransferContext', () => {
         templateId: 'roundpkg:Splice.Round:OpenMiningRound',
       },
     ])
-    expect(rulesTemplateId).toBe('rulespkg:Splice.AmuletRules:AmuletRules')
+  })
+
+  it('names AmuletRules by package, since a DSO vote leaves the contract on a package Splice then unvets', async () => {
+    stubScan(withRules(RULES_ANSWER, [round('round-2', '2')]))
+
+    const { rulesTemplateId } = await fetchTransferContext()
+
+    expect(rulesTemplateId).toBe('#splice-amulet:Splice.AmuletRules:AmuletRules')
   })
 
   it('asks Scan for the rules and the rounds', async () => {

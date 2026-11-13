@@ -259,9 +259,11 @@ export class LedgerBackend implements VestingBackend {
       requestMethod: 'post',
       resource: '/v2/state/active-contracts',
       body: {
-        filter: templateFilter(party, templateId, includeCreatedEventBlob),
+        eventFormat: {
+          verbose: true,
+          ...templateFilter(party, templateId, includeCreatedEventBlob),
+        },
         activeAtOffset: offset,
-        verbose: true,
       },
     })
     // An answer that is not a list is a failure, not an empty ACS. Coercing it to `[]` made "this

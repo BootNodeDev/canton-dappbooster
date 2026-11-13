@@ -178,16 +178,14 @@ const ensureParty = async (hint) => {
   return { party, reused: existing !== undefined }
 }
 
-// Ask the participant which package it would pick for the name, so a stale id cannot silently
-// produce an empty dashboard. Fails loudly with PACKAGE_NAMES_NOT_FOUND if the DAR is not deployed.
+// Asked rather than trusted, so a stale package id cannot silently leave the dashboard empty.
 const resolvePackage = async (party, packageName = PACKAGE_NAME) => {
-  const result = await ledger(
-    'get',
-    '/v2/interactive-submission/preferred-package-version',
-    undefined,
-    { 'package-name': packageName, parties: party },
-  )
-  const pkg = result?.packagePreference?.packageReference?.packageId
+  const result = await ledger('post', '/v2/interactive-submission/preferred-packages', {
+    packageVettingRequirements: [{ packageName, parties: [party] }],
+  })
+  const pkg = result?.packageReferences?.find(
+    (reference) => reference.packageName === packageName,
+  )?.packageId
   if (typeof pkg !== 'string' || pkg.length === 0) {
     throw new Error(`participant returned no package id for ${packageName}`)
   }
@@ -203,7 +201,7 @@ const findInstrumentConfig = async (admin) => {
     throw new Error('participant returned no ledger-end offset')
   }
   const rows = await ledger('post', '/v2/state/active-contracts', {
-    filter: {
+    eventFormat: {
       filtersByParty: {
         [admin]: {
           cumulative: [
@@ -220,9 +218,9 @@ const findInstrumentConfig = async (admin) => {
           ],
         },
       },
+      verbose: true,
     },
     activeAtOffset: end.offset,
-    verbose: true,
   })
   const configs = (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract?.createdEvent)
@@ -265,7 +263,7 @@ const findFactory = async (operator) => {
     throw new Error('participant returned no ledger-end offset')
   }
   const rows = await ledger('post', '/v2/state/active-contracts', {
-    filter: {
+    eventFormat: {
       filtersByParty: {
         [operator]: {
           cumulative: [
@@ -284,9 +282,9 @@ const findFactory = async (operator) => {
           ],
         },
       },
+      verbose: true,
     },
     activeAtOffset: end.offset,
-    verbose: true,
   })
   return (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract)
@@ -322,7 +320,7 @@ const main = async () => {
   let active = await findFactory(operator)
   const hadFactory = active !== undefined
   if (!hadFactory) {
-    await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+    await ledger('post', '/v2/commands/submit-and-wait', {
       commandId: `vesting-factory-${STAMP}`,
       actAs: [operator],
       readAs: [operator],
@@ -366,7 +364,7 @@ const main = async () => {
     return
   }
 
-  await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+  await ledger('post', '/v2/commands/submit-and-wait', {
     commandId: `instrument-config-${STAMP}`,
     actAs: [admin],
     readAs: [admin],

@@ -107,13 +107,12 @@ const ensureParty = async (hint) => {
 
 const resolvePackage = async (party) => {
   // Asked of the participant, so a stale package id cannot quietly empty the dashboard.
-  const result = await ledger(
-    'get',
-    '/v2/interactive-submission/preferred-package-version',
-    undefined,
-    { 'package-name': PACKAGE_NAME, parties: party },
-  )
-  const pkg = result?.packagePreference?.packageReference?.packageId
+  const result = await ledger('post', '/v2/interactive-submission/preferred-packages', {
+    packageVettingRequirements: [{ packageName: PACKAGE_NAME, parties: [party] }],
+  })
+  const pkg = result?.packageReferences?.find(
+    (reference) => reference.packageName === PACKAGE_NAME,
+  )?.packageId
   if (typeof pkg !== 'string' || pkg.length === 0) {
     throw new Error(`participant returned no package id for ${PACKAGE_NAME}`)
   }
@@ -126,7 +125,7 @@ const findFactory = async (operator) => {
     throw new Error('participant returned no ledger-end offset')
   }
   const rows = await ledger('post', '/v2/state/active-contracts', {
-    filter: {
+    eventFormat: {
       filtersByParty: {
         // Observer-less, so only the operator sees the factory.
         [operator]: {
@@ -145,9 +144,9 @@ const findFactory = async (operator) => {
           ],
         },
       },
+      verbose: true,
     },
     activeAtOffset: end.offset,
-    verbose: true,
   })
   return (Array.isArray(rows) ? rows : [])
     .map((row) => row?.contractEntry?.JsActiveContract)
@@ -166,7 +165,7 @@ const main = async () => {
   let active = await findFactory(operator)
   const hadFactory = active !== undefined
   if (!hadFactory) {
-    await ledger('post', '/v2/commands/submit-and-wait-for-transaction-tree', {
+    await ledger('post', '/v2/commands/submit-and-wait', {
       commandId: `vesting-factory-${STAMP}`,
       actAs: [operator],
       readAs: [operator],

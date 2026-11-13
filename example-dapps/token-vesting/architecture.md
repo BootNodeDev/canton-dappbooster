@@ -32,7 +32,7 @@ it rather than trust it.
 | | `canton-token-forge.dar` | `vesting.dar` |
 |---|---|---|
 | Source | [`canton-token-forge`](https://github.com/BootNodeDev/canton-token-forge) | [`canton-vesting-forge`](https://github.com/BootNodeDev/canton-vesting-forge) |
-| Release | `v0.3.0` | `v0.2.0` |
+| Release | `v0.3.1` | `v0.2.0` |
 | Asset | `canton-token-forge-0.0.1.dar` | `vesting-0.0.2.dar` |
 | Size | 725807 bytes | 688686 bytes |
 | sha256 | `147835e775e523f78c784996c43500c57e1ed97bcab97c97df6515b65f9332da` | `b78439bafdfb4c2e38666d3d99ac73e8c27722dada41d52876d997f16858d5b3` |
@@ -41,8 +41,8 @@ it rather than trust it.
 | Daml SDK | 3.4.11 | 3.4.11 |
 | LF target | 2.1 | 2.1 |
 
-`canton-token-forge.dar` is byte-identical on `v0.1.0`, `v0.2.0` and `v0.3.0`. It comes from
-`v0.3.0`, the tag `package.json` pins the registry to, so one tag pins both the DAR and the
+`canton-token-forge.dar` is byte-identical on `v0.1.0`, `v0.2.0`, `v0.3.0` and `v0.3.1`. It comes
+from `v0.3.1`, the tag `package.json` pins the registry to, so one tag pins both the DAR and the
 registry. It bundles all six `splice-api-token-*` interface packages it links against, at the
 package ids its build used. The app therefore carries no Splice DAR of its own.
 

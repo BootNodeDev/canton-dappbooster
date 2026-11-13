@@ -72,7 +72,7 @@ describe('useHoldings', () => {
     const [, acs] = ledgerApi.mock.calls.map(([params]) => params)
     expect(acs.body).toMatchObject({
       activeAtOffset: 42,
-      filter: {
+      eventFormat: {
         filtersByParty: {
           [account.partyId]: {
             cumulative: [
@@ -90,8 +90,11 @@ describe('useHoldings', () => {
             ],
           },
         },
+        verbose: true,
       },
     })
+    expect(acs.body).not.toHaveProperty('filter')
+    expect(acs.body).not.toHaveProperty('verbose')
   })
 
   it('reports a locked holding as locked', async () => {

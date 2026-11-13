@@ -8,7 +8,7 @@
 | `pnpm build-dar` | fetches the Splice DARs it depends on, then builds |
 | `pnpm deploy-dar -- daml/.daml/dist/<name>-<version>.dar` | uploads it to `CANTON_JSON_API_URL` |
 
-When `daml/daml.yaml` lists Splice DARs, `build-dar` fetches the ones your network's Splice release ships. With the local network it reads that release from the LocalNet's config. Without one, set `SPLICE_TAG` in `.env` to the release your network runs.
+When `daml/daml.yaml` lists Splice DARs, `build-dar` fetches them from your network's Splice release. With the local network, it builds against the Amulet the LocalNet's Scan reports, or the release's newest DARs when no Scan answers. Without one, set `SPLICE_TAG` in `.env` to the release your network runs.
 
 `deploy-dar` sends the `CANTON_BACKEND_TOKEN` from `.env`. If the project has a `bootstrap` script, run it after `deploy-dar`: it creates on the ledger what the app needs before it can start.
 

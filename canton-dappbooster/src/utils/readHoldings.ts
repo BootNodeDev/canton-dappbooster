@@ -44,7 +44,7 @@ const acsRequest = (partyId: string, offset: string | number): LedgerApiParams =
   requestMethod: 'post',
   resource: '/v2/state/active-contracts',
   body: {
-    filter: {
+    eventFormat: {
       filtersByParty: {
         [partyId]: {
           cumulative: [
@@ -58,9 +58,9 @@ const acsRequest = (partyId: string, offset: string | number): LedgerApiParams =
           ],
         },
       },
+      verbose: true,
     },
     activeAtOffset: offset,
-    verbose: true,
   },
 })
 
