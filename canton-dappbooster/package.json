@@ -109,7 +109,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@zag-js/dialog": "^1.43.0",
-    "@zag-js/react": "^1.43.0"
+    "@zag-js/dialog": "1.47.0",
+    "@zag-js/react": "1.47.0"
   }
 }

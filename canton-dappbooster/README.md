@@ -22,6 +22,9 @@ pnpm add @bootnodedev/canton-dappbooster @bootnodedev/canton-connect @canton-net
 
 It needs React 19.
 
+> [!IMPORTANT]
+> An app that also uses [Ark UI](https://ark-ui.com) or [Zag](https://zagjs.com) has to stay on Zag 1.47.0, which is `@ark-ui/react` 5.40.0. This package pins that version, and two Zag versions on one page freeze `<TokenInput>`'s token dialog when it opens inside another dialog.
+
 ## Styling: components carry none
 
 The components (L2) have no styling opinion at all. Styling comes from the separate [`@bootnodedev/canton-theme`](https://github.com/BootNodeDev/canton-dappbooster/tree/main/canton-theme) package (L3), which you import yourself:
