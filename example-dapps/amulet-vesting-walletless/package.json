@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-example-amulet-vesting-walletless",
-  "version": "0.7.0",
+  "version": "0.8.0-rc.1",
   "description": "Canton Coin vesting dApp with username and password accounts instead of a wallet: an example app for create-canton-dappbooster",
   "repository": {
     "type": "git",
@@ -48,8 +48,8 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.1",
-    "@bootnodedev/canton-dappbooster": "^0.7.0",
-    "@bootnodedev/canton-theme": "^0.7.0",
+    "@bootnodedev/canton-dappbooster": "^0.8.0-rc.1",
+    "@bootnodedev/canton-theme": "^0.8.0-rc.1",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
     "@hono/node-server": "^2.1.1",
