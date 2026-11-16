@@ -404,7 +404,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The local loop runs, in order, the root `mint-token`, `build-dar` and `deploy-dar -- <dar>`, then the example's own `bootstrap` and `dev`. `dev:<example>` runs them all on that example. The root ones act on the example an absolute `CANTON_APP_DIR` names, which each `dev:<example>` sets, and on `example-dapps/amulet-vesting` when it names none. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The local loop runs, in order, the root `mint-token`, `build-dar` and `deploy-dar -- <dar>`, then the example's own `bootstrap` and `dev`. `dev:<example>` runs them all on that example. The root ones act on the example an absolute `CANTON_APP_DIR` names. Each `dev:<example>` sets it, and a run by hand has to set it too. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
 - **The LocalNet is not in this repository, and neither is its config.** It is
   `@bootnodedev/canton-barebones`, a pinned dev dependency driven with `start` / `stop` / `reset` in
   the directory holding `canton-barebones.config.json`. `up` scaffolds that directory itself through
@@ -480,8 +480,7 @@ No project a user creates contains this repo. `create-canton-dappbooster` copies
 `canton-create/scaffold/` and the example packages, so nothing at the root has to keep working
 without the libraries. The monorepo's own loop runs the scaffold's scripts on the examples, so each
 script exists once. Each `dev:<example>` script sets `CANTON_APP_DIR` to its example, and the root
-`mint-token`, `build-dar` and `deploy-dar` keep that value, falling back to
-`example-dapps/amulet-vesting`.
+`mint-token`, `build-dar` and `deploy-dar` keep that value.
 
 ## Packaging and publishing
 
@@ -620,7 +619,7 @@ See [`architecture.md`](architecture.md) for the system shape, subproject layout
     would collide with the app's. The version lockstep check is one of those tests,
     `scripts/check-versions.test.mjs`
 - `canton-dappbooster` tests the kit components (`vitest` + `jsdom`). The `vitest` run in each example covers its pure logic wherever that lives. Component and DOM behaviour, and app+kit integration, are out of scope there.
-- From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). A contract is not a workspace build. `pnpm build-dar` builds the vesting one and needs `dpm` and a network fetch of the Splice DARs, so CI does not run it.
+- From the root, `pnpm test` / `pnpm typecheck` / `pnpm build` / `pnpm knip` fan out across every workspace (`pnpm -r --if-present`). A contract is not a workspace build. `pnpm build-dar` builds an example's contract and needs `dpm` and a network fetch of the Splice DARs, so CI does not run it.
 - `pnpm docs:check` (TypeDoc plus `scripts/docs-check.mjs`), `pnpm run check:anatomy` and `pnpm run check:versions` do not fan out. Each reads the packages it covers directly, and TypeDoc has one config over both libraries. `pnpm docs:build` writes the reference site to `typedoc/`.
 - Cover the paths that matter: business logic, API integrations, component behaviour. Skip styling, third-party library internals, and code that only reads or writes a field.
 
