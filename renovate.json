@@ -34,6 +34,11 @@
       "matchPackageNames": ["node", "@types/node"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "@zag-js/* is pinned exact in canton-dappbooster, on the version @ark-ui/react pins: two Zag versions in one project freeze a dialog nested in another. Disabled so Renovate never moves it alone; bump it by hand in the PR that moves @ark-ui/react.",
+      "matchPackageNames": ["@zag-js/**"],
+      "enabled": false
     }
   ]
 }

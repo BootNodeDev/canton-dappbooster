@@ -372,10 +372,10 @@ importers:
   canton-dappbooster:
     dependencies:
       '@zag-js/dialog':
-        specifier: ^1.43.0
+        specifier: 1.47.0
         version: 1.47.0
       '@zag-js/react':
-        specifier: ^1.43.0
+        specifier: 1.47.0
         version: 1.47.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     devDependencies:
       '@arethetypeswrong/core':
@@ -432,7 +432,7 @@ importers:
   example-dapps/amulet-vesting:
     dependencies:
       '@ark-ui/react':
-        specifier: ^5.39.1
+        specifier: 5.40.0
         version: 5.40.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@bootnodedev/canton-connect':
         specifier: ^0.8.0
@@ -505,7 +505,7 @@ importers:
   example-dapps/amulet-vesting-walletless:
     dependencies:
       '@ark-ui/react':
-        specifier: ^5.39.1
+        specifier: 5.40.0
         version: 5.40.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@bootnodedev/canton-dappbooster':
         specifier: ^0.8.0
@@ -587,7 +587,7 @@ importers:
   example-dapps/token-vault:
     dependencies:
       '@ark-ui/react':
-        specifier: ^5.39.1
+        specifier: 5.40.0
         version: 5.40.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@bootnodedev/canton-connect':
         specifier: ^0.8.0
@@ -660,7 +660,7 @@ importers:
   example-dapps/token-vesting:
     dependencies:
       '@ark-ui/react':
-        specifier: ^5.39.1
+        specifier: 5.40.0
         version: 5.40.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@bootnodedev/canton-connect':
         specifier: ^0.8.0
