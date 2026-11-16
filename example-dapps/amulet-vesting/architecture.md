@@ -251,7 +251,9 @@ the kit's `WalletButton`. Once an attempt is in flight the connect button is swa
 `CancelButton`, so one button is on screen at a time and each does one thing only: that button
 carries the spinner for the wait and the word for the action. A double-click therefore lands its second click on the cancel and
 ends the attempt it just started, which the split makes honest rather than hidden: the button the
-user hits says Cancel.
+user hits says Cancel. The steps before the button start the same connect from a link in step 1.
+That link is a leaf with its own `useConnect`, as `ConnectFace` is. It turns itself off while an
+attempt is in flight, so it cannot start a second one.
 
 The swap itself is [`ConnectFace`](src/components/ConnectFace.tsx), which the prompt and the top bar
 both render, so a third site cannot forget half of it. It is a leaf on purpose: it holds the only

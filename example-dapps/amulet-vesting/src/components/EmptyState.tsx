@@ -4,10 +4,12 @@ import { LogoMark } from '@/icons'
 export const EmptyState = ({
   title,
   description,
+  children,
   action,
   level = 2,
 }: {
   action?: ReactNode
+  children?: ReactNode
   description?: string
   level?: 1 | 2
   title: string
@@ -19,6 +21,7 @@ export const EmptyState = ({
       <LogoMark width={44} height={44} />
       <Heading className="text-base font-bold text-fg">{title}</Heading>
       {description !== undefined && <p className="max-w-sm text-sm text-fg-muted">{description}</p>}
+      {children}
       {action !== undefined && <div className="mt-5">{action}</div>}
     </div>
   )
