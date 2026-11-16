@@ -1,6 +1,7 @@
 import { Steps } from '@ark-ui/react/steps'
+import { cn } from '@/utils/cn'
 
-const stepClass = 'flex w-full cursor-default items-center rounded-[3px] py-1.5 outline-none'
+const stepClass = 'group flex w-full items-center rounded-[3px] py-1.5 outline-none'
 
 const stepBarClass =
   'relative h-1.5 w-full rounded-[3px] bg-border ' +
@@ -10,12 +11,21 @@ const stepBarClass =
   'data-[complete]:before:scale-x-100 data-[complete]:before:bg-primary/40 ' +
   'data-[current]:before:scale-x-100'
 
-export const StepBar = ({ steps }: { steps: string[] }): React.JSX.Element => (
+interface StepBarProps {
+  navigable?: boolean
+  steps: string[]
+}
+
+export const StepBar = ({ navigable = false, steps }: StepBarProps): React.JSX.Element => (
   <Steps.List className="mb-3.5 flex gap-2">
     {steps.map((name, index) => (
       <Steps.Item className="flex-1" index={index} key={name}>
-        <Steps.Trigger aria-label={name} className={stepClass} tabIndex={-1}>
-          <Steps.Indicator className={stepBarClass} />
+        <Steps.Trigger
+          aria-label={name}
+          className={cn(stepClass, navigable ? 'cursor-pointer' : 'cursor-default')}
+          tabIndex={-1}
+        >
+          <Steps.Indicator className={cn(stepBarClass, navigable && 'group-hover:bg-primary/25')} />
         </Steps.Trigger>
       </Steps.Item>
     ))}
