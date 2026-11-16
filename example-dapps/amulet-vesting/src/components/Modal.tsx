@@ -9,7 +9,6 @@ interface ModalProps {
   children: ReactNode
   className?: string
   description?: string
-  hideHeader?: boolean
   initialFocusEl?: () => HTMLElement | null
   onClose: () => void
   title: string
@@ -21,7 +20,6 @@ export const Modal = ({
   description,
   children,
   className,
-  hideHeader = false,
   initialFocusEl,
 }: ModalProps): React.JSX.Element => (
   <Dialog.Root
@@ -44,11 +42,7 @@ export const Modal = ({
             className,
           )}
         >
-          <Dialog.Title
-            className={
-              hideHeader ? 'sr-only' : 'pr-14 text-lg font-bold leading-7 tracking-tight text-fg'
-            }
-          >
+          <Dialog.Title className="pr-14 text-lg font-bold leading-7 tracking-tight text-fg">
             {title}
           </Dialog.Title>
           {description !== undefined && (
@@ -56,15 +50,13 @@ export const Modal = ({
               {description}
             </Dialog.Description>
           )}
-          <div className={hideHeader ? undefined : 'mt-4'}>{children}</div>
-          {!hideHeader && (
-            <Dialog.CloseTrigger
-              aria-label="Close"
-              className="absolute right-6 top-6 grid size-7 place-items-center text-fg-muted transition-colors hover:text-fg"
-            >
-              <X size={16} />
-            </Dialog.CloseTrigger>
-          )}
+          <div className="mt-4">{children}</div>
+          <Dialog.CloseTrigger
+            aria-label="Close"
+            className="absolute right-6 top-6 grid size-7 place-items-center text-fg-muted transition-colors hover:text-fg"
+          >
+            <X size={16} />
+          </Dialog.CloseTrigger>
         </Dialog.Content>
       </Dialog.Positioner>
     </Portal>

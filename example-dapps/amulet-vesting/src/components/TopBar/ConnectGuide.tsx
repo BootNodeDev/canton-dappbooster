@@ -1,33 +1,15 @@
-import { Checkbox } from '@ark-ui/react/checkbox'
 import { Steps } from '@ark-ui/react/steps'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
 import gatewayLogin from '@/assets/gateway-login.png'
 import gatewayParties from '@/assets/gateway-parties.png'
 import walletPicker from '@/assets/wallet-picker.png'
-import { Button } from '@/components/Button'
 import { CopyButton } from '@/components/CopyButton'
 import { Modal } from '@/components/Modal'
 import { StepBar } from '@/components/StepBar'
 import { roundButtonClass } from '@/components/TopBar/ThemeToggle'
 import { cn } from '@/utils/cn'
 import { WALLET_GATEWAY_UI_URL } from '@/utils/config'
-
-const HIDDEN_KEY = 'vesting.connectGuideHidden'
-
-const isGuideHidden = (): boolean => {
-  try {
-    return localStorage.getItem(HIDDEN_KEY) !== null
-  } catch {
-    return true
-  }
-}
-
-const markGuideHidden = (): void => {
-  try {
-    localStorage.setItem(HIDDEN_KEY, 'true')
-  } catch {}
-}
 
 const gutterClass = 'size-9 shrink-0'
 
@@ -86,19 +68,8 @@ const steps = [
 ]
 
 export const ConnectGuide = (): React.JSX.Element => {
-  const [open, setOpen] = useState(() => !isGuideHidden())
-  const [hideGuide, setHideGuide] = useState(false)
-  const [showReminder, setShowReminder] = useState(false)
+  const [open, setOpen] = useState(false)
   const stepsRef = useRef<HTMLDivElement>(null)
-
-  const close = (): void => {
-    if (hideGuide) {
-      markGuideHidden()
-    }
-    setShowReminder(hideGuide)
-    setHideGuide(false)
-    setOpen(false)
-  }
 
   return (
     <>
@@ -114,7 +85,7 @@ export const ConnectGuide = (): React.JSX.Element => {
         <Modal
           className="sm:max-w-lg"
           initialFocusEl={() => stepsRef.current}
-          onClose={close}
+          onClose={() => setOpen(false)}
           title="Welcome"
         >
           <Steps.Root className="outline-none" count={steps.length} ref={stepsRef} tabIndex={-1}>
@@ -158,44 +129,6 @@ export const ConnectGuide = (): React.JSX.Element => {
               </Steps.Content>
             ))}
           </Steps.Root>
-          <div className="mt-6 flex items-center gap-3 border-t border-border pt-4">
-            <Checkbox.Root
-              checked={hideGuide}
-              className="inline-flex cursor-pointer items-center gap-2 text-sm text-fg-muted"
-              onCheckedChange={({ checked }) => setHideGuide(checked === true)}
-            >
-              <Checkbox.Control className="grid size-4 place-items-center rounded-[4px] border border-border bg-surface text-primary-fg transition-colors data-[focus-visible]:shadow-[var(--ring)] data-[state=checked]:border-primary data-[state=checked]:bg-primary">
-                <Checkbox.Indicator>
-                  <Check size={12} strokeWidth={3} />
-                </Checkbox.Indicator>
-              </Checkbox.Control>
-              <Checkbox.Label>Don't show again</Checkbox.Label>
-              <Checkbox.HiddenInput />
-            </Checkbox.Root>
-            <Button className="ml-auto" size="sm" onClick={close}>
-              Close
-            </Button>
-          </div>
-        </Modal>
-      )}
-      {showReminder && (
-        <Modal hideHeader onClose={() => setShowReminder(false)} title="Tutorial hidden">
-          <p className="text-[0.95rem] leading-6">
-            Click the{' '}
-            <span
-              aria-hidden="true"
-              className="inline-grid size-6 place-items-center rounded-full border border-border bg-surface align-middle text-xs font-bold text-fg-muted"
-            >
-              ?
-            </span>
-            <span className="sr-only">How to connect a wallet</span> button in the header to open
-            the tutorial again.
-          </p>
-          <div className="mt-6 flex">
-            <Button className="ml-auto" size="sm" onClick={() => setShowReminder(false)}>
-              Got it
-            </Button>
-          </div>
         </Modal>
       )}
     </>
