@@ -23,13 +23,9 @@ const isGuideHidden = (): boolean => {
   }
 }
 
-const saveGuideHidden = (hidden: boolean): void => {
+const markGuideHidden = (): void => {
   try {
-    if (hidden) {
-      localStorage.setItem(HIDDEN_KEY, 'true')
-    } else {
-      localStorage.removeItem(HIDDEN_KEY)
-    }
+    localStorage.setItem(HIDDEN_KEY, 'true')
   } catch {}
 }
 
@@ -91,13 +87,16 @@ const steps = [
 
 export const ConnectGuide = (): React.JSX.Element => {
   const [open, setOpen] = useState(() => !isGuideHidden())
-  const [hideGuide, setHideGuide] = useState(isGuideHidden)
+  const [hideGuide, setHideGuide] = useState(false)
   const [showReminder, setShowReminder] = useState(false)
   const stepsRef = useRef<HTMLDivElement>(null)
 
   const close = (): void => {
+    if (hideGuide) {
+      markGuideHidden()
+    }
     setShowReminder(hideGuide)
-    saveGuideHidden(hideGuide)
+    setHideGuide(false)
     setOpen(false)
   }
 
