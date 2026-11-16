@@ -1,6 +1,6 @@
 {
   "name": "@bootnodedev/canton-example-amulet-vesting",
-  "version": "0.8.0-rc.1",
+  "version": "0.8.0",
   "description": "Canton Coin vesting dApp: an example app for create-canton-dappbooster",
   "repository": {
     "type": "git",
@@ -43,10 +43,10 @@
     "bootstrap": "node scripts/bootstrap-vesting.mjs"
   },
   "dependencies": {
-    "@ark-ui/react": "^5.39.1",
-    "@bootnodedev/canton-connect": "^0.8.0-rc.1",
-    "@bootnodedev/canton-dappbooster": "^0.8.0-rc.1",
-    "@bootnodedev/canton-theme": "^0.8.0-rc.1",
+    "@ark-ui/react": "5.40.0",
+    "@bootnodedev/canton-connect": "^0.8.0",
+    "@bootnodedev/canton-dappbooster": "^0.8.0",
+    "@bootnodedev/canton-theme": "^0.8.0",
     "@canton-network/dapp-sdk": "1.8.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource-variable/manrope": "^5.2.8",
