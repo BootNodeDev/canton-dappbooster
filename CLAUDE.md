@@ -404,7 +404,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 
 - Use **pnpm** only (never npm or yarn).
 - This is a pnpm workspaces monorepo: one `pnpm install` from the repo root installs and links every package. There is no per-package install step.
-- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The local loop runs, in order, the root `mint-token`, `build-dar`, `deploy-dar -- <dar>` and `bootstrap`, then the example's own `dev`. `dev:<example>` runs them all on that example. The root ones act on the example an absolute `CANTON_APP_DIR` names, which each `dev:<example>` sets, and on `example-dapps/amulet-vesting` when it names none. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
+- Run a subproject script either by `cd <subproject>` or by using `pnpm -C <subproject> run <script>`. The local loop runs, in order, the root `mint-token`, `build-dar` and `deploy-dar -- <dar>`, then the example's own `bootstrap` and `dev`. `dev:<example>` runs them all on that example. The root ones act on the example an absolute `CANTON_APP_DIR` names, which each `dev:<example>` sets, and on `example-dapps/amulet-vesting` when it names none. Docs use those names, not the underlying commands, so the implementation can move without a doc sweep. There is no `format` script anywhere: `lint:fix` is `biome check --write`, which formats too.
 - **The LocalNet is not in this repository, and neither is its config.** It is
   `@bootnodedev/canton-barebones`, a pinned dev dependency driven with `start` / `stop` / `reset` in
   the directory holding `canton-barebones.config.json`. `up` scaffolds that directory itself through
@@ -427,7 +427,7 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 - `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
   in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
   loop described earlier.
-- `pnpm run bootstrap` creates the vesting operator and its factory, which the
+- An example's own `bootstrap` script creates the vesting operator and its factory, which the
   dApp cannot start without. Run it after deploying the DAR. It writes no file. A wallet example
   reads both back off the ledger once a wallet connects, and the wallet-less example's server once
   it starts, so nothing can go stale between the two. Pointing the wallet, or that server, at
@@ -480,7 +480,7 @@ No project a user creates contains this repo. `create-canton-dappbooster` copies
 `canton-create/scaffold/` and the example packages, so nothing at the root has to keep working
 without the libraries. The monorepo's own loop runs the scaffold's scripts on the examples, so each
 script exists once. Each `dev:<example>` script sets `CANTON_APP_DIR` to its example, and the root
-`mint-token`, `build-dar`, `deploy-dar` and `bootstrap` keep that value, falling back to
+`mint-token`, `build-dar` and `deploy-dar` keep that value, falling back to
 `example-dapps/amulet-vesting`.
 
 ## Packaging and publishing

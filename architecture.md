@@ -136,7 +136,7 @@ that secret and nothing else.
 
 ## Orchestration
 
-`mint-token`, `build-dar`, `deploy-dar` and `bootstrap` act on the example an absolute
+`mint-token`, `build-dar` and `deploy-dar` act on the example an absolute
 `CANTON_APP_DIR` names, and on `example-dapps/amulet-vesting` when it names none. `deploy-dar`
 uploads the DAR it is given but reads that example's `.env`. Each `dev:<example>` script sets
 `CANTON_APP_DIR`, so the `build-dar` and `deploy-dar` that `dev-stack.sh` runs build and upload that
@@ -157,7 +157,7 @@ vendored and their `bootstrap` uploads them.
 | `pnpm run mint-token` | generate a LocalNet dev JWT, offline |
 | `pnpm run build-dar` | fetch the Splice dependencies, then compile the DAR with `dpm` |
 | `pnpm run deploy-dar -- <dar>` | upload DAR to app-user JSON API |
-| `pnpm run bootstrap` | create the vesting operator and its factory |
+| `pnpm -C example-dapps/<example> bootstrap` | create what that example's dApp needs on the ledger |
 | `pnpm -C example-dapps/<example> dev` | start the dApp frontend |
 
 `dev-stack.sh` runs an app's own `stack:up` script after `bootstrap` and its `stack:down` script on
