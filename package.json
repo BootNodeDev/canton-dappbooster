@@ -8,7 +8,6 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "app:dev": "pnpm -C ${CANTON_APP_DIR:-$PWD/example-dapps/amulet-vesting} run dev",
     "bootstrap": "pnpm -C ${CANTON_APP_DIR:-$PWD/example-dapps/amulet-vesting} run bootstrap",
     "build-dar": "CANTON_APP_DIR=${CANTON_APP_DIR:-$PWD/example-dapps/amulet-vesting} pnpm -C canton-create/scaffold/daml-tooling run build-dar",
     "build": "pnpm -r run --if-present build",
