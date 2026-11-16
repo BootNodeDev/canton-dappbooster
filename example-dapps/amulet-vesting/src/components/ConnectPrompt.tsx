@@ -50,7 +50,7 @@ const ConnectLink = (): React.JSX.Element => {
     <button
       className="font-semibold text-primary-strong underline decoration-primary/40 underline-offset-3 transition-colors hover:decoration-primary disabled:opacity-60"
       disabled={isPending}
-      onClick={() => connect()}
+      onClick={() => void connect().catch(() => undefined)}
       type="button"
     >
       Connect wallet
