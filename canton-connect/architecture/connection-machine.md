@@ -28,12 +28,7 @@ stateDiagram-v2
     disconnecting --> disconnected: settled, or 10 s silence
 ```
 
-`connecting`, `retiring` and `restoring` each split into `new` and `changing`: the variants carry
-whether a standing session is at stake. A connect from `session` runs as
-`changing`, and a closed picker or a cancel resumes that session through `retiring.changing` and
-`restoring.changing`, which `toConnectionStatus` reports as `'connecting'` rather than
-`'disconnected'` and `'idle'`: a consumer gating on status must not unmount the app while its
-session is on the way back.
+`connecting`, `retiring` and `restoring` each come in two variants: `new` when there was no session, `changing` when the user switches wallets over a standing one. A wallet change the user abandons goes through `connecting.changing`, then `retiring.changing` (a fresh `DappSDK`), then `restoring.changing` (trying to get the old session back). `toConnectionStatus` reports those steps as `'connecting'`, so an app that gates on status keeps rendering while the session may come back. Whether it does depends on the wallet; see below.
 
 `session` holds `unauthenticated` (the wallet will not serve requests) and `authenticated`, whose
 substates mirror the accounts child: `reading`, `ready`, `unavailable`. Entry always targets
@@ -57,9 +52,7 @@ The tags are the machine's public face; the bridges and hooks read nothing else.
 
 Consequences a caller notices:
 
-- A connect sent over a standing session goes to the wallet as a wallet change, and after a
-  wallet-side disconnect (one indistinguishable push with a lock) it is the only recovery a
-  consumer can drive. A change the user walks out on resumes the session it would have replaced.
+- A connect over a standing session is a wallet change; after a wallet-side disconnect, which looks like a lock, it is the only recovery a consumer can drive. Abandoned, it restores the old session for extension and WalletConnect wallets. A remote wallet ends disconnected once the picker has opened, since `connect()` deletes its stored session before opening it; an earlier cancel restores it until the next reload.
 - A connect during a disconnect is ignored, not queued, and is answered as a cancel once the
   machine rests in `disconnected`; `status` stays `disconnecting` until then, so a consumer keeps
   its connect action disabled.
