@@ -23,6 +23,9 @@ pnpm add @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sig
 > [!NOTE]
 > `@walletconnect/sign-client` is required even though `dapp-sdk` marks it optional: `dapp-sdk` imports it statically, with or without `walletConnectProjectId`. Only the session is lazy; `SignClient.init()` runs when a pairing starts.
 
+> [!IMPORTANT]
+> Serve the dApp from HTTPS or `localhost`: `dapp-sdk` calls `crypto.randomUUID()`, which browsers expose only in a secure context.
+
 ## Usage
 
 Every hook reads the session the provider holds. `useExecute` does the most: it submits commands through the wallet and tracks the transaction.
