@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { hostedParty } from './bootstrap-vesting.mjs'
+import { hostedParty, partyUnder } from './bootstrap-vesting.mjs'
 
 const OPERATOR = 'vesting-operator::1220abcd'
+
+describe('the operator id the bootstrap looks up', () => {
+  it('puts the hint under the participant namespace', () => {
+    assert.equal(partyUnder('participant1::1220abcd', 'vesting-operator'), OPERATOR)
+  })
+
+  it('refuses a participant id with no namespace', () => {
+    assert.throws(() => partyUnder('participant1', 'vesting-operator'), /no namespace/)
+  })
+})
 
 describe('the operator party a re-run reuses', () => {
   it('finds the party allocated under the hint', () => {

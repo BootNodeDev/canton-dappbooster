@@ -175,6 +175,10 @@ ledger across a `down`. The match includes the `::` separator, so the stamped
 `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared LocalNet are never
 picked up. Both examples build the same DAR, so either one's upload serves both.
 
+The bootstrap looks the operator up by its full id, the hint under the participant's namespace from
+`/v2/parties/participant-id`. Listing `/v2/parties` would not finish on a public network, where it
+returns every party the network knows.
+
 ## The store and the pages
 
 - `useVestingStore` reads again after every write. A claim archives the contract and creates its

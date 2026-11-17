@@ -19,12 +19,8 @@ const bearer = () => {
   return `Bearer ${TOKEN}`
 }
 
-const ledger = async (requestMethod, resource, body, query) => {
-  const url = new URL(JSON_API_URL + resource)
-  for (const [key, value] of Object.entries(query ?? {})) {
-    url.searchParams.set(key, value)
-  }
-  const response = await fetch(url, {
+const ledger = async (requestMethod, resource, body) => {
+  const response = await fetch(JSON_API_URL + resource, {
     method: requestMethod.toUpperCase(),
     headers: {
       authorization: bearer(),
@@ -53,32 +49,25 @@ export const hostedParty = (details, hint) =>
       typeof one?.party === 'string' && one.party.startsWith(`${hint}::`) && one.isLocal !== false,
   )?.party
 
-const PARTY_PAGES = 20
-
-const findParty = async (hint) => {
-  let pageToken
-  for (let page = 0; page < PARTY_PAGES; page++) {
-    const result = await ledger(
-      'get',
-      '/v2/parties',
-      undefined,
-      pageToken === undefined ? undefined : { pageToken },
-    )
-    const details = result?.partyDetails
-    if (!Array.isArray(details)) {
-      throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
-    }
-    const found = hostedParty(details, hint)
-    if (found !== undefined) {
-      return found
-    }
-    pageToken = result?.nextPageToken
-    if (typeof pageToken !== 'string' || pageToken === '') {
-      return undefined
-    }
+// A party this participant allocates takes the participant's own namespace.
+export const partyUnder = (participantId, hint) => {
+  const namespace = participantId?.split('::')[1]
+  if (!namespace) {
+    throw new Error(`participant id ${participantId} carries no namespace`)
   }
-  // Not undefined: the caller would allocate the hint again, which the participant refuses.
-  throw new Error(`gave up looking for ${hint} after ${PARTY_PAGES} pages of parties`)
+  return `${hint}::${namespace}`
+}
+
+// Looked up by id: a public network lists every party on it, too many to page through.
+const findParty = async (hint) => {
+  const { participantId } = await ledger('get', '/v2/parties/participant-id')
+  const id = partyUnder(participantId, hint)
+  const result = await ledger('get', `/v2/parties/${encodeURIComponent(id)}`)
+  const details = result?.partyDetails
+  if (!Array.isArray(details)) {
+    throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
+  }
+  return hostedParty(details, hint)
 }
 
 const ensureParty = async (hint) => {
