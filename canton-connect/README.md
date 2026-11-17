@@ -21,7 +21,7 @@ pnpm add @bootnodedev/canton-connect @canton-network/dapp-sdk @walletconnect/sig
 ```
 
 > [!NOTE]
-> `@walletconnect/sign-client` is required even though `dapp-sdk` marks it optional: `dapp-sdk` imports it statically (checked on 1.8.0), with or without `walletConnectProjectId`. Only the session is lazy; `SignClient.init()` runs when a pairing starts.
+> `@walletconnect/sign-client` is required even though `dapp-sdk` marks it optional: `dapp-sdk` imports it statically, with or without `walletConnectProjectId`. Only the session is lazy; `SignClient.init()` runs when a pairing starts.
 
 ## Usage
 
