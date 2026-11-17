@@ -64,7 +64,7 @@ sequenceDiagram
   Note over User,P: Sign in, or reload
   FE->>S: POST /api/auth/login, or GET /api/session on load
   S->>DB: look up the user or the session
-  Note over S: verify scrypt · 10 tries per username per 15 minutes
+  Note over S: verify scrypt · 10 tries per username per 10 minutes
   S-->>FE: { username, partyId } + cookie
   Note over FE: no session: the sign-in card on every page
 ```
@@ -83,11 +83,12 @@ carries, and it is the counterparty, never the actor.
 Every write must be `content-type: application/json`, or it gets 415. A cross-site form can post
 urlencoded, multipart or text, but not JSON without a preflight, so this is the CSRF check on top of
 the `SameSite` cookie. `validate.ts` checks every body field and throws a 400 that names it.
-The server takes 10 signups in 10 minutes for the whole site, and 10 login tries per username in 15
-minutes. That leaves room for typos and too few tries to guess a password. Neither limit reads the
-client's address. A proxy in front of the server can pass on a forwarded address the client wrote,
-and Vercel's rewrite does. An address key would then let a client choose its own. A refusal says
-how long to wait, and someone can lock a username out for 15 minutes on purpose.
+The server takes 10 signups for the whole site and 10 login tries per username in a 10-minute
+window. `WL_SIGNUP_LIMIT`, `WL_LOGIN_LIMIT` and `WL_LIMIT_WINDOW_MINUTES` set those numbers. Ten
+tries leave room for typos and too few to guess a password. Neither limit reads the client's
+address. A proxy in front of the server can pass on a forwarded address the client wrote, and
+Vercel's rewrite does. An address key would then let a client choose its own. A refusal says how
+long to wait, and someone can lock a username out for one window on purpose.
 
 `GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
 `replaces`, because a withdraw archives the grant and creates its successor. The records come

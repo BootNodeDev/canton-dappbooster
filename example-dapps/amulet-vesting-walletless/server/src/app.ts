@@ -14,11 +14,8 @@ import { amount, asBody, BadRequest, optionalText, party, schedule, text } from 
 export const SESSION_COOKIE = 'wl_session'
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000
 
-const LOGIN_ATTEMPTS = 10
-const LOGIN_WINDOW_MS = 15 * 60 * 1000
-const SIGNUPS = 10
-const SIGNUP_WINDOW_MS = 10 * 60 * 1000
-const HOUR_MS = 60 * 60 * 1000
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
 const UNIQUE_VIOLATION = '23505'
 
 export type AppDeps = {
@@ -27,10 +24,13 @@ export type AppDeps = {
   db: Db
   deployment: () => Promise<Deployment>
   ledger: WalletFns
+  limitWindowMinutes?: number
+  loginLimit?: number
   maxAccounts?: number
   now?: () => number
   provision: (username: string) => Promise<string>
   release: (partyIds: string[]) => Promise<void>
+  signupLimit?: number
 }
 
 type Env = { Variables: { user: User } }
@@ -45,7 +45,7 @@ const readJson = async (c: Context): Promise<Record<string, unknown>> =>
   )
 
 const waitText = (ms: number): string => {
-  const minutes = Math.ceil(ms / 60_000)
+  const minutes = Math.ceil(ms / MINUTE_MS)
   if (minutes < 120) return `${minutes} minute${minutes === 1 ? '' : 's'}`
   return `${Math.ceil(minutes / 60)} hours`
 }
@@ -56,12 +56,16 @@ export const createApp = ({
   db,
   deployment,
   ledger,
+  limitWindowMinutes = 10,
+  loginLimit = 10,
   maxAccounts = 0,
   now = Date.now,
   provision,
   release,
+  signupLimit = 10,
 }: AppDeps) => {
   const app = new Hono<Env>()
+  const limitWindowMs = limitWindowMinutes * MINUTE_MS
   const attempts = new Map<string, { count: number; resetAt: number }>()
 
   // Keyed on nothing the client sends: a proxy in front can pass a forwarded address it wrote.
@@ -147,7 +151,7 @@ export const createApp = ({
     if (password.length < MIN_PASSWORD) {
       throw new BadRequest(`password must be at least ${MIN_PASSWORD} characters`)
     }
-    const busy = retryAfter('signup', SIGNUPS, SIGNUP_WINDOW_MS)
+    const busy = retryAfter('signup', signupLimit, limitWindowMs)
     if (busy > 0) {
       return c.json(
         { error: `too many new accounts right now, try again in ${waitText(busy)}` },
@@ -186,7 +190,7 @@ export const createApp = ({
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
     const key = `login:${username}`
-    const locked = retryAfter(key, LOGIN_ATTEMPTS, LOGIN_WINDOW_MS)
+    const locked = retryAfter(key, loginLimit, limitWindowMs)
     if (locked > 0) {
       return c.json(
         { error: `too many failed sign-ins for ${username}, try again in ${waitText(locked)}` },

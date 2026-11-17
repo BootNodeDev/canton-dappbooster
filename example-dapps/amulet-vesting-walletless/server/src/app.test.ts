@@ -16,7 +16,17 @@ type Call = { execute?: ExecuteParams; read?: LedgerApiParams }
 
 const setup = async (
   patchDb: (db: Db) => Db = (db) => db,
-  deps: Partial<Pick<AppDeps, 'accountTtlHours' | 'maxAccounts' | 'now'>> = {},
+  deps: Partial<
+    Pick<
+      AppDeps,
+      | 'accountTtlHours'
+      | 'limitWindowMinutes'
+      | 'loginLimit'
+      | 'maxAccounts'
+      | 'now'
+      | 'signupLimit'
+    >
+  > = {},
 ) => {
   const calls: Call[] = []
   const released: string[][] = []
@@ -163,7 +173,7 @@ describe('auth', () => {
     for (let i = 0; i < 10; i++) await guess('alice')
     const locked = await guess('alice')
     expect(locked.status).toBe(429)
-    expect(await errorOf(locked)).toMatch(/try again in 15 minutes/)
+    expect(await errorOf(locked)).toMatch(/try again in 10 minutes/)
     expect((await guess('bob')).status).toBe(401)
   })
 
@@ -174,6 +184,20 @@ describe('auth', () => {
     )
     expect(eleventh.status).toBe(429)
     expect(await errorOf(eleventh)).toMatch(/try again in 10 minutes/)
+  })
+
+  it('takes its signup and login limits and their window from the settings', async () => {
+    const strict = await setup(undefined, { limitWindowMinutes: 5, loginLimit: 1, signupLimit: 2 })
+    await signup(strict.app, 'alice')
+    await signup(strict.app, 'bob')
+    const third = await strict.app.request(
+      post('/api/auth/signup', { username: 'carol', password: 'hunter22!' }),
+    )
+    expect(await errorOf(third)).toMatch(/try again in 5 minutes/)
+    const guess = () =>
+      strict.app.request(post('/api/auth/login', { username: 'alice', password: 'guess-guess' }))
+    expect((await guess()).status).toBe(401)
+    expect((await guess()).status).toBe(429)
   })
 
   it('refuses a signup once the accounts reach the cap', async () => {
