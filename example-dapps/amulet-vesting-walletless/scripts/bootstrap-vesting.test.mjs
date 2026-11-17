@@ -9,6 +9,10 @@ describe('the operator id the bootstrap looks up', () => {
     assert.equal(partyUnder('participant1::1220abcd', 'vesting-operator'), OPERATOR)
   })
 
+  it('takes the namespace from the end of an id with a prefix', () => {
+    assert.equal(partyUnder('PAR::participant1::1220abcd', 'vesting-operator'), OPERATOR)
+  })
+
   it('refuses a participant id with no namespace', () => {
     assert.throws(() => partyUnder('participant1', 'vesting-operator'), /no namespace/)
   })

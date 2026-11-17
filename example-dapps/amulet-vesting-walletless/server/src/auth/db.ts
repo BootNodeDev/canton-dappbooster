@@ -61,11 +61,15 @@ export const openDb = (sql: Sql) => {
       }
     },
     // The UNIQUE constraint is the real check: two signups racing for one name cannot both pass.
-    createUser: async (user: Omit<User, 'id'>, passwordHash: string): Promise<User> => {
+    createUser: async (
+      user: Omit<User, 'id'>,
+      passwordHash: string,
+      createdAt = Date.now(),
+    ): Promise<User> => {
       const { rows } = await sql.query<{ id: number }>(
         `INSERT INTO users (username, password_hash, party_id, created_at)
          VALUES ($1, $2, $3, $4) RETURNING id`,
-        [user.username, passwordHash, user.partyId, Date.now()],
+        [user.username, passwordHash, user.partyId, createdAt],
       )
       return { ...user, id: rows[0].id }
     },
@@ -89,11 +93,11 @@ export const openDb = (sql: Sql) => {
     purgeSessions: async (nowMs: number): Promise<void> => {
       await sql.query('DELETE FROM sessions WHERE expires_at <= $1', [nowMs])
     },
-    sessionUser: async (id: string, nowMs: number): Promise<User | undefined> => {
+    sessionUser: async (id: string, nowMs: number, createdAfter = 0): Promise<User | undefined> => {
       const { rows } = await sql.query<UserRow>(
         `SELECT users.* FROM sessions JOIN users ON users.id = sessions.user_id
-         WHERE sessions.id = $1 AND sessions.expires_at > $2`,
-        [id, nowMs],
+         WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.created_at >= $3`,
+        [id, nowMs, createdAfter],
       )
       return rows[0] === undefined ? undefined : toUser(rows[0])
     },

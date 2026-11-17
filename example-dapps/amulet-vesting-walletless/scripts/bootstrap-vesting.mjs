@@ -51,11 +51,11 @@ export const hostedParty = (details, hint) =>
 
 // A party this participant allocates takes the participant's own namespace.
 export const partyUnder = (participantId, hint) => {
-  const namespace = participantId?.split('::')[1]
-  if (!namespace) {
+  const parts = participantId?.split('::') ?? []
+  if (parts.length < 2 || !parts.at(-1)) {
     throw new Error(`participant id ${participantId} carries no namespace`)
   }
-  return `${hint}::${namespace}`
+  return `${hint}::${parts.at(-1)}`
 }
 
 // Looked up by id: a public network lists every party on it, too many to page through.

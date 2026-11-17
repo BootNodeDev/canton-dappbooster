@@ -88,7 +88,8 @@ window. `WL_SIGNUP_LIMIT`, `WL_LOGIN_LIMIT` and `WL_LIMIT_WINDOW_MINUTES` set th
 tries leave room for typos and too few to guess a password. Neither limit reads the client's
 address. A proxy in front of the server can pass on a forwarded address the client wrote, and
 Vercel's rewrite does. An address key would then let a client choose its own. A refusal says how
-long to wait, and someone can lock a username out for one window on purpose.
+long to wait, and someone can lock a username out for one window on purpose. One client can also use
+up a window's signups for everyone, and refused signups count too.
 
 `GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
 `replaces`, because a withdraw archives the grant and creates its successor. The records come
@@ -142,11 +143,14 @@ deployment holds at most 1000 accounts.
 `WL_MAX_ACCOUNTS`, 500 by default, stops signups below that. `WL_ACCOUNT_TTL_HOURS` makes room
 again: each signup first deletes the accounts older than that many hours. It revokes their rights in
 one request, then deletes their rows and with them their sessions. It also drops escrow disclosures
-older than the same cutoff. The right goes first, because a row deleted with its right still
-granted holds a slot nothing frees. A right the user no longer holds revokes without an error, so a ledger
+older than the same cutoff. The right goes first, because a row deleted with its right still granted
+holds a slot nothing frees. A right the user no longer holds revokes without an error, so a ledger
 reset needs no special case. The parties and their contracts stay on the ledger, which deletes
-nothing. A full deployment tells the next visitor when the oldest account expires, and
-`GET /api/status` reports the lifetime so the create-account card can state it.
+nothing. A full deployment tells the next visitor when the oldest account expires. `GET /api/status`
+reports the lifetime, so the create-account card can state it. A session stops working once its
+account is past the lifetime. A login runs the cleanup first, so an expired account is gone before
+it can sign back in. The server checks the cap before a signup's slow ledger calls. Signups
+running at the same moment can pass it, by at most the signup limit.
 
 Where the token comes from:
 

@@ -83,10 +83,13 @@ export const createApp = ({
     return entry.count > max ? entry.resetAt - at : 0
   }
 
+  const expiredBefore = (): number =>
+    accountTtlHours === 0 ? 0 : now() - accountTtlHours * HOUR_MS
+
   // The right goes first: a row deleted with its right still granted holds a slot nothing frees.
   const expireAccounts = async (): Promise<void> => {
     if (accountTtlHours === 0) return
-    const before = now() - accountTtlHours * HOUR_MS
+    const before = expiredBefore()
     const expired = await db.usersCreatedBefore(before)
     if (expired.length > 0) {
       await release(expired.map((user) => user.partyId))
@@ -174,7 +177,7 @@ export const createApp = ({
     const partyId = await provision(username)
     let user: User
     try {
-      user = await db.createUser({ username, partyId }, passwordHash)
+      user = await db.createUser({ username, partyId }, passwordHash, now())
     } catch (error) {
       if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION) throw error
       // Lost a race for the name. The new party stays on the ledger, unused and harmless.
@@ -189,6 +192,9 @@ export const createApp = ({
     const body = await readJson(c)
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
+    if (!USERNAME.test(username)) {
+      return c.json({ error: 'wrong username or password' }, 401)
+    }
     const key = `login:${username}`
     const locked = retryAfter(key, loginLimit, limitWindowMs)
     if (locked > 0) {
@@ -197,6 +203,7 @@ export const createApp = ({
         429,
       )
     }
+    await expireAccounts()
     const found = await db.userByUsername(username)
     if (found === undefined || !(await verifyPassword(password, found.passwordHash))) {
       return c.json({ error: 'wrong username or password' }, 401)
@@ -232,7 +239,7 @@ export const createApp = ({
 
   app.use('/api/*', async (c, next) => {
     const id = getCookie(c, SESSION_COOKIE)
-    const user = id === undefined ? undefined : await db.sessionUser(id, now())
+    const user = id === undefined ? undefined : await db.sessionUser(id, now(), expiredBefore())
     if (user === undefined) {
       return c.json({ error: 'not signed in' }, 401)
     }

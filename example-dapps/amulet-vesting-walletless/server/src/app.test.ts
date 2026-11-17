@@ -223,12 +223,25 @@ describe('auth', () => {
       post('/api/auth/signup', { username: 'bob', password: 'hunter22!' }),
     )
     expect(full.status).toBe(503)
-    expect(await errorOf(full)).toMatch(/try again in \d+ hours/)
+    expect(await errorOf(full)).toMatch(/try again in 24 hours/)
 
     clock += 25 * 60 * 60 * 1000
     await signup(expiring.app, 'alice')
     expect(expiring.released).toEqual([['wl-alice::fp']])
     expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+  })
+
+  it('ends an expired account at once, with no signup to run the cleanup', async () => {
+    let clock = Date.now()
+    const expiring = await setup(undefined, { accountTtlHours: 24, now: () => clock })
+    const cookie = await signup(expiring.app, 'alice')
+    clock += 25 * 60 * 60 * 1000
+    expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+    const login = await expiring.app.request(
+      post('/api/auth/login', { username: 'alice', password: 'hunter22!' }),
+    )
+    expect(login.status).toBe(401)
+    expect(expiring.released).toEqual([['wl-alice::fp']])
   })
 
   it('reports the account lifetime with the status', async () => {
