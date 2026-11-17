@@ -47,6 +47,12 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
 
 ## Bumping `dapp-sdk`
 
+Typecheck the examples and the starter without their cache first: `tsc -b` skips a project whose own source files did not change, and a bump changes none of them.
+
+```shell
+pnpm -r --filter './example-dapps/*' --filter ./canton-create/scaffold/starter exec tsc -b --noEmit --force
+```
+
 `guardedConnect` and `retireSdk` rest on three SDK internals no test can pin:
 
 - the picker popup is opened through `window.open`
