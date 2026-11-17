@@ -9,6 +9,7 @@ interface ModalProps {
   children: ReactNode
   className?: string
   description?: string
+  initialFocusEl?: () => HTMLElement | null
   onClose: () => void
   title: string
 }
@@ -19,9 +20,11 @@ export const Modal = ({
   description,
   children,
   className,
+  initialFocusEl,
 }: ModalProps): React.JSX.Element => (
   <Dialog.Root
     open
+    initialFocusEl={initialFocusEl}
     onOpenChange={(details) => {
       if (!details.open) {
         onClose()

@@ -1,9 +1,9 @@
 import { Steps } from '@ark-ui/react/steps'
-import { useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRef, useState } from 'react'
 import gatewayLogin from '@/assets/gateway-login.png'
 import gatewayParties from '@/assets/gateway-parties.png'
 import walletPicker from '@/assets/wallet-picker.png'
-import { Button } from '@/components/Button'
 import { CopyButton } from '@/components/CopyButton'
 import { Modal } from '@/components/Modal'
 import { StepBar } from '@/components/StepBar'
@@ -11,21 +11,9 @@ import { roundButtonClass } from '@/components/TopBar/ThemeToggle'
 import { cn } from '@/utils/cn'
 import { WALLET_GATEWAY_UI_URL } from '@/utils/config'
 
-const SEEN_KEY = 'vesting.connectGuideSeen'
-
-const hasSeenGuide = (): boolean => {
-  try {
-    return localStorage.getItem(SEEN_KEY) !== null
-  } catch {
-    return true
-  }
-}
-
-const markGuideSeen = (): void => {
-  try {
-    localStorage.setItem(SEEN_KEY, 'true')
-  } catch {}
-}
+const chevronClass =
+  'grid size-9 shrink-0 place-items-center rounded-full text-primary-strong transition-colors ' +
+  'hover:bg-muted focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:invisible'
 
 const steps = [
   {
@@ -78,12 +66,8 @@ const steps = [
 ]
 
 export const ConnectGuide = (): React.JSX.Element => {
-  const [open, setOpen] = useState(() => !hasSeenGuide())
-
-  const close = (): void => {
-    markGuideSeen()
-    setOpen(false)
-  }
+  const [open, setOpen] = useState(false)
+  const stepsRef = useRef<HTMLDivElement>(null)
 
   return (
     <>
@@ -96,46 +80,47 @@ export const ConnectGuide = (): React.JSX.Element => {
         ?
       </button>
       {open && (
-        <Modal onClose={close} title="Welcome">
-          <Steps.Root count={steps.length}>
-            <StepBar steps={steps.map(({ name }) => name)} />
-            {steps.map(({ alt, image, name, text }, index) => (
-              <Steps.Content className="focus-visible:outline-none" index={index} key={name}>
-                <img
-                  alt={alt}
-                  className="block w-full rounded-xl border border-border"
-                  height={232}
-                  loading="lazy"
-                  src={image}
-                  width={400}
-                />
-                <p className="mt-4 text-[0.95rem] leading-6">{text}</p>
-              </Steps.Content>
-            ))}
+        <Modal
+          className="sm:max-w-lg"
+          initialFocusEl={() => stepsRef.current}
+          onClose={() => setOpen(false)}
+          title="Welcome"
+        >
+          <Steps.Root className="outline-none" count={steps.length} ref={stepsRef} tabIndex={-1}>
+            <StepBar navigable steps={steps.map(({ name }) => name)} />
             <Steps.Context>
               {(api) => (
-                <div className="mt-6 flex items-center gap-3">
-                  {api.hasPrevStep && (
-                    <Steps.PrevTrigger asChild>
-                      <Button variant="ghost" size="sm" className="px-0">
-                        Back
-                      </Button>
-                    </Steps.PrevTrigger>
-                  )}
-                  {api.value < api.count - 1 ? (
-                    <Steps.NextTrigger asChild>
-                      <Button className="ml-auto" size="sm">
-                        Next
-                      </Button>
-                    </Steps.NextTrigger>
-                  ) : (
-                    <Button className="ml-auto" size="sm" onClick={close}>
-                      Done
-                    </Button>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Steps.PrevTrigger aria-label="Previous step" className={chevronClass}>
+                    <ChevronLeft size={28} strokeWidth={2.5} />
+                  </Steps.PrevTrigger>
+                  <div className="min-w-0 flex-1">
+                    {steps.map(({ alt, image, name }, index) => (
+                      <img
+                        alt={alt}
+                        className="block w-full rounded-xl border border-border"
+                        height={232}
+                        hidden={index !== api.value}
+                        key={name}
+                        src={image}
+                        width={400}
+                      />
+                    ))}
+                  </div>
+                  <Steps.NextTrigger
+                    aria-label="Next step"
+                    className={cn(chevronClass, api.value === api.count - 1 && 'invisible')}
+                  >
+                    <ChevronRight size={28} strokeWidth={2.5} />
+                  </Steps.NextTrigger>
                 </div>
               )}
             </Steps.Context>
+            {steps.map(({ name, text }, index) => (
+              <Steps.Content className="focus-visible:outline-none" index={index} key={name}>
+                <p className="mt-4 text-[0.95rem] leading-6">{text}</p>
+              </Steps.Content>
+            ))}
           </Steps.Root>
         </Modal>
       )}
