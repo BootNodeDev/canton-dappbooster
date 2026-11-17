@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { provisionParty } from '#server/auth/provision'
+import { provisionParty, releaseParties } from '#server/auth/provision'
 import type { LedgerApiParams } from '#server/ledger/wallet'
 
 describe('provisionParty', () => {
@@ -33,5 +33,33 @@ describe('provisionParty', () => {
     }
     await expect(provisionParty(ledgerApi, 'svc@clients', 'bob', 's')).rejects.toThrow(/no party/)
     expect(calls).toEqual(['/v2/parties'])
+  })
+})
+
+describe('releaseParties', () => {
+  it('revokes every party in one request to the service user', async () => {
+    const calls: LedgerApiParams[] = []
+    const ledgerApi = async (params: LedgerApiParams): Promise<unknown> => {
+      calls.push(params)
+      return { newlyRevokedRights: [] }
+    }
+
+    await releaseParties(ledgerApi, 'svc@clients', ['wl-a::abc', 'wl-b::abc'])
+
+    expect(calls).toEqual([
+      {
+        requestMethod: 'patch',
+        resource: '/v2/users/{user-id}/rights',
+        path: { 'user-id': 'svc@clients' },
+        body: {
+          userId: 'svc@clients',
+          rights: [
+            { kind: { CanActAs: { value: { party: 'wl-a::abc' } } } },
+            { kind: { CanActAs: { value: { party: 'wl-b::abc' } } } },
+          ],
+          identityProviderId: '',
+        },
+      },
+    ])
   })
 })

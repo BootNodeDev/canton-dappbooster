@@ -16,15 +16,21 @@ const SESSION_MS = 7 * 24 * 60 * 60 * 1000
 
 const LOGIN_ATTEMPTS = 10
 const LOGIN_WINDOW_MS = 15 * 60 * 1000
+const SIGNUPS = 10
+const SIGNUP_WINDOW_MS = 10 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
 const UNIQUE_VIOLATION = '23505'
 
 export type AppDeps = {
+  accountTtlHours?: number
   cookieSecure?: boolean
   db: Db
   deployment: () => Promise<Deployment>
   ledger: WalletFns
+  maxAccounts?: number
   now?: () => number
   provision: (username: string) => Promise<string>
+  release: (partyIds: string[]) => Promise<void>
 }
 
 type Env = { Variables: { user: User } }
@@ -38,36 +44,60 @@ const readJson = async (c: Context): Promise<Record<string, unknown>> =>
     }),
   )
 
-// The socket, not a forwarded-for header any client can set; behind a proxy it is the proxy.
-const clientOf = (c: Context): string => {
-  const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
-    ?.incoming
-  return incoming?.socket?.remoteAddress ?? 'local'
+const waitText = (ms: number): string => {
+  const minutes = Math.ceil(ms / 60_000)
+  if (minutes < 120) return `${minutes} minute${minutes === 1 ? '' : 's'}`
+  return `${Math.ceil(minutes / 60)} hours`
 }
 
 export const createApp = ({
+  accountTtlHours = 0,
   cookieSecure = false,
   db,
   deployment,
   ledger,
+  maxAccounts = 0,
   now = Date.now,
   provision,
+  release,
 }: AppDeps) => {
   const app = new Hono<Env>()
   const attempts = new Map<string, { count: number; resetAt: number }>()
 
-  const limited = (key: string): boolean => {
+  // Keyed on nothing the client sends: a proxy in front can pass a forwarded address it wrote.
+  const retryAfter = (key: string, max: number, windowMs: number): number => {
     const at = now()
     const entry = attempts.get(key)
     if (entry === undefined || entry.resetAt <= at) {
       for (const [stale, { resetAt }] of attempts) {
         if (resetAt <= at) attempts.delete(stale)
       }
-      attempts.set(key, { count: 1, resetAt: at + LOGIN_WINDOW_MS })
-      return false
+      attempts.set(key, { count: 1, resetAt: at + windowMs })
+      return 0
     }
     entry.count += 1
-    return entry.count > LOGIN_ATTEMPTS
+    return entry.count > max ? entry.resetAt - at : 0
+  }
+
+  // The right goes first: a row deleted with its right still granted holds a slot nothing frees.
+  const expireAccounts = async (): Promise<void> => {
+    if (accountTtlHours === 0) return
+    const before = now() - accountTtlHours * HOUR_MS
+    const expired = await db.usersCreatedBefore(before)
+    if (expired.length > 0) {
+      await release(expired.map((user) => user.partyId))
+      await db.deleteUsers(expired.map((user) => user.id))
+    }
+    await db.purgeDisclosures(before)
+  }
+
+  const waitForRoom = async (): Promise<number | undefined> => {
+    if (maxAccounts === 0) return undefined
+    const { count, oldestCreatedAt } = await db.accountCount()
+    if (count < maxAccounts) return undefined
+    return accountTtlHours === 0 || oldestCreatedAt === undefined
+      ? 0
+      : oldestCreatedAt + accountTtlHours * HOUR_MS - now()
   }
 
   // Expired sessions go whenever a new one starts: no timer, so nothing has to stay running.
@@ -117,11 +147,24 @@ export const createApp = ({
     if (password.length < MIN_PASSWORD) {
       throw new BadRequest(`password must be at least ${MIN_PASSWORD} characters`)
     }
-    if (limited(`signup:${clientOf(c)}`)) {
-      return c.json({ error: 'too many attempts, try again later' }, 429)
+    const busy = retryAfter('signup', SIGNUPS, SIGNUP_WINDOW_MS)
+    if (busy > 0) {
+      return c.json(
+        { error: `too many new accounts right now, try again in ${waitText(busy)}` },
+        429,
+      )
     }
+    await expireAccounts()
     if ((await db.userByUsername(username)) !== undefined) {
       return c.json({ error: 'that username is taken' }, 409)
+    }
+    const full = await waitForRoom()
+    if (full !== undefined) {
+      const error =
+        full > 0
+          ? `no room for new accounts, try again in ${waitText(full)}`
+          : 'no room for new accounts'
+      return c.json({ error }, 503)
     }
     const passwordHash = await hashPassword(password)
     const partyId = await provision(username)
@@ -142,9 +185,13 @@ export const createApp = ({
     const body = await readJson(c)
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
-    const key = `login:${clientOf(c)}:${username}`
-    if (limited(key)) {
-      return c.json({ error: 'too many attempts, try again later' }, 429)
+    const key = `login:${username}`
+    const locked = retryAfter(key, LOGIN_ATTEMPTS, LOGIN_WINDOW_MS)
+    if (locked > 0) {
+      return c.json(
+        { error: `too many failed sign-ins for ${username}, try again in ${waitText(locked)}` },
+        429,
+      )
     }
     const found = await db.userByUsername(username)
     if (found === undefined || !(await verifyPassword(password, found.passwordHash))) {
@@ -167,9 +214,13 @@ export const createApp = ({
   app.get('/api/status', async (c) => {
     try {
       await deployment()
-      return c.json({ ready: true } satisfies ServerStatus)
+      return c.json({ accountTtlHours, ready: true } satisfies ServerStatus)
     } catch (error) {
-      return c.json({ ready: false, error: errorText(error) } satisfies ServerStatus)
+      return c.json({
+        accountTtlHours,
+        ready: false,
+        error: errorText(error),
+      } satisfies ServerStatus)
     }
   })
 

@@ -114,6 +114,8 @@ A hosted validator issues its own tokens. Set the `EXTERNAL_OAUTH_*` keys and th
 - Accounts live in the Postgres `server/compose.yaml` starts. Set `DATABASE_URL` to use another one, and the server applies the schema there as it starts.
 - An account names a party on the ledger. After `canton-barebones reset`, wipe the accounts too: `docker compose -f server/compose.yaml down -v`.
 - Each account adds one right to the server's participant user, and a participant caps a user at 1000 rights, so one deployment holds at most 1000 accounts.
+- `WL_MAX_ACCOUNTS` stops signups at 500 accounts by default. Set `WL_ACCOUNT_TTL_HOURS` to delete accounts that many hours after signup and free their places. Their parties stay on the ledger.
+- The server takes 10 signups in 10 minutes for the whole site, and 10 login tries per username in 15 minutes.
 - `GET /api/users/:username` lets any signed-in account find any other by name, so treat usernames as public.
 - Set `WL_COOKIE_SECURE=true` once the app is served over https.
 

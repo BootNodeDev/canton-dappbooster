@@ -64,7 +64,7 @@ sequenceDiagram
   Note over User,P: Sign in, or reload
   FE->>S: POST /api/auth/login, or GET /api/session on load
   S->>DB: look up the user or the session
-  Note over S: verify scrypt · 10 tries per 15 minutes
+  Note over S: verify scrypt · 10 tries per username per 15 minutes
   S-->>FE: { username, partyId } + cookie
   Note over FE: no session: the sign-in card on every page
 ```
@@ -83,9 +83,11 @@ carries, and it is the counterparty, never the actor.
 Every write must be `content-type: application/json`, or it gets 415. A cross-site form can post
 urlencoded, multipart or text, but not JSON without a preflight, so this is the CSRF check on top of
 the `SameSite` cookie. `validate.ts` checks every body field and throws a 400 that names it.
-Signups are limited to 10 per client in 15 minutes, and logins to 10 per client and username:
-room for typos, too few to guess a password. The limiter keys on the socket address, which behind a
-proxy is the proxy.
+The server takes 10 signups in 10 minutes for the whole site, and 10 login tries per username in 15
+minutes. That leaves room for typos and too few tries to guess a password. Neither limit reads the
+client's address. A proxy in front of the server can pass on a forwarded address the client wrote,
+and Vercel's rewrite does. An address key would then let a client choose its own. A refusal says
+how long to wait, and someone can lock a username out for 15 minutes on purpose.
 
 `GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
 `replaces`, because a withdraw archives the grant and creates its successor. The records come
@@ -135,6 +137,15 @@ hosted on the participant, so the participant signs for it and nobody holds a ke
 one user `CanActAs` on it. There is no ledger user per account, because a hosted validator's identity
 provider issues tokens to its own clients only. A participant caps a user at 1000 rights, so one
 deployment holds at most 1000 accounts.
+
+`WL_MAX_ACCOUNTS`, 500 by default, stops signups below that. `WL_ACCOUNT_TTL_HOURS` makes room
+again: each signup first deletes the accounts older than that many hours. It revokes their rights in
+one request, then deletes their rows and with them their sessions. It also drops escrow disclosures
+older than the same cutoff. The right goes first, because a row deleted with its right still
+granted holds a slot nothing frees. A right the user no longer holds revokes without an error, so a ledger
+reset needs no special case. The parties and their contracts stay on the ledger, which deletes
+nothing. A full deployment tells the next visitor when the oldest account expires, and
+`GET /api/status` reports the lifetime so the create-account card can state it.
 
 Where the token comes from:
 
@@ -186,7 +197,7 @@ The demo serves the dApp from Vercel and runs the server on BootNode's DevNet va
 It comes before the rewrite that answers every other path with `index.html`. The browser sees one
 origin, as it does with the Vite proxy, so the session cookie needs no CORS. The Vercel project
 sets no variables: the server's `.env` on the validator host holds them all, with
-`WL_COOKIE_SECURE=true` and `WL_TRUSTED_PROXIES=2` for Vercel and the host's nginx. `files` leaves
+`WL_COOKIE_SECURE=true`, `WL_MAX_ACCOUNTS=500` and `WL_ACCOUNT_TTL_HOURS=24`. `files` leaves
 `vercel.json` out, so a project the installer creates gets none of this.
 
 ## The store and the pages

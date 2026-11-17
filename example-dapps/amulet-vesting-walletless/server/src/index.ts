@@ -3,8 +3,8 @@ import { serve } from '@hono/node-server'
 import pg from 'pg'
 import { createApp } from '#server/app'
 import { openDb } from '#server/auth/db'
-import { provisionParty } from '#server/auth/provision'
-import { COOKIE_SECURE, DATABASE_URL, PORT } from '#server/env'
+import { provisionParty, releaseParties } from '#server/auth/provision'
+import { ACCOUNT_TTL_HOURS, COOKIE_SECURE, DATABASE_URL, MAX_ACCOUNTS, PORT } from '#server/env'
 import { ledgerClient } from '#server/ledger/client'
 import { authenticatedUser, loadBackendConfig } from '#server/ledger/config'
 import { adminToken } from '#server/ledger/token'
@@ -33,11 +33,14 @@ const currentDeployment = keptOnceLoaded(async () =>
 )
 
 const app = createApp({
+  accountTtlHours: ACCOUNT_TTL_HOURS,
   cookieSecure: COOKIE_SECURE,
   db,
   deployment: currentDeployment,
   ledger,
+  maxAccounts: MAX_ACCOUNTS,
   provision: async (username) => provisionParty(ledger.ledgerApi, await serviceUser(), username),
+  release: async (partyIds) => releaseParties(ledger.ledgerApi, await serviceUser(), partyIds),
 })
 
 serve({ fetch: app.fetch, hostname: 'localhost', port: PORT }, (info) => {

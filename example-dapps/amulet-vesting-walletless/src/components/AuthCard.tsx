@@ -1,4 +1,6 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
+import type { ServerStatus } from '#server/domain/types'
+import { api } from '@/backend/api'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { inputClass, labelClass } from '@/components/CreateGrant/fields'
@@ -25,7 +27,15 @@ export const AuthCard = (): React.JSX.Element => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
+  const [ttlHours, setTtlHours] = useState(0)
   const id = useId()
+
+  useEffect(() => {
+    api<ServerStatus>('/status').then(
+      (status) => setTtlHours(status.accountTtlHours ?? 0),
+      () => undefined,
+    )
+  }, [])
 
   const signingUp = mode === 'signup'
   const valid =
@@ -119,6 +129,8 @@ export const AuthCard = (): React.JSX.Element => {
         {signingUp && (
           <p className="text-xs text-fg-muted">
             Creating an account also creates your Canton party. No wallet needed.
+            {ttlHours > 0 &&
+              ` Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`}
           </p>
         )}
       </form>

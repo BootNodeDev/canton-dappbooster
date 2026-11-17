@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApp, SESSION_COOKIE } from '#server/app'
+import { type AppDeps, createApp, SESSION_COOKIE } from '#server/app'
 import { type Db, openDb } from '#server/auth/db'
 import { testDb } from '#server/db/testDb'
 import type { ExecuteParams, LedgerApiParams } from '#server/ledger/wallet'
@@ -14,9 +14,17 @@ vi.mock('#server/ledger/transferContext', () => ({
 
 type Call = { execute?: ExecuteParams; read?: LedgerApiParams }
 
-const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
+const setup = async (
+  patchDb: (db: Db) => Db = (db) => db,
+  deps: Partial<Pick<AppDeps, 'accountTtlHours' | 'maxAccounts' | 'now'>> = {},
+) => {
   const calls: Call[] = []
+  const released: string[][] = []
   const app = createApp({
+    ...deps,
+    release: async (partyIds) => {
+      released.push(partyIds)
+    },
     db: patchDb(openDb(await testDb())),
     deployment: async () => ({
       factoryBlob: 'blob',
@@ -36,7 +44,7 @@ const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
     },
     provision: async (username) => `wl-${username}::fp`,
   })
-  return { app, calls }
+  return { app, calls, released }
 }
 
 const post = (path: string, body: unknown, cookie?: string) =>
@@ -52,6 +60,9 @@ const cookieOf = (response: Response): string => {
   if (match === null) throw new Error(`no session cookie in ${set}`)
   return `${SESSION_COOKIE}=${match[1]}`
 }
+
+const errorOf = async (response: Response): Promise<string> =>
+  ((await response.json()) as { error: string }).error
 
 const signup = async (app: Env['app'], username: string) => {
   const response = await app.request(post('/api/auth/signup', { username, password: 'hunter22!' }))
@@ -142,6 +153,64 @@ describe('auth', () => {
       statuses.push(response.status)
     }
     expect(statuses.at(-1)).toBe(429)
+  })
+
+  it('locks one username out with the wait in the message, and no other', async () => {
+    await signup(env.app, 'alice')
+    await signup(env.app, 'bob')
+    const guess = (username: string) =>
+      env.app.request(post('/api/auth/login', { username, password: 'guess-guess' }))
+    for (let i = 0; i < 10; i++) await guess('alice')
+    const locked = await guess('alice')
+    expect(locked.status).toBe(429)
+    expect(await errorOf(locked)).toMatch(/try again in 15 minutes/)
+    expect((await guess('bob')).status).toBe(401)
+  })
+
+  it('takes ten signups in ten minutes across every visitor', async () => {
+    for (let i = 0; i < 10; i++) await signup(env.app, `user-${i}`)
+    const eleventh = await env.app.request(
+      post('/api/auth/signup', { username: 'user-10', password: 'hunter22!' }),
+    )
+    expect(eleventh.status).toBe(429)
+    expect(await errorOf(eleventh)).toMatch(/try again in 10 minutes/)
+  })
+
+  it('refuses a signup once the accounts reach the cap', async () => {
+    const capped = await setup(undefined, { maxAccounts: 2 })
+    await signup(capped.app, 'alice')
+    await signup(capped.app, 'bob')
+    const third = await capped.app.request(
+      post('/api/auth/signup', { username: 'carol', password: 'hunter22!' }),
+    )
+    expect(third.status).toBe(503)
+    expect(await errorOf(third)).toBe('no room for new accounts')
+  })
+
+  it('expires accounts past their lifetime on the next signup, which frees the name', async () => {
+    let clock = Date.now()
+    const expiring = await setup(undefined, {
+      accountTtlHours: 24,
+      maxAccounts: 1,
+      now: () => clock,
+    })
+    const cookie = await signup(expiring.app, 'alice')
+    const full = await expiring.app.request(
+      post('/api/auth/signup', { username: 'bob', password: 'hunter22!' }),
+    )
+    expect(full.status).toBe(503)
+    expect(await errorOf(full)).toMatch(/try again in \d+ hours/)
+
+    clock += 25 * 60 * 60 * 1000
+    await signup(expiring.app, 'alice')
+    expect(expiring.released).toEqual([['wl-alice::fp']])
+    expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+  })
+
+  it('reports the account lifetime with the status', async () => {
+    const expiring = await setup(undefined, { accountTtlHours: 24 })
+    const status = await (await expiring.app.request('/api/status')).json()
+    expect(status).toEqual({ accountTtlHours: 24, ready: true })
   })
 
   it('answers 401 to every ledger route without a session', async () => {

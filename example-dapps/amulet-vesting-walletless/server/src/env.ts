@@ -57,3 +57,14 @@ export const DATABASE_URL = read(
   'postgres://walletless:walletless@localhost:5433/walletless',
 )
 export const COOKIE_SECURE = read('WL_COOKIE_SECURE', 'false') === 'true'
+
+const count = (key: string, fallback: string): number => {
+  const value = Number(read(key, fallback))
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${key} must be a whole number, 0 or more`)
+  }
+  return value
+}
+
+export const MAX_ACCOUNTS = count('WL_MAX_ACCOUNTS', '500')
+export const ACCOUNT_TTL_HOURS = count('WL_ACCOUNT_TTL_HOURS', '0')

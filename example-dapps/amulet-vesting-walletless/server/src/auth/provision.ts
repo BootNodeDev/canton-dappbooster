@@ -32,3 +32,21 @@ export const provisionParty = async (
   })
   return partyId
 }
+
+// A right the user no longer holds revokes cleanly, so a wiped ledger needs no special case.
+export const releaseParties = async (
+  ledgerApi: LedgerApi,
+  serviceUser: string,
+  partyIds: string[],
+): Promise<void> => {
+  await ledgerApi({
+    requestMethod: 'patch',
+    resource: '/v2/users/{user-id}/rights',
+    path: { 'user-id': serviceUser },
+    body: {
+      userId: serviceUser,
+      rights: partyIds.map((party) => ({ kind: { CanActAs: { value: { party } } } })),
+      identityProviderId: '',
+    },
+  })
+}

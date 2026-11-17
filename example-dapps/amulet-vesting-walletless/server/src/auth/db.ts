@@ -50,6 +50,16 @@ export const openDb = (sql: Sql) => {
   }
 
   return {
+    accountCount: async (): Promise<{ count: number; oldestCreatedAt: number | undefined }> => {
+      const { rows } = await sql.query<{ count: number | string; oldest: number | string | null }>(
+        'SELECT count(*) AS count, min(created_at) AS oldest FROM users',
+      )
+      const [row] = rows
+      return {
+        count: Number(row.count),
+        oldestCreatedAt: row.oldest === null ? undefined : Number(row.oldest),
+      }
+    },
     // The UNIQUE constraint is the real check: two signups racing for one name cannot both pass.
     createUser: async (user: Omit<User, 'id'>, passwordHash: string): Promise<User> => {
       const { rows } = await sql.query<{ id: number }>(
@@ -69,7 +79,13 @@ export const openDb = (sql: Sql) => {
     deleteSession: async (id: string): Promise<void> => {
       await sql.query('DELETE FROM sessions WHERE id = $1', [id])
     },
+    deleteUsers: async (ids: number[]): Promise<void> => {
+      await sql.query('DELETE FROM users WHERE id = ANY($1)', [ids])
+    },
     disclosures,
+    purgeDisclosures: async (before: number): Promise<void> => {
+      await sql.query('DELETE FROM escrow_disclosures WHERE created_at < $1', [before])
+    },
     purgeSessions: async (nowMs: number): Promise<void> => {
       await sql.query('DELETE FROM sessions WHERE expires_at <= $1', [nowMs])
     },
@@ -80,6 +96,12 @@ export const openDb = (sql: Sql) => {
         [id, nowMs],
       )
       return rows[0] === undefined ? undefined : toUser(rows[0])
+    },
+    usersCreatedBefore: async (before: number): Promise<User[]> => {
+      const { rows } = await sql.query<UserRow>('SELECT * FROM users WHERE created_at < $1', [
+        before,
+      ])
+      return rows.map(toUser)
     },
     userByUsername: async (
       username: string,

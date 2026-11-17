@@ -39,7 +39,12 @@ Deltas for this app only are below.
   on a LocalNet: no `WalletAppInstall` on either account, and their Amulets still unmerged after
   160 seconds, a grant's escrow included.
 - **The participant caps a user at 1000 rights, and each account adds one.** Nothing may grant the
-  server's participant user a right per request or per grant; that spends the account budget.
+  server's participant user a right per request or per grant; that spends the account budget. An
+  expiring account gives its right back before the server deletes its row, or the slot stays spent.
+- **No limit keys on a client address.** Vercel's rewrite passes on forwarded headers the client
+  wrote, so a per-address limit lets a client choose its own key. Measured on the demo: depending
+  on the headers sent, `X-Forwarded-For`, `X-Real-IP` and `X-Vercel-Forwarded-For` each arrived
+  with a value the client chose.
 - **An account names a party, so a LocalNet reset orphans every account.** After
   `canton-barebones reset`, the accounts go too: `docker compose -f server/compose.yaml down -v`.
   `scripts/server.sh stop` keeps the volume on purpose, so accounts survive a `down` and `up` the way
