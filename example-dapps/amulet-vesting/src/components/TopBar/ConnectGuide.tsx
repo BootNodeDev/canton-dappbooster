@@ -11,11 +11,9 @@ import { roundButtonClass } from '@/components/TopBar/ThemeToggle'
 import { cn } from '@/utils/cn'
 import { WALLET_GATEWAY_UI_URL } from '@/utils/config'
 
-const gutterClass = 'size-9 shrink-0'
-
 const chevronClass =
-  `grid ${gutterClass} place-items-center rounded-full text-primary-strong transition-colors ` +
-  'hover:bg-muted focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
+  'grid size-9 shrink-0 place-items-center rounded-full text-primary-strong transition-colors ' +
+  'hover:bg-muted focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:invisible'
 
 const steps = [
   {
@@ -93,13 +91,9 @@ export const ConnectGuide = (): React.JSX.Element => {
             <Steps.Context>
               {(api) => (
                 <div className="flex items-center gap-2">
-                  {api.hasPrevStep ? (
-                    <Steps.PrevTrigger aria-label="Previous step" className={chevronClass}>
-                      <ChevronLeft size={28} strokeWidth={2.5} />
-                    </Steps.PrevTrigger>
-                  ) : (
-                    <span aria-hidden="true" className={gutterClass} />
-                  )}
+                  <Steps.PrevTrigger aria-label="Previous step" className={chevronClass}>
+                    <ChevronLeft size={28} strokeWidth={2.5} />
+                  </Steps.PrevTrigger>
                   <div className="min-w-0 flex-1">
                     {steps.map(({ alt, image, name }, index) => (
                       <img
@@ -113,13 +107,12 @@ export const ConnectGuide = (): React.JSX.Element => {
                       />
                     ))}
                   </div>
-                  {api.value < api.count - 1 ? (
-                    <Steps.NextTrigger aria-label="Next step" className={chevronClass}>
-                      <ChevronRight size={28} strokeWidth={2.5} />
-                    </Steps.NextTrigger>
-                  ) : (
-                    <span aria-hidden="true" className={gutterClass} />
-                  )}
+                  <Steps.NextTrigger
+                    aria-label="Next step"
+                    className={cn(chevronClass, api.value === api.count - 1 && 'invisible')}
+                  >
+                    <ChevronRight size={28} strokeWidth={2.5} />
+                  </Steps.NextTrigger>
                 </div>
               )}
             </Steps.Context>

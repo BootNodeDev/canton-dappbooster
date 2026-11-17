@@ -43,9 +43,9 @@ signing provider when creating parties.
 To rebuild and redeploy the contract alone:
 
 ```bash
-export CANTON_APP_DIR=$PWD/example-dapps/amulet-vesting
-pnpm run build-dar
-pnpm run deploy-dar -- example-dapps/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
+CANTON_APP_DIR=$PWD/example-dapps/amulet-vesting pnpm run build-dar
+CANTON_APP_DIR=$PWD/example-dapps/amulet-vesting pnpm run deploy-dar -- \
+  example-dapps/amulet-vesting/daml/.daml/dist/amulet-vesting-<version>.dar
 ```
 
 `<version>` is the one in `example-dapps/amulet-vesting/daml/daml.yaml`, and `deploy-dar` sends the
