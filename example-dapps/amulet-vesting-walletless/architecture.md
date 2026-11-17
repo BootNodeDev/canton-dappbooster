@@ -148,9 +148,9 @@ holds a slot nothing frees. A right the user no longer holds revokes without an 
 reset needs no special case. The parties and their contracts stay on the ledger, which deletes
 nothing. A full deployment tells the next visitor when the oldest account expires. `GET /api/status`
 reports the lifetime, so the create-account card can state it. A session stops working once its
-account is past the lifetime. A login runs the cleanup first, so an expired account is gone before
-it can sign back in. The server checks the cap before a signup's slow ledger calls. Signups
-running at the same moment can pass it, by at most the signup limit.
+account is past the lifetime. Logins and name lookups skip such an account, and the next signup
+releases its right. The server checks the cap before a signup's slow ledger calls. Signups running
+at the same moment can pass it, by at most the signup limit.
 
 Where the token comes from:
 
@@ -187,13 +187,11 @@ server started counts on the next request. `GET /api/status` reports either.
 
 `scripts/bootstrap-vesting.mjs` creates the operator and the factory only where they are missing,
 under a stable hint, because `pnpm stack up` runs it on every start and the LocalNet keeps its
-ledger across a `down`. The match includes the `::` separator, so the stamped
-`vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared LocalNet are never
-picked up. Both examples build the same DAR, so either one's upload serves both.
-
-The bootstrap looks the operator up by its full id, the hint under the participant's namespace from
-`/v2/parties/participant-id`. Listing `/v2/parties` would not finish on a public network, where it
-returns every party the network knows.
+ledger across a `down`. It looks the operator up by its full id, the hint under the participant's
+namespace from `/v2/parties/participant-id`, because listing `/v2/parties` would not finish on a
+public network. With that exact id, and the server's match on the `::` separator, neither picks up
+the stamped `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared
+LocalNet. Both examples build the same DAR, so either one's upload serves both.
 
 ## The hosted demo
 

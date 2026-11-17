@@ -14,19 +14,11 @@ vi.mock('#server/ledger/transferContext', () => ({
 
 type Call = { execute?: ExecuteParams; read?: LedgerApiParams }
 
+const HOUR_MS = 60 * 60 * 1000
+
 const setup = async (
   patchDb: (db: Db) => Db = (db) => db,
-  deps: Partial<
-    Pick<
-      AppDeps,
-      | 'accountTtlHours'
-      | 'limitWindowMinutes'
-      | 'loginLimit'
-      | 'maxAccounts'
-      | 'now'
-      | 'signupLimit'
-    >
-  > = {},
+  deps: Partial<Omit<AppDeps, 'db' | 'deployment' | 'ledger' | 'provision' | 'release'>> = {},
 ) => {
   const calls: Call[] = []
   const released: string[][] = []
@@ -35,7 +27,7 @@ const setup = async (
     release: async (partyIds) => {
       released.push(partyIds)
     },
-    db: patchDb(openDb(await testDb())),
+    db: patchDb(openDb(await testDb(), deps.now)),
     deployment: async () => ({
       factoryBlob: 'blob',
       factoryCid: 'factory',
@@ -225,7 +217,7 @@ describe('auth', () => {
     expect(full.status).toBe(503)
     expect(await errorOf(full)).toMatch(/try again in 24 hours/)
 
-    clock += 25 * 60 * 60 * 1000
+    clock += 25 * HOUR_MS
     await signup(expiring.app, 'alice')
     expect(expiring.released).toEqual([['wl-alice::fp']])
     expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
@@ -235,13 +227,13 @@ describe('auth', () => {
     let clock = Date.now()
     const expiring = await setup(undefined, { accountTtlHours: 24, now: () => clock })
     const cookie = await signup(expiring.app, 'alice')
-    clock += 25 * 60 * 60 * 1000
+    clock += 25 * HOUR_MS
     expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
     const login = await expiring.app.request(
       post('/api/auth/login', { username: 'alice', password: 'hunter22!' }),
     )
     expect(login.status).toBe(401)
-    expect(expiring.released).toEqual([['wl-alice::fp']])
+    expect(expiring.released).toEqual([])
   })
 
   it('reports the account lifetime with the status', async () => {

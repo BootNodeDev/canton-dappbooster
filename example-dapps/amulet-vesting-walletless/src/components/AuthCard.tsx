@@ -27,15 +27,17 @@ export const AuthCard = (): React.JSX.Element => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
-  const [ttlHours, setTtlHours] = useState(0)
+  const [ttlHours, setTtlHours] = useState<number>()
   const id = useId()
 
+  // Asked on the first switch to signup: a sign-in has no use for it.
   useEffect(() => {
+    if (mode !== 'signup' || ttlHours !== undefined) return
     api<ServerStatus>('/status').then(
       (status) => setTtlHours(status.accountTtlHours ?? 0),
       () => undefined,
     )
-  }, [])
+  }, [mode, ttlHours])
 
   const signingUp = mode === 'signup'
   const valid =
@@ -128,7 +130,7 @@ export const AuthCard = (): React.JSX.Element => {
         </Button>
         {signingUp && (
           <p className="text-xs text-fg-muted">
-            {ttlHours > 0
+            {ttlHours !== undefined && ttlHours > 0
               ? `Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`
               : 'Creating an account also creates your Canton party. No wallet needed.'}
           </p>

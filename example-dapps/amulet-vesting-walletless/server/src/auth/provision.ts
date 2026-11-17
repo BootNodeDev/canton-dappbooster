@@ -1,7 +1,22 @@
-import type { LedgerApi } from '#server/ledger/wallet'
+import type { LedgerApi, LedgerApiParams } from '#server/ledger/wallet'
 
 export const USERNAME = /^[a-z0-9][a-z0-9-]{2,31}$/
 export const MIN_PASSWORD = 8
+
+const rightsRequest = (
+  requestMethod: 'post' | 'patch',
+  serviceUser: string,
+  partyIds: string[],
+): LedgerApiParams => ({
+  requestMethod,
+  resource: '/v2/users/{user-id}/rights',
+  path: { 'user-id': serviceUser },
+  body: {
+    userId: serviceUser,
+    rights: partyIds.map((party) => ({ kind: { CanActAs: { value: { party } } } })),
+    identityProviderId: '',
+  },
+})
 
 export const provisionParty = async (
   ledgerApi: LedgerApi,
@@ -20,16 +35,7 @@ export const provisionParty = async (
   if (typeof partyId !== 'string' || partyId === '') {
     throw new Error(`the participant allocated no party for ${name}`)
   }
-  await ledgerApi({
-    requestMethod: 'post',
-    resource: '/v2/users/{user-id}/rights',
-    path: { 'user-id': serviceUser },
-    body: {
-      userId: serviceUser,
-      rights: [{ kind: { CanActAs: { value: { party: partyId } } } }],
-      identityProviderId: '',
-    },
-  })
+  await ledgerApi(rightsRequest('post', serviceUser, [partyId]))
   return partyId
 }
 
@@ -39,14 +45,5 @@ export const releaseParties = async (
   serviceUser: string,
   partyIds: string[],
 ): Promise<void> => {
-  await ledgerApi({
-    requestMethod: 'patch',
-    resource: '/v2/users/{user-id}/rights',
-    path: { 'user-id': serviceUser },
-    body: {
-      userId: serviceUser,
-      rights: partyIds.map((party) => ({ kind: { CanActAs: { value: { party } } } })),
-      identityProviderId: '',
-    },
-  })
+  await ledgerApi(rightsRequest('patch', serviceUser, partyIds))
 }

@@ -42,13 +42,6 @@ const ledger = async (requestMethod, resource, body) => {
   }
 }
 
-// Ids are `<hint>::<fingerprint>`; `isLocal` false is a party this participant only knows about.
-export const hostedParty = (details, hint) =>
-  details.find(
-    (one) =>
-      typeof one?.party === 'string' && one.party.startsWith(`${hint}::`) && one.isLocal !== false,
-  )?.party
-
 // A party this participant allocates takes the participant's own namespace.
 export const partyUnder = (participantId, hint) => {
   const parts = participantId?.split('::') ?? []
@@ -67,7 +60,8 @@ const findParty = async (hint) => {
   if (!Array.isArray(details)) {
     throw new Error(`/v2/parties did not answer with a party list: ${JSON.stringify(result)}`)
   }
-  return hostedParty(details, hint)
+  // `isLocal` false is a party this participant only knows about.
+  return details.find((one) => one?.party === id && one.isLocal !== false)?.party
 }
 
 const ensureParty = async (hint) => {

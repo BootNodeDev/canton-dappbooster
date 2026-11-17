@@ -12,10 +12,9 @@ import type { WalletFns } from '#server/ledger/wallet'
 import { amount, asBody, BadRequest, optionalText, party, schedule, text } from '#server/validate'
 
 export const SESSION_COOKIE = 'wl_session'
-const SESSION_MS = 7 * 24 * 60 * 60 * 1000
-
 const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
+const SESSION_MS = 7 * 24 * HOUR_MS
 const UNIQUE_VIOLATION = '23505'
 
 export type AppDeps = {
@@ -69,14 +68,14 @@ export const createApp = ({
   const attempts = new Map<string, { count: number; resetAt: number }>()
 
   // Keyed on nothing the client sends: a proxy in front can pass a forwarded address it wrote.
-  const retryAfter = (key: string, max: number, windowMs: number): number => {
+  const retryAfter = (key: string, max: number): number => {
     const at = now()
     const entry = attempts.get(key)
     if (entry === undefined || entry.resetAt <= at) {
       for (const [stale, { resetAt }] of attempts) {
         if (resetAt <= at) attempts.delete(stale)
       }
-      attempts.set(key, { count: 1, resetAt: at + windowMs })
+      attempts.set(key, { count: 1, resetAt: at + limitWindowMs })
       return 0
     }
     entry.count += 1
@@ -93,18 +92,18 @@ export const createApp = ({
     const expired = await db.usersCreatedBefore(before)
     if (expired.length > 0) {
       await release(expired.map((user) => user.partyId))
-      await db.deleteUsers(expired.map((user) => user.id))
+      await db.deleteUsersCreatedBefore(before)
     }
     await db.purgeDisclosures(before)
   }
 
-  const waitForRoom = async (): Promise<number | undefined> => {
+  const roomError = async (): Promise<string | undefined> => {
     if (maxAccounts === 0) return undefined
     const { count, oldestCreatedAt } = await db.accountCount()
     if (count < maxAccounts) return undefined
-    return accountTtlHours === 0 || oldestCreatedAt === undefined
-      ? 0
-      : oldestCreatedAt + accountTtlHours * HOUR_MS - now()
+    if (accountTtlHours === 0) return 'no room for new accounts'
+    const wait = oldestCreatedAt + accountTtlHours * HOUR_MS - now()
+    return `no room for new accounts, try again in ${waitText(wait)}`
   }
 
   // Expired sessions go whenever a new one starts: no timer, so nothing has to stay running.
@@ -154,7 +153,7 @@ export const createApp = ({
     if (password.length < MIN_PASSWORD) {
       throw new BadRequest(`password must be at least ${MIN_PASSWORD} characters`)
     }
-    const busy = retryAfter('signup', signupLimit, limitWindowMs)
+    const busy = retryAfter('signup', signupLimit)
     if (busy > 0) {
       return c.json(
         { error: `too many new accounts right now, try again in ${waitText(busy)}` },
@@ -165,19 +164,15 @@ export const createApp = ({
     if ((await db.userByUsername(username)) !== undefined) {
       return c.json({ error: 'that username is taken' }, 409)
     }
-    const full = await waitForRoom()
+    const full = await roomError()
     if (full !== undefined) {
-      const error =
-        full > 0
-          ? `no room for new accounts, try again in ${waitText(full)}`
-          : 'no room for new accounts'
-      return c.json({ error }, 503)
+      return c.json({ error: full }, 503)
     }
     const passwordHash = await hashPassword(password)
     const partyId = await provision(username)
     let user: User
     try {
-      user = await db.createUser({ username, partyId }, passwordHash, now())
+      user = await db.createUser({ username, partyId }, passwordHash)
     } catch (error) {
       if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION) throw error
       // Lost a race for the name. The new party stays on the ledger, unused and harmless.
@@ -196,15 +191,14 @@ export const createApp = ({
       return c.json({ error: 'wrong username or password' }, 401)
     }
     const key = `login:${username}`
-    const locked = retryAfter(key, loginLimit, limitWindowMs)
+    const locked = retryAfter(key, loginLimit)
     if (locked > 0) {
       return c.json(
         { error: `too many failed sign-ins for ${username}, try again in ${waitText(locked)}` },
         429,
       )
     }
-    await expireAccounts()
-    const found = await db.userByUsername(username)
+    const found = await db.userByUsername(username, expiredBefore())
     if (found === undefined || !(await verifyPassword(password, found.passwordHash))) {
       return c.json({ error: 'wrong username or password' }, 401)
     }
@@ -223,16 +217,8 @@ export const createApp = ({
   })
 
   app.get('/api/status', async (c) => {
-    try {
-      await deployment()
-      return c.json({ accountTtlHours, ready: true } satisfies ServerStatus)
-    } catch (error) {
-      return c.json({
-        accountTtlHours,
-        ready: false,
-        error: errorText(error),
-      } satisfies ServerStatus)
-    }
+    const error = await deployment().then(() => undefined, errorText)
+    return c.json({ accountTtlHours, error, ready: error === undefined } satisfies ServerStatus)
   })
 
   // ── Everything below needs a session ───────────────────────────────────────
@@ -250,7 +236,7 @@ export const createApp = ({
   app.get('/api/session', (c) => c.json(publicUser(c.var.user)))
 
   app.get('/api/users/:username', async (c) => {
-    const found = await db.userByUsername(c.req.param('username').toLowerCase())
+    const found = await db.userByUsername(c.req.param('username').toLowerCase(), expiredBefore())
     return found === undefined ? c.json({ error: 'no such user' }, 404) : c.json(publicUser(found))
   })
 
