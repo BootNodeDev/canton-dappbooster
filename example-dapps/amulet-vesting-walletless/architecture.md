@@ -183,6 +183,16 @@ The bootstrap looks the operator up by its full id, the hint under the participa
 `/v2/parties/participant-id`. Listing `/v2/parties` would not finish on a public network, where it
 returns every party the network knows.
 
+## The hosted demo
+
+The demo serves the dApp from Vercel and runs the server on BootNode's DevNet validator. In
+`vercel.json`, a rewrite sends `/api/*` to `https://walletless.validator.devnet.canton.bootnode.dev`.
+It comes before the rewrite that answers every other path with `index.html`. The browser sees one
+origin, as it does with the Vite proxy, so the session cookie needs no CORS. The Vercel project
+sets no variables: the server's `.env` on the validator host holds them all, with
+`WL_COOKIE_SECURE=true` and `WL_TRUSTED_PROXIES=2` for Vercel and the host's nginx. `files` leaves
+`vercel.json` out, so a project the installer creates gets none of this.
+
 ## The store and the pages
 
 - `useVestingStore` reads again after every write. A claim archives the contract and creates its

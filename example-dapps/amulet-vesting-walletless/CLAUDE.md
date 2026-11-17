@@ -23,6 +23,9 @@ Deltas for this app only are below.
   exported value win, and reads an empty value as the default.
 - **The dApp has no `VITE_*` variables at all.** Anything it would read is the server's to know, and
   the Vite dev server proxies `/api` so the session cookie stays same-origin.
+- **`vercel.json` belongs to the hosted demo and stays out of `files`.** Its `/api` rewrite names the
+  demo's server host, which no project the installer creates has. The rewrite has to come before the
+  one to `index.html`, or every API call gets the page.
 - **Server tests run on PGlite**, an in-process Postgres (`server/src/db/testDb.ts`), so
   `pnpm test` needs no Docker. A test never reaches the compose Postgres.
 - **The app does not depend on `canton-connect`**, so `src/utils/errorText.ts` is its own copy
