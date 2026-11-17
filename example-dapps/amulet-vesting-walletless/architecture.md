@@ -85,7 +85,11 @@ urlencoded, multipart or text, but not JSON without a preflight, so this is the 
 the `SameSite` cookie. `validate.ts` checks every body field and throws a 400 that names it.
 Signups are limited to 10 per client in 15 minutes, and logins to 10 per client and username:
 room for typos, too few to guess a password. The limiter keys on the socket address, which behind a
-proxy is the proxy.
+proxy is the proxy, so every visitor would share one limit. `WL_TRUSTED_PROXIES` is how many
+proxies in front of the server append to `X-Forwarded-For`, and the limiter then keys on the address
+the outermost one wrote. A client can only write what sits left of that address, so through the
+proxies it cannot pick its own key. A client that reaches the server without them can write that
+address too, and a deployment that sets the variable accepts that.
 
 `GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
 `replaces`, because a withdraw archives the grant and creates its successor. The records come

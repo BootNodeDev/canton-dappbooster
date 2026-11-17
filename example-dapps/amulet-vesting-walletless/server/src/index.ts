@@ -4,7 +4,7 @@ import pg from 'pg'
 import { createApp } from '#server/app'
 import { openDb } from '#server/auth/db'
 import { provisionParty } from '#server/auth/provision'
-import { COOKIE_SECURE, DATABASE_URL, PORT } from '#server/env'
+import { COOKIE_SECURE, DATABASE_URL, PORT, TRUSTED_PROXIES } from '#server/env'
 import { ledgerClient } from '#server/ledger/client'
 import { authenticatedUser, loadBackendConfig } from '#server/ledger/config'
 import { adminToken } from '#server/ledger/token'
@@ -38,6 +38,7 @@ const app = createApp({
   deployment: currentDeployment,
   ledger,
   provision: async (username) => provisionParty(ledger.ledgerApi, await serviceUser(), username),
+  trustedProxies: TRUSTED_PROXIES,
 })
 
 serve({ fetch: app.fetch, hostname: 'localhost', port: PORT }, (info) => {
