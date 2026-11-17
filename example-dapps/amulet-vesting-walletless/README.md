@@ -116,6 +116,5 @@ A hosted validator issues its own tokens. Set the `EXTERNAL_OAUTH_*` keys and th
 - Each account adds one right to the server's participant user, and a participant caps a user at 1000 rights, so one deployment holds at most 1000 accounts.
 - `GET /api/users/:username` lets any signed-in account find any other by name, so treat usernames as public.
 - Set `WL_COOKIE_SECURE=true` once the app is served over https.
-- Behind a proxy, set `WL_TRUSTED_PROXIES` to the number of proxies that append to `X-Forwarded-For`. Left at 0, every visitor shares one sign-in limit, because the server sees only the proxy.
 
 [`architecture.md`](https://github.com/BootNodeDev/canton-dappbooster/blob/main/example-dapps/amulet-vesting-walletless/architecture.md) describes the server, the session and the reasoning behind them.

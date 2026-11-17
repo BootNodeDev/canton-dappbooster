@@ -57,7 +57,3 @@ export const DATABASE_URL = read(
   'postgres://walletless:walletless@localhost:5433/walletless',
 )
 export const COOKIE_SECURE = read('WL_COOKIE_SECURE', 'false') === 'true'
-export const TRUSTED_PROXIES = Number(read('WL_TRUSTED_PROXIES', '0'))
-if (!Number.isInteger(TRUSTED_PROXIES) || TRUSTED_PROXIES < 0) {
-  throw new Error('WL_TRUSTED_PROXIES must be a whole number of proxies, 0 or more')
-}

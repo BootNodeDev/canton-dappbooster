@@ -14,10 +14,9 @@ vi.mock('#server/ledger/transferContext', () => ({
 
 type Call = { execute?: ExecuteParams; read?: LedgerApiParams }
 
-const setup = async (patchDb: (db: Db) => Db = (db) => db, trustedProxies = 0) => {
+const setup = async (patchDb: (db: Db) => Db = (db) => db) => {
   const calls: Call[] = []
   const app = createApp({
-    trustedProxies,
     db: patchDb(openDb(await testDb())),
     deployment: async () => ({
       factoryBlob: 'blob',
@@ -142,27 +141,6 @@ describe('auth', () => {
       )
       statuses.push(response.status)
     }
-    expect(statuses.at(-1)).toBe(429)
-  })
-
-  const guessFrom = (app: Env['app'], forwardedFor: string) => {
-    const request = post('/api/auth/login', { username: 'alice', password: 'guess-guess' })
-    request.headers.set('x-forwarded-for', forwardedFor)
-    return app.request(request)
-  }
-
-  it('limits each visitor on its own behind trusted proxies', async () => {
-    const proxied = await setup(undefined, 2)
-    await signup(proxied.app, 'alice')
-    for (let i = 0; i < 10; i++) await guessFrom(proxied.app, 'spoof, 1.1.1.1, 9.9.9.9')
-    expect((await guessFrom(proxied.app, 'other-spoof, 1.1.1.1, 9.9.9.9')).status).toBe(429)
-    expect((await guessFrom(proxied.app, '2.2.2.2, 9.9.9.9')).status).toBe(401)
-  })
-
-  it('ignores X-Forwarded-For when no proxy is trusted', async () => {
-    await signup(env.app, 'alice')
-    const statuses: number[] = []
-    for (let i = 0; i < 11; i++) statuses.push((await guessFrom(env.app, `10.0.0.${i}`)).status)
     expect(statuses.at(-1)).toBe(429)
   })
 

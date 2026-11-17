@@ -25,7 +25,6 @@ export type AppDeps = {
   ledger: WalletFns
   now?: () => number
   provision: (username: string) => Promise<string>
-  trustedProxies?: number
 }
 
 type Env = { Variables: { user: User } }
@@ -39,14 +38,11 @@ const readJson = async (c: Context): Promise<Record<string, unknown>> =>
     }),
   )
 
-const clientOf = (c: Context, trustedProxies: number): string => {
+// The socket, not a forwarded-for header any client can set; behind a proxy it is the proxy.
+const clientOf = (c: Context): string => {
   const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
     ?.incoming
-  const socket = incoming?.socket?.remoteAddress ?? 'local'
-  if (trustedProxies === 0) return socket
-  const forwarded = (c.req.header('x-forwarded-for') ?? '').split(',').map((hop) => hop.trim())
-  // Each trusted proxy appends the address it saw, and a client can write anything left of those.
-  return forwarded.at(-trustedProxies) || socket
+  return incoming?.socket?.remoteAddress ?? 'local'
 }
 
 export const createApp = ({
@@ -56,7 +52,6 @@ export const createApp = ({
   ledger,
   now = Date.now,
   provision,
-  trustedProxies = 0,
 }: AppDeps) => {
   const app = new Hono<Env>()
   const attempts = new Map<string, { count: number; resetAt: number }>()
@@ -122,7 +117,7 @@ export const createApp = ({
     if (password.length < MIN_PASSWORD) {
       throw new BadRequest(`password must be at least ${MIN_PASSWORD} characters`)
     }
-    if (limited(`signup:${clientOf(c, trustedProxies)}`)) {
+    if (limited(`signup:${clientOf(c)}`)) {
       return c.json({ error: 'too many attempts, try again later' }, 429)
     }
     if ((await db.userByUsername(username)) !== undefined) {
@@ -147,7 +142,7 @@ export const createApp = ({
     const body = await readJson(c)
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
-    const key = `login:${clientOf(c, trustedProxies)}:${username}`
+    const key = `login:${clientOf(c)}:${username}`
     if (limited(key)) {
       return c.json({ error: 'too many attempts, try again later' }, 429)
     }
