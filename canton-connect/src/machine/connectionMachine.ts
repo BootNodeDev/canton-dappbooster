@@ -421,8 +421,7 @@ export const connectionMachine = setup({
         restore: { target: 'initializing' },
       },
     },
-    // The SDK never settles a connect whose picker was closed; that instance can still swap
-    // the client, so `retireSdk` replaced it before entry.
+    // An abandoned connect() can still swap the client; `retireSdk` replaced the sdk before entry.
     retiring: {
       tags: ['connect.cancelled'],
       // A cancel records no error; clearing it here keeps that rule on the state that answers.

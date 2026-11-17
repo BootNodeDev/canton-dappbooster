@@ -72,6 +72,23 @@ describe('guardedConnect', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
+  it('rejects with PickerClosedError when the SDK rejects first with its dismissal', async () => {
+    const dismissal = new Error('User closed the wallet picker')
+
+    const error = await guardedConnect({ connect: () => Promise.reject(dismissal) }).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toBeInstanceOf(PickerClosedError)
+    expect(error).toHaveProperty('cause', dismissal)
+  })
+
+  it('passes any other SDK rejection through unchanged', async () => {
+    const failure = new Error('wallet locked')
+
+    await expect(guardedConnect({ connect: () => Promise.reject(failure) })).rejects.toBe(failure)
+  })
+
   it('stays pending while the captured popup is open', async () => {
     openStub(watchable())
 

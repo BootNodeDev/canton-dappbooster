@@ -79,11 +79,7 @@ and the abort xstate fires on the stopped actor is what closes the picker window
 has approved, the account read still shows as connecting, but a session already stands, so a
 cancel there goes to `disconnecting` and ends it; `disconnected` answers the wait as a cancel.
 
-A picker close reaches the caller two ways. A close the watchdog catches records nothing:
-`connecting` goes to `retiring` and `connect()` rejects with a fresh `ConnectCancelledError`. A
-dismissal the SDK itself rejects goes to `failure` and is recorded; `toConnectError` classifies it
-as `ConnectCancelledError` on the way out. Either way a consumer filters by `instanceof`, never by
-message. The watchdog itself: [`popup-close-guard.md`](popup-close-guard.md).
+A picker close before a pick records nothing, whichever side sees it first: `guardedConnect` rejects with `PickerClosedError` both when its watchdog sees the close and when the SDK's own poll does, so `connecting` goes to `retiring` and `connect()` rejects with a fresh `ConnectCancelledError`. A consumer's own `walletPicker` bypasses the guard, so its dismissal still goes to `failure` and is recorded; `toConnectError` classifies it as `ConnectCancelledError` on the way out. Either way a consumer filters by `instanceof`, never by message. The watchdog itself: [`popup-close-guard.md`](popup-close-guard.md).
 
 ## The accounts machine
 
