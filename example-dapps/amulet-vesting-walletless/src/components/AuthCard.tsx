@@ -128,9 +128,9 @@ export const AuthCard = (): React.JSX.Element => {
         </Button>
         {signingUp && (
           <p className="text-xs text-fg-muted">
-            Creating an account also creates your Canton party. No wallet needed.
-            {ttlHours > 0 &&
-              ` Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`}
+            {ttlHours > 0
+              ? `Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`
+              : 'Creating an account also creates your Canton party. No wallet needed.'}
           </p>
         )}
       </form>
