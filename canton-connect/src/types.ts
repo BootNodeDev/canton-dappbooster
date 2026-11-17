@@ -136,6 +136,7 @@ export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
   commandId: TxChangedEvent['commandId']
   payload?: unknown
+  error?: Extract<TxChangedEvent, { status: 'failed' }>['error']
 }
 
 /**
