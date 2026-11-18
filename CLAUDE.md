@@ -420,10 +420,12 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   would otherwise reject. The other is a new Splice tag, which would otherwise pin the stack to a
   version nobody tested the tool against. Anything else set there survives until then, so a standing
   deviation belongs in a directory of its own via `CANTON_LOCALNET_DIR`, not in `.canton-localnet/`.
-  A newer Splice tag with the old ledger still in Docker upgrades that ledger in place. It keeps
-  the Amulet its DSO voted in last, `build-dar` builds against that one through Scan, and `up`
-  warns, pointing at `canton-create/scaffold/localnet/splice-upgrade.md`, until one finishes or
-  `reset` drops the ledger.
+  A newer Splice tag with the old ledger still in Docker upgrades that ledger in place. When the
+  release runs a newer Postgres major, `localnet-postgres.mjs` first moves the data to it with a
+  dump and a restore, keeping the old data in a backup volume. The ledger keeps the Amulet its DSO
+  voted in last, `build-dar` builds against that one through Scan, and `up` warns, pointing at
+  `canton-create/scaffold/localnet/splice-upgrade.md`, until one finishes or `reset` drops the
+  ledger.
 - `node canton-dappbooster/scripts/add-component.mjs <PascalCaseName>` scaffolds a component folder
   in that package. Not wired into `package.json`: it is an authoring convenience, not part of the
   loop described earlier.
