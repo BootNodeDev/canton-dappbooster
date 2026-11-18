@@ -124,6 +124,7 @@ whole change, in one branch:
 - a root `dev:<name>` script setting `CANTON_APP_DIR`, beside the others in `package.json`;
 - its entry in `EXAMPLES` in `canton-create/src/apps.ts`;
 - `canton-create/README.md`: the example list, the `--example` commands and the dApps table;
+- `example-dapps/README.md`: the examples table and the install command;
 - `canton-create/demo.svg` recorded again, since the menu it shows lists the examples;
 - the root `CLAUDE.md` tables, the root `architecture.md` stack, data flow and ports, and a section
   in `CONTRIBUTING.md`;
