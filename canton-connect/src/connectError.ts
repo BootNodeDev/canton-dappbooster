@@ -2,8 +2,8 @@
 const PICKER_DISMISSED = 'User closed the wallet picker'
 
 /**
- * Raised by `guardedConnect` when it settles a connect the SDK left pending. The SDK's own
- * `connect()` is still running underneath, so whoever catches this retires the `DappSDK`.
+ * Raised by `guardedConnect` when the wallet popup closes. The SDK's `connect()` may still be
+ * running, so whoever catches this retires the `DappSDK`.
  *
  * @example
  * if (err instanceof PickerClosedError) discardSdk()
@@ -11,8 +11,8 @@ const PICKER_DISMISSED = 'User closed the wallet picker'
  * @internal
  */
 export class PickerClosedError extends Error {
-  constructor() {
-    super(PICKER_DISMISSED)
+  constructor(cause?: unknown) {
+    super(PICKER_DISMISSED, { cause })
     this.name = 'PickerClosedError'
   }
 }
@@ -81,8 +81,10 @@ export const toError = (cause: unknown): Error => {
   return new Error(messageOf(cause) ?? 'Wallet request failed', { cause })
 }
 
+/** Whether the SDK's own picker rejected the connect because the user closed it. */
+export const isPickerDismissal = (cause: unknown): cause is Error =>
+  cause instanceof Error && cause.message === PICKER_DISMISSED
+
 /** Classifies what `sdk.connect()` threw, so the cancel path is decided once. */
 export const toConnectError = (cause: unknown): Error =>
-  cause instanceof Error && cause.message === PICKER_DISMISSED
-    ? new ConnectCancelledError(cause)
-    : toError(cause)
+  isPickerDismissal(cause) ? new ConnectCancelledError(cause) : toError(cause)

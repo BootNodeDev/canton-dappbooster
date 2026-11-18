@@ -1,8 +1,7 @@
-// #49: the SDK's picker loses its `beforeunload` to the about:blank → blob: navigation, so a closed
-// popup leaves connect() pending forever. See architecture.md.
+// #49: the SDK stops watching its popup while a pick connects, so a close leaves connect() pending.
 
 import type { DappSDK } from '@canton-network/dapp-sdk'
-import { ConnectCancelledError, PickerClosedError } from '#src/connectError'
+import { ConnectCancelledError, isPickerDismissal, PickerClosedError } from '#src/connectError'
 
 const POLL_MS = 400
 
@@ -151,7 +150,11 @@ export const guardedConnect = (
   })
 
   // No status() probe before rejecting: a still-live previous session would swallow the cancel.
-  return Promise.race([sdk.connect(), dismissed, abandonOn(signal)]).finally(() => {
+  const connecting = sdk.connect().catch((error: unknown) => {
+    throw isPickerDismissal(error) ? new PickerClosedError(error) : error
+  })
+
+  return Promise.race([connecting, dismissed, abandonOn(signal)]).finally(() => {
     clearInterval(poll)
     unwatchPick()
     inFlight -= 1

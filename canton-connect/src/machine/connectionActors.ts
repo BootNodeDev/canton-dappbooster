@@ -109,8 +109,7 @@ export const connect = fromPromise<WalletStatusUpdate, ConnectInput>(async ({ in
 
     return recovered ?? walletAnswer
   } catch (error) {
-    // No recovering from either: both leave this sdk's connect() running, and a recovered session
-    // would keep a client the abandoned connect can still swap (see `retireSdk`).
+    // No recovering: the abandoned connect() can still swap the client (see `retireSdk`).
     if (error instanceof PickerClosedError || error instanceof ConnectCancelledError) {
       throw error
     }
