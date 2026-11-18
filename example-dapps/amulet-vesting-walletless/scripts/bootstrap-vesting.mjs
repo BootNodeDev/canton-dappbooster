@@ -102,6 +102,8 @@ const resolvePackage = async (party) => {
   return pkg
 }
 
+const factoryPackage = (entry) => entry.createdEvent?.templateId?.split(':')[0]
+
 const findFactory = async (operator) => {
   const end = await ledger('get', '/v2/state/ledger-end')
   if (end?.offset === undefined) {
@@ -146,6 +148,21 @@ const main = async () => {
   console.log(`package    ${pkg}${process.env.PKG === undefined ? '' : ' (from PKG)'}`)
 
   let active = await findFactory(operator)
+  // The server builds on the factory's package, so it has to be the preferred one.
+  if (active !== undefined && factoryPackage(active) !== pkg) {
+    const { contractId, templateId } = active.createdEvent
+    await ledger('post', '/v2/commands/submit-and-wait', {
+      commandId: `vesting-factory-archive-${STAMP}`,
+      actAs: [operator],
+      readAs: [operator],
+      commands: [
+        { ExerciseCommand: { templateId, contractId, choice: 'Archive', choiceArgument: {} } },
+      ],
+    })
+    console.log(`archived   ${contractId} (package ${factoryPackage(active)})`)
+    console.warn('warning:   a running server keeps the archived factory until it restarts.')
+    active = undefined
+  }
   const hadFactory = active !== undefined
   if (!hadFactory) {
     await ledger('post', '/v2/commands/submit-and-wait', {
@@ -163,13 +180,6 @@ const main = async () => {
     throw new Error('factory created but no createdEventBlob came back from the ACS read')
   }
   console.log(`factory    ${active.createdEvent.contractId}${hadFactory ? ' (existing)' : ''}`)
-  // The filter takes the package name, so a factory signed under an older version is reused too.
-  const factoryPkg = active.createdEvent.templateId?.split(':')[0]
-  if (hadFactory && factoryPkg !== pkg) {
-    console.warn(`warning:   that factory is on package ${factoryPkg}, not the preferred ${pkg}.`)
-    console.warn('           The server follows the contract, so a newly deployed DAR takes effect')
-    console.warn('           only after `canton-barebones reset`.')
-  }
 }
 
 // import.meta.main, not a comparison against argv[1], which keeps symlinks the loader resolves.
