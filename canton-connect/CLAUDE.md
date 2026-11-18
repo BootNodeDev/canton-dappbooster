@@ -47,6 +47,12 @@ the session and the transports. Browser-only, and built to stay cheap to delete.
 
 ## Bumping `dapp-sdk`
 
+Typecheck the examples and the starter without their cache first: `tsc -b` skips a project whose own source files did not change, and a bump changes none of them.
+
+```shell
+pnpm -r --filter './example-dapps/*' --filter ./canton-create/scaffold/starter exec tsc -b --noEmit --force
+```
+
 `guardedConnect` and `retireSdk` rest on three SDK internals no test can pin:
 
 - the picker popup is opened through `window.open`
@@ -62,7 +68,7 @@ Why: [`architecture/popup-close-guard.md`](architecture/popup-close-guard.md). S
    when the wallet answers.
 3. Both of those again on a wallet that reuses the popup the SDK left open (a gateway or
    WalletConnect one), where a close after choosing must fail the connect.
-4. Check that `new DappSDK()` still only initializes fields (true on 1.8.0, whose
+4. Check that `new DappSDK()` still only initializes fields (its
    `globalThis.__CANTON_DAPP_SDK__` stamp is import-time, not the constructor's). The machine
    constructs one inside a plain `assign`; if construction turns effectful, move the ritual into the
    provider's `createSdk` and dispose the abandoned instance on the same transition, never from an

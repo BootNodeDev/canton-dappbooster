@@ -114,6 +114,26 @@ describe('CantonConnectProvider wallet pushes', () => {
     wallet.dispose()
   })
 
+  it("carries the wallet's error on a failed txChanged push", async () => {
+    const wallet = walletA()
+    const failure = { code: 4001, message: 'User rejected' }
+
+    const { result } = renderSession(() => ({ connect: useConnect(), execute: useExecute() }))
+
+    await act(async () => {
+      await result.current.connect.connect()
+    })
+
+    act(() => {
+      wallet.push('txChanged', { status: 'failed', commandId: 'cmd-1', error: failure })
+    })
+
+    await waitFor(() => expect(result.current.execute.lastTx?.status).toBe('failed'))
+    expect(result.current.execute.lastTx?.error).toEqual(failure)
+
+    wallet.dispose()
+  })
+
   it('stops applying pushed events to the hooks after disconnect()', async () => {
     const wallet = walletA()
 

@@ -26,6 +26,7 @@ export const useTxFeed = (
         status: event.status,
         commandId: event.commandId,
         payload: 'payload' in event ? event.payload : undefined,
+        error: 'error' in event ? event.error : undefined,
       })
     }
 

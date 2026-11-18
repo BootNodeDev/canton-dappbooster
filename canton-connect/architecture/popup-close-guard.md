@@ -6,17 +6,17 @@ where it breaks. The bump procedure it justifies is in [`../CLAUDE.md`](../CLAUD
 
 ## The bug
 
-The SDK's picker attaches `beforeunload` to the popup's `WindowProxy`, and the `about:blank` to
-`blob:` navigation that immediately follows destroys the listener. A closed popup therefore left
-`connect()` pending forever and bricked the dApp until reload (#49).
+The SDK watches its picker popup only until a wallet is chosen. After picking a remote or mobile wallet the popup becomes that wallet's own screen, and closing it leaves `connect()` pending until the SDK's five-minute timeout (#49).
 
 ## What the guard does
 
 `guardedConnect(sdk)` borrows `window.open` long enough to capture the handle the SDK opens, hands
-it straight back, then races the connect against a poll of `popup.closed` that rejects with
+it straight back, then races the connect against a watchdog, a poll of `popup.closed`, that rejects with
 `PickerClosedError`, carrying the SDK's own `'User closed the wallet picker'` so `toConnectError`
 maps it unchanged. The handle is remembered module-side, because a connect reusing a popup the last
 one left open (the normal path for `reuseGlobalWalletPopup` wallets) never calls `window.open`.
+
+Before the pick, the SDK's own poll may see the close first. `guardedConnect` turns its rejection into `PickerClosedError` too, so both end the same way, also in the retry after a failed extension pick, which only the SDK watches.
 
 Wrapping the call rather than supplying our own `walletPicker` is a stopgap: the picker seam is the
 deeper one and the SDK already offers it, but this package holds no picker UI by rule and the themed
@@ -24,10 +24,7 @@ one (#50) has no merged implementation.
 
 ## The abandoned connect
 
-A rejected race leaves the SDK's `connect()` running, still listening for a picker result and ready
-to swap the SDK's client from under the machine's event wiring on the next connect. That is what
-`PickerClosedError` is for: `connecting` takes it to `retiring`, which replaces the `DappSDK` and
-restores the session from the discovery session key that `connect()` never clears.
+A rejected race leaves the SDK's `connect()` running, able to swap the client under the machine's listeners on the next connect. So `PickerClosedError` sends `connecting` to `retiring`, which replaces the `DappSDK` and restores the session from the discovery session key, which `connect()` never clears. That restores an extension or WalletConnect wallet; a remote one also needs the two kernel keys `connect()` deletes before the picker opens, so it ends disconnected.
 
 Replacing the instance does not by itself reach it. The abandoned `connect()` is parked
 inside `core-wallet-ui-components` module scope, on a `message` listener keyed to nothing but our
@@ -72,7 +69,7 @@ The drain and the stand-down have no such backstop. Both rest on the `SPLICE_WAL
 message: its type, its origin, and the `walletType` and `providerId` fields, none of it public API.
 A rename turns the drain into a no-op that returns the duplicate prompts, and turns the stand-down
 back into abandoning a live connect, with nothing going red either way. Nor does any test reach
-#49's own cause, a real `WindowProxy` losing its `beforeunload` across the navigation.
+#49's own cause, a real popup closed after a remote pick.
 
 The pick refusal rests on a third internal: `connect()` reads `this.walletPicker` only when it
 reaches the picker. A later SDK version that copies the field at construction would ignore the swap,

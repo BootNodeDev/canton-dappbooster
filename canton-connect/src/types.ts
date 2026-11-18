@@ -1,5 +1,3 @@
-// Public types exposed to consumers of canton-connect.
-
 import type {
   DappSDK,
   ProviderAdapter,
@@ -60,7 +58,7 @@ export type ConnectionStatus =
  */
 export type PartyType = 'local' | 'external'
 
-// The account entry as dapp-sdk 1.8.0 declares it.
+// The account entry as dapp-sdk declares it.
 type PinnedAccount = {
   primary: boolean
   partyId: string
@@ -76,12 +74,12 @@ type PinnedAccount = {
   reason?: string
 }
 
-// `false`, never `never`: `never extends true` holds, so a `never` sentinel would never fire.
-type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+// Identity, not mutual assignability: that misses optional fields.
+type Exact<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 type Assert<T extends true> = T
 
-// Fails typecheck when an SDK bump changes the account entry. `Account` is defined through it so
-// it cannot go unused, which `example-dapps/amulet-vesting`'s `noUnusedLocals` would reject.
+// Used by `Account`, or Biome and the examples' `noUnusedLocals` would reject it as unused.
 type AccountPinned = Assert<Exact<Wallet, PinnedAccount>>
 
 /**
@@ -138,6 +136,7 @@ export interface TxStatusSnapshot {
   status: TxChangedEvent['status']
   commandId: TxChangedEvent['commandId']
   payload?: unknown
+  error?: Extract<TxChangedEvent, { status: 'failed' }>['error']
 }
 
 /**

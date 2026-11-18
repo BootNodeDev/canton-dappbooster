@@ -67,8 +67,7 @@ export const toConnectionStatus = (
     return 'connecting'
   }
 
-  // A cancelled wallet change passes through `retiring.changing` and `restoring.changing` while the
-  // session it kept is restored; disconnected or idle here would unmount a status-gated app.
+  // A cancelled wallet change may get its session back; disconnected or idle would unmount the app.
   if (snapshot.matches({ retiring: 'changing' }) || snapshot.matches({ restoring: 'changing' })) {
     return 'connecting'
   }
@@ -317,8 +316,7 @@ export const connectionMachine = setup({
       tags: ['connecting'],
       entry: { type: 'forgetError' },
       initial: 'new',
-      // The variants carry what is at stake: `new` risks no session, `changing` is a
-      // wallet change over a standing one, and a closed picker resumes that session.
+      // The variants carry what is at stake: `new` risks no session, `changing` a standing one.
       states: {
         new: connectAttempt('#connection.retiring.new'),
         changing: connectAttempt('#connection.retiring.changing'),
@@ -421,15 +419,13 @@ export const connectionMachine = setup({
         restore: { target: 'initializing' },
       },
     },
-    // The SDK never settles a connect whose picker was closed; that instance can still swap
-    // the client, so `retireSdk` replaced it before entry.
+    // An abandoned connect() can still swap the client; `retireSdk` replaced the sdk before entry.
     retiring: {
       tags: ['connect.cancelled'],
       // A cancel records no error; clearing it here keeps that rule on the state that answers.
       entry: { type: 'forgetError' },
       initial: 'new',
-      // A cancelled wallet change must not cost the standing session: `changing` resumes it
-      // through `restoring.changing`; `new` had nothing to lose.
+      // `changing` tries to bring the standing session back; `new` has none.
       states: {
         new: { invoke: bootSdk('#connection.restoring.new') },
         changing: { invoke: bootSdk('#connection.restoring.changing') },
