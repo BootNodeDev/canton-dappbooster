@@ -35,6 +35,7 @@ export interface Balance {
 }
 
 export interface ServerStatus {
+  accountTtlHours?: number
   error?: string
   ready: boolean
 }

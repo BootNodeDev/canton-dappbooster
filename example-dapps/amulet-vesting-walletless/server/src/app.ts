@@ -12,19 +12,24 @@ import type { WalletFns } from '#server/ledger/wallet'
 import { amount, asBody, BadRequest, optionalText, party, schedule, text } from '#server/validate'
 
 export const SESSION_COOKIE = 'wl_session'
-const SESSION_MS = 7 * 24 * 60 * 60 * 1000
-
-const LOGIN_ATTEMPTS = 10
-const LOGIN_WINDOW_MS = 15 * 60 * 1000
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
+const SESSION_MS = 7 * 24 * HOUR_MS
 const UNIQUE_VIOLATION = '23505'
 
 export type AppDeps = {
+  accountTtlHours?: number
   cookieSecure?: boolean
   db: Db
   deployment: () => Promise<Deployment>
   ledger: WalletFns
+  limitWindowMinutes?: number
+  loginLimit?: number
+  maxAccounts?: number
   now?: () => number
   provision: (username: string) => Promise<string>
+  release: (partyIds: string[]) => Promise<void>
+  signupLimit?: number
 }
 
 type Env = { Variables: { user: User } }
@@ -38,36 +43,67 @@ const readJson = async (c: Context): Promise<Record<string, unknown>> =>
     }),
   )
 
-// The socket, not a forwarded-for header any client can set; behind a proxy it is the proxy.
-const clientOf = (c: Context): string => {
-  const incoming = (c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)
-    ?.incoming
-  return incoming?.socket?.remoteAddress ?? 'local'
+const waitText = (ms: number): string => {
+  const minutes = Math.ceil(ms / MINUTE_MS)
+  if (minutes < 120) return `${minutes} minute${minutes === 1 ? '' : 's'}`
+  return `${Math.ceil(minutes / 60)} hours`
 }
 
 export const createApp = ({
+  accountTtlHours = 0,
   cookieSecure = false,
   db,
   deployment,
   ledger,
+  limitWindowMinutes = 10,
+  loginLimit = 10,
+  maxAccounts = 0,
   now = Date.now,
   provision,
+  release,
+  signupLimit = 10,
 }: AppDeps) => {
   const app = new Hono<Env>()
+  const limitWindowMs = limitWindowMinutes * MINUTE_MS
   const attempts = new Map<string, { count: number; resetAt: number }>()
 
-  const limited = (key: string): boolean => {
+  // Keyed on nothing the client sends: a proxy in front can pass a forwarded address it wrote.
+  const retryAfter = (key: string, max: number): number => {
     const at = now()
     const entry = attempts.get(key)
     if (entry === undefined || entry.resetAt <= at) {
       for (const [stale, { resetAt }] of attempts) {
         if (resetAt <= at) attempts.delete(stale)
       }
-      attempts.set(key, { count: 1, resetAt: at + LOGIN_WINDOW_MS })
-      return false
+      attempts.set(key, { count: 1, resetAt: at + limitWindowMs })
+      return 0
     }
     entry.count += 1
-    return entry.count > LOGIN_ATTEMPTS
+    return entry.count > max ? entry.resetAt - at : 0
+  }
+
+  const expiredBefore = (): number =>
+    accountTtlHours === 0 ? 0 : now() - accountTtlHours * HOUR_MS
+
+  // The right goes first: a row deleted with its right still granted holds a slot nothing frees.
+  const expireAccounts = async (): Promise<void> => {
+    if (accountTtlHours === 0) return
+    const before = expiredBefore()
+    const expired = await db.usersCreatedBefore(before)
+    if (expired.length > 0) {
+      await release(expired.map((user) => user.partyId))
+      await db.deleteUsersCreatedBefore(before)
+    }
+    await db.purgeDisclosures(before)
+  }
+
+  const roomError = async (): Promise<string | undefined> => {
+    if (maxAccounts === 0) return undefined
+    const { count, oldestCreatedAt } = await db.accountCount()
+    if (count < maxAccounts) return undefined
+    if (accountTtlHours === 0) return 'no room for new accounts'
+    const wait = oldestCreatedAt + accountTtlHours * HOUR_MS - now()
+    return `no room for new accounts, try again in ${waitText(wait)}`
   }
 
   // Expired sessions go whenever a new one starts: no timer, so nothing has to stay running.
@@ -117,11 +153,20 @@ export const createApp = ({
     if (password.length < MIN_PASSWORD) {
       throw new BadRequest(`password must be at least ${MIN_PASSWORD} characters`)
     }
-    if (limited(`signup:${clientOf(c)}`)) {
-      return c.json({ error: 'too many attempts, try again later' }, 429)
+    const busy = retryAfter('signup', signupLimit)
+    if (busy > 0) {
+      return c.json(
+        { error: `too many new accounts right now, try again in ${waitText(busy)}` },
+        429,
+      )
     }
+    await expireAccounts()
     if ((await db.userByUsername(username)) !== undefined) {
       return c.json({ error: 'that username is taken' }, 409)
+    }
+    const full = await roomError()
+    if (full !== undefined) {
+      return c.json({ error: full }, 503)
     }
     const passwordHash = await hashPassword(password)
     const partyId = await provision(username)
@@ -142,11 +187,18 @@ export const createApp = ({
     const body = await readJson(c)
     const username = text(body, 'username', 32).toLowerCase()
     const password = text(body, 'password', 256)
-    const key = `login:${clientOf(c)}:${username}`
-    if (limited(key)) {
-      return c.json({ error: 'too many attempts, try again later' }, 429)
+    if (!USERNAME.test(username)) {
+      return c.json({ error: 'wrong username or password' }, 401)
     }
-    const found = await db.userByUsername(username)
+    const key = `login:${username}`
+    const locked = retryAfter(key, loginLimit)
+    if (locked > 0) {
+      return c.json(
+        { error: `too many failed sign-ins for ${username}, try again in ${waitText(locked)}` },
+        429,
+      )
+    }
+    const found = await db.userByUsername(username, expiredBefore())
     if (found === undefined || !(await verifyPassword(password, found.passwordHash))) {
       return c.json({ error: 'wrong username or password' }, 401)
     }
@@ -165,19 +217,15 @@ export const createApp = ({
   })
 
   app.get('/api/status', async (c) => {
-    try {
-      await deployment()
-      return c.json({ ready: true } satisfies ServerStatus)
-    } catch (error) {
-      return c.json({ ready: false, error: errorText(error) } satisfies ServerStatus)
-    }
+    const error = await deployment().then(() => undefined, errorText)
+    return c.json({ accountTtlHours, error, ready: error === undefined } satisfies ServerStatus)
   })
 
   // ── Everything below needs a session ───────────────────────────────────────
 
   app.use('/api/*', async (c, next) => {
     const id = getCookie(c, SESSION_COOKIE)
-    const user = id === undefined ? undefined : await db.sessionUser(id, now())
+    const user = id === undefined ? undefined : await db.sessionUser(id, now(), expiredBefore())
     if (user === undefined) {
       return c.json({ error: 'not signed in' }, 401)
     }
@@ -188,7 +236,7 @@ export const createApp = ({
   app.get('/api/session', (c) => c.json(publicUser(c.var.user)))
 
   app.get('/api/users/:username', async (c) => {
-    const found = await db.userByUsername(c.req.param('username').toLowerCase())
+    const found = await db.userByUsername(c.req.param('username').toLowerCase(), expiredBefore())
     return found === undefined ? c.json({ error: 'no such user' }, 404) : c.json(publicUser(found))
   })
 

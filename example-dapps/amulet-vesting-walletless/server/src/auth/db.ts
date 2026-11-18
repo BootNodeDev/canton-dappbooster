@@ -23,7 +23,7 @@ const toUser = (row: UserRow): User => ({
   username: row.username,
 })
 
-export const openDb = (sql: Sql) => {
+export const openDb = (sql: Sql, now: () => number = Date.now) => {
   const disclosures: DisclosureStore = {
     drop: async (contractId) => {
       await sql.query('DELETE FROM escrow_disclosures WHERE contract_id = $1', [contractId])
@@ -44,18 +44,28 @@ export const openDb = (sql: Sql) => {
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (contract_id) DO UPDATE SET template_id = excluded.template_id,
            blob = excluded.blob, created_at = excluded.created_at`,
-        [disclosed.contractId, disclosed.templateId, disclosed.createdEventBlob, Date.now()],
+        [disclosed.contractId, disclosed.templateId, disclosed.createdEventBlob, now()],
       )
     },
   }
 
   return {
+    accountCount: async (): Promise<{ count: number; oldestCreatedAt: number }> => {
+      const { rows } = await sql.query<{ count: number | string; oldest: number | string | null }>(
+        'SELECT count(*) AS count, min(created_at) AS oldest FROM users',
+      )
+      const [row] = rows
+      return {
+        count: Number(row.count),
+        oldestCreatedAt: Number(row.oldest),
+      }
+    },
     // The UNIQUE constraint is the real check: two signups racing for one name cannot both pass.
     createUser: async (user: Omit<User, 'id'>, passwordHash: string): Promise<User> => {
       const { rows } = await sql.query<{ id: number }>(
         `INSERT INTO users (username, password_hash, party_id, created_at)
          VALUES ($1, $2, $3, $4) RETURNING id`,
-        [user.username, passwordHash, user.partyId, Date.now()],
+        [user.username, passwordHash, user.partyId, now()],
       )
       return { ...user, id: rows[0].id }
     },
@@ -69,24 +79,38 @@ export const openDb = (sql: Sql) => {
     deleteSession: async (id: string): Promise<void> => {
       await sql.query('DELETE FROM sessions WHERE id = $1', [id])
     },
+    deleteUsersCreatedBefore: async (before: number): Promise<void> => {
+      await sql.query('DELETE FROM users WHERE created_at < $1', [before])
+    },
     disclosures,
+    purgeDisclosures: async (before: number): Promise<void> => {
+      await sql.query('DELETE FROM escrow_disclosures WHERE created_at < $1', [before])
+    },
     purgeSessions: async (nowMs: number): Promise<void> => {
       await sql.query('DELETE FROM sessions WHERE expires_at <= $1', [nowMs])
     },
-    sessionUser: async (id: string, nowMs: number): Promise<User | undefined> => {
+    sessionUser: async (id: string, nowMs: number, createdAfter = 0): Promise<User | undefined> => {
       const { rows } = await sql.query<UserRow>(
         `SELECT users.* FROM sessions JOIN users ON users.id = sessions.user_id
-         WHERE sessions.id = $1 AND sessions.expires_at > $2`,
-        [id, nowMs],
+         WHERE sessions.id = $1 AND sessions.expires_at > $2 AND users.created_at >= $3`,
+        [id, nowMs, createdAfter],
       )
       return rows[0] === undefined ? undefined : toUser(rows[0])
     },
+    usersCreatedBefore: async (before: number): Promise<User[]> => {
+      const { rows } = await sql.query<UserRow>('SELECT * FROM users WHERE created_at < $1', [
+        before,
+      ])
+      return rows.map(toUser)
+    },
     userByUsername: async (
       username: string,
+      createdAfter = 0,
     ): Promise<(User & { passwordHash: string }) | undefined> => {
-      const { rows } = await sql.query<UserRow>('SELECT * FROM users WHERE username = $1', [
-        username,
-      ])
+      const { rows } = await sql.query<UserRow>(
+        'SELECT * FROM users WHERE username = $1 AND created_at >= $2',
+        [username, createdAfter],
+      )
       return rows[0] === undefined
         ? undefined
         : { ...toUser(rows[0]), passwordHash: rows[0].password_hash }

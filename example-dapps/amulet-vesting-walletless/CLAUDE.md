@@ -23,6 +23,9 @@ Deltas for this app only are below.
   exported value win, and reads an empty value as the default.
 - **The dApp has no `VITE_*` variables at all.** Anything it would read is the server's to know, and
   the Vite dev server proxies `/api` so the session cookie stays same-origin.
+- **`vercel.json` belongs to the hosted demo and stays out of `files`.** Its `/api` rewrite names the
+  demo's server host, which no project the installer creates has. The rewrite has to come before the
+  one to `index.html`, or every API call gets the page.
 - **Server tests run on PGlite**, an in-process Postgres (`server/src/db/testDb.ts`), so
   `pnpm test` needs no Docker. A test never reaches the compose Postgres.
 - **The app does not depend on `canton-connect`**, so `src/utils/errorText.ts` is its own copy
@@ -36,7 +39,12 @@ Deltas for this app only are below.
   on a LocalNet: no `WalletAppInstall` on either account, and their Amulets still unmerged after
   160 seconds, a grant's escrow included.
 - **The participant caps a user at 1000 rights, and each account adds one.** Nothing may grant the
-  server's participant user a right per request or per grant; that spends the account budget.
+  server's participant user a right per request or per grant; that spends the account budget. An
+  expiring account gives its right back before the server deletes its row, or the slot stays spent.
+- **No limit keys on a client address.** Vercel's rewrite passes on forwarded headers the client
+  wrote, so a per-address limit lets a client choose its own key. Measured on the demo: depending
+  on the headers sent, `X-Forwarded-For`, `X-Real-IP` and `X-Vercel-Forwarded-For` each arrived
+  with a value the client chose.
 - **An account names a party, so a LocalNet reset orphans every account.** After
   `canton-barebones reset`, the accounts go too: `docker compose -f server/compose.yaml down -v`.
   `scripts/server.sh stop` keeps the volume on purpose, so accounts survive a `down` and `up` the way

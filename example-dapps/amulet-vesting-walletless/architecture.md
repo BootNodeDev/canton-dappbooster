@@ -64,7 +64,7 @@ sequenceDiagram
   Note over User,P: Sign in, or reload
   FE->>S: POST /api/auth/login, or GET /api/session on load
   S->>DB: look up the user or the session
-  Note over S: verify scrypt · 10 tries per 15 minutes
+  Note over S: verify scrypt · 10 tries per username per 10 minutes
   S-->>FE: { username, partyId } + cookie
   Note over FE: no session: the sign-in card on every page
 ```
@@ -83,9 +83,13 @@ carries, and it is the counterparty, never the actor.
 Every write must be `content-type: application/json`, or it gets 415. A cross-site form can post
 urlencoded, multipart or text, but not JSON without a preflight, so this is the CSRF check on top of
 the `SameSite` cookie. `validate.ts` checks every body field and throws a 400 that names it.
-Signups are limited to 10 per client in 15 minutes, and logins to 10 per client and username:
-room for typos, too few to guess a password. The limiter keys on the socket address, which behind a
-proxy is the proxy.
+The server takes 10 signups for the whole site and 10 login tries per username in a 10-minute
+window. `WL_SIGNUP_LIMIT`, `WL_LOGIN_LIMIT` and `WL_LIMIT_WINDOW_MINUTES` set those numbers. Ten
+tries leave room for typos and too few to guess a password. Neither limit reads the client's
+address. A proxy in front of the server can pass on a forwarded address the client wrote, and
+Vercel's rewrite does. An address key would then let a client choose its own. A refusal says how
+long to wait, and someone can lock a username out for one window on purpose. One client can also use
+up a window's signups for everyone, and refused signups count too.
 
 `GET /api/grants/:cid/claims` walks back from the grant asked about through each withdraw's
 `replaces`, because a withdraw archives the grant and creates its successor. The records come
@@ -136,6 +140,18 @@ one user `CanActAs` on it. There is no ledger user per account, because a hosted
 provider issues tokens to its own clients only. A participant caps a user at 1000 rights, so one
 deployment holds at most 1000 accounts.
 
+`WL_MAX_ACCOUNTS`, 500 by default, stops signups below that. `WL_ACCOUNT_TTL_HOURS` makes room
+again: each signup first deletes the accounts older than that many hours. It revokes their rights in
+one request, then deletes their rows and with them their sessions. It also drops escrow disclosures
+older than the same cutoff. The right goes first, because a row deleted with its right still granted
+holds a slot nothing frees. A right the user no longer holds revokes without an error, so a ledger
+reset needs no special case. The parties and their contracts stay on the ledger, which deletes
+nothing. A full deployment tells the next visitor when the oldest account expires. `GET /api/status`
+reports the lifetime, so the create-account card can state it. A session stops working once its
+account is past the lifetime. Logins and name lookups skip such an account, and the next signup
+releases its right. The server checks the cap before a signup's slow ledger calls. Signups running
+at the same moment can pass it, by at most the signup limit.
+
 Where the token comes from:
 
 - **LocalNet:** `CANTON_BACKEND_TOKEN` from `.env` when it is set, which `pnpm stack up` mints.
@@ -171,9 +187,21 @@ server started counts on the next request. `GET /api/status` reports either.
 
 `scripts/bootstrap-vesting.mjs` creates the operator and the factory only where they are missing,
 under a stable hint, because `pnpm stack up` runs it on every start and the LocalNet keeps its
-ledger across a `down`. The match includes the `::` separator, so the stamped
-`vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared LocalNet are never
-picked up. Both examples build the same DAR, so either one's upload serves both.
+ledger across a `down`. It looks the operator up by its full id, the hint under the participant's
+namespace from `/v2/parties/participant-id`, because listing `/v2/parties` would not finish on a
+public network. With that exact id, and the server's match on the `::` separator, neither picks up
+the stamped `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared
+LocalNet. Both examples build the same DAR, so either one's upload serves both.
+
+## The hosted demo
+
+The demo serves the dApp from Vercel and runs the server on BootNode's DevNet validator. In
+`vercel.json`, a rewrite sends `/api/*` to `https://walletless.validator.devnet.canton.bootnode.dev`.
+It comes before the rewrite that answers every other path with `index.html`. The browser sees one
+origin, as it does with the Vite proxy, so the session cookie needs no CORS. The Vercel project
+sets no variables: the server's `.env` on the validator host holds them all, with
+`WL_COOKIE_SECURE=true`, `WL_MAX_ACCOUNTS=500` and `WL_ACCOUNT_TTL_HOURS=24`. `files` leaves
+`vercel.json` out, so a project the installer creates gets none of this.
 
 ## The store and the pages
 
