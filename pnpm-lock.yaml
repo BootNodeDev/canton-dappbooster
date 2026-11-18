@@ -323,8 +323,8 @@ importers:
   canton-create/scaffold/localnet:
     devDependencies:
       '@bootnodedev/canton-barebones':
-        specifier: 0.7.0
-        version: 0.7.0
+        specifier: 0.8.0
+        version: 0.8.0
       '@canton-network/wallet-gateway-remote':
         specifier: 1.13.0
         version: 1.13.0(@types/node@24.19.2)(debug@4.4.3(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.33.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)(yaml@2.9.1)
@@ -884,8 +884,8 @@ packages:
   '@bitgo/wasm-mps@1.17.0':
     resolution: {integrity: sha512-R80uUWJ2RGENlFaAQJKatdr/wZzNNuIGX3kcMriYOLuRtIIFrVMAeDwsSaS+XPEgPEPNgOCM1t2HFx01C0HsHg==}
 
-  '@bootnodedev/canton-barebones@0.7.0':
-    resolution: {integrity: sha512-ogRv7T5V2wDcQWSxbADjQ69KNPvtBUsxxA8JJd0LIF/NfQxbMb+dkrfttGSr1bQLDrBAsCkVAUkBPLNws/Jd+g==}
+  '@bootnodedev/canton-barebones@0.8.0':
+    resolution: {integrity: sha512-fYYhOytO3B3+xY9j4sMaMFIJpE8aSq5PUiROnWaqwReEr18xW+whuJWVEhyFmmg5fJvPpBC6frEDufyFwkVDRw==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5497,7 +5497,7 @@ snapshots:
 
   '@bitgo/wasm-mps@1.17.0': {}
 
-  '@bootnodedev/canton-barebones@0.7.0':
+  '@bootnodedev/canton-barebones@0.8.0':
     dependencies:
       js-yaml: 4.3.2
       zod: 4.6.7
