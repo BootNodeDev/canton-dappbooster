@@ -12,6 +12,7 @@ Each folder here is a Canton dApp built with Canton dAppBooster. Each one is als
 ## Install an example
 
 Make sure you meet the [requirements](../README.md#requirements), and that Docker is running.
+
 ### Interactive mode
 
 Run the installer and pick an example from its menu. The menu also asks whether to add the local network.
