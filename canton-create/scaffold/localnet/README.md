@@ -21,5 +21,7 @@ In a dApp that connects a wallet, then pick Wallet Gateway in its picker and log
 
 Each step is also a script of its own: `pnpm mint-token` and `pnpm wallet-gateway`.
 
+`pnpm stack up` starts Wallet Gateway on the port in `VITE_WALLET_GATEWAY_URL` and the dev server on `DAPP_PORT`, both read from `.env`. Change them there when something else holds 3030 or 3012, with the stack down. Run by hand, `pnpm wallet-gateway` listens on 3030, and `pnpm wallet-gateway --port <port>` moves it.
+
 > [!CAUTION]
 > After `pnpm stack reset`, create the gateway's parties again.

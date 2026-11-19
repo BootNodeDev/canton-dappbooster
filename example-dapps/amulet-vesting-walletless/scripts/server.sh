@@ -13,10 +13,12 @@ die() {
   exit 1
 }
 
-# Read through server/src/env.ts, so the script and the server can never disagree on the port.
-server_port() {
-  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(String(env.PORT)))"
+# Read through server/src/env.ts, so the script and the server can never disagree on a port.
+server_env() { # server_env <expression over env>
+  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(String($1)))"
 }
+server_port() { server_env env.PORT; }
+postgres_port() { server_env "new URL(env.DATABASE_URL).port || 5432"; }
 
 wait_until() { # wait_until <seconds> <command…>
   local deadline=$((SECONDS + $1))
@@ -41,11 +43,13 @@ stop_server() {
 }
 
 start() {
-  local port
+  local port pg_port
   port="$(server_port)"
+  pg_port="$(postgres_port)"
 
-  log "Starting Postgres (server/compose.yaml)"
-  "${COMPOSE[@]}" up -d --wait || die "Postgres did not come up; is port 5433 free?"
+  log "Starting Postgres (server/compose.yaml) -> localhost:$pg_port"
+  WL_POSTGRES_PORT="$pg_port" "${COMPOSE[@]}" up -d --wait \
+    || die "Postgres did not come up; is port $pg_port free?"
 
   # Restarted rather than reused: a leftover one started before this run's bootstrap.
   if ! port_free "$port"; then

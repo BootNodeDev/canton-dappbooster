@@ -93,6 +93,10 @@ Accounts name parties on the ledger, so a LocalNet reset orphans them. Wipe them
 docker compose -f example-dapps/amulet-vesting-walletless/server/compose.yaml down -v
 ```
 
+These ports are the defaults. When something else holds one, set its variable in the example's
+`.env`, which the "Change the ports" section of its README lists. The LocalNet's own ports do not
+move.
+
 Every `pnpm dev:<example>` runs the installer's local network scripts against that example's own
 folder, which is why no example has a `build-dar` or `deploy-dar` script of its own. A project the
 installer makes gets the published example instead, fetched with `npm pack`.

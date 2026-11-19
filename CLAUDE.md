@@ -111,7 +111,7 @@ stays only where it is the point: a pair the sentence contrasts, or a figure fix
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and the examples declare `engines.node` at `>=24.15.0`, which is what `jsdom` 31 requires. `canton-create` and its starter declare the same, since the project the installer installs depends on the libraries |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
-| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies`, run by `pnpm run wallet-gateway` on port 3030, configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. Each wallet example registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
+| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies` and configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. `pnpm run wallet-gateway` runs it on port 3030, and `dev-stack.sh` on the port in the app's `VITE_WALLET_GATEWAY_URL`. Each wallet example registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | `@bootnodedev/canton-barebones` | Pinned exact in `canton-create/scaffold/localnet/package.json`, the only manifest that declares it. `publicHoistPattern` in `pnpm-workspace.yaml` links it and its command into the root `node_modules`, so `pnpm exec canton-barebones` and the scaffold's scripts reach that one copy from the root. The repo commits none of its config. `canton-create/scaffold/localnet/scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`. Without them, nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + Husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); it skips standalone SVG assets |
@@ -147,7 +147,8 @@ dependency pinned in `canton-create/scaffold/localnet/`. `pnpm dev:<example>` sc
 the gitignored `.canton-localnet/` and drives it there. The wallet ships from
 [`canton-network/wallet`](https://github.com/canton-network/wallet) as
 `@canton-network/wallet-gateway-remote` and installs from npm as a root dev dependency.
-`pnpm dev:<example>` runs it on port 3030 through `pnpm run wallet-gateway`.
+`pnpm dev:<example>` runs it through `pnpm run wallet-gateway`, on the port in the example's
+`VITE_WALLET_GATEWAY_URL`, 3030 by default.
 
 ## Code style
 
@@ -450,11 +451,28 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
 - **A `pnpm run` alias takes no arguments.** pnpm forwards the `--` separator to the script, so an
   alias over something reading `argv` mints the wrong thing in silence: `pnpm run mint-token --
   ledger-api-user` would sign for subject `-- ledger-api-user`. That is why `mint-token` bakes the
-  subject in. `deploy-dar` and the `dev:<example>` scripts are the exceptions. `deploy-dar.sh` drops a leading `--`
-  with `[ "$1" = "--" ] && shift`, which is what lets it take `-- <dar>`, and `dev-stack.sh` drops
-  a `--` wherever it sits. `create-canton-dappbooster` drops it too, because `pnpm create` forwards
-  it the same way.
-- Local ports: the dApp dev server on 3012, Wallet Gateway on 3030, token-vesting's registry on 3013, set in its `scripts/bootstrap-vesting.mjs`, and the wallet-less example's server on 3040 and its Postgres on 5433, set in its `.env.example` and `server/compose.yaml`. Do not change the dApp's or the gateway's without updating `dev-stack.sh`, `wallet-gateway.config.json` (both in `canton-create/scaffold/localnet/`) and the `.env.example` defaults together.
+  subject in. `deploy-dar`, `wallet-gateway` and the `dev:<example>` scripts are the exceptions.
+  `deploy-dar.sh` drops a leading `--` with `[ "$1" = "--" ] && shift`, which is what lets it take
+  `-- <dar>`, and `dev-stack.sh` drops a `--` wherever it sits. `create-canton-dappbooster` drops
+  it too, because `pnpm create` forwards it the same way. `wallet-gateway` takes `--port <port>`
+  with no `--` before it, which is how `dev-stack.sh` starts it: the gateway's own parser stops
+  reading options at a `--`.
+- **The app's `.env` sets every port this repo owns, each with a default.** The LocalNet's ports
+  belong to `canton-barebones` and Splice, and do not move.
+  - the dApp dev server: `DAPP_PORT`, 3012, which each `vite.config.ts` reads with `strictPort`
+  - Wallet Gateway: the port in `VITE_WALLET_GATEWAY_URL`, 3030. `dev-stack.sh` passes it as
+    `--port`, so `server.port` in `wallet-gateway.config.json` only serves a run by hand, and
+    `allowedOrigins` is `"*"` because the dApp's origin moves with `DAPP_PORT`
+  - token-vesting's registry: the port in `VITE_REGISTRY_URL`, 3013, which its bootstrap writes
+    into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's origin when `.env`
+    leaves it unset
+  - the wallet-less server: `WL_SERVER_PORT`, 3040
+  - the wallet-less Postgres: the port in `DATABASE_URL`, 5433, which `scripts/server.sh` reads
+    through `server/src/env.ts` and hands `server/compose.yaml`
+
+  `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and `status`
+  find what `up` started, and a value the caller exported beats `.env`. A default lives in the
+  `.env.example` files and in each fallback in the code, so moving one moves them all.
 - **A new workspace package gets a line in both pre-commit configs, in the same change.**
   `.lintstagedrc.format.mjs` lists every folder Biome formats, and `.lintstagedrc.mjs` maps each
   package's files to its tests. Neither finds a package by itself, and CI still passing hides the

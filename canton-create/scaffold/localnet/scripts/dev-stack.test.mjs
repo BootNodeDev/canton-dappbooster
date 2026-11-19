@@ -52,72 +52,151 @@ describe('dev-stack.sh arguments', () => {
   })
 })
 
+const executable = (file, body) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+}
+
+// Docker, the ports and the LocalNet tool are all doubles, so no test reaches a real stack.
+const appAfterSpliceBump = ({ contract = false } = {}) => {
+  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
+  after(() => fs.rmSync(app, { recursive: true, force: true }))
+  const bin = path.join(app, 'bin')
+  executable(
+    path.join(bin, 'docker'),
+    '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
+      '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
+  )
+  executable(path.join(bin, 'curl'), 'printf 200')
+  executable(
+    path.join(bin, 'lsof'),
+    '[ -z "$LSOF_LOG" ] || echo "$*" >>"$LSOF_LOG"\n[ -n "$PORTS_HELD" ] || exit 1\necho 4242',
+  )
+  executable(path.join(bin, 'dpm'), 'exit 0')
+  const splice = path.join(app, 'splice')
+  fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
+  fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
+  fs.writeFileSync(path.join(splice, 'env/common.env'), 'DB_USER=cnadmin\n')
+  executable(
+    path.join(app, 'node_modules/.bin/canton-barebones'),
+    `[ "$1" != setup ] || { printf '{"localnetDir":"${splice}"}'; exit 0; }\n` +
+      '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
+  )
+  fs.writeFileSync(
+    path.join(app, 'package.json'),
+    JSON.stringify({ scripts: { 'wallet-gateway': 'true', dev: 'echo ready in 0ms' } }),
+  )
+  if (contract) {
+    fs.mkdirSync(path.join(app, 'daml'))
+    fs.writeFileSync(path.join(app, 'daml/daml.yaml'), 'name: app\nversion: 1.0.0\n')
+  }
+  fs.writeFileSync(path.join(app, '.env'), 'CANTON_BACKEND_TOKEN=test\n')
+  const localnet = path.join(app, 'localnet')
+  fs.mkdirSync(localnet)
+  fs.writeFileSync(
+    path.join(localnet, 'canton-barebones.config.json'),
+    JSON.stringify({ splice: { tag: '0.0.1' } }),
+  )
+
+  return {
+    app,
+    run: (args, options = {}) =>
+      spawnSync('bash', [script, ...args, options.localnet ?? localnet], {
+        env: {
+          ...process.env,
+          ...options.env,
+          CANTON_APP_DIR: app,
+          PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+        },
+        encoding: 'utf8',
+      }),
+  }
+}
+
+const events = (stdout) =>
+  stdout
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+
+describe('dev-stack.sh ports', () => {
+  const customPorts = (stack) =>
+    fs.writeFileSync(
+      path.join(stack.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=3112\n' +
+        'VITE_WALLET_GATEWAY_URL=http://localhost:3031/api/v0/dapp\n',
+    )
+  const heldWarnings = (run) =>
+    events(run.stdout)
+      .at(-1)
+      .warnings.filter((warning) => warning.startsWith('Port '))
+  const portsAsked = (log) => [
+    ...new Set([...fs.readFileSync(log, 'utf8').matchAll(/-iTCP:(\d+)/g)].map(([, port]) => port)),
+  ]
+
+  it('names the ports .env sets in the warnings when they are held', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    const held = stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } })
+
+    assert.deepEqual(
+      heldWarnings(held).map((warning) => warning.split(' ')[1]),
+      ['3031', '3112'],
+    )
+  })
+
+  it('lets a port the caller exported beat the one in .env', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    const held = stack.run(['up', '--json'], {
+      env: {
+        DAPP_PORT: '4112',
+        PORTS_HELD: '1',
+        VITE_WALLET_GATEWAY_URL: 'http://localhost:4031/api/v0/dapp',
+      },
+    })
+
+    assert.deepEqual(
+      heldWarnings(held).map((warning) => warning.split(' ')[1]),
+      ['4031', '4112'],
+    )
+  })
+
+  it('falls back to 3012 and 3030 when .env names neither port', () => {
+    const stack = appAfterSpliceBump()
+    fs.writeFileSync(
+      path.join(stack.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nVITE_WALLET_GATEWAY_URL=http://localhost/api/v0/dapp\n',
+    )
+
+    const held = stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } })
+
+    assert.deepEqual(
+      heldWarnings(held).map((warning) => warning.split(' ')[1]),
+      ['3030', '3012'],
+    )
+  })
+
+  for (const action of ['down', 'status']) {
+    it(`checks and lists the ports .env sets on ${action}`, () => {
+      const stack = appAfterSpliceBump()
+      customPorts(stack)
+      const log = path.join(stack.app, 'lsof.log')
+
+      const run = stack.run([action], { env: { LSOF_LOG: log } })
+
+      assert.equal(run.status, 0)
+      assert.match(run.stdout, /Dev-server ports 3112 and 3031:/)
+      assert.deepEqual(portsAsked(log), ['3112', '3031'])
+    })
+  }
+})
+
 describe('dev-stack.sh after an upgrade in place', () => {
-  const executable = (file, body) => {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
-  }
-
-  // Docker, the ports and the LocalNet tool are all doubles, so no test reaches a real stack.
-  const appAfterSpliceBump = ({ contract = false } = {}) => {
-    const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
-    after(() => fs.rmSync(app, { recursive: true, force: true }))
-    const bin = path.join(app, 'bin')
-    executable(
-      path.join(bin, 'docker'),
-      '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
-        '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
-    )
-    executable(path.join(bin, 'curl'), 'printf 200')
-    executable(path.join(bin, 'lsof'), '[ -n "$PORTS_HELD" ] || exit 1\necho 4242')
-    executable(path.join(bin, 'dpm'), 'exit 0')
-    const splice = path.join(app, 'splice')
-    fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
-    fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
-    fs.writeFileSync(path.join(splice, 'env/common.env'), 'DB_USER=cnadmin\n')
-    executable(
-      path.join(app, 'node_modules/.bin/canton-barebones'),
-      `[ "$1" != setup ] || { printf '{"localnetDir":"${splice}"}'; exit 0; }\n` +
-        '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
-    )
-    fs.writeFileSync(
-      path.join(app, 'package.json'),
-      JSON.stringify({ scripts: { 'wallet-gateway': 'true', dev: 'echo ready in 0ms' } }),
-    )
-    if (contract) {
-      fs.mkdirSync(path.join(app, 'daml'))
-      fs.writeFileSync(path.join(app, 'daml/daml.yaml'), 'name: app\nversion: 1.0.0\n')
-    }
-    fs.writeFileSync(path.join(app, '.env'), 'CANTON_BACKEND_TOKEN=test\n')
-    const localnet = path.join(app, 'localnet')
-    fs.mkdirSync(localnet)
-    fs.writeFileSync(
-      path.join(localnet, 'canton-barebones.config.json'),
-      JSON.stringify({ splice: { tag: '0.0.1' } }),
-    )
-
-    return {
-      app,
-      run: (args, options = {}) =>
-        spawnSync('bash', [script, ...args, options.localnet ?? localnet], {
-          env: {
-            ...process.env,
-            ...options.env,
-            CANTON_APP_DIR: app,
-            PATH: `${bin}${path.delimiter}${process.env.PATH}`,
-          },
-          encoding: 'utf8',
-        }),
-    }
-  }
-
   const localnetDoesNotStart = { env: { CANTON_BAREBONES_STATUS: '1' } }
   const upgradedInPlace = /\[!\] This ledger was upgraded in place/
-  const events = (stdout) =>
-    stdout
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line))
   const warnedOn = (stream) => stream.filter((event) => event.warnings).map((event) => event.status)
 
   it('warns beside the error of every up that fails after the upgrade', () => {

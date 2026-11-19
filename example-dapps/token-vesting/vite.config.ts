@@ -41,7 +41,8 @@ export default defineConfig(({ mode }) => {
   // of build this is, `vercel.json` for the one project that serves this bundle, because nothing
   // here can tell: `mode` is production for CI's compile check too, which has no `.env` and deploys
   // nothing, while a vendor's own variable leaves every other host silently on the fallback.
-  const env = parseEnv(loadEnv(mode, envDir, ''), process.env.DEPLOYED_BUILD !== '1')
+  const loaded = loadEnv(mode, envDir, '')
+  const env = parseEnv(loaded, process.env.DEPLOYED_BUILD !== '1')
 
   return {
     define: Object.fromEntries(
@@ -55,7 +56,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: 3012,
+      port: Number(loaded.DAPP_PORT || 3012),
       strictPort: true,
     },
     // jsdom despite no DOM assertions: the wallet SDK touches DOM globals on import.

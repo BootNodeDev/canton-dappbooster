@@ -32,7 +32,9 @@ const INSTRUMENT = {
   maxPerTap: '1000.0',
 }
 
-export const REGISTRY_PORT = 3013
+// The registry listens where the dApp looks for it. A same-origin path, as on Vercel, names no port.
+export const registryPort = (registryUrl) =>
+  (URL.canParse(registryUrl) && new URL(registryUrl).port) || '3013'
 
 // Spelled out rather than built from a helper, so these read the same here, in
 // the registry's own .env.example, and in a grep.
@@ -296,7 +298,7 @@ const writeRegistryEnv = (adminParty) => {
   const file = path.join(import.meta.dirname, '..', '.env.registry')
   writeFileSync(
     file,
-    `${formatRegistryEnv({ ledgerApiUrl: JSON_API_URL, adminParty, port: REGISTRY_PORT })}\n`,
+    `${formatRegistryEnv({ ledgerApiUrl: JSON_API_URL, adminParty, port: registryPort(process.env.VITE_REGISTRY_URL) })}\n`,
   )
   console.log(`registry   settings in ${path.relative(process.cwd(), file)}`)
 }

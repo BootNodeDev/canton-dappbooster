@@ -5,9 +5,12 @@ import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig(({ mode }) => {
-  // The empty prefix loads every key in `.env`; only the port is read, and none reaches the bundle.
-  const { WL_SERVER_PORT } = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
-  const serverPort = WL_SERVER_PORT === undefined || WL_SERVER_PORT === '' ? '3040' : WL_SERVER_PORT
+  // The empty prefix loads every key in `.env`; only the ports are read, and none reaches the bundle.
+  const { DAPP_PORT, WL_SERVER_PORT } = loadEnv(
+    mode,
+    fileURLToPath(new URL('.', import.meta.url)),
+    '',
+  )
 
   return {
     plugins: [react(), tailwindcss()],
@@ -18,9 +21,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: 3012,
+      port: Number(DAPP_PORT || 3012),
       // Same origin, so the session cookie rides along without any CORS.
-      proxy: { '/api': `http://localhost:${serverPort}` },
+      proxy: { '/api': `http://localhost:${WL_SERVER_PORT || 3040}` },
       strictPort: true,
     },
     test: {

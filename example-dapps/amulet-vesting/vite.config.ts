@@ -89,7 +89,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: 3012,
+      port: Number(loaded.DAPP_PORT || 3012),
       proxy: { [REGISTRY_PROXY]: registryTarget(loaded) },
       strictPort: true,
     },

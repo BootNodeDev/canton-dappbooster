@@ -10,7 +10,7 @@ The [documentation](https://docs.dappbooster.cc/) covers the stack and the local
 
 ## Run the app
 
-The dev server serves on http://localhost:3012.
+The dev server serves on http://localhost:3012. Set `DAPP_PORT` in `.env` to use another port.
 
 With npm:
 

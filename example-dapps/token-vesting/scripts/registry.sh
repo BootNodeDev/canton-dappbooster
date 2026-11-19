@@ -64,14 +64,15 @@ start_registry() {
   port="$(registry_port)"
 
   # Re-applied after sourcing, so what the caller exported beats .env, as in deploy-dar.sh.
-  preset="$(declare -p CANTON_BACKEND_TOKEN "${REGISTRY_OPTION_KEYS[@]}" 2>/dev/null || true)"
+  preset="$(declare -p CANTON_BACKEND_TOKEN DAPP_PORT "${REGISTRY_OPTION_KEYS[@]}" 2>/dev/null || true)"
   if [ -f "$APP_DIR/.env" ]; then
     # shellcheck disable=SC1091
     source "$APP_DIR/.env"
   fi
   eval "$preset"
   [ -n "${CANTON_BACKEND_TOKEN:-}" ] || die "CANTON_BACKEND_TOKEN is empty; the registry reads the ledger with it."
-  # Set but empty is passed on: for CORS_ORIGINS it is the only way to allow no origin at all.
+  [ -n "${CORS_ORIGINS+set}" ] || CORS_ORIGINS="http://localhost:${DAPP_PORT:-3012}"
+  # Set but empty is passed on, so the registry, not this script, decides what empty means.
   for key in "${REGISTRY_OPTION_KEYS[@]}"; do
     if [ -n "${!key+set}" ]; then
       options+=("$key=${!key}")
