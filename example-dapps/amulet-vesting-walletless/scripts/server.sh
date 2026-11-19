@@ -14,11 +14,14 @@ die() {
 }
 
 # Read through server/src/env.ts, so the script and the server can never disagree on a port.
-server_env() { # server_env <expression over env>
-  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(String($1)))"
+server_ports() { # prints <server port> <local Postgres port>
+  node -e "import('$APP_DIR/server/src/env.ts').then(({ DATABASE_URL, PORT }) => {
+    const db = new URL(DATABASE_URL)
+    // A database on another host leaves the local Postgres on 5433, where it always ran.
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(db.hostname)
+    process.stdout.write(PORT + ' ' + (local ? db.port || 5432 : 5433))
+  })"
 }
-server_port() { server_env env.PORT; }
-postgres_port() { server_env "new URL(env.DATABASE_URL).port || 5432"; }
 
 wait_until() { # wait_until <seconds> <command…>
   local deadline=$((SECONDS + $1))
@@ -33,8 +36,9 @@ port_free() { ! lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 
 # Matched on this app's entry path too, so another service on the port is left alone.
 stop_server() {
-  local pid
-  for pid in $(lsof -t -nP -iTCP:"$(server_port)" -sTCP:LISTEN 2>/dev/null); do
+  local pid port
+  read -r port _ <<<"$(server_ports)"
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
     if ps -p "$pid" -o args= 2>/dev/null | grep -qF "$SERVER_ENTRY"; then
       log "Stopping the wallet-less server (pid $pid)"
       kill "$pid" 2>/dev/null || true
@@ -43,9 +47,9 @@ stop_server() {
 }
 
 start() {
-  local port pg_port
-  port="$(server_port)"
-  pg_port="$(postgres_port)"
+  local ports port pg_port
+  ports="$(server_ports)"
+  read -r port pg_port <<<"$ports"
 
   log "Starting Postgres (server/compose.yaml) -> localhost:$pg_port"
   WL_POSTGRES_PORT="$pg_port" "${COMPOSE[@]}" up -d --wait \

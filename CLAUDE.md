@@ -467,8 +467,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
     into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's origin when `.env`
     leaves it unset
   - the wallet-less server: `WL_SERVER_PORT`, 3040
-  - the wallet-less Postgres: the port in `DATABASE_URL`, 5433, which `scripts/server.sh` reads
-    through `server/src/env.ts` and hands `server/compose.yaml`
+  - the wallet-less Postgres: the port in a localhost `DATABASE_URL`, 5433, which
+    `scripts/server.sh` reads through `server/src/env.ts` and hands `server/compose.yaml`
 
   `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and `status`
   find what `up` started, and a value the caller exported beats `.env`. A default lives in the

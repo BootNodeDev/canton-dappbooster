@@ -316,8 +316,7 @@ port_holder() { # port_holder <port>
   echo "pid $pid (${cwd:-unknown cwd})"
 }
 
-# A value the caller exported, else the one in $ENV_FILE, read in a subshell so this shell keeps
-# the caller's.
+# The caller's value, else $ENV_FILE's, which a subshell reads so this shell keeps the caller's.
 env_value() { # env_value <key>
   if [ -n "${!1:-}" ] || [ ! -f "$ENV_FILE" ]; then
     printf '%s' "${!1:-}"

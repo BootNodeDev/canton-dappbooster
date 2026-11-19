@@ -57,7 +57,6 @@ const executable = (file, body) => {
   fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
 }
 
-// Docker, the ports and the LocalNet tool are all doubles, so no test reaches a real stack.
 const appAfterSpliceBump = ({ contract = false } = {}) => {
   const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
   after(() => fs.rmSync(app, { recursive: true, force: true }))

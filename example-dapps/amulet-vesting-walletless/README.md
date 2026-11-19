@@ -117,7 +117,7 @@ When something else holds a port, set its variable in `.env`. Run `pnpm stack do
 | --- | --- | --- |
 | `DAPP_PORT` | the dApp dev server | 3012 |
 | `WL_SERVER_PORT` | the server, which the dev server proxies `/api` to | 3040 |
-| `DATABASE_URL` | the Postgres `pnpm stack:up` starts, the port in the URL | 5433 |
+| `DATABASE_URL` | the Postgres `pnpm stack:up` starts, the port in a localhost URL | 5433 |
 | `VITE_WALLET_GATEWAY_URL` | Wallet Gateway, which `pnpm stack up` starts and this app never calls | 3030 |
 
 The local network's own ports do not move.
