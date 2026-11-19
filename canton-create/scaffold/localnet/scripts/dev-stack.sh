@@ -42,8 +42,9 @@
 # `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
 # on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
 # stops the LocalNet, keeping its volumes. `reset` drops them. After a move to a newer Splice,
-# `up` keeps the old ledger and warns, pointing at the upgrade guide, on every run until one
-# finishes or `reset` drops the ledger.
+# `up` keeps the old ledger, moving its Postgres data first when the release runs a newer
+# Postgres, and warns, pointing at the upgrade guide, on every run until one finishes or
+# `reset` drops the ledger.
 
 set -euo pipefail
 
@@ -155,7 +156,7 @@ report_error() { # report_error <message>
 die() { report_error "$@"; exit 1; }
 
 # Keep in step with the `step` calls in up(), which are the list.
-STEP_TOTAL=$((9 + 2 * HAS_CONTRACT))
+STEP_TOTAL=$((10 + 2 * HAS_CONTRACT))
 STEP_INDEX=0
 STEP_NAME=stack
 STEP_START=$SECONDS
@@ -313,6 +314,13 @@ port_holder() { # port_holder <port>
   echo "pid $pid (${cwd:-unknown cwd})"
 }
 
+# Compose reports only that a dependency failed; Postgres's own reason is in its log.
+postgres_exited() {
+  if [ "$(docker inspect --format '{{.State.Status}}' postgres 2>/dev/null)" = exited ]; then
+    printf " Postgres exited: see 'docker logs postgres'."
+  fi
+}
+
 # Returns non-zero rather than exiting, so `down` still stops the host processes and
 # `status` still prints the ports when the LocalNet itself is unreachable.
 localnet() { # localnet <start|stop|reset|status|logs> [args…]
@@ -457,11 +465,15 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
   node "$SCRIPT_DIR/localnet-config.mjs" "$LOCALNET_DIR" \
     || die "Could not prepare the LocalNet config in $LOCALNET_DIR."
 
+  step postgres "Checking the LocalNet's Postgres data..."
+  node "$SCRIPT_DIR/localnet-postgres.mjs" "$LOCALNET_DIR" "$ROOT_DIR/node_modules/.bin/canton-barebones" \
+    || die "Could not move the LocalNet's Postgres data to the version this Splice release runs (see above)."
+
   # `canton-barebones start` is `docker compose up -d`, so it returns as soon as the
   # containers exist; Splice takes minutes more to answer, and the DAR upload below
   # would die on a refused connection without the wait that follows.
   step localnet "Starting the LocalNet from $LOCALNET_DIR..."
-  localnet start || die "LocalNet did not start."
+  localnet start || die "LocalNet did not start.$(postgres_exited)"
 
   step json-api "Waiting for the app-user JSON API on $JSON_API_URL..."
   wait_for_http 300 "$JSON_API_URL/v2/version" "app-user JSON API" any \
@@ -595,7 +607,8 @@ reset() {
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
   log "Dropping the LocalNet and its volumes..."
   localnet reset || die "canton-barebones reset did not finish."
-  rm -f -- "$UPGRADE_MARKER"
+  # A dump a stopped Postgres move left belongs to the dropped ledger; its backup volume stays.
+  rm -f -- "$UPGRADE_MARKER" "$LOCALNET_DIR"/postgres-*.sql*
   # Its stores list parties and sessions that only the dropped ledger had.
   rm -rf -- "$ROOT_DIR/.wallet-gateway"
   log "Dropped the Wallet Gateway's stores too. Run 'up' to start on a fresh ledger."

@@ -17,7 +17,7 @@ It needs Docker running and pnpm, plus `dpm` when the app has a contract.
 
 In a dApp that connects a wallet, then pick Wallet Gateway in its picker and log in with the client secret `unsafe`. Create a party in the gateway.
 
-`pnpm stack up` mints `CANTON_BACKEND_TOKEN` into `.env` when it is missing. When the project has a contract, it builds and deploys it. It then runs the `bootstrap` script if there is one, and the `stack:up` script, which starts anything else the app needs. `pnpm stack down` runs `stack:down`. When the pinned Splice release has moved to a newer one and the old ledger is still in Docker, `pnpm stack up` upgrades it in place: the ledger keeps the Amulet its DSO voted in last, and the contract builds against that one. `splice-upgrade.md` moves it to the new release's Amulet.
+`pnpm stack up` mints `CANTON_BACKEND_TOKEN` into `.env` when it is missing. When the project has a contract, it builds and deploys it. It then runs the `bootstrap` script if there is one, and the `stack:up` script, which starts anything else the app needs. `pnpm stack down` runs `stack:down`. When the pinned Splice release has moved to a newer one and the old ledger is still in Docker, `pnpm stack up` upgrades it in place: the ledger keeps the Amulet its DSO voted in last, and the contract builds against that one. When the new release runs a newer Postgres, `pnpm stack up` first moves the ledger's data to it and keeps the old data in a backup volume. `splice-upgrade.md` moves the ledger to the new release's Amulet.
 
 Each step is also a script of its own: `pnpm mint-token` and `pnpm wallet-gateway`.
 

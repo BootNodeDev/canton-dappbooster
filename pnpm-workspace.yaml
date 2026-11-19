@@ -24,3 +24,7 @@ allowBuilds:
 
 overrides:
   '@types/node': ^24.0.0
+
+# Ours, so its release is wanted the day it ships rather than after pnpm's minimum release age.
+minimumReleaseAgeExclude:
+  - '@bootnodedev/canton-barebones'

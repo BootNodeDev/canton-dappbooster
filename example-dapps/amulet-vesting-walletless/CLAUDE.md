@@ -58,5 +58,6 @@ Deltas for this app only are below.
   means the proposal cancel and reject. It also means the amount-reservation hint, because a grant
   here locks its Amulet at accept, not at proposal.
 - **`bootstrap` and `server/src/ledger/config.ts` agree on the `vesting-operator` hint.** The
-  bootstrap reuses that party and its factory, and the server matches `vesting-operator::` only, so
-  the stamped operators the wallet example creates on a shared LocalNet are never picked up.
+  bootstrap reuses that party and its factory, replacing one on another package than the
+  preferred, and the server matches `vesting-operator::` only, so the stamped operators the wallet
+  example creates on a shared LocalNet are never picked up.

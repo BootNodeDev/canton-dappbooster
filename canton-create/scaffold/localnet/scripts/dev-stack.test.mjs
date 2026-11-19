@@ -65,14 +65,20 @@ describe('dev-stack.sh after an upgrade in place', () => {
     const bin = path.join(app, 'bin')
     executable(
       path.join(bin, 'docker'),
-      '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\nprintf ledger',
+      '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
+        '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
     )
     executable(path.join(bin, 'curl'), 'printf 200')
     executable(path.join(bin, 'lsof'), '[ -n "$PORTS_HELD" ] || exit 1\necho 4242')
     executable(path.join(bin, 'dpm'), 'exit 0')
+    const splice = path.join(app, 'splice')
+    fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
+    fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
+    fs.writeFileSync(path.join(splice, 'env/common.env'), 'DB_USER=cnadmin\n')
     executable(
       path.join(app, 'node_modules/.bin/canton-barebones'),
-      '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
+      `[ "$1" != setup ] || { printf '{"localnetDir":"${splice}"}'; exit 0; }\n` +
+        '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
     )
     fs.writeFileSync(
       path.join(app, 'package.json'),
@@ -125,6 +131,21 @@ describe('dev-stack.sh after an upgrade in place', () => {
     assert.match(first.stdout, upgradedInPlace)
     assert.equal(second.status, 1)
     assert.match(second.stdout, upgradedInPlace)
+  })
+
+  it('names Postgres when it is what kept the LocalNet from starting', () => {
+    const stack = appAfterSpliceBump()
+
+    const failed = stack.run(['up'], {
+      env: { CANTON_BAREBONES_STATUS: '1', POSTGRES_EXITED: '1' },
+    })
+    const other = stack.run(['up'], localnetDoesNotStart)
+
+    assert.match(
+      failed.stderr,
+      /LocalNet did not start\. Postgres exited: see 'docker logs postgres'\./,
+    )
+    assert.doesNotMatch(other.stderr, /Postgres exited/)
   })
 
   it('warns below the summary of the first up that finishes, and not after it', () => {
@@ -218,6 +239,19 @@ describe('dev-stack.sh after an upgrade in place', () => {
     assert.match(failed.stderr, /Docker daemon not reachable/)
     assert.doesNotMatch(failed.stderr, upgradedInPlace)
     assert.deepEqual(warnedOn(events(failed.stdout)), [])
+  })
+
+  it('drops the dump of a stopped Postgres move along with the ledger', () => {
+    const stack = appAfterSpliceBump()
+    const dump = path.join(stack.app, 'localnet', 'postgres-14.sql')
+    fs.writeFileSync(dump, '-- dump\n')
+    fs.writeFileSync(`${dump}.partial`, '-- dump\n')
+
+    const reset = stack.run(['reset'])
+
+    assert.equal(reset.status, 0)
+    assert.ok(!fs.existsSync(dump))
+    assert.ok(!fs.existsSync(`${dump}.partial`))
   })
 
   it('keeps warning after a reset that fails to drop the ledger', () => {

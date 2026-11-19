@@ -16,6 +16,7 @@ internal seams are in [`architecture.md`](architecture.md). Deltas for this app 
     `splice-amulet` gained after 0.1.19
   - `source: .` in `daml.yaml`
   - data-dependencies on the version-less DARs in `deps/`
+  - `--target=2.3` in `daml.yaml`, the LF version Splice 0.10 builds its DARs at
 - `amulet-vesting-walletless` carries an identical copy of `daml/`, so a change goes to both in the
   same commit. Both upload `amulet-vesting` at the same version to one LocalNet, and a participant
   refuses a second package at a name and version it already holds.

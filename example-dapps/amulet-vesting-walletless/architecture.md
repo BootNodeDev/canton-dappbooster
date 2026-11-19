@@ -187,11 +187,12 @@ server started counts on the next request. `GET /api/status` reports either.
 
 `scripts/bootstrap-vesting.mjs` creates the operator and the factory only where they are missing,
 under a stable hint, because `pnpm stack up` runs it on every start and the LocalNet keeps its
-ledger across a `down`. It looks the operator up by its full id, the hint under the participant's
-namespace from `/v2/parties/participant-id`, because listing `/v2/parties` would not finish on a
-public network. With that exact id, and the server's match on the `::` separator, neither picks up
-the stamped `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates on a shared
-LocalNet. Both examples build the same DAR, so either one's upload serves both.
+ledger across a `down`. It replaces a factory on another package than the preferred one, since the
+server builds on the factory's package. It looks the operator up by its full id, the hint under the
+participant's namespace from `/v2/parties/participant-id`, because listing `/v2/parties` would not
+finish on a public network. With that exact id, and the server's match on the `::` separator,
+neither picks up the stamped `vesting-operator-<stamp>` parties amulet-vesting's bootstrap creates
+on a shared LocalNet. Both examples build the same DAR, so either one's upload serves both.
 
 ## The hosted demo
 
