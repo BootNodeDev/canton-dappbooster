@@ -318,7 +318,7 @@ port_holder() { # port_holder <port>
 
 # The caller's value, else $ENV_FILE's, which a subshell reads so this shell keeps the caller's.
 env_value() { # env_value <key>
-  if [ -n "${!1:-}" ] || [ ! -f "$ENV_FILE" ]; then
+  if [ -n "${!1+set}" ] || [ ! -f "$ENV_FILE" ]; then
     printf '%s' "${!1:-}"
   else
     ( set +eu; source "$ENV_FILE" >/dev/null 2>&1; printf '%s' "${!1:-}" )

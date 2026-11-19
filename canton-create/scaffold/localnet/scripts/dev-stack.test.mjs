@@ -57,21 +57,23 @@ const executable = (file, body) => {
   fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
 }
 
+const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-bin-'))
+after(() => fs.rmSync(bin, { recursive: true, force: true }))
+executable(
+  path.join(bin, 'docker'),
+  '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
+    '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
+)
+executable(path.join(bin, 'curl'), 'printf 200')
+executable(
+  path.join(bin, 'lsof'),
+  '[ -z "$LSOF_LOG" ] || echo "$*" >>"$LSOF_LOG"\n[ -n "$PORTS_HELD" ] || exit 1\necho 4242',
+)
+executable(path.join(bin, 'dpm'), 'exit 0')
+
 const appAfterSpliceBump = ({ contract = false } = {}) => {
   const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
   after(() => fs.rmSync(app, { recursive: true, force: true }))
-  const bin = path.join(app, 'bin')
-  executable(
-    path.join(bin, 'docker'),
-    '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
-      '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
-  )
-  executable(path.join(bin, 'curl'), 'printf 200')
-  executable(
-    path.join(bin, 'lsof'),
-    '[ -z "$LSOF_LOG" ] || echo "$*" >>"$LSOF_LOG"\n[ -n "$PORTS_HELD" ] || exit 1\necho 4242',
-  )
-  executable(path.join(bin, 'dpm'), 'exit 0')
   const splice = path.join(app, 'splice')
   fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
   fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
@@ -125,10 +127,11 @@ describe('dev-stack.sh ports', () => {
       'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=3112\n' +
         'VITE_WALLET_GATEWAY_URL=http://localhost:3031/api/v0/dapp\n',
     )
-  const heldWarnings = (run) =>
+  const heldPorts = (run) =>
     events(run.stdout)
       .at(-1)
       .warnings.filter((warning) => warning.startsWith('Port '))
+      .map((warning) => warning.split(' ')[1])
   const portsAsked = (log) => [
     ...new Set([...fs.readFileSync(log, 'utf8').matchAll(/-iTCP:(\d+)/g)].map(([, port]) => port)),
   ]
@@ -139,10 +142,7 @@ describe('dev-stack.sh ports', () => {
 
     const held = stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } })
 
-    assert.deepEqual(
-      heldWarnings(held).map((warning) => warning.split(' ')[1]),
-      ['3031', '3112'],
-    )
+    assert.deepEqual(heldPorts(held), ['3031', '3112'])
   })
 
   it('lets a port the caller exported beat the one in .env', () => {
@@ -157,25 +157,25 @@ describe('dev-stack.sh ports', () => {
       },
     })
 
-    assert.deepEqual(
-      heldWarnings(held).map((warning) => warning.split(' ')[1]),
-      ['4031', '4112'],
-    )
+    assert.deepEqual(heldPorts(held), ['4031', '4112'])
   })
 
-  it('falls back to 3012 and 3030 when .env names neither port', () => {
-    const stack = appAfterSpliceBump()
+  it('takes an empty port as the default, whether .env or the caller leaves it empty', () => {
+    const emptyInEnv = appAfterSpliceBump()
     fs.writeFileSync(
-      path.join(stack.app, '.env'),
-      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nVITE_WALLET_GATEWAY_URL=http://localhost/api/v0/dapp\n',
+      path.join(emptyInEnv.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nVITE_WALLET_GATEWAY_URL=\n',
     )
+    const emptyFromCaller = appAfterSpliceBump()
+    customPorts(emptyFromCaller)
 
-    const held = stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } })
+    const fromEnv = emptyInEnv.run(['status'])
+    const fromCaller = emptyFromCaller.run(['status'], {
+      env: { DAPP_PORT: '', VITE_WALLET_GATEWAY_URL: '' },
+    })
 
-    assert.deepEqual(
-      heldWarnings(held).map((warning) => warning.split(' ')[1]),
-      ['3030', '3012'],
-    )
+    assert.match(fromEnv.stdout, /Dev-server ports 3012 and 3030:/)
+    assert.match(fromCaller.stdout, /Dev-server ports 3012 and 3030:/)
   })
 
   for (const action of ['down', 'status']) {
