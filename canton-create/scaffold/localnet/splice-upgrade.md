@@ -18,9 +18,8 @@ The ledger keeps the Amulet its DSO voted in last, and your contract builds agai
    ```
 
 3. Open http://sv.localhost:4000 as `ledger-api-user`. Under Governance, pick Initiate Proposal, then Set Amulet Rules Configuration and Next. Set each Daml model version to the listed one (`amulet` is `splice-amulet`, and so on), pick Make effective at threshold, add a summary and a URL, then Review Proposal and Submit Proposal.
-4. `pnpm stack down` and `pnpm stack up`, so the validators vet the new versions.
-5. Bump `version` in `daml/daml.yaml`: built against the new Amulet, the contract is a new package.
-6. `pnpm stack down` and `pnpm stack up` again, to build and deploy it.
+4. Bump `version` in `daml/daml.yaml`: built against the new Amulet, the contract is a new package. Its `--target` has to be at least the LF version of the new Splice DARs (2.3 as of Splice 0.10).
+5. `pnpm stack down` and `pnpm stack up`, so the validators vet the new versions and the contract builds and deploys against them.
 
 > [!IMPORTANT]
 > Within 24 hours Splice unvets the old packages. From then on, name `AmuletRules` by package, `#splice-amulet:Splice.AmuletRules:AmuletRules`, not by the template id Scan returns.
