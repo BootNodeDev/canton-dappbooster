@@ -44,7 +44,7 @@ Current distribution:
 | root | yes | shim | yes | yes | Canonical repo rules and cross-component seams. `CONTRIBUTING.md` covers working on the repo. |
 | `canton-connect/` | yes | shim | yes | yes, plus `architecture/` | Public hook API, the machine-owned lifecycle, the picker/adapter seams; pages for the connection machine and the popup close guard. |
 | `canton-create/` | yes | shim | yes | yes | The `create-canton-dappbooster` installer. `CLAUDE.md` carries the flag rule, the scaffold rules and the demo recording, and `architecture.md` how a run and the scaffold layers fit together. A project reads the `README.md` files in `scaffold/`: `starter/`'s whole, and `daml-tooling/`'s and `localnet/`'s as sections appended to the app's. `localnet/` also ships `splice-upgrade.md`. |
-| `example-dapps/` | no | shim | yes | no | The rules every example shares: what an example is, the page-owns-its-components layout, the shared pieces, the naming an agent would otherwise get wrong, and the checklist for adding one. No README, since each example is a unit of its own. |
+| `example-dapps/` | yes | shim | yes | no | The rules every example shares: what an example is, the page-owns-its-components layout, the shared pieces, the naming an agent would otherwise get wrong, and the checklist for adding one. Its README lists the examples, how to install each through the installer, and the commands that run them in this repo. Nothing publishes it, since a project gets its example's own README. |
 | `example-dapps/amulet-vesting/` | yes | shim | yes | yes | Canton Coin vesting example, published on its own. `CLAUDE.md` carries its deltas, and architecture.md its internal seams. Its single Daml package (`amulet-vesting`) sits in `daml/` with a `README.md` of its own. Its `CLAUDE.md` names the repository and commit `daml/` came from. |
 | `example-dapps/amulet-vesting-walletless/` | yes | shim | yes | yes | The Canton Coin vesting example with accounts instead of a wallet, published on its own. `CLAUDE.md` carries the server's rules, and architecture.md the session, the API and the ledger seams. Its `daml/` is an identical copy of `amulet-vesting`'s. |
 | `example-dapps/token-vesting/` | yes | shim | yes | yes | Token vesting example, published on its own. It started as a copy of the Amulet one; its `CLAUDE.md` carries the `api/` and `vendor/` rules. Its Daml packages are binaries in `vendor/`, and its `architecture.md` records their releases and checksums. |
@@ -89,6 +89,9 @@ Step 3 follows the kind of unit:
   not apply, and a layer's starts at `##` (see `canton-create/CLAUDE.md`).
 
 The root `README.md` is exempt: a short welcome that points to the docs, edited by hand only.
+`example-dapps/README.md` is exempt too. It covers a folder of packages, not a package, so it
+carries no blockquote and no package sections. It lists the examples, how to install each, and how
+to work on them.
 
 A caveat a reader could miss in running text goes in a GitHub alert, one fact per block. GitHub and
 TypeDoc render the five kinds; npm shows the tag as text, which is accepted.
