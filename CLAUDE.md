@@ -459,20 +459,23 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   reading options at a `--`.
 - **The app's `.env` sets every port this repo owns, each with a default.** The LocalNet's ports
   belong to `canton-barebones` and Splice, and do not move.
-  - the dApp dev server: `DAPP_PORT`, 3012, which each `vite.config.ts` reads with `strictPort`
-  - Wallet Gateway: the port in `VITE_WALLET_GATEWAY_URL`, 3030. `dev-stack.sh` passes it as
-    `--port`, so `server.port` in `wallet-gateway.config.json` only serves a run by hand, and
-    `allowedOrigins` is `"*"` because the dApp's origin moves with `DAPP_PORT`
-  - token-vesting's registry: the port in `VITE_REGISTRY_URL`, 3013, which its bootstrap writes
-    into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's origin when `.env`
-    leaves it unset
-  - the wallet-less server: `WL_SERVER_PORT`, 3040
-  - the wallet-less Postgres: the port in a localhost `DATABASE_URL`, 5433, which
-    `scripts/server.sh` reads through `server/src/env.ts` and hands `server/compose.yaml`
-
-  `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and `status`
-  find what `up` started, and a value the caller exported beats `.env`. A default lives in the
-  `.env.example` files and in each fallback in the code, so moving one moves them all.
+  - The dApp dev server listens on `DAPP_PORT`, 3012 by default, which each `vite.config.ts`
+    reads with `strictPort`.
+  - Wallet Gateway listens on the port in `VITE_WALLET_GATEWAY_URL`, 3030 by default.
+    `dev-stack.sh` passes it as `--port`, so `server.port` in `wallet-gateway.config.json` only
+    serves a run by hand. `allowedOrigins` is `"*"` because the dApp's origin moves with
+    `DAPP_PORT`.
+  - token-vesting's registry listens on the port in `VITE_REGISTRY_URL`, 3013 by default, which
+    its bootstrap writes into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's
+    origin when `.env` leaves it unset.
+  - The wallet-less server listens on `WL_SERVER_PORT`, 3040 by default.
+  - The wallet-less Postgres listens on the port in a localhost `DATABASE_URL`, 5433 by default.
+    `scripts/server.sh` reads it through `server/src/env.ts` and hands it to
+    `server/compose.yaml`.
+  - `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and
+    `status` find what `up` started. A value the caller exported beats `.env`.
+  - A default lives in the `.env.example` files and in each fallback in the code, so moving one
+    moves them all.
 - **A new workspace package gets a line in both pre-commit configs, in the same change.**
   `.lintstagedrc.format.mjs` lists every folder Biome formats, and `.lintstagedrc.mjs` maps each
   package's files to its tests. Neither finds a package by itself, and CI still passing hides the

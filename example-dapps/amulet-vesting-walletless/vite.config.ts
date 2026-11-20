@@ -11,6 +11,8 @@ export default defineConfig(({ mode }) => {
     fileURLToPath(new URL('.', import.meta.url)),
     '',
   )
+  const serverPort = WL_SERVER_PORT === undefined || WL_SERVER_PORT === '' ? '3040' : WL_SERVER_PORT
+  const dappPort = DAPP_PORT === undefined || DAPP_PORT === '' ? '3012' : DAPP_PORT
 
   return {
     plugins: [react(), tailwindcss()],
@@ -21,9 +23,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: Number(DAPP_PORT || 3012),
+      port: Number(dappPort),
       // Same origin, so the session cookie rides along without any CORS.
-      proxy: { '/api': `http://localhost:${WL_SERVER_PORT || 3040}` },
+      proxy: { '/api': `http://localhost:${serverPort}` },
       strictPort: true,
     },
     test: {

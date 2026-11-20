@@ -14,7 +14,7 @@ die() {
 }
 
 # Read through server/src/env.ts, so the script and the server can never disagree on a port.
-server_ports() { # prints <server port> <local Postgres port>
+server_ports() {
   node -e "import('$APP_DIR/server/src/env.ts').then(({ DATABASE_URL, PORT }) => {
     const db = new URL(DATABASE_URL)
     // A database on another host leaves the local Postgres on 5433, where it always ran.
