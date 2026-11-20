@@ -1,14 +1,13 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
-import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
 import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
+import { GrantRow } from '@/components/GrantRow'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { Pills } from '@/components/Pills'
@@ -32,14 +31,14 @@ import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
 import { DBT } from '@/utils/tokens'
 
-interface GrantRow {
+interface Row {
   derived: GrantDerived
   grant: Grant
 }
 
 const FILTERS = [
   { value: 'all', label: 'All', match: () => true },
-  { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
+  { value: 'claimable', label: 'Claimable', match: ({ derived }) => derived.canClaim },
   { value: 'in_cliff', label: 'In cliff', match: ({ derived }) => derived.status === 'in_cliff' },
   {
     value: 'not_started',
@@ -56,7 +55,7 @@ const FILTERS = [
     label: 'Milestone',
     match: ({ grant }) => grant.schedule.curve.kind === 'milestone',
   },
-] as const satisfies readonly { label: string; match: (row: GrantRow) => boolean; value: string }[]
+] as const satisfies readonly { label: string; match: (row: Row) => boolean; value: string }[]
 
 type Filter = (typeof FILTERS)[number]['value']
 
@@ -89,7 +88,7 @@ export const Dashboard = (): React.JSX.Element => {
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
   const [justClaimed, setJustClaimed] = useState<string | null>(null)
 
-  const rows = useMemo<GrantRow[]>(() => {
+  const rows = useMemo<Row[]>(() => {
     const mine = grants.filter((g) =>
       role === 'receiver' ? g.receiver === partyId : g.creator === partyId,
     )
@@ -123,7 +122,7 @@ export const Dashboard = (): React.JSX.Element => {
 
   const firstRead = loading && grants.length === 0
   const filters = FILTERS.map((entry) => ({ ...entry, count: rows.filter(entry.match).length }))
-  const claimableCount = rows.filter(({ derived }) => isPositive(derived.claimable)).length
+  const claimableCount = filters.find((entry) => entry.value === 'claimable')?.count ?? 0
 
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
@@ -225,26 +224,13 @@ export const Dashboard = (): React.JSX.Element => {
             </span>
           </div>
           {myClaims.map((claim) => (
-            <Card
+            <GrantRow
               key={claim.id}
-              className={cn(
-                'flex items-center justify-between gap-4 p-5',
-                claim.id === justClaimed && HIGHLIGHT,
-              )}
-            >
-              <div>
-                <div className="text-base font-bold text-fg">{claim.title}</div>
-                <p className="mt-1 text-sm text-fg-muted">{claim.note}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-[0.8rem] font-semibold text-fg-muted">Claimable</div>
-                  <AmountDisplay
-                    value={claimAvailable(claim)}
-                    markSize="small"
-                    className="text-lg font-semibold text-fg"
-                  />
-                </div>
+              className={cn(claim.id === justClaimed && HIGHLIGHT)}
+              title={claim.title}
+              detail={<span className="text-sm text-fg-muted">{claim.note}</span>}
+              figure={{ label: 'Claimable', amount: claimAvailable(claim) }}
+              action={
                 <Button
                   size="sm"
                   onClick={() => openResidual(claim)}
@@ -252,8 +238,8 @@ export const Dashboard = (): React.JSX.Element => {
                 >
                   Claim
                 </Button>
-              </div>
-            </Card>
+              }
+            />
           ))}
         </section>
       )}

@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type PointerEvent,
   type ReactNode,
-  useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -72,10 +72,7 @@ export const MobileMenu = ({
   const { mode, setMode } = useTheme()
   const sheetRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
-  const attach = useCallback((sheet: HTMLDivElement | null) => {
-    sheetRef.current = sheet
-    return watchOverflow(sheet)
-  }, [])
+  useEffect(() => (open ? watchOverflow(sheetRef.current) : undefined), [open])
 
   // A drag leaves `animation: none` inline, which would otherwise outrank the leave animation.
   const close = (): void => {
@@ -176,7 +173,7 @@ export const MobileMenu = ({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            ref={attach}
+            ref={sheetRef}
           >
             <Dialog.Title className="sr-only">Menu</Dialog.Title>
             <div className="pt-2 pb-2" data-grip>
@@ -198,9 +195,7 @@ export const MobileMenu = ({
                     >
                       {link.label}
                       <span className="flex-1" />
-                      {link.count !== undefined && link.count > 0 && (
-                        <NavCount count={link.count} />
-                      )}
+                      <NavCount count={link.count} />
                     </NavLink>
                   </li>
                 ))}

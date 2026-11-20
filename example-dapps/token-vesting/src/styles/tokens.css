@@ -17,6 +17,7 @@
   --cnc-warning-subtle: #fde8da;
   --cnc-danger: #b42318;
   --cnc-danger-subtle: #fde4e1;
+  --cnc-overlay: rgb(22 25 30 / 0.5);
 
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
@@ -24,7 +25,7 @@
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
   --border-strong: var(--cnc-border-strong);
-  --scrim: rgb(22 25 30 / 0.5);
+  --scrim: var(--cnc-overlay);
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
@@ -44,16 +45,13 @@
   --danger-soft: var(--cnc-danger-subtle);
 
   /* brand */
-  --accent: #f2a30f;
-  --accent-strong: #8f5600;
-  --pink: #f08a00;
-  --pink-strong: #b45309;
+  --accent: var(--primary);
+  --accent-strong: var(--primary-strong);
   --gradient-brand: linear-gradient(135deg, #ffcf4a, #f08a00);
 
   /* effects */
-  --gradient-text: linear-gradient(120deg, #b45309, #f08a00 55%, #f2a30f);
   --glow: 0 10px 26px rgba(242, 163, 15, 0.35);
-  --shadow-card: none;
+  --shadow-card: 0 0 #0000;
   --shadow-popover: 0 18px 36px -12px rgba(22, 25, 30, 0.25);
   --ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-strong);
   --page-radial: none;
@@ -84,14 +82,14 @@
   --hero-muted: #aab1bc;
   --hero-figure: #ffc23d;
   --hero-dot: #ffc23d;
-  --hero-shadow: none;
+  --hero-shadow: 0 0 #0000;
 
   /* schedule */
   --bar-track: #e5e7eb;
   --bar-claimed: #bfc4cc;
-  --bar-claimable: #f2a30f;
+  --bar-claimable: var(--primary);
   --chart-line: #e08e00;
-  --chart-fill: #f2a30f;
+  --chart-fill: var(--primary);
 }
 
 [data-theme="dark"] {
@@ -112,11 +110,10 @@
   --cnc-warning-subtle: #33200f;
   --cnc-danger: #ff7b6e;
   --cnc-danger-subtle: #351613;
+  --cnc-overlay: rgb(5 6 8 / 0.65);
 
-  --scrim: rgb(5 6 8 / 0.65);
   --fg-soft: #868d99;
   --primary-strong: #ffc65a;
-  --accent-strong: #ffc65a;
 
   --glow: 0 10px 26px rgba(245, 176, 46, 0.35);
   --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.75);
@@ -135,9 +132,7 @@
 
   --bar-track: #262a32;
   --bar-claimed: #4a505b;
-  --bar-claimable: #f5b02e;
   --chart-line: #ffc04d;
-  --chart-fill: #f5b02e;
 }
 
 :root {
