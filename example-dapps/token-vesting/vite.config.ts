@@ -7,8 +7,6 @@ import { defineConfig } from 'vitest/config'
 // biome-ignore lint/style/noRestrictedImports: see above; both halves of this specifier are forced.
 import { parseEnv } from './src/utils/env.ts'
 
-// The empty prefix loads every key in `.env`, so only what `parseEnv` returns may be
-// defined back, never the loaded object.
 const ASSET_LIST_ROUTE = '/assets.json'
 const PUBLISHED_LIST =
   'https://raw.githubusercontent.com/canton-network/wallet/main/api-specs/assets.json'
@@ -36,12 +34,13 @@ const localnetAssets = (): Plugin => ({
 
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('.', import.meta.url))
+  // The empty prefix loads every key in `.env`, so only what `parseEnv` returns is defined back.
+  const loaded = loadEnv(mode, envDir, '')
   // A build that is going to be served takes no localhost fallback: an unset key fails here rather
   // than shipping a bundle that points at the viewer's own machine. The deployer declares which kind
   // of build this is, `vercel.json` for the one project that serves this bundle, because nothing
   // here can tell: `mode` is production for CI's compile check too, which has no `.env` and deploys
   // nothing, while a vendor's own variable leaves every other host silently on the fallback.
-  const loaded = loadEnv(mode, envDir, '')
   const env = parseEnv(loaded, process.env.DEPLOYED_BUILD !== '1')
 
   return {

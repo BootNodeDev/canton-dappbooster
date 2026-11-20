@@ -475,7 +475,8 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
     its default from the port: each app's `src/utils/env.ts`, the starter's `vite.config.ts` and
     the wallet-less `server/src/env.ts`. No script parses a port out of a URL.
   - `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and
-    `status` find what `up` started. A value the caller exported beats `.env`.
+    `status` find what `up` started. A value the caller exported beats `.env`, and `up` exports
+    both ports to what it starts, so Vite and `registry.sh` never read different ones.
   - A default lives in the `.env.example` files and in each fallback in the code, so moving one
     moves them all.
 - **A new workspace package gets a line in both pre-commit configs, in the same change.**

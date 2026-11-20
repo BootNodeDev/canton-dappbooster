@@ -85,7 +85,12 @@ const appAfterSpliceBump = ({ contract = false } = {}) => {
   )
   fs.writeFileSync(
     path.join(app, 'package.json'),
-    JSON.stringify({ scripts: { 'wallet-gateway': 'true', dev: 'echo ready in 0ms' } }),
+    JSON.stringify({
+      scripts: {
+        'wallet-gateway': 'true',
+        dev: 'echo ready in 0ms on $DAPP_PORT and $WALLET_GATEWAY_PORT',
+      },
+    }),
   )
   if (contract) {
     fs.mkdirSync(path.join(app, 'daml'))
@@ -157,6 +162,16 @@ describe('dev-stack.sh ports', () => {
     })
 
     assert.deepEqual(heldPorts(held), ['4031', '4112'])
+  })
+
+  it('hands the dev server the ports .env sets', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    stack.run(['up'])
+
+    const log = fs.readFileSync(path.join(stack.app, '.dev-stack/dapp-dev.log'), 'utf8')
+    assert.match(log, /ready in 0ms on 3112 and 3031/)
   })
 
   it('takes an empty port as the default, whether .env or the caller leaves it empty', () => {

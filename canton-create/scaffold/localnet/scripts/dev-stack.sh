@@ -316,20 +316,17 @@ port_holder() { # port_holder <port>
   echo "pid $pid (${cwd:-unknown cwd})"
 }
 
-# The caller's value, else $ENV_FILE's, which a subshell reads so this shell keeps the caller's.
-env_value() { # env_value <key>
-  if [ -n "${!1+set}" ] || [ ! -f "$ENV_FILE" ]; then
-    printf '%s' "${!1:-}"
-  else
-    ( set +eu; source "$ENV_FILE" >/dev/null 2>&1; printf '%s' "${!1:-}" )
-  fi
+# The caller's value, else $ENV_FILE's, else the default; a subshell, so this shell keeps the caller's.
+env_value() { # env_value <key> <default>
+  (
+    [ -n "${!1+set}" ] || { set +eu; source "$ENV_FILE"; } >/dev/null 2>&1
+    printf '%s' "${!1:-$2}"
+  )
 }
 
 read_ports() {
-  APP_PORT="$(env_value DAPP_PORT)"
-  APP_PORT="${APP_PORT:-3012}"
-  GW_PORT="$(env_value WALLET_GATEWAY_PORT)"
-  GW_PORT="${GW_PORT:-3030}"
+  APP_PORT="$(env_value DAPP_PORT 3012)"
+  GW_PORT="$(env_value WALLET_GATEWAY_PORT 3030)"
 }
 
 # Compose reports only that a dependency failed; Postgres's own reason is in its log.
@@ -467,14 +464,15 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
     log "Wrote CANTON_BACKEND_TOKEN to $ENV_FILE."
   fi
 
-  local preset
-  # Put back after the source, so what the caller exported beats $ENV_FILE here and in each child.
-  preset="$(declare -p CANTON_JSON_API_URL DAPP_PORT WALLET_GATEWAY_PORT 2>/dev/null || true)"
+  # Before the source, which would overwrite a port the caller exported.
+  read_ports
+  # A caller-exported value wins, as in deploy-dar.sh and mint-token.mjs.
+  local preset_json_api_url="${CANTON_JSON_API_URL:-}"
   # shellcheck disable=SC1091
   source "$ENV_FILE"
-  eval "$preset"
-  JSON_API_URL="${CANTON_JSON_API_URL:-http://localhost:2975}"
-  read_ports
+  JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
+  # So Vite and registry.sh use the ports this script waits on, whatever else they load.
+  export DAPP_PORT="$APP_PORT" WALLET_GATEWAY_PORT="$GW_PORT"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
@@ -589,17 +587,16 @@ stop_port() { # stop_port <port> <label>
   done
 }
 
-show_ports() { # show_ports <text when both are free>
+show_ports() {
   log "Dev-server ports $APP_PORT and $GW_PORT:"
   if lsof -nP -iTCP:"$APP_PORT" -iTCP:"$GW_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     lsof -nP -iTCP:"$APP_PORT" -iTCP:"$GW_PORT" -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
   else
-    echo "   $1"
+    echo "   (all free)"
   fi
 }
 
 stop_services() {
-  read_ports
   stop_pidfile "$DAPP_PID" "dApp dev server"
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
@@ -609,6 +606,7 @@ stop_services() {
 }
 
 down() {
+  read_ports
   stop_services
 
   # Volumes are kept, so the ledger survives a `down`; `reset` is what drops them.
@@ -620,10 +618,11 @@ down() {
   fi
 
   echo
-  show_ports "(all free)"
+  show_ports
 }
 
 reset() {
+  read_ports
   stop_services
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
@@ -733,7 +732,7 @@ status() {
     echo "   (docker daemon not running)"
   fi
   read_ports
-  show_ports "(none)"
+  show_ports
 }
 
 case "$ACTION" in
