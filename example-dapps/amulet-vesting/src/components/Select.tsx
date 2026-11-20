@@ -30,7 +30,7 @@ export const Select = <T extends string>({
       value={[value]}
     >
       <ArkSelect.Label className="sr-only">{label}</ArkSelect.Label>
-      <ArkSelect.Trigger className="inline-flex w-full items-center justify-between gap-2 rounded-[8px] border border-border bg-surface py-1.5 pl-3 pr-2.5 text-xs font-semibold text-fg focus-visible:outline-none focus-visible:shadow-[var(--ring)]">
+      <ArkSelect.Trigger className="inline-flex h-11 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-surface pr-3 pl-3.5 text-sm font-semibold text-fg focus-visible:outline-none focus-visible:shadow-[var(--ring)]">
         <ArkSelect.ValueText />
         <ChevronDown size={14} className="text-fg-muted" />
       </ArkSelect.Trigger>

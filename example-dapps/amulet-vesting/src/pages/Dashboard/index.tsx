@@ -9,7 +9,6 @@ import { Claim } from '@/components/Claim'
 import { CompactAmount } from '@/components/CompactAmount'
 import { ConnectPrompt } from '@/components/ConnectPrompt'
 import { EmptyState } from '@/components/EmptyState'
-import { KpiCard } from '@/components/KpiCard'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { Pills } from '@/components/Pills'
@@ -18,6 +17,7 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
+import { Summary, type Totals } from '@/pages/Dashboard/Summary'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
   claimAvailable,
@@ -109,7 +109,7 @@ export const Dashboard = (): React.JSX.Element => {
   }, [claims, role, partyId])
 
   const totals = useMemo(() => {
-    const acc = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
+    const acc: Totals = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
     for (const { grant, derived } of rows) {
       acc.total = addAmounts(acc.total, grant.totalAmount)
       acc.vested = addAmounts(acc.vested, derived.vested)
@@ -121,7 +121,8 @@ export const Dashboard = (): React.JSX.Element => {
   }, [rows])
 
   const firstRead = loading && grants.length === 0
-  const grantCount = `${rows.length} ${rows.length === 1 ? 'grant' : 'grants'}`
+  const filters = FILTERS.map((entry) => ({ ...entry, count: rows.filter(entry.match).length }))
+  const claimableCount = rows.filter(({ derived }) => isPositive(derived.claimable)).length
 
   if (backend === undefined) {
     return sessionPending ? <Loading /> : <ConnectPrompt />
@@ -153,72 +154,67 @@ export const Dashboard = (): React.JSX.Element => {
   }
 
   return (
-    <div className="flex flex-col gap-7">
-      <PageTitle title="Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Pills label="Filter grants" onChange={setFilter} options={FILTERS} value={filter} />
-        <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
-          <Plus />
-          Create
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {role === 'receiver' ? (
+    <div className="flex flex-col gap-8">
+      <PageTitle
+        title="Grants"
+        description={
+          role === 'receiver'
+            ? 'Canton Coin that vests to your party. Claim it as it vests.'
+            : 'Grants you funded, and what is still to vest.'
+        }
+        action={
           <>
-            <KpiCard
-              hero
-              label="Claimable now"
-              amount={totals.claimable}
-              sub={`Across ${grantCount}`}
-              subTone="success"
-            />
-            <KpiCard label="Total granted" amount={totals.total} sub={`${rows.length} active`} />
-            <KpiCard label="Vested to date" amount={totals.vested} />
-            <KpiCard label="Already claimed" amount={totals.claimed} />
+            <RoleSelect value={role} onChange={setRole} />
+            <Button onClick={() => setCreating(true)}>
+              <Plus />
+              Create grant
+            </Button>
           </>
+        }
+      />
+
+      <Summary
+        claimableCount={claimableCount}
+        grantCount={rows.length}
+        role={role}
+        totals={totals}
+      />
+
+      <div className="flex flex-col gap-3.5">
+        <Pills
+          className="max-sm:-mx-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4"
+          label="Filter grants"
+          onChange={setFilter}
+          options={filters}
+          value={filter}
+        />
+        {firstRead ? (
+          <Loading />
+        ) : filtered.length === 0 ? (
+          <EmptyState title={rows.length === 0 ? 'No grants' : 'No grants match this filter'} />
         ) : (
-          <>
-            <KpiCard
-              hero
-              label="Total committed"
-              amount={totals.total}
-              sub={`${grantCount} funded`}
-            />
-            <KpiCard label="Vested to date" amount={totals.vested} />
-            <KpiCard label="Unvested (clawbackable)" amount={totals.unvested} />
-            <KpiCard label="Active grants" amount={String(rows.length)} count />
-          </>
+          <div className="flex flex-col gap-2.5">
+            {filtered.map(({ grant, derived }) => (
+              <GrantCard
+                key={grant.id}
+                grant={grant}
+                derived={derived}
+                role={role}
+                nowMs={nowMs}
+                className={cn(grant.id === justClaimed && HIGHLIGHT)}
+                onClaim={openClaim}
+                onCancel={setCancelTarget}
+              />
+            ))}
+          </div>
         )}
       </div>
-
-      {firstRead ? (
-        <Loading />
-      ) : filtered.length === 0 ? (
-        <EmptyState title={rows.length === 0 ? 'No grants' : 'No grants match this filter'} />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {filtered.map(({ grant, derived }) => (
-            <GrantCard
-              key={grant.id}
-              grant={grant}
-              derived={derived}
-              role={role}
-              nowMs={nowMs}
-              className={cn(grant.id === justClaimed && HIGHLIGHT)}
-              onClaim={openClaim}
-              onCancel={setCancelTarget}
-            />
-          ))}
-        </div>
-      )}
 
       {role === 'receiver' && myClaims.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-fg">Residual claims</h2>
-            <span className="font-mono text-xs text-fg-muted">
+            <h2 className="font-heading text-base font-bold text-fg">Residual claims</h2>
+            <span className="font-num text-xs text-fg-muted">
               {isPositive(residualClaimable) && (
                 <>
                   <CompactAmount value={residualClaimable} /> {AMT.symbol} claimable
@@ -240,12 +236,11 @@ export const Dashboard = (): React.JSX.Element => {
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
-                    Claimable
-                  </div>
+                  <div className="text-[0.8rem] font-semibold text-fg-muted">Claimable</div>
                   <AmountDisplay
                     value={claimAvailable(claim)}
-                    className="text-lg font-semibold text-success"
+                    markSize="small"
+                    className="text-lg font-semibold text-fg"
                   />
                 </div>
                 <Button size="sm" onClick={() => openResidual(claim)}>

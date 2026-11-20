@@ -1,7 +1,7 @@
 import { CompactAmount } from '@/components/CompactAmount'
 import { multiplyByFraction } from '@/utils/amount'
 import { cn } from '@/utils/cn'
-import { formatDate } from '@/utils/format'
+import { formatDate, relativeTime } from '@/utils/format'
 import type { VestingSchedule } from '@/utils/schedule'
 import { AMT } from '@/utils/tokens'
 
@@ -11,8 +11,6 @@ interface MilestoneTimelineProps {
   total: string
 }
 
-// Vertical list of milestone points with reached/pending state and the AMT unlocked
-// at each step (delta of cumulative fractions).
 export const MilestoneTimeline = ({
   schedule,
   total,
@@ -22,42 +20,44 @@ export const MilestoneTimeline = ({
     return null
   }
   const points = schedule.curve.points
+  const next = points.findIndex((point) => new Date(point.time).getTime() > nowMs)
   return (
-    <ol className="flex flex-col gap-0">
+    <ol className="relative flex flex-col gap-4 pl-6 before:absolute before:top-1.5 before:bottom-1.5 before:left-1.5 before:w-0.5 before:bg-border">
       {points.map((point, i) => {
-        const reached = new Date(point.time).getTime() <= nowMs
-        const prevFraction = i === 0 ? 0 : points[i - 1].fraction
-        const unlocked = multiplyByFraction(total, point.fraction - prevFraction)
-        const isLast = i === points.length - 1
+        const reached = i < next || next === -1
+        const unlocked = multiplyByFraction(
+          total,
+          point.fraction - (i === 0 ? 0 : points[i - 1].fraction),
+        )
         return (
-          <li key={point.time} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <span
-                className={cn(
-                  'mt-1 size-3 rounded-full border-2',
-                  reached
-                    ? 'border-transparent bg-[image:var(--gradient-brand)]'
+          <li key={point.time} className="relative flex justify-between gap-3 text-sm">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'absolute top-1 -left-6 size-3.5 rounded-full border-2',
+                reached
+                  ? 'border-primary bg-primary shadow-[inset_0_0_0_2.5px_var(--surface)]'
+                  : i === next
+                    ? 'border-primary bg-surface'
                     : 'border-border-strong bg-surface',
-                )}
-              />
-              {!isLast && <span className="w-0.5 flex-1 bg-border" />}
-            </div>
-            <div className={cn('pb-5', isLast && 'pb-0')}>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-fg">
-                  {(point.fraction * 100).toFixed(0)}% vested
-                </span>
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide',
-                    reached ? 'bg-success-soft text-success' : 'bg-muted text-fg-muted',
-                  )}
-                >
-                  {reached ? 'Reached' : 'Pending'}
-                </span>
+              )}
+            />
+            <div>
+              <div className="font-semibold text-fg">{formatDate(point.time)}</div>
+              <div className="text-[0.8rem] text-fg-soft">
+                {reached
+                  ? 'Reached'
+                  : i === next
+                    ? `Next, ${relativeTime(point.time, nowMs)}`
+                    : 'Upcoming'}
               </div>
-              <div className="mt-0.5 font-mono text-xs text-fg-muted">
-                {formatDate(point.time)} · +<CompactAmount value={unlocked} /> {AMT.symbol}
+            </div>
+            <div className="text-right">
+              <div className="font-num font-semibold text-fg tabular-nums">
+                {(point.fraction * 100).toFixed(0)}% vested
+              </div>
+              <div className="font-num text-[0.8rem] text-fg-soft tabular-nums">
+                +<CompactAmount value={unlocked} /> {AMT.symbol}
               </div>
             </div>
           </li>

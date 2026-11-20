@@ -43,36 +43,38 @@ const Outbound = ({
 )
 
 export const Footer = (): React.JSX.Element => (
-  <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-5 pt-8 pb-3.5 text-xs sm:justify-between sm:px-8">
-    <div className="flex items-center gap-4">
-      <Outbound className="flex items-center gap-2 font-semibold" href={BOOTNODE}>
-        Built by
-        <BootNodeMark width={19} height={16} />
-        <span className="sr-only">BootNode</span>
-      </Outbound>
-      <nav
-        aria-label="Social media"
-        className="flex items-center gap-1 border-l border-border pl-3"
-      >
-        {socials.map(({ label, href, Icon }) => (
-          <Outbound
-            className="inline-flex size-8 items-center justify-center"
-            href={href}
-            key={label}
-            label={label}
-          >
-            <Icon width={17} height={17} />
+  <footer className="border-t border-border text-[0.8rem]">
+    <div className="mx-auto flex max-w-6xl flex-col items-center gap-x-6 gap-y-1.5 px-4 py-5 sm:flex-row sm:justify-between sm:px-8">
+      <div className="flex items-center gap-4">
+        <Outbound className="flex items-center gap-2 font-semibold" href={BOOTNODE}>
+          Built by
+          <BootNodeMark width={19} height={16} />
+          <span className="sr-only">BootNode</span>
+        </Outbound>
+        <nav
+          aria-label="Social media"
+          className="flex items-center gap-1 border-l border-border pl-3"
+        >
+          {socials.map(({ label, href, Icon }) => (
+            <Outbound
+              className="inline-flex size-8 items-center justify-center"
+              href={href}
+              key={label}
+              label={label}
+            >
+              <Icon width={17} height={17} />
+            </Outbound>
+          ))}
+        </nav>
+      </div>
+      <nav aria-label="Resources" className="flex items-center gap-6 font-semibold">
+        {resources.map(({ label, href, Icon }) => (
+          <Outbound className="inline-flex items-center gap-2" href={href} key={label}>
+            <Icon width={15} height={15} />
+            {label}
           </Outbound>
         ))}
       </nav>
     </div>
-    <nav aria-label="Resources" className="hidden items-center gap-6 font-semibold sm:flex">
-      {resources.map(({ label, href, Icon }) => (
-        <Outbound className="inline-flex items-center gap-2" href={href} key={label}>
-          <Icon width={15} height={15} />
-          {label}
-        </Outbound>
-      ))}
-    </nav>
   </footer>
 )
