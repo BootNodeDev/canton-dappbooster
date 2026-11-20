@@ -16,9 +16,6 @@ import { cn } from '@/utils/cn'
 import { formatDate, formatPct, relativeTime } from '@/utils/format'
 import { nextMilestone } from '@/utils/schedule'
 
-// `busy` is the exit this grant already has in flight. A dialog stays dismissible over the wallet
-// prompt, so dismissing it mid-flight would otherwise leave these controls offering a second write
-// against a contract the first is about to archive.
 interface GrantCardProps {
   busy: BusyKind | undefined
   className?: string

@@ -156,6 +156,14 @@
     touch-action: pan-x;
   }
 
+  .sheet[data-scrollable="true"] {
+    touch-action: pan-y;
+  }
+
+  .sheet [data-grip] {
+    touch-action: none;
+  }
+
   .sheet[data-state="open"] {
     animation: sheet-rise 550ms var(--ease-spring) backwards;
   }
