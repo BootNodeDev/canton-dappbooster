@@ -68,20 +68,25 @@ One implementation each, so a second one is a bug and not a choice:
 - **Button classes on something that is not `components/Button`:** import `buttonClass`. The kit's
   own buttons take a `className` but cannot render ours. A button waiting on a submission takes
   `pending`, which owns the spinner, the wording and the disable together. The one exception is
-  `TopBar/AccountMenu`'s trigger, which transcribes the kit's `.cnc-connect-button` instead so the
-  header keeps one look across every face the session swaps between; `cn` is a plain join and
-  cannot override a `buttonClass` variant, so there is no way to have both.
+  `TopBar/AccountMenu`'s trigger, an avatar chip that shrinks to the avatar alone on a phone, which
+  no `buttonClass` variant draws; `cn` is a plain join and cannot override a variant.
 - **A choice out of a short, always-visible set: `components/Pills`.** One Ark toggle group behind
-  two looks — `outline` for the dashboard's filters, `segmented` for the create form's curve switch.
-  It reports the choice as a radio group, so the picked pill is a checked radio rather than a class
-  name. A value picked from a dropdown is `components/Select`; a *view* picked from one is
-  `components/RoleSelect`, which is a menu rather than a listbox because it commands the page
-  instead of holding a value. All three panels take their surface from `utils/popover`.
+  two looks — `outline` for the dashboard's filters, `segmented` for the create form's curve
+  switch, the mobile menu's theme switch and `components/RoleSelect`, the "View as" lens. It reports
+  the choice as a radio group, so the picked pill is a checked radio rather than a class name. A
+  value picked from a dropdown is `components/Select`, and its panel, like every menu's, takes its
+  surface from `utils/popover`.
 - **A generic icon comes from `lucide-react`; `src/icons/` holds only the brand and house marks,**
   each named `*Mark`. `App.tsx` sets lucide's size and stroke width once through `LucideProvider`,
   so a call site passes `size` only where it wants something other than the shared default. The one
   wrapper is `components/Spinner`, which owns `animate-spin`: lucide ships no animation, and a
   second call site spelling that class out is how one of them ends up frozen.
+- **A row in a grant list: `components/GrantRow`.** It owns the four areas and how they fold from a
+  wide screen to a phone; a caller fills the slots and passes the one figure the row leads with.
+- **A colour or a radius comes from a role, never from an example's palette.** Each example draws its
+  own look in `src/styles/tokens.css` (`--hero-*`, `--bar-*`, `--filter-on-*`, `--header-bg`, …) and
+  its fonts and radii in `src/styles/index.css` (`font-num`, `font-heading`, `rounded-card`,
+  `rounded-control`, `rounded-chip`), so a component copied between examples restyles itself.
 - **A grant's badges: `components/CurvePill` and `components/GrantStatusPill`;** where a claim cannot
   be offered, `components/GrantLock`. Each owns its own wording, tone and base classes, so a caller
   passes alignment at most and never re-spells the mapping. There is no drained-grant badge: a
