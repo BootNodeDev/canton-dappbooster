@@ -54,7 +54,7 @@ export const TopBar = (): React.JSX.Element => {
       <div className="mx-auto grid h-16 max-w-6xl grid-cols-[1fr_auto] items-center gap-4 px-4 sm:px-8 md:grid-cols-[1fr_auto_1fr]">
         <Logo />
 
-        <nav aria-label="Primary" className="nav hidden items-center gap-1 md:flex">
+        <nav aria-label="Primary" className="nav hidden items-center md:flex">
           {links.map(({ to, label, count }) => (
             <NavLink className="nav-link" end key={label} to={to}>
               {label}

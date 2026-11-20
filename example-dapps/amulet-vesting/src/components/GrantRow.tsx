@@ -21,8 +21,8 @@ export const GrantRow = ({
   <Card
     className={cn(
       'grid grid-cols-[minmax(0,1fr)_auto] gap-4 p-[1.125rem] [grid-template-areas:"head_head"_"progress_progress"_"figure_action"]',
-      'md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_9.5rem] md:gap-x-7 md:gap-y-2.5 md:px-6 md:py-5 md:[grid-template-areas:"head_progress_figure"_"head_progress_action"]',
-      'xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.5fr)_minmax(9.5rem,0.7fr)_7rem] xl:[grid-template-areas:"head_progress_figure_action"]',
+      'md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(9.5rem,max-content)] md:gap-x-7 md:gap-y-2.5 md:px-6 md:py-5 md:[grid-template-areas:"head_progress_figure"_"head_progress_action"]',
+      'xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.5fr)_minmax(9.5rem,0.7fr)_minmax(7rem,max-content)] xl:[grid-template-areas:"head_progress_figure_action"]',
       className,
     )}
   >
