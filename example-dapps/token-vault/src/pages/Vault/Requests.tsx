@@ -73,7 +73,7 @@ const Row = ({
       <span
         aria-hidden="true"
         className={cn(
-          'grid size-10 place-items-center self-start rounded-xl [grid-area:kind]',
+          'grid size-10 place-items-center self-start rounded-control [grid-area:kind]',
           row.kind === 'deposit'
             ? 'bg-[color-mix(in_oklab,var(--usdx)_16%,transparent)] text-[var(--usdx)]'
             : 'bg-[color-mix(in_oklab,var(--vsh)_16%,transparent)] text-[var(--vsh)]',

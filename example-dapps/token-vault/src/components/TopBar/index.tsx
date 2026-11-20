@@ -56,9 +56,9 @@ export const TopBar = (): React.JSX.Element => {
           </button>
           {wallet}
           <MobileMenu
-            account={
+            account={(close) =>
               account !== undefined && (
-                <div className="mb-2 flex items-center gap-3 rounded-2xl bg-surface-2 p-3">
+                <div className="mb-2 flex items-center gap-3 rounded-control bg-surface-2 p-3">
                   <PartyAvatar partyId={account.partyId} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-fg">
@@ -66,7 +66,7 @@ export const TopBar = (): React.JSX.Element => {
                     </p>
                     <p className="truncate text-xs text-fg-muted">{account.networkId}</p>
                   </div>
-                  <DisconnectButton className={buttonClass('secondary', 'sm')}>
+                  <DisconnectButton className={buttonClass('secondary', 'sm')} onClick={close}>
                     Disconnect
                   </DisconnectButton>
                 </div>

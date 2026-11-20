@@ -77,7 +77,7 @@ export const ProposalForm = ({
         value={kind}
         variant="segmented"
       />
-      <div className="mt-4 rounded-2xl border border-border bg-surface-2 px-4 py-3">
+      <div className="mt-4 rounded-control border border-border bg-surface-2 px-4 py-3">
         <TokenInput
           aria-describedby={message === undefined ? undefined : errorId}
           balance={balance}
@@ -93,11 +93,11 @@ export const ProposalForm = ({
         />
       </div>
       <div className="relative z-10 -my-3 flex justify-center">
-        <span className="grid size-9 place-items-center rounded-xl border-4 border-surface bg-surface-2 text-fg-muted">
+        <span className="grid size-9 place-items-center rounded-control border-4 border-surface bg-surface-2 text-fg-muted">
           <ArrowDown size={16} />
         </span>
       </div>
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-2 px-4 py-4">
+      <div className="flex items-center justify-between gap-3 rounded-control border border-border bg-surface-2 px-4 py-4">
         <div>
           <div className="text-[0.85rem] font-semibold text-fg-muted">You receive</div>
           <AmountDisplay
