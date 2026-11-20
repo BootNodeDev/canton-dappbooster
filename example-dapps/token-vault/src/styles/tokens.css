@@ -17,6 +17,7 @@
   --cnc-warning-subtle: #fbeed2;
   --cnc-danger: #b42335;
   --cnc-danger-subtle: #fbe3e6;
+  --cnc-overlay: rgb(15 31 26 / 0.45);
 
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
@@ -24,7 +25,7 @@
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
   --border-strong: var(--cnc-border-strong);
-  --scrim: rgb(15 31 26 / 0.45);
+  --scrim: var(--cnc-overlay);
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
@@ -50,10 +51,8 @@
   --vsh: #4f5bd5;
 
   /* brand */
-  --accent: #12a07a;
-  --accent-strong: #0b6e55;
-  --pink: #4f5bd5;
-  --pink-strong: #3f4bc4;
+  --accent: var(--usdx);
+  --accent-strong: var(--primary-strong);
   --gradient-brand: linear-gradient(135deg, #12a07a, #0b6a52);
 
   /* effects */
@@ -104,18 +103,15 @@
   --cnc-warning-subtle: #2e2412;
   --cnc-danger: #ff7a8a;
   --cnc-danger-subtle: #34151b;
+  --cnc-overlay: rgb(2 8 6 / 0.65);
 
-  --scrim: rgb(2 8 6 / 0.65);
   --fg-soft: #7a928a;
   --primary-strong: #5fe0b2;
-  --accent-strong: #5fe0b2;
   --info: #a3abff;
   --info-soft: #1c2050;
 
   --usdx: #1fb889;
   --vsh: #6b76f0;
-  --accent: #1fb889;
-  --pink: #6b76f0;
 
   --glow: 0 10px 26px rgba(47, 191, 143, 0.35);
   --shadow-card: 0 18px 40px -28px rgba(0, 0, 0, 0.8);

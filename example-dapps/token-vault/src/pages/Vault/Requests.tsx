@@ -11,7 +11,7 @@ import { KIND_TEXT, SENT } from '@/pages/Vault/requestKind'
 import { useVaultStore } from '@/store/useVaultStore'
 import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
-import { type QueueRow, type QueueState, queueRows } from '@/utils/requestState'
+import { countToFund, type QueueRow, type QueueState, queueRows } from '@/utils/requestState'
 import { toast } from '@/utils/toast'
 
 const STATE_TEXT: Record<QueueState, string> = {
@@ -174,7 +174,7 @@ export const Requests = ({
 
   // Read at render: the windows run to the hour, so nothing here needs a ticking clock.
   const rows = queueRows({ proposals, requests }, Date.now())
-  const toFund = rows.filter((row) => row.action === 'allocate').length
+  const toFund = countToFund(requests, Date.now())
 
   return (
     <Card className="px-5 pt-5 pb-2 sm:px-6">

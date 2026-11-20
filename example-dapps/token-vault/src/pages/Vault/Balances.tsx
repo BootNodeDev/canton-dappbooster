@@ -53,7 +53,10 @@ export const Balances = ({ deployment }: { deployment: Deployment }): React.JSX.
       aria-label="Your position"
       className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
     >
-      <div className="flex flex-col justify-between gap-7 overflow-hidden rounded-card border border-[var(--hero-border)] bg-[image:var(--hero-bg)] px-6 py-6 text-[var(--hero-fg)] shadow-[var(--hero-shadow)] sm:px-7">
+      <Card
+        tone="hero"
+        className="flex flex-col justify-between gap-7 overflow-hidden px-6 py-6 sm:px-7"
+      >
         <div>
           <div className="text-sm font-semibold text-[var(--hero-muted)]">Your vault shares</div>
           {shares === undefined ? (
@@ -76,7 +79,7 @@ export const Balances = ({ deployment }: { deployment: Deployment }): React.JSX.
             of the vault
           </span>
         </div>
-      </div>
+      </Card>
 
       <Card className="flex flex-col justify-between gap-6 px-5 py-5 sm:px-7 sm:py-6">
         <div className="grid sm:grid-cols-2 sm:gap-4">

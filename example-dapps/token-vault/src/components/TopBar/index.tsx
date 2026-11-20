@@ -14,7 +14,7 @@ import { roundButtonClass, ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useBackend } from '@/providers/Backend'
 import { useVaultStore } from '@/store/useVaultStore'
 import { cn } from '@/utils/cn'
-import { queueRows } from '@/utils/requestState'
+import { countToFund } from '@/utils/requestState'
 
 const HELP = 'How to connect a wallet'
 
@@ -22,11 +22,8 @@ export const TopBar = (): React.JSX.Element => {
   const { account } = useAccount()
   const { sessionPending } = useBackend()
   const [guideOpen, setGuideOpen] = useState(() => !hasSeenGuide())
-  const proposals = useVaultStore((state) => state.proposals)
   const requests = useVaultStore((state) => state.requests)
-  const toFund = queueRows({ proposals, requests }, Date.now()).filter(
-    (row) => row.action === 'allocate',
-  ).length
+  const toFund = countToFund(requests, Date.now())
 
   const wallet = sessionPending ? (
     <span role="status" className="inline-flex size-9 items-center justify-center text-fg-muted">

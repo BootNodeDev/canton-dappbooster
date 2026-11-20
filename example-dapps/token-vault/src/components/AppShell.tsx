@@ -26,7 +26,7 @@ export const AppShell = (): React.JSX.Element => {
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-5 py-8 sm:px-8"
+        className="mx-auto w-full max-w-6xl flex-1 overflow-x-clip px-4 py-8 sm:px-8"
       >
         {deploymentError !== undefined && (
           <Card role="alert" className="flex flex-col items-center gap-3 px-6 py-16 text-center">

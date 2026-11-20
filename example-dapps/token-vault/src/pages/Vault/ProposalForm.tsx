@@ -77,21 +77,19 @@ export const ProposalForm = ({
         value={kind}
         variant="segmented"
       />
-      <div className="mt-4 rounded-control border border-border bg-surface-2 px-4 py-3">
-        <TokenInput
-          aria-describedby={message === undefined ? undefined : errorId}
-          balance={balance}
-          balanceState={balance === undefined ? 'loading' : undefined}
-          className="border-0 p-0"
-          id={`${kind}-amount`}
-          label={`You ${kind}`}
-          onChange={setRaw}
-          token={send}
-          // Unset, the field reads `~$0.00`, a price of zero; nothing here quotes either token.
-          usdValue="Not available"
-          value={raw}
-        />
-      </div>
+      <TokenInput
+        aria-describedby={message === undefined ? undefined : errorId}
+        balance={balance}
+        balanceState={balance === undefined ? 'loading' : undefined}
+        className="mt-4"
+        id={`${kind}-amount`}
+        label={`You ${kind}`}
+        onChange={setRaw}
+        token={send}
+        // Unset, the field reads `~$0.00`, a price of zero; nothing here quotes either token.
+        usdValue="Not available"
+        value={raw}
+      />
       <div className="relative z-10 -my-3 flex justify-center">
         <span className="grid size-9 place-items-center rounded-control border-4 border-surface bg-surface-2 text-fg-muted">
           <ArrowDown size={16} />
@@ -104,7 +102,7 @@ export const ProposalForm = ({
             className="mt-1 text-[1.75rem] font-semibold tracking-tight"
             markSize="small"
             token={receive}
-            value={isPositive(raw) && amountError === undefined ? raw : '0'}
+            value={valid ? raw : '0'}
           />
         </div>
         <span className="text-sm font-semibold text-fg-muted tabular-nums">

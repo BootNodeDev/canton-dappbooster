@@ -61,7 +61,7 @@ export const AccountMenu = ({ account }: AccountMenuProps): React.JSX.Element =>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
-          <Menu.Content className={cn(popoverClass, 'flex w-72 flex-col gap-4 rounded-xl p-4')}>
+          <Menu.Content className={cn(popoverClass, 'flex w-72 flex-col gap-4 rounded-card p-4')}>
             <Menu.ItemGroup className="flex items-center gap-3">
               <PartyAvatar partyId={account.partyId} size={40} />
               <div className="flex min-w-0 flex-col gap-0.5">
