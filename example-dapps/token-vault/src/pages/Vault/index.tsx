@@ -1,13 +1,11 @@
 import { Identifier } from '@bootnodedev/canton-dappbooster'
 import { type ReactNode, useEffect, useRef } from 'react'
 import type { VaultRequest } from '@/backend/requests'
-import { buttonClass } from '@/components/Button'
 import { Card } from '@/components/Card'
-import { ConnectFace } from '@/components/ConnectFace'
-import { EmptyState } from '@/components/EmptyState'
 import { Loading } from '@/components/Loading'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { Balances } from '@/pages/Vault/Balances'
+import { ConnectPrompt } from '@/pages/Vault/ConnectPrompt'
 import { ProposalForm } from '@/pages/Vault/ProposalForm'
 import { Requests } from '@/pages/Vault/Requests'
 import { useBackend } from '@/providers/Backend'
@@ -15,9 +13,9 @@ import { useTokenFigures } from '@/providers/Tokens'
 import { useVault, useVaultStore } from '@/store/useVaultStore'
 
 const Fact = ({ children, label }: { children: ReactNode; label: string }): React.JSX.Element => (
-  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border py-2 last:border-0">
-    <dt className="w-40 shrink-0 text-sm text-fg-muted">{label}</dt>
-    <dd className="min-w-0 text-sm">{children}</dd>
+  <div className="min-w-0">
+    <dt className="text-[0.8rem] font-semibold text-fg-muted">{label}</dt>
+    <dd className="mt-1.5 min-w-0 text-sm">{children}</dd>
   </div>
 )
 
@@ -50,39 +48,33 @@ export const Vault = (): React.JSX.Element => {
   }, [loaded, refreshFigures, signature])
 
   if (deployment === undefined || backend === undefined || partyId === undefined) {
-    return sessionPending ? (
-      <Loading />
-    ) : (
-      <EmptyState
-        level={1}
-        title="Canton Vault"
-        description="Connect a wallet to deposit USDX for vault shares, or redeem shares for USDX."
-        action={
-          <ConnectFace
-            className={buttonClass('primary', 'lg')}
-            cancelClassName={buttonClass('secondary', 'lg')}
-          />
-        }
-      />
-    )
+    return sessionPending ? <Loading /> : <ConnectPrompt />
   }
 
   const { share, underlying } = deployment
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="border-b border-border pb-4 text-xl font-extrabold tracking-tight text-fg">
-        Vault
-      </h1>
-      <Balances deployment={deployment} />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ProposalForm backend={backend} deployment={deployment} kind="deposit" partyId={partyId} />
-        <ProposalForm backend={backend} deployment={deployment} kind="withdraw" partyId={partyId} />
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="font-heading text-[1.75rem] leading-tight font-extrabold text-fg sm:text-[1.9rem]">
+          Vault
+        </h1>
+        <p className="mt-1.5 max-w-[56ch] text-fg-muted">
+          Deposit {underlying.symbol} to mint vault shares, or withdraw shares to get{' '}
+          {underlying.symbol} back. Both settle one for one.
+        </p>
       </div>
-      <Requests backend={backend} partyId={partyId} />
-      <Card className="p-5">
-        <h2 className="mb-3 text-base font-bold">On the ledger</h2>
-        <dl>
+      <Balances deployment={deployment} />
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <ProposalForm backend={backend} deployment={deployment} partyId={partyId} />
+        <Requests backend={backend} partyId={partyId} />
+      </div>
+      <Card className="p-5 sm:p-6">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 className="font-heading text-base font-bold text-fg">On the ledger</h2>
+          <span className="text-[0.8rem] text-fg-muted">What this app reads and writes</span>
+        </div>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <Fact label="Vault party">
             <Identifier value={deployment.vault} label="vault party id" />
           </Fact>

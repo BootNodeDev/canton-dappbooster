@@ -48,7 +48,7 @@
     "@bootnodedev/canton-theme": "^0.8.0",
     "@canton-network/dapp-sdk": "1.10.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
-    "@fontsource-variable/manrope": "^5.2.8",
+    "@fontsource-variable/onest": "^5.3.1",
     "@walletconnect/sign-client": "^2.23.9",
     "boring-avatars": "^2.0.4",
     "lucide-react": "^1.39.0",

@@ -24,14 +24,14 @@ export const Modal = ({ onClose, title, children }: ModalProps): React.JSX.Eleme
     <Portal>
       <Dialog.Backdrop className="fixed inset-0 z-40 bg-[var(--scrim)] backdrop-blur-sm" />
       <Dialog.Positioner className="fixed inset-0 z-50 grid place-items-center p-4">
-        <Dialog.Content className="relative w-full max-w-md overflow-x-clip rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-popover)]">
-          <Dialog.Title className="pr-14 text-lg font-bold leading-7 tracking-tight text-fg">
+        <Dialog.Content className="relative w-full max-w-md overflow-x-clip rounded-[calc(var(--radius-card)+4px)] border border-border bg-surface p-6 shadow-[var(--shadow-popover)] sm:p-7">
+          <Dialog.Title className="pr-14 font-heading text-xl leading-7 font-extrabold text-fg">
             {title}
           </Dialog.Title>
           <div className="mt-4">{children}</div>
           <Dialog.CloseTrigger
             aria-label="Close"
-            className="absolute right-6 top-6 grid size-7 place-items-center text-fg-muted transition-colors hover:text-fg"
+            className="absolute top-6 right-6 grid size-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-muted hover:text-fg sm:top-7 sm:right-7"
           >
             <X size={16} />
           </Dialog.CloseTrigger>
