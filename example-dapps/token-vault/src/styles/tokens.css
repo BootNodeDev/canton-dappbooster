@@ -29,7 +29,7 @@
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
-  --fg-soft: #627a73;
+  --fg-soft: #566d66;
 
   --primary: var(--cnc-accent);
   --primary-hover: var(--cnc-accent-hover);
