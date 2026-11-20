@@ -17,6 +17,7 @@
   --cnc-warning-subtle: #fcefd3;
   --cnc-danger: #b42335;
   --cnc-danger-subtle: #fbe3e6;
+  --cnc-overlay: rgb(18 26 51 / 0.4);
 
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
@@ -24,7 +25,7 @@
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
   --border-strong: var(--cnc-border-strong);
-  --scrim: rgb(18 26 51 / 0.4);
+  --scrim: var(--cnc-overlay);
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
@@ -44,16 +45,13 @@
   --danger-soft: var(--cnc-danger-subtle);
 
   /* brand */
-  --accent: #2f4fe0;
-  --accent-strong: #2944c8;
-  --pink: #36c9c1;
-  --pink-strong: #0b7a74;
+  --accent: var(--primary);
+  --accent-strong: var(--primary-strong);
   --gradient-brand: linear-gradient(135deg, #3a5cf0, #2441c4);
 
   /* effects */
-  --gradient-text: linear-gradient(120deg, #2441c4, #2f4fe0 55%, #36c9c1);
   --glow: 0 10px 26px rgba(47, 79, 224, 0.35);
-  --shadow-card: none;
+  --shadow-card: 0 0 #0000;
   --shadow-popover: 0 18px 36px -12px rgba(18, 26, 51, 0.25);
   --ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-strong);
   --page-radial: linear-gradient(180deg, #e7ecfb 0, rgb(231 236 251 / 0) 360px);
@@ -80,14 +78,14 @@
   --hero-muted: var(--fg-muted);
   --hero-figure: var(--primary-strong);
   --hero-dot: var(--success);
-  --hero-shadow: none;
+  --hero-shadow: 0 0 #0000;
 
   /* schedule */
   --bar-track: #e5e9f2;
   --bar-claimed: #aebbf0;
-  --bar-claimable: #2f4fe0;
-  --chart-line: #2f4fe0;
-  --chart-fill: #2f4fe0;
+  --bar-claimable: var(--primary);
+  --chart-line: var(--primary);
+  --chart-fill: var(--primary);
 }
 
 [data-theme="dark"] {
@@ -108,11 +106,10 @@
   --cnc-warning-subtle: #2e2412;
   --cnc-danger: #ff7a8a;
   --cnc-danger-subtle: #34151b;
+  --cnc-overlay: rgb(4 7 18 / 0.62);
 
-  --scrim: rgb(4 7 18 / 0.62);
   --fg-soft: #8590ad;
   --primary-strong: #a3b4ff;
-  --accent-strong: #a3b4ff;
 
   --glow: 0 10px 26px rgba(91, 120, 255, 0.4);
   --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.7);
@@ -129,9 +126,7 @@
 
   --bar-track: #222c49;
   --bar-claimed: #3a4a8c;
-  --bar-claimable: #6f8cff;
   --chart-line: #8aa0ff;
-  --chart-fill: #6f8cff;
 }
 
 :root {

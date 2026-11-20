@@ -5,22 +5,18 @@ import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { inputClass, labelClass } from '@/components/CreateGrant/fields'
 import { FieldError } from '@/components/FieldError'
+import { Pills } from '@/components/Pills'
 import { useSession } from '@/providers/Session'
-import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
 
 type Mode = 'login' | 'signup'
 
 const MIN_PASSWORD = 8
 
-const tabClass = (active: boolean): string =>
-  cn(
-    'h-9 flex-1 rounded-[calc(var(--radius-control)-3px)] px-3 text-sm font-semibold transition-colors',
-    'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
-    active
-      ? 'bg-surface text-fg shadow-[0_1px_2px_rgb(0_0_0/0.12)]'
-      : 'text-fg-muted hover:text-fg',
-  )
+const MODES = [
+  { value: 'login', label: 'Sign in' },
+  { value: 'signup', label: 'Create account' },
+] as const satisfies readonly { label: string; value: Mode }[]
 
 export const AuthCard = (): React.JSX.Element => {
   const { login, signup } = useSession()
@@ -64,30 +60,14 @@ export const AuthCard = (): React.JSX.Element => {
 
   return (
     <Card className="w-full p-6 text-left sm:p-7">
-      <div
-        role="tablist"
-        aria-label="Account"
-        className="flex gap-0.5 rounded-control border border-border bg-surface-2 p-[3px]"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!signingUp}
-          className={tabClass(!signingUp)}
-          onClick={() => switchTo('login')}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={signingUp}
-          className={tabClass(signingUp)}
-          onClick={() => switchTo('signup')}
-        >
-          Create account
-        </button>
-      </div>
+      <Pills
+        className="flex w-full"
+        label="Account"
+        onChange={switchTo}
+        options={MODES}
+        value={mode}
+        variant="segmented"
+      />
 
       <form
         className="mt-5 flex flex-col gap-4"

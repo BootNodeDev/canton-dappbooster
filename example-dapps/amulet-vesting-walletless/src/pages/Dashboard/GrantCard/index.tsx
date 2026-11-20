@@ -71,25 +71,22 @@ export const GrantCard = ({
 
   return (
     <GrantRow
-      className={cn(claimable && 'shadow-[var(--claimable-edge),var(--shadow-card)]', className)}
-      head={
+      className={cn(claimable && '[--card-edge:var(--claimable-edge)]', className)}
+      title={
+        <Link to={`/grants/${grant.id}`} className="transition-colors hover:text-primary-strong">
+          {grant.title}
+        </Link>
+      }
+      badges={
         <>
-          <h2>
-            <Link
-              to={`/grants/${grant.id}`}
-              className="inline-block max-w-full truncate align-bottom font-heading text-base font-bold text-fg transition-colors hover:text-primary-strong"
-            >
-              {grant.title}
-            </Link>
-          </h2>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <CurvePill curve={curve} />
-            <GrantStatusPill status={derived.status} />
-          </div>
-          <div className="mt-2.5 font-mono text-xs text-fg-soft">
-            <CounterpartyId party={counterparty} incoming={role === 'receiver'} />
-          </div>
+          <CurvePill curve={curve} />
+          <GrantStatusPill status={derived.status} />
         </>
+      }
+      detail={
+        <span className="font-mono">
+          <CounterpartyId party={counterparty} incoming={role === 'receiver'} />
+        </span>
       }
       progress={
         <>

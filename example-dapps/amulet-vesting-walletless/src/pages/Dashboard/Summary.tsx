@@ -1,5 +1,6 @@
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Card } from '@/components/Card'
+import { ScheduleBar } from '@/components/ScheduleBar'
 import { Legend } from '@/pages/Dashboard/Legend'
 import type { Role } from '@/store/types'
 import { toNumber } from '@/utils/amount'
@@ -56,12 +57,13 @@ export const Summary = ({
   totals,
 }: SummaryProps): React.JSX.Element => {
   const receiving = role === 'receiver'
-  const claimedShare = share(totals.claimed, totals.total)
-  const claimableShare = share(totals.claimable, totals.total)
 
   return (
     <section aria-label="Summary" className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-      <div className="flex flex-col justify-between gap-7 overflow-hidden rounded-card border border-[var(--hero-border)] bg-[image:var(--hero-bg)] px-6 py-6 text-[var(--hero-fg)] shadow-[var(--hero-shadow)] sm:px-7">
+      <Card
+        tone="hero"
+        className="flex flex-col justify-between gap-7 overflow-hidden px-6 py-6 sm:px-7"
+      >
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-[var(--hero-muted)]">
             <span className="size-2 rounded-full bg-[var(--hero-dot)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--hero-dot)_22%,transparent)]" />
@@ -85,7 +87,7 @@ export const Summary = ({
             </>
           )}
         </p>
-      </div>
+      </Card>
 
       <Card className="flex flex-col justify-between gap-6 px-5 py-5 sm:px-7 sm:py-6">
         <div className="grid sm:grid-cols-3 sm:gap-4">
@@ -104,7 +106,7 @@ export const Summary = ({
               <Stat
                 label="Already claimed"
                 amount={totals.claimed}
-                note={`${formatPct(claimedShare)} of total`}
+                note={`${formatPct(share(totals.claimed, totals.total))} of total`}
               />
             </>
           ) : (
@@ -120,13 +122,10 @@ export const Summary = ({
           )}
         </div>
         <div>
-          <div className="flex h-3 overflow-hidden rounded-full bg-[var(--bar-track)]">
-            <span className="bg-[var(--bar-claimed)]" style={{ width: formatPct(claimedShare) }} />
-            <span
-              className="[background:var(--bar-claimable)]"
-              style={{ width: formatPct(claimableShare) }}
-            />
-          </div>
+          <ScheduleBar
+            claimedFraction={share(totals.claimed, totals.total)}
+            vestedFraction={share(totals.vested, totals.total)}
+          />
           <Legend
             className="mt-3"
             items={[

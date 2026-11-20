@@ -40,7 +40,7 @@ export const TopBar = (): React.JSX.Element => {
           {links.map(({ to, label, count }) => (
             <NavLink className="nav-link" end key={label} to={to}>
               {label}
-              {count !== undefined && count > 0 && <NavCount count={count} />}
+              <NavCount count={count} />
             </NavLink>
           ))}
         </nav>

@@ -35,7 +35,9 @@ export const Select = <T extends string>({
         <ChevronDown size={14} className="text-fg-muted" />
       </ArkSelect.Trigger>
       <ArkSelect.Positioner>
-        <ArkSelect.Content className={cn(popoverClass, 'flex flex-col gap-0.5 rounded-lg p-1')}>
+        <ArkSelect.Content
+          className={cn(popoverClass, 'flex flex-col gap-0.5 rounded-control p-1')}
+        >
           {options.map((option) => (
             <ArkSelect.Item
               className={cn(popoverItemClass, 'text-xs')}
