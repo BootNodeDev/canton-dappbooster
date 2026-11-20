@@ -15,9 +15,11 @@ const MIN_PASSWORD = 8
 
 const tabClass = (active: boolean): string =>
   cn(
-    'flex-1 rounded-[8px] px-3 py-1.5 text-sm font-semibold transition-colors',
+    'h-9 flex-1 rounded-[calc(var(--radius-control)-3px)] px-3 text-sm font-semibold transition-colors',
     'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
-    active ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
+    active
+      ? 'bg-surface text-fg shadow-[0_1px_2px_rgb(0_0_0/0.12)]'
+      : 'text-fg-muted hover:text-fg',
   )
 
 export const AuthCard = (): React.JSX.Element => {
@@ -61,8 +63,12 @@ export const AuthCard = (): React.JSX.Element => {
   }
 
   return (
-    <Card className="w-[22rem] max-w-full p-6 text-left">
-      <div role="tablist" aria-label="Account" className="flex gap-1 rounded-[10px] bg-muted p-1">
+    <Card className="w-full p-6 text-left sm:p-7">
+      <div
+        role="tablist"
+        aria-label="Account"
+        className="flex gap-0.5 rounded-control border border-border bg-surface-2 p-[3px]"
+      >
         <button
           type="button"
           role="tab"
@@ -125,7 +131,7 @@ export const AuthCard = (): React.JSX.Element => {
           )}
         </div>
         {error !== undefined && <FieldError id={`${id}-error`} message={error} />}
-        <Button type="submit" size="md" disabled={!valid} pending={submitting}>
+        <Button type="submit" size="lg" disabled={!valid} pending={submitting}>
           {signingUp ? 'Create account' : 'Sign in'}
         </Button>
         {signingUp && (

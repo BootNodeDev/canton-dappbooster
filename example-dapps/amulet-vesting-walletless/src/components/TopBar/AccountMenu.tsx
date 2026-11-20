@@ -15,7 +15,7 @@ import { toast } from '@/utils/toast'
 import { AMT } from '@/utils/tokens'
 
 const triggerClass =
-  'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
+  'inline-flex items-center gap-2 rounded-chip text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] md:h-10 md:border md:border-border md:bg-surface md:pr-3 md:pl-1.5 md:hover:border-border-strong md:hover:bg-muted'
 
 const ruleClass = '-mx-4 border-border'
 
@@ -37,10 +37,10 @@ export const AccountMenu = ({ session }: AccountMenuProps): React.JSX.Element =>
 
   return (
     <Menu.Root positioning={{ placement: 'bottom-end', gutter: 6 }}>
-      <Menu.Trigger className={cn(triggerClass, 'hover:border-border-strong hover:bg-muted')}>
-        <PartyAvatar partyId={session.partyId} />
-        {session.username}
-        <ChevronDown size={14} />
+      <Menu.Trigger className={triggerClass}>
+        <PartyAvatar partyId={session.partyId} size={30} />
+        <span className="max-md:sr-only">{session.username}</span>
+        <ChevronDown className="max-md:hidden" size={14} />
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>

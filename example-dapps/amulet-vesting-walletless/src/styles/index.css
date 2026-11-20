@@ -1,7 +1,7 @@
 @layer properties, theme, base, cnc, components, utilities;
 
 @import "tailwindcss";
-@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/figtree";
 @import "@fontsource-variable/jetbrains-mono";
 @import "@bootnodedev/canton-theme/default.css";
 @import "./tokens.css";
@@ -35,15 +35,24 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
 
-  --font-sans: "Manrope Variable", system-ui, -apple-system, sans-serif;
+  --font-sans: "Figtree Variable", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
+  --font-num: var(--font-sans);
 
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  --radius-card: 18px;
+  --radius-control: 12px;
+  --radius-chip: 999px;
 
   --animate-claimed: claimed 5s linear both;
+}
+
+@utility font-heading {
+  font-stretch: var(--heading-stretch, 100%);
+  letter-spacing: var(--heading-tracking, -0.02em);
 }
 
 @keyframes claimed {
@@ -89,6 +98,185 @@
     transition-duration: 400ms, 400ms, 200ms;
     transition-timing-function: cubic-bezier(0.06, 0.71, 0.55, 1);
   }
+
+  /* Primary nav */
+  .nav {
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-chip);
+    background: var(--surface-2);
+  }
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.125rem;
+    padding-inline: 1rem;
+    border-radius: var(--radius-chip);
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition:
+      color 150ms,
+      background-color 150ms;
+  }
+
+  .nav-link:hover {
+    color: var(--fg);
+  }
+
+  .nav-link[aria-current="page"] {
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  }
+
+  /* Mobile menu */
+  .sheet-backdrop {
+    background: var(--scrim);
+    backdrop-filter: blur(6px);
+  }
+
+  .sheet-backdrop[data-state="open"] {
+    animation: fade-in 300ms ease-in-out;
+  }
+
+  .sheet-backdrop[data-state="closed"] {
+    animation: fade-out 300ms ease-in-out forwards;
+  }
+
+  .sheet {
+    background: var(--sheet-bg);
+    box-shadow:
+      0 -20px 60px rgb(0 0 0 / 0.3),
+      inset 0 1px 0 var(--sheet-highlight);
+    backdrop-filter: blur(16px);
+    touch-action: pan-x;
+  }
+
+  .sheet[data-state="open"] {
+    animation: sheet-rise 550ms var(--ease-spring) backwards;
+  }
+
+  .sheet[data-state="closed"] {
+    animation: sheet-leave 300ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  }
+
+  .sheet[data-state="open"] li {
+    animation: rise-in 450ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(150ms + var(--i, 0) * 40ms);
+  }
+
+  .sheet-link[aria-current="page"]::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--primary-strong);
+    box-shadow: 0 0 10px var(--primary-strong);
+  }
+}
+
+:root {
+  --ease-settle: linear(
+    0,
+    0.125,
+    0.312,
+    0.473,
+    0.599,
+    0.695,
+    0.769,
+    0.824,
+    0.867,
+    0.899,
+    0.923,
+    0.942,
+    0.956,
+    0.966,
+    0.974,
+    0.981,
+    0.985,
+    0.989,
+    0.991,
+    0.994,
+    1
+  );
+  --ease-spring: linear(
+    0,
+    0.0253,
+    0.0894,
+    0.1708,
+    0.2711,
+    0.3759,
+    0.479,
+    0.5692,
+    0.6578,
+    0.7361,
+    0.8034,
+    0.8561,
+    0.903,
+    0.9403,
+    0.9693,
+    0.9896,
+    1.0056,
+    1.0166,
+    1.0234,
+    1.0269,
+    1.0283,
+    1.028,
+    1.0264,
+    1.0242,
+    1.0214,
+    1.0185,
+    1.0155,
+    1.0129,
+    1.0103,
+    1.008,
+    1.006,
+    1.0045,
+    1.0031,
+    1.0019,
+    1.0011,
+    1.0004,
+    0.9999,
+    0.9996,
+    0.9994,
+    0.9993,
+    1
+  );
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-rise {
+  from {
+    transform: translateY(110%);
+  }
+}
+
+@keyframes sheet-leave {
+  to {
+    transform: translateY(110%);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 html,
@@ -108,7 +296,7 @@ body {
 }
 
 ::selection {
-  background: rgba(198, 112, 229, 0.3);
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
