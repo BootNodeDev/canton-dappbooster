@@ -39,8 +39,10 @@
 #             in the order given, and leave the list out when there is none
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
-# `up` runs numbered steps, ending with the Wallet Gateway on 3030 and the dApp dev server
-# on 3012 in the background; the `step` calls in up() are the list. `down` kills both and
+# `up` runs numbered steps, ending with the Wallet Gateway and the dApp dev server in the
+# background; the `step` calls in up() are the list. The app's .env sets their ports,
+# WALLET_GATEWAY_PORT (3030 by default) and DAPP_PORT (3012), and a value the caller exported
+# wins, for every action. `down` kills both and
 # stops the LocalNet, keeping its volumes. `reset` drops them. After a move to a newer Splice,
 # `up` keeps the old ledger, moving its Postgres data first when the release runs a newer
 # Postgres, and warns, pointing at the upgrade guide, on every run until one finishes or
@@ -314,6 +316,19 @@ port_holder() { # port_holder <port>
   echo "pid $pid (${cwd:-unknown cwd})"
 }
 
+# The caller's value, else $ENV_FILE's, else the default; a subshell, so this shell keeps the caller's.
+env_value() { # env_value <key> <default>
+  (
+    [ -n "${!1+set}" ] || { set +eu; source "$ENV_FILE"; } >/dev/null 2>&1
+    printf '%s' "${!1:-$2}"
+  )
+}
+
+read_ports() {
+  APP_PORT="$(env_value DAPP_PORT 3012)"
+  GW_PORT="$(env_value WALLET_GATEWAY_PORT 3030)"
+}
+
 # Compose reports only that a dependency failed; Postgres's own reason is in its log.
 postgres_exited() {
   if [ "$(docker inspect --format '{{.State.Status}}' postgres 2>/dev/null)" = exited ]; then
@@ -371,18 +386,17 @@ docker_down() { # macOS only — quit Docker Desktop
 # names the app-user participant, so it needs the LocalNet answering before it starts.
 start_wallet_gateway() {
   local holder
-  if holder="$(port_holder 3030)"; then
-    warn "Port 3030 is held by $holder; not starting the Wallet Gateway."
+  if holder="$(port_holder "$GW_PORT")"; then
+    warn "Port $GW_PORT is held by $holder; not starting the Wallet Gateway."
   else
-    # 3>&- 4>&- or the two dups above outlive the script in this child, holding a
-    # reader's pipe open long after `up` has returned.
-    nohup pnpm run wallet-gateway >"$GW_LOG" 2>&1 3>&- 4>&- &
+    # No `--` before --port, which pnpm passes on; 3>&- 4>&- stops the child holding a reader's pipe.
+    nohup pnpm run wallet-gateway --port "$GW_PORT" >"$GW_LOG" 2>&1 3>&- 4>&- &
     echo $! >"$GW_PID"
   fi
 
-  # 2xx on the UI root, so something unrelated holding 3030 fails too; the dApp API is POST-only.
-  wait_for_http 60 "http://localhost:3030/" "Wallet Gateway" ok \
-    || die "The Wallet Gateway is not answering on 3030 (log: $GW_LOG)."
+  # 2xx on the UI root, so something unrelated holding the port fails too; the dApp API is POST-only.
+  wait_for_http 60 "http://localhost:$GW_PORT/" "Wallet Gateway" ok \
+    || die "The Wallet Gateway is not answering on $GW_PORT (log: $GW_LOG)."
 }
 
 # An exit of up that skipped die, which bash then ends with its own status.
@@ -450,14 +464,15 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
     log "Wrote CANTON_BACKEND_TOKEN to $ENV_FILE."
   fi
 
-  # Read it here rather than defaulting the URLs again, so the file every other step
-  # resolves config from also moves this readiness probe. A caller-exported value wins,
-  # matching deploy-dar.sh and mint-token.mjs; nothing is exported, because each step
-  # reads .env for itself and only the mint recipe would travel.
+  # Before the source, which would overwrite a port the caller exported.
+  read_ports
+  # A caller-exported value wins, as in deploy-dar.sh and mint-token.mjs.
   local preset_json_api_url="${CANTON_JSON_API_URL:-}"
   # shellcheck disable=SC1091
   source "$ENV_FILE"
   JSON_API_URL="${preset_json_api_url:-${CANTON_JSON_API_URL:-http://localhost:2975}}"
+  # So Vite and registry.sh use the ports this script waits on, whatever else they load.
+  export DAPP_PORT="$APP_PORT" WALLET_GATEWAY_PORT="$GW_PORT"
 
   # Nothing about the LocalNet config is committed: it is scaffolded from the pinned
   # tool's own template, and re-scaffolded when that template moves past it.
@@ -501,18 +516,18 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:up 3>&- 4>&- \
     || die "The stack:up script failed."
 
-  step wallet-gateway "Starting the Wallet Gateway -> http://localhost:3030"
+  step wallet-gateway "Starting the Wallet Gateway -> http://localhost:$GW_PORT"
   start_wallet_gateway
 
-  step dapp "Starting dApp frontend dev server -> http://localhost:3012"
-  local dapp_line="dApp frontend           http://localhost:3012   (log: $DAPP_LOG)"
-  if holder="$(port_holder 3012)"; then
-    warn "Port 3012 is held by $holder; not starting the dApp dev server. Free it, then 'pnpm run dev'."
-    dapp_line="dApp frontend           NOT STARTED: port 3012 is held by $holder"
+  step dapp "Starting dApp frontend dev server -> http://localhost:$APP_PORT"
+  local dapp_line="dApp frontend           http://localhost:$APP_PORT   (log: $DAPP_LOG)"
+  if holder="$(port_holder "$APP_PORT")"; then
+    warn "Port $APP_PORT is held by $holder; not starting the dApp dev server. Free it, then 'pnpm run dev'."
+    dapp_line="dApp frontend           NOT STARTED: port $APP_PORT is held by $holder"
   else
     nohup pnpm -C "$APP_DIR" run dev >"$DAPP_LOG" 2>&1 3>&- 4>&- &
     echo $! >"$DAPP_PID"
-    wait_for 60 "$DAPP_LOG" "ready in|localhost:3012" "dApp dev server" || true
+    wait_for 60 "$DAPP_LOG" "ready in|localhost:$APP_PORT" "dApp dev server" || true
   fi
 
   json_event ok
@@ -528,7 +543,7 @@ Fix what build-dar printed above, then run 'pnpm stack up' again (menu: Stack up
   say "$(printf 'Stack is up in %dm%02ds:' "$((total / 60))" "$((total % 60))")"
   cat >&3 <<EOF
    $dapp_line
-   Wallet Gateway          http://localhost:3030   (log: $GW_LOG)
+   Wallet Gateway          http://localhost:$GW_PORT   (log: $GW_LOG)
    app-user wallet UI      http://wallet.localhost:2000
    app-user JSON API       $JSON_API_URL
    app-user Ledger API     grpc://localhost:2901
@@ -572,16 +587,26 @@ stop_port() { # stop_port <port> <label>
   done
 }
 
+show_ports() {
+  log "Dev-server ports $APP_PORT and $GW_PORT:"
+  if lsof -nP -iTCP:"$APP_PORT" -iTCP:"$GW_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$APP_PORT" -iTCP:"$GW_PORT" -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
+  else
+    echo "   (all free)"
+  fi
+}
+
 stop_services() {
   stop_pidfile "$DAPP_PID" "dApp dev server"
   DEV_STACK_RUN_DIR="$RUN_DIR" pnpm -C "$APP_DIR" run --if-present stack:down \
     || warn "The stack:down script reported an error"
-  stop_port 3012 "dApp dev server"
+  stop_port "$APP_PORT" "dApp dev server"
   stop_pidfile "$GW_PID" "Wallet Gateway"
-  stop_port 3030 "Wallet Gateway"
+  stop_port "$GW_PORT" "Wallet Gateway"
 }
 
 down() {
+  read_ports
   stop_services
 
   # Volumes are kept, so the ledger survives a `down`; `reset` is what drops them.
@@ -593,15 +618,11 @@ down() {
   fi
 
   echo
-  log "Dev-server ports 3012 and 3030:"
-  if lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
-  else
-    echo "   (all free)"
-  fi
+  show_ports
 }
 
 reset() {
+  read_ports
   stop_services
   docker info >/dev/null 2>&1 \
     || die "Docker daemon not reachable. Start Docker first (menu: docker-up, the Docker app, or your CLI), then run 'reset'."
@@ -710,12 +731,8 @@ status() {
   else
     echo "   (docker daemon not running)"
   fi
-  log "Dev-server ports 3012 and 3030:"
-  if lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN >/dev/null 2>&1; then
-    lsof -nP -iTCP:3012 -iTCP:3030 -sTCP:LISTEN | awk 'NR>1{print "   "$1, $9}'
-  else
-    echo "   (none)"
-  fi
+  read_ports
+  show_ports
 }
 
 case "$ACTION" in

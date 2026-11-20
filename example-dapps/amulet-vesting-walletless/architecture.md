@@ -20,7 +20,7 @@ the ledger as each one's party.
 | `server/src/db/` | `schema.sql`, which the server applies as it starts, and `testDb.ts`, the PGlite database the tests run on. |
 | `server/src/ledger/` | `LedgerBackend`, the vesting reads and writes; `client.ts`, the JSON Ledger API spoken directly; `token.ts`, where the bearer comes from; `config.ts`, which finds the deployment; `transferContext.ts`, the two Scan reads an Amulet-moving choice needs; the mappers and command builders. |
 | `server/src/domain/` | The types the API hands over, which the dApp imports as types only, and the amount helpers. |
-| `server/compose.yaml` | The local Postgres on 5433, which `scripts/server.sh` starts and stops. |
+| `server/compose.yaml` | The local Postgres, which `scripts/server.sh` starts on `WL_POSTGRES_PORT`, 5433 by default, and stops. |
 | `src/backend/` | `api.ts`, the one `fetch` wrapper, and `vesting.ts`, one function per route. Neither names a party. |
 | `src/providers/` | `Session` asks who is signed in and holds the sign-in and sign-out actions; `Backend` asks the server whether the deployment is there. |
 | `src/hooks/useReceiver.ts` | Resolves the grant form's receiver from a username or a full party id. |

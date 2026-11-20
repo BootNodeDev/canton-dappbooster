@@ -24,8 +24,10 @@ filename casing table and the colocate-then-promote placement rules these layer 
   `DEV_STACK_RUN_DIR` for their logs.
 - **One `.env` per example, in its own folder.** Its scripts, its server if it has one, and its
   `vite.config.ts` read that file and no other.
-- **The dApp serves on 3012**, the port `dev-stack.sh` waits on. A service of its own takes a port
-  nothing else in the repo uses, listed in the root `architecture.md`.
+- **The dApp serves on `DAPP_PORT` from its `.env`, 3012 by default.** `vite.config.ts` reads it
+  with `strictPort`, because `dev-stack.sh` waits on that port. A service of its own takes a
+  default port nothing else in the repo uses and a variable in the same `.env` that moves it. The
+  root `architecture.md` lists it.
 - **Tests run through the `test` block in the example's `vite.config.ts`**, with no separate
   `vitest.config.ts`.
 - **The docs every example carries:** a `README.md` in the example shape the root `CLAUDE.md` gives,

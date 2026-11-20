@@ -2,17 +2,12 @@
 import assert from 'node:assert/strict'
 import { parseEnv } from 'node:util'
 import { describe, it } from 'vitest'
-import {
-  formatRegistryEnv,
-  instrumentDrift,
-  REGISTRY_PORT,
-  REGISTRY_TEMPLATE_IDS,
-} from './bootstrap-vesting.mjs'
+import { formatRegistryEnv, instrumentDrift, REGISTRY_TEMPLATE_IDS } from './bootstrap-vesting.mjs'
 
 const block = formatRegistryEnv({
   ledgerApiUrl: 'http://localhost:2975',
   adminParty: 'admin-1::abc',
-  port: REGISTRY_PORT,
+  port: '3013',
 })
 
 describe('the .env.registry bootstrap writes', () => {

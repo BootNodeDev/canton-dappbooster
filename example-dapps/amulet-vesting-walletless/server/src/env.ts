@@ -52,9 +52,10 @@ export const AUTH_SECRET = read('CANTON_AUTH_SECRET', 'unsafe')
 export const ADMIN_TOKEN: string | undefined = process.env.CANTON_BACKEND_TOKEN || undefined
 
 export const PORT = Number(read('WL_SERVER_PORT', '3040'))
+export const POSTGRES_PORT = read('WL_POSTGRES_PORT', '5433')
 export const DATABASE_URL = read(
   'DATABASE_URL',
-  'postgres://walletless:walletless@localhost:5433/walletless',
+  `postgres://walletless:walletless@localhost:${POSTGRES_PORT}/walletless`,
 )
 export const COOKIE_SECURE = read('WL_COOKIE_SECURE', 'false') === 'true'
 

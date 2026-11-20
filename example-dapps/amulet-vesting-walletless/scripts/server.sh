@@ -13,9 +13,9 @@ die() {
   exit 1
 }
 
-# Read through server/src/env.ts, so the script and the server can never disagree on the port.
-server_port() {
-  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(String(env.PORT)))"
+# Read through server/src/env.ts, so the script and the server can never disagree on a port.
+server_ports() {
+  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(env.PORT + ' ' + env.POSTGRES_PORT))"
 }
 
 wait_until() { # wait_until <seconds> <command…>
@@ -31,8 +31,9 @@ port_free() { ! lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 
 # Matched on this app's entry path too, so another service on the port is left alone.
 stop_server() {
-  local pid
-  for pid in $(lsof -t -nP -iTCP:"$(server_port)" -sTCP:LISTEN 2>/dev/null); do
+  local pid port
+  read -r port _ <<<"$(server_ports)"
+  for pid in $(lsof -t -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
     if ps -p "$pid" -o args= 2>/dev/null | grep -qF "$SERVER_ENTRY"; then
       log "Stopping the wallet-less server (pid $pid)"
       kill "$pid" 2>/dev/null || true
@@ -41,11 +42,13 @@ stop_server() {
 }
 
 start() {
-  local port
-  port="$(server_port)"
+  local ports port pg_port
+  ports="$(server_ports)"
+  read -r port pg_port <<<"$ports"
 
-  log "Starting Postgres (server/compose.yaml)"
-  "${COMPOSE[@]}" up -d --wait || die "Postgres did not come up; is port 5433 free?"
+  log "Starting Postgres (server/compose.yaml) -> localhost:$pg_port"
+  WL_POSTGRES_PORT="$pg_port" "${COMPOSE[@]}" up -d --wait \
+    || die "Postgres did not come up; is port $pg_port free?"
 
   # Restarted rather than reused: a leftover one started before this run's bootstrap.
   if ! port_free "$port"; then

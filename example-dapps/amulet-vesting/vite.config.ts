@@ -7,8 +7,6 @@ import { defineConfig } from 'vitest/config'
 // biome-ignore lint/style/noRestrictedImports: see above; both halves of this specifier are forced.
 import { parseEnv } from './src/utils/env.ts'
 
-// The empty prefix loads every key in `.env`, so only what `parseEnv` returns may be
-// defined back, never the loaded object.
 // LocalNet serves the token registry behind the validator's authenticated prefix, so the browser
 // cannot read it: the bearer stays here, in the dev server, and the page asks its own origin.
 const REGISTRY_PROXY = '/registry'
@@ -74,6 +72,7 @@ const localnetAssets = (values: Record<string, string>): Plugin => ({
 })
 
 export default defineConfig(({ mode }) => {
+  // The empty prefix loads every key in `.env`, so only what `parseEnv` returns is defined back.
   const loaded = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
   const env = parseEnv(loaded)
 
@@ -89,7 +88,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: 3012,
+      port: Number(address(loaded.DAPP_PORT, '3012')),
       proxy: { [REGISTRY_PROXY]: registryTarget(loaded) },
       strictPort: true,
     },

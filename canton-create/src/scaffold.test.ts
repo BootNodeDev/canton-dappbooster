@@ -133,7 +133,7 @@ describe('the starter with the local network', () => {
     expect(read(target, '.env.example')).toContain('VITE_MOCK_WALLET')
     expect(read(target, '.env.example')).toContain('CANTON_JSON_API_URL')
     expect(read(target, '.env.example')).toContain('CANTON_AUTH_SECRET')
-    expect(read(target, '.env.example')).toContain('VITE_WALLET_GATEWAY_URL')
+    expect(read(target, '.env.example')).toContain('WALLET_GATEWAY_PORT=3030')
     expect(read(target, 'README.md')).toContain('## Contract')
     expect(read(target, 'README.md')).toContain('## Local network')
   })

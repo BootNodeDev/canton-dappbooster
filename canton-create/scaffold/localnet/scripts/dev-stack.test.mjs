@@ -52,72 +52,164 @@ describe('dev-stack.sh arguments', () => {
   })
 })
 
+const executable = (file, body) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+}
+
+const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-bin-'))
+after(() => fs.rmSync(bin, { recursive: true, force: true }))
+executable(
+  path.join(bin, 'docker'),
+  '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
+    '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
+)
+executable(path.join(bin, 'curl'), 'printf 200')
+executable(
+  path.join(bin, 'lsof'),
+  '[ -z "$LSOF_LOG" ] || echo "$*" >>"$LSOF_LOG"\n[ -n "$PORTS_HELD" ] || exit 1\necho 4242',
+)
+executable(path.join(bin, 'dpm'), 'exit 0')
+
+const appAfterSpliceBump = ({ contract = false } = {}) => {
+  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
+  after(() => fs.rmSync(app, { recursive: true, force: true }))
+  const splice = path.join(app, 'splice')
+  fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
+  fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
+  fs.writeFileSync(path.join(splice, 'env/common.env'), 'DB_USER=cnadmin\n')
+  executable(
+    path.join(app, 'node_modules/.bin/canton-barebones'),
+    `[ "$1" != setup ] || { printf '{"localnetDir":"${splice}"}'; exit 0; }\n` +
+      '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
+  )
+  fs.writeFileSync(
+    path.join(app, 'package.json'),
+    JSON.stringify({
+      scripts: {
+        'wallet-gateway': 'true',
+        dev: 'echo ready in 0ms on $DAPP_PORT and $WALLET_GATEWAY_PORT',
+      },
+    }),
+  )
+  if (contract) {
+    fs.mkdirSync(path.join(app, 'daml'))
+    fs.writeFileSync(path.join(app, 'daml/daml.yaml'), 'name: app\nversion: 1.0.0\n')
+  }
+  fs.writeFileSync(path.join(app, '.env'), 'CANTON_BACKEND_TOKEN=test\n')
+  const localnet = path.join(app, 'localnet')
+  fs.mkdirSync(localnet)
+  fs.writeFileSync(
+    path.join(localnet, 'canton-barebones.config.json'),
+    JSON.stringify({ splice: { tag: '0.0.1' } }),
+  )
+
+  return {
+    app,
+    run: (args, options = {}) =>
+      spawnSync('bash', [script, ...args, options.localnet ?? localnet], {
+        env: {
+          ...process.env,
+          ...options.env,
+          CANTON_APP_DIR: app,
+          PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+        },
+        encoding: 'utf8',
+      }),
+  }
+}
+
+const events = (stdout) =>
+  stdout
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line))
+
+describe('dev-stack.sh ports', () => {
+  const customPorts = (stack) =>
+    fs.writeFileSync(
+      path.join(stack.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=3112\nWALLET_GATEWAY_PORT=3031\n',
+    )
+  const heldPorts = (run) =>
+    events(run.stdout)
+      .at(-1)
+      .warnings.filter((warning) => warning.startsWith('Port '))
+      .map((warning) => warning.split(' ')[1])
+  const portsAsked = (log) => [
+    ...new Set([...fs.readFileSync(log, 'utf8').matchAll(/-iTCP:(\d+)/g)].map(([, port]) => port)),
+  ]
+
+  it('names the ports .env sets in the warnings when they are held', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    const held = stack.run(['up', '--json'], { env: { PORTS_HELD: '1' } })
+
+    assert.deepEqual(heldPorts(held), ['3031', '3112'])
+  })
+
+  it('lets a port the caller exported beat the one in .env', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    const held = stack.run(['up', '--json'], {
+      env: {
+        DAPP_PORT: '4112',
+        PORTS_HELD: '1',
+        WALLET_GATEWAY_PORT: '4031',
+      },
+    })
+
+    assert.deepEqual(heldPorts(held), ['4031', '4112'])
+  })
+
+  it('hands the dev server the ports .env sets', () => {
+    const stack = appAfterSpliceBump()
+    customPorts(stack)
+
+    stack.run(['up'])
+
+    const log = fs.readFileSync(path.join(stack.app, '.dev-stack/dapp-dev.log'), 'utf8')
+    assert.match(log, /ready in 0ms on 3112 and 3031/)
+  })
+
+  it('takes an empty port as the default, whether .env or the caller leaves it empty', () => {
+    const emptyInEnv = appAfterSpliceBump()
+    fs.writeFileSync(
+      path.join(emptyInEnv.app, '.env'),
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nWALLET_GATEWAY_PORT=\n',
+    )
+    const emptyFromCaller = appAfterSpliceBump()
+    customPorts(emptyFromCaller)
+
+    const fromEnv = emptyInEnv.run(['status'])
+    const fromCaller = emptyFromCaller.run(['status'], {
+      env: { DAPP_PORT: '', WALLET_GATEWAY_PORT: '' },
+    })
+
+    assert.match(fromEnv.stdout, /Dev-server ports 3012 and 3030:/)
+    assert.match(fromCaller.stdout, /Dev-server ports 3012 and 3030:/)
+  })
+
+  for (const action of ['down', 'status']) {
+    it(`checks and lists the ports .env sets on ${action}`, () => {
+      const stack = appAfterSpliceBump()
+      customPorts(stack)
+      const log = path.join(stack.app, 'lsof.log')
+
+      const run = stack.run([action], { env: { LSOF_LOG: log } })
+
+      assert.equal(run.status, 0)
+      assert.match(run.stdout, /Dev-server ports 3112 and 3031:/)
+      assert.deepEqual(portsAsked(log), ['3112', '3031'])
+    })
+  }
+})
+
 describe('dev-stack.sh after an upgrade in place', () => {
-  const executable = (file, body) => {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
-  }
-
-  // Docker, the ports and the LocalNet tool are all doubles, so no test reaches a real stack.
-  const appAfterSpliceBump = ({ contract = false } = {}) => {
-    const app = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-stack-'))
-    after(() => fs.rmSync(app, { recursive: true, force: true }))
-    const bin = path.join(app, 'bin')
-    executable(
-      path.join(bin, 'docker'),
-      '[ -z "$DOCKER_DOWN" ] || exit 1\n[ -z "$TERM_UP" ] || kill "$PPID"\n' +
-        '[ -z "$POSTGRES_EXITED" ] || [ "$1" != inspect ] || { printf exited; exit 0; }\nprintf ledger',
-    )
-    executable(path.join(bin, 'curl'), 'printf 200')
-    executable(path.join(bin, 'lsof'), '[ -n "$PORTS_HELD" ] || exit 1\necho 4242')
-    executable(path.join(bin, 'dpm'), 'exit 0')
-    const splice = path.join(app, 'splice')
-    fs.mkdirSync(path.join(splice, 'env'), { recursive: true })
-    fs.writeFileSync(path.join(splice, 'compose.env'), 'POSTGRES_VERSION=18.6-trixie\n')
-    fs.writeFileSync(path.join(splice, 'env/common.env'), 'DB_USER=cnadmin\n')
-    executable(
-      path.join(app, 'node_modules/.bin/canton-barebones'),
-      `[ "$1" != setup ] || { printf '{"localnetDir":"${splice}"}'; exit 0; }\n` +
-        '[ -z "$CANTON_BAREBONES_STATUS" ] || exit "$CANTON_BAREBONES_STATUS"',
-    )
-    fs.writeFileSync(
-      path.join(app, 'package.json'),
-      JSON.stringify({ scripts: { 'wallet-gateway': 'true', dev: 'echo ready in 0ms' } }),
-    )
-    if (contract) {
-      fs.mkdirSync(path.join(app, 'daml'))
-      fs.writeFileSync(path.join(app, 'daml/daml.yaml'), 'name: app\nversion: 1.0.0\n')
-    }
-    fs.writeFileSync(path.join(app, '.env'), 'CANTON_BACKEND_TOKEN=test\n')
-    const localnet = path.join(app, 'localnet')
-    fs.mkdirSync(localnet)
-    fs.writeFileSync(
-      path.join(localnet, 'canton-barebones.config.json'),
-      JSON.stringify({ splice: { tag: '0.0.1' } }),
-    )
-
-    return {
-      app,
-      run: (args, options = {}) =>
-        spawnSync('bash', [script, ...args, options.localnet ?? localnet], {
-          env: {
-            ...process.env,
-            ...options.env,
-            CANTON_APP_DIR: app,
-            PATH: `${bin}${path.delimiter}${process.env.PATH}`,
-          },
-          encoding: 'utf8',
-        }),
-    }
-  }
-
   const localnetDoesNotStart = { env: { CANTON_BAREBONES_STATUS: '1' } }
   const upgradedInPlace = /\[!\] This ledger was upgraded in place/
-  const events = (stdout) =>
-    stdout
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line))
   const warnedOn = (stream) => stream.filter((event) => event.warnings).map((event) => event.status)
 
   it('warns beside the error of every up that fails after the upgrade', () => {
