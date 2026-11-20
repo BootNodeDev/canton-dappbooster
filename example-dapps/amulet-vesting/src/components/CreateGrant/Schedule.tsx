@@ -1,6 +1,5 @@
 import { DateField } from '@/components/CreateGrant/DateField'
 import { labelClass } from '@/components/CreateGrant/fields'
-import { LiveScheduleCurve } from '@/components/CreateGrant/LiveScheduleCurve'
 import { Milestones } from '@/components/CreateGrant/Milestones'
 import {
   applyDemoPreset,
@@ -11,6 +10,7 @@ import {
 } from '@/components/CreateGrant/scheduleForm'
 import { InfoTip } from '@/components/InfoTip'
 import { Pills } from '@/components/Pills'
+import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { Select } from '@/components/Select'
 import { now } from '@/utils/clock'
 import { cn } from '@/utils/cn'
@@ -76,47 +76,34 @@ export const Schedule = ({ onChange, value }: ScheduleProps): React.JSX.Element 
         </div>
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        {curveKind === 'linear' && (
+          <DateField
+            id="start"
+            label="Start date"
+            value={start}
+            onChange={(iso) => edit({ start: iso })}
+          />
+        )}
+        <DateField
+          id="cliff"
+          label="Cliff date"
+          value={cliff}
+          onChange={(iso) => edit({ cliff: iso })}
+        />
         {curveKind === 'linear' ? (
-          <>
-            <DateField
-              id="start"
-              label="Start date"
-              value={start}
-              onChange={(iso) => edit({ start: iso })}
-            />
-            <DateField
-              id="cliff"
-              label="Cliff date"
-              value={cliff}
-              onChange={(iso) => edit({ cliff: iso })}
-            />
-            <DateField
-              id="end"
-              label="End date"
-              value={end}
-              onChange={(iso) => edit({ end: iso })}
-            />
-          </>
+          <DateField id="end" label="End date" value={end} onChange={(iso) => edit({ end: iso })} />
         ) : (
-          <>
-            <DateField
-              id="cliff"
-              label="Cliff date"
-              value={cliff}
-              onChange={(iso) => edit({ cliff: iso })}
-            />
-            <Milestones
-              className="sm:col-span-3"
-              onChange={(list) => edit({ milestones: list })}
-              value={milestones}
-            />
-          </>
+          <Milestones
+            className="sm:col-span-3"
+            onChange={(list) => edit({ milestones: list })}
+            value={milestones}
+          />
         )}
       </div>
       {scheduleFormValid(value) ? (
         <div className="mt-5 rounded-control border border-dashed border-border-strong bg-surface-2 px-4 pt-3 pb-2">
           <p className="mb-2 text-[0.8rem] font-semibold text-fg-muted">How it will vest</p>
-          <LiveScheduleCurve compact schedule={toSchedule(value)} />
+          <ScheduleCurve compact nowMs={0} schedule={toSchedule(value)} />
         </div>
       ) : (
         <p className="mt-3 text-xs text-danger">

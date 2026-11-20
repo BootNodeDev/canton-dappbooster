@@ -31,21 +31,19 @@ export const PendingGrantCard = ({
 
   return (
     <GrantRow
-      head={
+      title={pendingGrant.title}
+      badges={
         <>
-          <h2 className="inline-block max-w-full truncate align-bottom font-heading text-base font-bold text-fg">
-            {pendingGrant.title}
-          </h2>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <CurvePill curve={curve} />
-            <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
-              {direction === 'incoming' ? 'Waiting for you' : 'Awaiting acceptance'}
-            </StatusPill>
-          </div>
-          <div className="mt-2.5 font-mono text-xs text-fg-soft">
-            <CounterpartyId party={counterparty} incoming={direction === 'incoming'} />
-          </div>
+          <CurvePill curve={curve} />
+          <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
+            {direction === 'incoming' ? 'Waiting for you' : 'Awaiting acceptance'}
+          </StatusPill>
         </>
+      }
+      detail={
+        <span className="font-mono">
+          <CounterpartyId party={counterparty} incoming={direction === 'incoming'} />
+        </span>
       }
       progress={
         <>

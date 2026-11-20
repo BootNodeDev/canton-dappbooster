@@ -6,21 +6,12 @@ interface KpiCardProps {
   amount: string
   label: string
   lead?: boolean
-  tone?: 'muted' | 'success'
 }
 
-const TONES: Record<'muted' | 'success', string> = {
-  muted: 'text-fg-muted',
-  success: 'text-success',
-}
-
-export const KpiCard = ({ amount, label, lead = false, tone }: KpiCardProps): React.JSX.Element => (
+export const KpiCard = ({ amount, label, lead = false }: KpiCardProps): React.JSX.Element => (
   <Card
-    className={cn(
-      'px-5 py-4',
-      lead &&
-        'col-span-2 border-[var(--hero-border)] bg-[image:var(--hero-bg)] text-[var(--hero-fg)] shadow-[var(--hero-shadow)] sm:col-span-1',
-    )}
+    className={cn('px-5 py-4', lead && 'col-span-2 sm:col-span-1')}
+    tone={lead ? 'hero' : 'plain'}
   >
     <div
       className={cn(
@@ -36,7 +27,6 @@ export const KpiCard = ({ amount, label, lead = false, tone }: KpiCardProps): Re
       className={cn(
         'mt-2 text-[1.35rem] font-semibold tracking-tight',
         lead && 'text-[1.7rem] text-[var(--hero-figure)]',
-        tone !== undefined && TONES[tone],
       )}
     />
   </Card>

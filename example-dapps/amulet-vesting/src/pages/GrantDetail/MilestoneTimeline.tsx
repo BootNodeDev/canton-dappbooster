@@ -2,7 +2,7 @@ import { CompactAmount } from '@/components/CompactAmount'
 import { multiplyByFraction } from '@/utils/amount'
 import { cn } from '@/utils/cn'
 import { formatDate, relativeTime } from '@/utils/format'
-import type { VestingSchedule } from '@/utils/schedule'
+import { nextMilestone, type VestingSchedule } from '@/utils/schedule'
 import { AMT } from '@/utils/tokens'
 
 interface MilestoneTimelineProps {
@@ -20,7 +20,8 @@ export const MilestoneTimeline = ({
     return null
   }
   const points = schedule.curve.points
-  const next = points.findIndex((point) => new Date(point.time).getTime() > nowMs)
+  const upcoming = nextMilestone(schedule, nowMs)
+  const next = upcoming === undefined ? -1 : points.indexOf(upcoming)
   return (
     <ol className="relative flex flex-col gap-4 pl-6 before:absolute before:top-1.5 before:bottom-1.5 before:left-1.5 before:w-0.5 before:bg-border">
       {points.map((point, i) => {

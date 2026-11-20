@@ -44,12 +44,17 @@ export const ScheduleCurve = ({
     const span = Math.max(1, e - s)
     const px = (t: number): number => ((t - s) / span) * 100
 
-    const samples = 800
-    let path = ''
-    for (let i = 0; i <= samples; i += 1) {
-      const t = s + (span * i) / samples
-      path += `${i === 0 ? 'M' : 'L'}${px(t).toFixed(2)} ${(100 - vestedFraction(schedule, t) * 100).toFixed(2)} `
-    }
+    const py = (t: number): string => (100 - vestedFraction(schedule, t) * 100).toFixed(2)
+    // The fraction is straight between these instants and jumps only at them, so they draw it exactly.
+    const breaks = [...new Set([s, ...tickDates(schedule).map(toMs), toMs(schedule.cliff), e])]
+      .filter((t) => t >= s && t <= e)
+      .sort((a, b) => a - b)
+    const path = breaks
+      .map(
+        (t, i) =>
+          `${i === 0 ? 'M' : 'L'}${px(t).toFixed(2)} ${py(t - 1)} L${px(t).toFixed(2)} ${py(t)}`,
+      )
+      .join(' ')
 
     const ticks = tickDates(schedule).map((iso) => ({ iso, x: clamp(px(toMs(iso))) }))
 
@@ -83,108 +88,109 @@ export const ScheduleCurve = ({
   const reach = compact ? 100 : nowX
 
   return (
-    <div>
-      <div className={cn('flex gap-3', !compact && 'mt-7')}>
-        {!compact && (
-          <div
-            aria-hidden="true"
-            className="-my-2 flex w-9 flex-col justify-between text-right text-[0.7rem] text-fg-soft"
-          >
-            <span>100%</span>
-            <span>50%</span>
-            <span>0%</span>
-          </div>
-        )}
-        <div className={cn('relative flex-1', compact ? 'h-32' : 'h-52 sm:h-60')}>
-          {/* A bare <title> is announced inconsistently, so role and aria-labelledby name it too. */}
-          <svg
-            aria-labelledby={titleId}
-            className="absolute inset-0 size-full overflow-visible"
-            preserveAspectRatio="none"
-            role="img"
-            viewBox="0 0 100 100"
-          >
-            <title id={titleId}>
-              Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
-              {formatDate(new Date(end).toISOString())}, {formatPct(nowF)} vested now
-            </title>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--chart-fill)" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="var(--chart-fill)" stopOpacity="0.02" />
-              </linearGradient>
-              <clipPath id={clipId}>
-                <rect x="-1" y="-5" width={reach + 1} height="110" />
-              </clipPath>
-            </defs>
-            {[0, 50, 100].map((y) => (
-              <line
-                key={y}
-                stroke="var(--border)"
-                strokeDasharray={y === 100 ? undefined : '3 4'}
-                vectorEffect="non-scaling-stroke"
-                x1="0"
-                x2="100"
-                y1={y}
-                y2={y}
-              />
-            ))}
-            <path clipPath={`url(#${clipId})`} d={area} fill={`url(#${gradId})`} />
-            {!compact && (
-              <path
-                d={d}
-                fill="none"
-                opacity="0.55"
-                stroke="var(--chart-line)"
-                strokeDasharray="5 5"
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
+    <div
+      className={cn(
+        'grid gap-x-3 gap-y-2',
+        compact ? 'grid-cols-1' : 'mt-7 grid-cols-[2.25rem_minmax(0,1fr)]',
+      )}
+    >
+      {!compact && (
+        <div
+          aria-hidden="true"
+          className="-my-2 flex flex-col justify-between text-right text-[0.7rem] text-fg-soft"
+        >
+          <span>100%</span>
+          <span>50%</span>
+          <span>0%</span>
+        </div>
+      )}
+      <div className={cn('relative', compact ? 'h-32' : 'h-52 sm:h-60')}>
+        {/* A bare <title> is announced inconsistently, so role and aria-labelledby name it too. */}
+        <svg
+          aria-labelledby={titleId}
+          className="absolute inset-0 size-full overflow-visible"
+          preserveAspectRatio="none"
+          role="img"
+          viewBox="0 0 100 100"
+        >
+          <title id={titleId}>
+            Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
+            {formatDate(new Date(end).toISOString())}
+            {compact ? '' : `, ${formatPct(nowF)} vested now`}
+          </title>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-fill)" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="var(--chart-fill)" stopOpacity="0.02" />
+            </linearGradient>
+            <clipPath id={clipId}>
+              <rect x="-1" y="-5" width={reach + 1} height="110" />
+            </clipPath>
+          </defs>
+          {[0, 50, 100].map((y) => (
+            <line
+              key={y}
+              stroke="var(--border)"
+              strokeDasharray={y === 100 ? undefined : '3 4'}
+              vectorEffect="non-scaling-stroke"
+              x1="0"
+              x2="100"
+              y1={y}
+              y2={y}
+            />
+          ))}
+          <path clipPath={`url(#${clipId})`} d={area} fill={`url(#${gradId})`} />
+          {!compact && (
             <path
-              clipPath={`url(#${clipId})`}
               d={d}
               fill="none"
+              opacity="0.55"
               stroke="var(--chart-line)"
-              strokeLinejoin="round"
-              strokeWidth="2.5"
+              strokeDasharray="5 5"
+              strokeWidth="2"
               vectorEffect="non-scaling-stroke"
             />
-            {!compact && (
-              <line
-                stroke="var(--fg-soft)"
-                strokeDasharray="2 3"
-                vectorEffect="non-scaling-stroke"
-                x1={nowX}
-                x2={nowX}
-                y1="0"
-                y2="100"
-              />
-            )}
-          </svg>
-          {!compact && (
-            <>
-              <span
-                aria-hidden="true"
-                className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-[var(--chart-line)] bg-surface"
-                style={{ left: `${nowX}%`, top: `${100 - nowF * 100}%` }}
-              />
-              <span
-                aria-hidden="true"
-                className="absolute top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)] rounded-full bg-fg px-2 py-0.5 text-[0.65rem] font-bold text-bg"
-                style={{ left: `${nowX}%` }}
-              >
-                Today
-              </span>
-            </>
           )}
-        </div>
+          <path
+            clipPath={`url(#${clipId})`}
+            d={d}
+            fill="none"
+            stroke="var(--chart-line)"
+            strokeLinejoin="round"
+            strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke"
+          />
+          {!compact && (
+            <line
+              stroke="var(--fg-soft)"
+              strokeDasharray="2 3"
+              vectorEffect="non-scaling-stroke"
+              x1={nowX}
+              x2={nowX}
+              y1="0"
+              y2="100"
+            />
+          )}
+        </svg>
+        {!compact && (
+          <>
+            <span
+              aria-hidden="true"
+              className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-[var(--chart-line)] bg-surface"
+              style={{ left: `${nowX}%`, top: `${100 - nowF * 100}%` }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)] rounded-full bg-fg px-2 py-0.5 text-[0.65rem] font-bold text-bg"
+              style={{ left: `${nowX}%` }}
+            >
+              Today
+            </span>
+          </>
+        )}
       </div>
-      <div
-        aria-hidden="true"
-        className={cn('relative mt-2 h-4 text-[0.7rem] text-fg-soft', !compact && 'ml-12')}
-        ref={measure}
-      >
+      {!compact && <span />}
+      <div aria-hidden="true" className="relative h-4 text-[0.7rem] text-fg-soft" ref={measure}>
         {kept.map(({ iso, x }) => (
           <span
             className="absolute whitespace-nowrap"

@@ -25,8 +25,6 @@
   --color-primary-strong: var(--primary-strong);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
-  --color-pink: var(--pink);
-  --color-pink-strong: var(--pink-strong);
 
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
@@ -59,7 +57,7 @@
   0%,
   100% {
     background-color: var(--surface);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--card-edge, 0 0 #0000), var(--shadow-card);
   }
 
   5%,
@@ -313,13 +311,5 @@ body {
 
 .cnc-token-input__field,
 .cnc-party-id-input {
-  border-radius: 8px;
-}
-
-.gradient-text {
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  border-radius: var(--radius-control);
 }

@@ -5,18 +5,22 @@ import { cn } from '@/utils/cn'
 
 interface GrantRowProps {
   action: ReactNode
+  badges?: ReactNode
   className?: string
+  detail?: ReactNode
   figure: { amount: string; dim?: boolean; label: string }
-  head: ReactNode
-  progress: ReactNode
+  progress?: ReactNode
+  title: ReactNode
 }
 
 export const GrantRow = ({
   action,
+  badges,
   className,
+  detail,
   figure,
-  head,
   progress,
+  title,
 }: GrantRowProps): React.JSX.Element => (
   <Card
     className={cn(
@@ -26,8 +30,16 @@ export const GrantRow = ({
       className,
     )}
   >
-    <div className="min-w-0 self-center [grid-area:head]">{head}</div>
-    <div className="min-w-0 self-center [grid-area:progress]">{progress}</div>
+    <div className="min-w-0 self-center [grid-area:head]">
+      <h2 className="truncate font-heading text-base font-bold text-fg">{title}</h2>
+      {badges !== undefined && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">{badges}</div>
+      )}
+      {detail !== undefined && <div className="mt-2.5 text-xs text-fg-soft">{detail}</div>}
+    </div>
+    {progress !== undefined && (
+      <div className="min-w-0 self-center [grid-area:progress]">{progress}</div>
+    )}
     <div className="[grid-area:figure] md:self-end md:text-right xl:self-center">
       <div className="text-[0.8rem] font-semibold text-fg-muted">{figure.label}</div>
       <AmountDisplay

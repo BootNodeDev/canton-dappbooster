@@ -32,7 +32,6 @@
   --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
 
   /* effects */
-  --gradient-text: linear-gradient(120deg, #692581, #c670e5 55%, #e71d73);
   --glow: 0 10px 26px rgba(198, 112, 229, 0.35);
   --shadow-card: 0 12px 28px -16px rgba(28, 29, 46, 0.18);
   --shadow-popover: 0 18px 36px -12px rgba(28, 29, 46, 0.22);
@@ -81,7 +80,6 @@
   --primary-strong: #c08cd8;
   --accent-strong: var(--accent);
 
-  --gradient-text: linear-gradient(120deg, #c670e5, #e71d73 60%, #ff6b9d);
   --glow: 0 10px 26px rgba(231, 29, 115, 0.4);
   --shadow-card: 0 14px 32px -16px rgba(0, 0, 0, 0.55);
   --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.7);
@@ -108,5 +106,5 @@
 
 :root {
   --cnc-font-mono: var(--font-mono);
-  --cnc-radius: var(--radius-lg);
+  --cnc-radius: var(--radius-control);
 }

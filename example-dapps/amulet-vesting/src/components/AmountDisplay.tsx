@@ -5,12 +5,11 @@ import { InfoTip } from '@/components/InfoTip'
 import { cn } from '@/utils/cn'
 import { AMT } from '@/utils/tokens'
 
-type MarkSize = 'fixed' | 'relative' | 'small'
+type MarkSize = 'relative' | 'small'
 
 interface AmountDisplayProps {
   className?: string
   count?: boolean
-  gradient?: boolean
   markSize?: MarkSize
   value: string
 }
@@ -25,7 +24,6 @@ const mark = (size: string): React.JSX.Element => (
   </InfoTip>
 )
 const MARKS: Record<MarkSize, React.JSX.Element> = {
-  fixed: mark('size-[22px]'),
   relative: mark('size-[0.92em]'),
   small: mark('size-[0.7em]'),
 }
@@ -35,16 +33,9 @@ export const AmountDisplay = ({
   value,
   className,
   count = false,
-  gradient = false,
   markSize = 'relative',
 }: AmountDisplayProps): React.JSX.Element => (
-  <span
-    className={cn(
-      'inline-flex items-center gap-[0.3em] font-num tabular-nums',
-      gradient && 'gradient-text',
-      className,
-    )}
-  >
+  <span className={cn('inline-flex items-center gap-[0.3em] font-num tabular-nums', className)}>
     {count ? formatAmount(value) : <CompactAmount value={value} />}
     {!count && MARKS[markSize]}
   </span>
