@@ -49,7 +49,7 @@ const variants: Record<Variant, string> = {
 
 export const buttonClass = (variant: Variant, size: Size, className?: string): string =>
   cn(
-    'inline-flex items-center justify-center gap-2 rounded-[8px] font-semibold transition-colors',
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control font-semibold transition-colors',
     'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
     'disabled:cursor-not-allowed disabled:opacity-45',
     sizes[size],

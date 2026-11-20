@@ -363,7 +363,7 @@ every row when the party goes, because the rows were that party's.
 A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
 `VestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
 raised, so a claim changes the id of the grant it acted on. `grantLineage` is that identity —
-everything the choice preserves — and it is what the withdraw history keys on and what `withdraw`
+everything the choice preserves — and it is what the claim history keys on and what `withdraw`
 uses to hand the grant-detail page its successor's id, so a URL survives a claim rather than
 becoming "Grant not found".
 
@@ -593,7 +593,7 @@ dismissal, focus trapping, roving focus, live-region announcement and popper pla
 `canton-dappbooster` stays on raw Zag. Its anatomy class strings are what `canton-theme` selects
 against, and Ark ships its own.
 
-Three things the library leaves to the caller, settled once here:
+Four things the library leaves to the caller, settled once here:
 
 - **A popper's z-index goes on its `Content`, never its `Positioner`.** Zag reads the content's
   computed `z-index` and writes it onto the positioner as an inline `z-index: var(--z-index)`, so a
@@ -611,6 +611,13 @@ Three things the library leaves to the caller, settled once here:
   the button that opened it reads as an interaction outside. Under React's development remount
   that happens on the way in, and the dialog shuts the moment it opens. A press outside and Escape
   still close it.
+- **The mobile menu's backdrop sits under the header, and its sheet above it.** `TopBar/MobileMenu`
+  is an Ark dialog drawn as a sheet at the bottom of the screen. Its `Dialog.Trigger` stays in the
+  header as a close cross, which only works if the header is above the backdrop. Ark excludes a
+  registered trigger from the outside press, so the cross closes the sheet rather than closing and
+  reopening it. Dragging the sheet down closes it too: the handlers write `transform` inline while
+  the finger moves, and clearing the inline `animation` on release lets the leave animation start
+  from where the finger let go.
 
 The toast stack is the one Ark part that needs CSS the app has to supply: Zag places each toast
 absolutely and hands the offsets over as custom properties, so

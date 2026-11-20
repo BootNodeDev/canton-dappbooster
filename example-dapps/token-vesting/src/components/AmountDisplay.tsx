@@ -5,47 +5,48 @@ import { TokenMark } from '@/icons'
 import { cn } from '@/utils/cn'
 import { DBT } from '@/utils/tokens'
 
+type MarkSize = 'fixed' | 'relative' | 'small'
+
 interface AmountDisplayProps {
   className?: string
   count?: boolean
-  fixedMark?: boolean
   gradient?: boolean
+  markSize?: MarkSize
   value: string
 }
 
 // The token mark is the only thing naming the unit, so it carries the name rather than an empty alt.
 const UNIT = `${DBT.name} (${DBT.symbol})`
 
-// Neither varies, so hoisting them lets React skip the subtree by element identity. The dashboard
-// re-renders every amount once a second off the live clock, and each mark carries a `useId` tooltip.
-// The mark scales with its figure except on a KPI, where the figures differ in size but their marks
-// should not. `InfoTip` gives an element child no accessible name of its own, so the mark carries
-// its own `role="img"` and drops the `aria-hidden` it has by default outside this wrapper.
+// Hoisted so React skips them by identity: every amount re-renders each second, each mark a tooltip.
+// InfoTip names no element child, so the mark carries role="img" and drops its default aria-hidden.
 const mark = (size: string): React.JSX.Element => (
   <InfoTip label={UNIT}>
     <TokenMark role="img" aria-label={UNIT} aria-hidden={undefined} className={size} />
   </InfoTip>
 )
-const MARK = mark('size-[0.92em]')
-const MARK_FIXED = mark('size-[22px]')
+const MARKS: Record<MarkSize, React.JSX.Element> = {
+  fixed: mark('size-[22px]'),
+  relative: mark('size-[0.92em]'),
+  small: mark('size-[0.7em]'),
+}
 
-// Mono numeral + the token mark. The canonical way amounts appear; `count` is for a plain tally,
-// which owes neither the mark nor the forced 2 decimals.
+// `count` is for a plain tally, which owes neither the mark nor the forced two decimals.
 export const AmountDisplay = ({
   value,
   className,
   count = false,
-  fixedMark = false,
   gradient = false,
+  markSize = 'relative',
 }: AmountDisplayProps): React.JSX.Element => (
   <span
     className={cn(
-      'inline-flex items-center gap-2 font-mono tabular-nums',
+      'inline-flex items-center gap-[0.3em] font-num tabular-nums',
       gradient && 'gradient-text',
       className,
     )}
   >
     {count ? formatAmount(value) : <CompactAmount value={value} />}
-    {!count && (fixedMark ? MARK_FIXED : MARK)}
+    {!count && MARKS[markSize]}
   </span>
 )

@@ -15,7 +15,7 @@ export const TokenMark = (props: SVGProps<SVGSVGElement>): React.JSX.Element => 
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="8" fill={`url(#${gradient})`} />
-      <path d="M9 10l4.4 12h1.8L19.6 10h-2.5l-2.8 8.4L11.5 10z" fill="#fff" />
+      <path d="M9 10l4.4 12h1.8L19.6 10h-2.5l-2.8 8.4L11.5 10z" fill="var(--primary-fg)" />
     </svg>
   )
 }
