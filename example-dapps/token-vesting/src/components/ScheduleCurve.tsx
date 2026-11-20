@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { cn } from '@/utils/cn'
 import { formatDate, formatPct } from '@/utils/format'
 import { toMs, type VestingSchedule, vestedFraction } from '@/utils/schedule'
@@ -23,8 +23,8 @@ const tickDates = (schedule: VestingSchedule): string[] =>
     ? [schedule.curve.start, schedule.cliff, schedule.curve.end]
     : schedule.curve.points.map((point) => point.time)
 
-// Labels closer than this share of the width would overlap, so the earlier one gives way.
-const TICK_GAP = 15
+// A date label is about this wide (px); one closer than that to the next gives way.
+const TICK_WIDTH = 76
 
 const clamp = (value: number): number => Math.min(100, Math.max(0, value))
 
@@ -51,21 +51,32 @@ export const ScheduleCurve = ({
       path += `${i === 0 ? 'M' : 'L'}${px(t).toFixed(2)} ${(100 - vestedFraction(schedule, t) * 100).toFixed(2)} `
     }
 
-    let last = Number.POSITIVE_INFINITY
-    const kept = tickDates(schedule)
-      .map((iso) => ({ iso, x: clamp(px(toMs(iso))) }))
-      .reverse()
-      .filter(({ x }) => {
-        const fits = last - x >= TICK_GAP
-        if (fits) {
-          last = x
-        }
-        return fits
-      })
-      .reverse()
+    const ticks = tickDates(schedule).map((iso) => ({ iso, x: clamp(px(toMs(iso))) }))
 
-    return { area: `${path}L100 100 L0 100 Z`, d: path, end: e, start: s, ticks: kept }
+    return { area: `${path}L100 100 L0 100 Z`, d: path, end: e, start: s, ticks }
   }, [schedule])
+
+  const [width, setWidth] = useState(0)
+  const measure = useCallback((row: HTMLDivElement | null) => {
+    if (row === null) {
+      return undefined
+    }
+    const observer = new ResizeObserver(() => setWidth(row.clientWidth))
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [])
+  const gap = width > 0 ? (TICK_WIDTH / width) * 100 : 100
+  let last = Number.POSITIVE_INFINITY
+  const kept = [...ticks]
+    .reverse()
+    .filter(({ x }) => {
+      const fits = last - x >= gap
+      if (fits) {
+        last = x
+      }
+      return fits
+    })
+    .reverse()
 
   const nowX = clamp(((nowMs - start) / Math.max(1, end - start)) * 100)
   const nowF = vestedFraction(schedule, nowMs)
@@ -172,8 +183,9 @@ export const ScheduleCurve = ({
       <div
         aria-hidden="true"
         className={cn('relative mt-2 h-4 text-[0.7rem] text-fg-soft', !compact && 'ml-12')}
+        ref={measure}
       >
-        {ticks.map(({ iso, x }) => (
+        {kept.map(({ iso, x }) => (
           <span
             className="absolute whitespace-nowrap"
             key={iso}

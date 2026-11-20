@@ -2,7 +2,14 @@ import { Dialog } from '@ark-ui/react/dialog'
 import { Portal } from '@ark-ui/react/portal'
 import { useTheme } from '@bootnodedev/canton-dappbooster'
 import { CircleHelp, Menu, X } from 'lucide-react'
-import { type CSSProperties, type PointerEvent, type ReactNode, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+  useCallback,
+  useRef,
+  useState,
+} from 'react'
 import { NavLink, type To } from 'react-router-dom'
 import { Pills } from '@/components/Pills'
 import { NavCount } from '@/components/TopBar/NavCount'
@@ -15,7 +22,7 @@ export interface MenuLink {
 }
 
 interface MobileMenuProps {
-  account?: ReactNode
+  account?: (close: () => void) => ReactNode
   action: (close: () => void) => ReactNode
   help?: { label: string; open: () => void }
   links: readonly MenuLink[]
@@ -42,6 +49,19 @@ interface Drag {
 const rowClass =
   'flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-sm font-semibold text-fg-muted'
 
+// A sheet taller than the screen scrolls, so only its grip drags it; `touch-action` follows.
+const watchOverflow = (sheet: HTMLDivElement | null): (() => void) | undefined => {
+  if (sheet === null) {
+    return undefined
+  }
+  const measure = (): void => {
+    sheet.dataset.scrollable = String(sheet.scrollHeight > sheet.clientHeight)
+  }
+  const observer = new ResizeObserver(measure)
+  observer.observe(sheet)
+  return () => observer.disconnect()
+}
+
 export const MobileMenu = ({
   account,
   action,
@@ -50,11 +70,31 @@ export const MobileMenu = ({
 }: MobileMenuProps): React.JSX.Element => {
   const [open, setOpen] = useState(false)
   const { mode, setMode } = useTheme()
+  const sheetRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
-  const close = (): void => setOpen(false)
+  const attach = useCallback((sheet: HTMLDivElement | null) => {
+    sheetRef.current = sheet
+    return watchOverflow(sheet)
+  }, [])
+
+  // A drag leaves `animation: none` inline, which would otherwise outrank the leave animation.
+  const close = (): void => {
+    sheetRef.current?.style.removeProperty('animation')
+    setOpen(false)
+  }
+
+  const settle = (sheet: HTMLDivElement): void => {
+    sheet.style.transition = 'transform 940ms var(--ease-settle)'
+    sheet.style.transform = ''
+  }
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const sheet = event.currentTarget
+    const fromGrip = event.target instanceof Element && event.target.closest('[data-grip]') !== null
+    if (
+      matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      (sheet.dataset.scrollable === 'true' && !fromGrip)
+    ) {
       return
     }
     drag.current = {
@@ -98,21 +138,26 @@ export const MobileMenu = ({
     if (current === null || !current.moved) {
       return
     }
-    const sheet = event.currentTarget
     if (event.clientY - current.y > CLOSE_AT || current.speed > CLOSE_SPEED) {
-      // The leave animation then starts from where the finger left the sheet.
-      sheet.style.animation = ''
       close()
       return
     }
-    sheet.style.transition = 'transform 940ms var(--ease-settle)'
-    sheet.style.transform = ''
+    settle(event.currentTarget)
+  }
+
+  // The browser took the gesture over, so nobody let go: put the sheet back.
+  const onPointerCancel = (event: PointerEvent<HTMLDivElement>): void => {
+    const moved = drag.current?.moved === true
+    drag.current = null
+    if (moved) {
+      settle(event.currentTarget)
+    }
   }
 
   return (
     <Dialog.Root
       lazyMount
-      onOpenChange={(details) => setOpen(details.open)}
+      onOpenChange={(details) => (details.open ? setOpen(true) : close())}
       open={open}
       unmountOnExit
     >
@@ -126,24 +171,27 @@ export const MobileMenu = ({
         <Dialog.Backdrop className="sheet-backdrop fixed inset-0 z-20 md:hidden" />
         <Dialog.Positioner className="fixed inset-x-3 bottom-3 z-40 md:hidden">
           <Dialog.Content
-            className="sheet max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-[28px] border border-border px-3.5 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] outline-none"
-            onPointerCancel={onPointerUp}
+            className="sheet max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-[calc(var(--radius-card)*2)] border border-border px-3.5 pb-[calc(1rem+env(safe-area-inset-bottom))] outline-none"
+            onPointerCancel={onPointerCancel}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            ref={attach}
           >
             <Dialog.Title className="sr-only">Menu</Dialog.Title>
-            <Dialog.CloseTrigger
-              aria-label="Close menu"
-              className="mx-auto mb-2 block h-6 w-16 before:mx-auto before:block before:h-1 before:w-10 before:rounded-full before:bg-border-strong before:content-['']"
-            />
-            {account}
+            <div className="pt-2 pb-2" data-grip>
+              <Dialog.CloseTrigger
+                aria-label="Close menu"
+                className="mx-auto block h-6 w-16 before:mx-auto before:block before:h-1 before:w-10 before:rounded-full before:bg-border-strong before:content-['']"
+              />
+            </div>
+            {account?.(close)}
             <nav aria-label="Menu">
               <ul className="flex flex-col gap-0.5">
                 {links.map((link, index) => (
                   <li key={link.label} style={{ '--i': index } as CSSProperties}>
                     <NavLink
-                      className="sheet-link flex items-center gap-3 rounded-2xl px-4 py-3.5 font-heading text-[1.35rem] font-bold text-fg aria-[current=page]:bg-surface-2"
+                      className="sheet-link flex items-center gap-3 rounded-control px-4 py-3.5 font-heading text-[1.35rem] font-bold text-fg aria-[current=page]:bg-surface-2"
                       end
                       onClick={close}
                       to={link.to}

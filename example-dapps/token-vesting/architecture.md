@@ -359,6 +359,9 @@ the hook reads off `canton-connect`'s `ConnectCancelledError` rather than off a 
 submits through the backend and then refreshes; there is no optimistic local mutation, because a
 write is only real once the ledger has it and the read is the only thing that knows. It also drops
 every row when the party goes, because the rows were that party's.
+Its `busy` map records the exit each grant has in flight: a dialog stays dismissible over the
+wallet prompt, and the controls behind it would otherwise offer a second write against a
+contract the first is about to archive.
 
 A contract id is not a grant's identity, which is the one thing a UI keyed on ids has to know here:
 `VestingContract_Withdraw` archives the contract and re-creates it with `alreadyWithdrawn`
