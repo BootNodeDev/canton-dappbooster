@@ -111,7 +111,7 @@ stays only where it is the point: a pair the sentence contrasts, or a figure fix
 | Package manager | pnpm workspaces | Single root `pnpm-lock.yaml`; one root `pnpm install` links every workspace. Workspace layout, `linkWorkspacePackages` and `allowBuilds` live in `pnpm-workspace.yaml`. Root `package.json` orchestrates scripts via `pnpm -C <dir>` |
 | Node | 24 | Exact version pinned via root `.nvmrc`; inherits to every Node package. Root, `canton-connect`, `canton-dappbooster` and the examples declare `engines.node` at `>=24.15.0`, which is what `jsdom` 31 requires. `canton-create` and its starter declare the same, since the project the installer installs depends on the libraries |
 | Container runtime | Docker | Required by the `@bootnodedev/canton-barebones` LocalNet; nothing in this repository builds an image |
-| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies` and configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. `pnpm run wallet-gateway` runs it on port 3030, and `dev-stack.sh` on the port in the app's `VITE_WALLET_GATEWAY_URL`. Each wallet example registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
+| Wallet | `@canton-network/wallet-gateway-remote` | The CIP-0103 wallet the dApp connects to, from the Splice wallet kernel. Pinned exact in the root `devDependencies` and configured by the committed `canton-create/scaffold/localnet/wallet-gateway.config.json`, the file every project with a local network gets. `pnpm run wallet-gateway` runs it on port 3030, and `dev-stack.sh` on the app's `WALLET_GATEWAY_PORT`. Each wallet example registers it as a `RemoteAdapter` in `additionalAdapters`, which is what lets a session survive a reload |
 | LocalNet | `@bootnodedev/canton-barebones` | Pinned exact in `canton-create/scaffold/localnet/package.json`, the only manifest that declares it. `publicHoistPattern` in `pnpm-workspace.yaml` links it and its command into the root `node_modules`, so `pnpm exec canton-barebones` and the scaffold's scripts reach that one copy from the root. The repo commits none of its config. `canton-create/scaffold/localnet/scripts/localnet-config.mjs` scaffolds the gitignored `.canton-localnet/` from the tool's own template and turns on `validators.appUser.ui` and `sv.scanUI`. Without them, nginx serves no `/api/validator` or `/api/scan`. The Splice checkout and the runtime env land in `.canton-localnet/.generated/` |
 | Commit linting | commitlint + Husky | Enforced via root `.husky/commit-msg` |
 | Lint / format | Biome | One root `biome.json` and a single root `@biomejs/biome`; per-project specifics live in `overrides`. No per-subproject Biome install or config. `pnpm lint` = `biome check --error-on-warnings` (warnings fail); it skips standalone SVG assets |
@@ -147,8 +147,8 @@ dependency pinned in `canton-create/scaffold/localnet/`. `pnpm dev:<example>` sc
 the gitignored `.canton-localnet/` and drives it there. The wallet ships from
 [`canton-network/wallet`](https://github.com/canton-network/wallet) as
 `@canton-network/wallet-gateway-remote` and installs from npm as a root dev dependency.
-`pnpm dev:<example>` runs it through `pnpm run wallet-gateway`, on the port in the example's
-`VITE_WALLET_GATEWAY_URL`, 3030 by default.
+`pnpm dev:<example>` runs it through `pnpm run wallet-gateway`, on the example's
+`WALLET_GATEWAY_PORT`, 3030 by default.
 
 ## Code style
 
@@ -461,17 +461,19 @@ its `CLAUDE.md` owns that contract. Nothing below differs.
   belong to `canton-barebones` and Splice, and do not move.
   - The dApp dev server listens on `DAPP_PORT`, 3012 by default, which each `vite.config.ts`
     reads with `strictPort`.
-  - Wallet Gateway listens on the port in `VITE_WALLET_GATEWAY_URL`, 3030 by default.
-    `dev-stack.sh` passes it as `--port`, so `server.port` in `wallet-gateway.config.json` only
-    serves a run by hand. `allowedOrigins` is `"*"` because the dApp's origin moves with
-    `DAPP_PORT`.
-  - token-vesting's registry listens on the port in `VITE_REGISTRY_URL`, 3013 by default, which
-    its bootstrap writes into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's
-    origin when `.env` leaves it unset.
+  - Wallet Gateway listens on `WALLET_GATEWAY_PORT`, 3030 by default. `dev-stack.sh` passes it
+    as `--port`, so `server.port` in `wallet-gateway.config.json` only serves a run by hand.
+    `allowedOrigins` is `"*"` because the dApp's origin moves with `DAPP_PORT`.
+  - token-vesting's registry listens on `REGISTRY_PORT`, 3013 by default, which its bootstrap
+    writes into `.env.registry`. `registry.sh` sets `CORS_ORIGINS` to the dApp's origin when
+    `.env` leaves it unset.
   - The wallet-less server listens on `WL_SERVER_PORT`, 3040 by default.
-  - The wallet-less Postgres listens on the port in a localhost `DATABASE_URL`, 5433 by default.
-    `scripts/server.sh` reads it through `server/src/env.ts` and hands it to
-    `server/compose.yaml`.
+  - The wallet-less Postgres listens on `WL_POSTGRES_PORT`, 5433 by default. `scripts/server.sh`
+    reads it through `server/src/env.ts` and hands it to `server/compose.yaml`.
+  - A port and the URL a client uses to reach it are separate variables. While
+    `VITE_WALLET_GATEWAY_URL`, `VITE_REGISTRY_URL` or `DATABASE_URL` is unset, the code builds
+    its default from the port: each app's `src/utils/env.ts`, the starter's `vite.config.ts` and
+    the wallet-less `server/src/env.ts`. No script parses a port out of a URL.
   - `dev-stack.sh` reads the dApp's and the gateway's ports for every action, so `down` and
     `status` find what `up` started. A value the caller exported beats `.env`.
   - A default lives in the `.env.example` files and in each fallback in the code, so moving one

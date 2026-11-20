@@ -2,12 +2,7 @@
 import assert from 'node:assert/strict'
 import { parseEnv } from 'node:util'
 import { describe, it } from 'vitest'
-import {
-  formatRegistryEnv,
-  instrumentDrift,
-  REGISTRY_TEMPLATE_IDS,
-  registryPort,
-} from './bootstrap-vesting.mjs'
+import { formatRegistryEnv, instrumentDrift, REGISTRY_TEMPLATE_IDS } from './bootstrap-vesting.mjs'
 
 const block = formatRegistryEnv({
   ledgerApiUrl: 'http://localhost:2975',
@@ -41,13 +36,6 @@ describe('the .env.registry bootstrap writes', () => {
       block.split('\n').map((line) => line.split('=')[0]),
       ['LEDGER_API_URL', 'ADMIN_PARTY', ...Object.keys(REGISTRY_TEMPLATE_IDS), 'PORT'],
     )
-  })
-
-  it('listens on the port VITE_REGISTRY_URL names, else on 3013', () => {
-    assert.equal(registryPort('http://localhost:3113'), '3113')
-    assert.equal(registryPort('http://localhost'), '3013')
-    assert.equal(registryPort('/api/registry'), '3013')
-    assert.equal(registryPort(undefined), '3013')
   })
 })
 

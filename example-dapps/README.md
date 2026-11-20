@@ -62,7 +62,7 @@ Run these from the repo root. `<example>` is the example's folder name.
 | `pnpm -C canton-create try` | Packs the installer and every example into `canton-create/.try`, then prints the commands to install one there as a user would |
 | `pnpm -C canton-create try:clean` | Stops what `try` started, resets its LocalNet and removes `.try` |
 
-`up` serves the dApp on port 3012 and Wallet Gateway on port 3030 for every example. The example's `.env` moves them: `DAPP_PORT`, and the port in `VITE_WALLET_GATEWAY_URL`.
+`up` serves the dApp on port 3012 and Wallet Gateway on port 3030 for every example. The example's `.env` moves them with `DAPP_PORT` and `WALLET_GATEWAY_PORT`.
 The stack writes its logs to `.dev-stack/` at the repo root.
 
 > [!IMPORTANT]

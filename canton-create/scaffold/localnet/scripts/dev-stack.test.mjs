@@ -124,8 +124,7 @@ describe('dev-stack.sh ports', () => {
   const customPorts = (stack) =>
     fs.writeFileSync(
       path.join(stack.app, '.env'),
-      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=3112\n' +
-        'VITE_WALLET_GATEWAY_URL=http://localhost:3031/api/v0/dapp\n',
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=3112\nWALLET_GATEWAY_PORT=3031\n',
     )
   const heldPorts = (run) =>
     events(run.stdout)
@@ -153,7 +152,7 @@ describe('dev-stack.sh ports', () => {
       env: {
         DAPP_PORT: '4112',
         PORTS_HELD: '1',
-        VITE_WALLET_GATEWAY_URL: 'http://localhost:4031/api/v0/dapp',
+        WALLET_GATEWAY_PORT: '4031',
       },
     })
 
@@ -164,14 +163,14 @@ describe('dev-stack.sh ports', () => {
     const emptyInEnv = appAfterSpliceBump()
     fs.writeFileSync(
       path.join(emptyInEnv.app, '.env'),
-      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nVITE_WALLET_GATEWAY_URL=\n',
+      'CANTON_BACKEND_TOKEN=test\nDAPP_PORT=\nWALLET_GATEWAY_PORT=\n',
     )
     const emptyFromCaller = appAfterSpliceBump()
     customPorts(emptyFromCaller)
 
     const fromEnv = emptyInEnv.run(['status'])
     const fromCaller = emptyFromCaller.run(['status'], {
-      env: { DAPP_PORT: '', VITE_WALLET_GATEWAY_URL: '' },
+      env: { DAPP_PORT: '', WALLET_GATEWAY_PORT: '' },
     })
 
     assert.match(fromEnv.stdout, /Dev-server ports 3012 and 3030:/)

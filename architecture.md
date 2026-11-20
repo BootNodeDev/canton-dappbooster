@@ -92,10 +92,10 @@ ports belong to `canton-barebones` and Splice, and stay where they are.
 | Service | URL / Port | Purpose |
 | --- | --- | --- |
 | dApp frontend | `http://localhost:3012`, `DAPP_PORT` | example dApp |
-| Wallet Gateway | `http://localhost:3030`, the port in `VITE_WALLET_GATEWAY_URL` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
-| Token registry | `http://localhost:3013`, the port in `VITE_REGISTRY_URL` | token-vesting's canton-token-forge registry |
+| Wallet Gateway | `http://localhost:3030`, `WALLET_GATEWAY_PORT` | the wallet: user UI, and `/api/v0/dapp` for the dApp |
+| Token registry | `http://localhost:3013`, `REGISTRY_PORT` | token-vesting's canton-token-forge registry |
 | Wallet-less server | `http://localhost:3040`, `WL_SERVER_PORT` | the wallet-less example's API, behind the dApp's `/api` proxy |
-| Wallet-less Postgres | `localhost:5433`, the port in `DATABASE_URL` | the wallet-less example's accounts, sessions and escrow disclosures |
+| Wallet-less Postgres | `localhost:5433`, `WL_POSTGRES_PORT` | the wallet-less example's accounts, sessions and escrow disclosures |
 | app-user Wallet UI | `http://wallet.localhost:2000` | optional official Splice wallet UI |
 | app-user Ledger API | `grpc://localhost:2901` | SDK/tools |
 | app-user administration API | `grpc://localhost:2902` | SDK/tools |

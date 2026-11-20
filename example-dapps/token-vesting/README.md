@@ -58,8 +58,10 @@ When something else holds a port, set its variable in `.env`. Run `pnpm stack do
 | Variable | Port | Default |
 | --- | --- | --- |
 | `DAPP_PORT` | the dApp dev server | 3012 |
-| `VITE_WALLET_GATEWAY_URL` | Wallet Gateway, the port in the URL | 3030 |
-| `VITE_REGISTRY_URL` | the token registry, the port in the URL | 3013 |
+| `REGISTRY_PORT` | the token registry | 3013 |
+| `WALLET_GATEWAY_PORT` | Wallet Gateway | 3030 |
+
+The dApp finds the registry on `REGISTRY_PORT` and Wallet Gateway on `WALLET_GATEWAY_PORT` while `VITE_REGISTRY_URL` and `VITE_WALLET_GATEWAY_URL` are unset. Set a URL only for a service somewhere else.
 
 The local network's own ports do not move.
 

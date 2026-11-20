@@ -15,12 +15,7 @@ die() {
 
 # Read through server/src/env.ts, so the script and the server can never disagree on a port.
 server_ports() {
-  node -e "import('$APP_DIR/server/src/env.ts').then(({ DATABASE_URL, PORT }) => {
-    const db = new URL(DATABASE_URL)
-    // A database on another host leaves the local Postgres on 5433, where it always ran.
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(db.hostname)
-    process.stdout.write(PORT + ' ' + (local ? db.port || 5432 : 5433))
-  })"
+  node -e "import('$APP_DIR/server/src/env.ts').then((env) => process.stdout.write(env.PORT + ' ' + env.POSTGRES_PORT))"
 }
 
 wait_until() { # wait_until <seconds> <command…>

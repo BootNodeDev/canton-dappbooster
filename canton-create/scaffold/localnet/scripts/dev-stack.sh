@@ -40,8 +40,8 @@
 #   --quiet   only warnings, errors and the closing 'Stack is up:' block
 #
 # `up` runs numbered steps, ending with the Wallet Gateway and the dApp dev server in the
-# background; the `step` calls in up() are the list. The app's .env sets their ports: the one in
-# VITE_WALLET_GATEWAY_URL (3030 by default) and DAPP_PORT (3012), and a value the caller exported
+# background; the `step` calls in up() are the list. The app's .env sets their ports,
+# WALLET_GATEWAY_PORT (3030 by default) and DAPP_PORT (3012), and a value the caller exported
 # wins, for every action. `down` kills both and
 # stops the LocalNet, keeping its volumes. `reset` drops them. After a move to a newer Splice,
 # `up` keeps the old ledger, moving its Postgres data first when the release runs a newer
@@ -325,17 +325,11 @@ env_value() { # env_value <key>
   fi
 }
 
-url_port() { # url_port <url> <port when the url names none>
-  local authority="${1#*://}" port
-  authority="${authority%%/*}"
-  port="${authority##*:}"
-  case "$port" in '' | *[!0-9]*) printf '%s' "$2" ;; *) printf '%s' "$port" ;; esac
-}
-
 read_ports() {
   APP_PORT="$(env_value DAPP_PORT)"
   APP_PORT="${APP_PORT:-3012}"
-  GW_PORT="$(url_port "$(env_value VITE_WALLET_GATEWAY_URL)" 3030)"
+  GW_PORT="$(env_value WALLET_GATEWAY_PORT)"
+  GW_PORT="${GW_PORT:-3030}"
 }
 
 # Compose reports only that a dependency failed; Postgres's own reason is in its log.
@@ -475,7 +469,7 @@ Then open a new terminal and run 'pnpm stack up' again (menu: Stack up)."
 
   local preset
   # Put back after the source, so what the caller exported beats $ENV_FILE here and in each child.
-  preset="$(declare -p CANTON_JSON_API_URL DAPP_PORT VITE_WALLET_GATEWAY_URL 2>/dev/null || true)"
+  preset="$(declare -p CANTON_JSON_API_URL DAPP_PORT WALLET_GATEWAY_PORT 2>/dev/null || true)"
   # shellcheck disable=SC1091
   source "$ENV_FILE"
   eval "$preset"

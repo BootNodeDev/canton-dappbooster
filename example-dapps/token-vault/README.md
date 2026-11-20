@@ -74,7 +74,9 @@ When something else holds a port, set its variable in `.env`. Run `pnpm stack do
 | Variable | Port | Default |
 | --- | --- | --- |
 | `DAPP_PORT` | the dApp dev server | 3012 |
-| `VITE_WALLET_GATEWAY_URL` | Wallet Gateway, the port in the URL | 3030 |
+| `WALLET_GATEWAY_PORT` | Wallet Gateway | 3030 |
+
+The dApp finds Wallet Gateway on `WALLET_GATEWAY_PORT` while `VITE_WALLET_GATEWAY_URL` is unset. Set the URL only for a gateway somewhere else.
 
 The vault operator opens no port, and the local network's own ports do not move.
 
