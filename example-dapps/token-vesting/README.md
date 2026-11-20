@@ -51,9 +51,23 @@ Point `.env` at your network: `CANTON_JSON_API_URL`, `CANTON_BACKEND_TOKEN` and 
 
 `bootstrap` creates only what is missing, so running it again is safe. The one file it writes is `.env.registry`, the registry's settings, which `stack:up` starts the registry from. `pnpm stack:down` stops it.
 
+### Change the ports
+
+When something else holds a port, set its variable in `.env`. Run `pnpm stack down` before the change and `pnpm stack up` after it, so `down` still finds what `up` started.
+
+| Variable | Port | Default |
+| --- | --- | --- |
+| `DAPP_PORT` | the dApp dev server | 3012 |
+| `REGISTRY_PORT` | the token registry | 3013 |
+| `WALLET_GATEWAY_PORT` | Wallet Gateway | 3030 |
+
+The dApp finds the registry on `REGISTRY_PORT` and Wallet Gateway on `WALLET_GATEWAY_PORT` while `VITE_REGISTRY_URL` and `VITE_WALLET_GATEWAY_URL` are unset. Set a URL only for a service somewhere else.
+
+The local network's own ports do not move.
+
 ### Open the dApp on another address
 
-By default the registry accepts only http://localhost:3012. To open the dApp on any other address (`127.0.0.1`, a published port, a LAN name), list it in `CORS_ORIGINS`.
+By default the registry accepts only the dApp's own address, http://localhost:3012, or the port `DAPP_PORT` sets. To open the dApp on any other address (`127.0.0.1`, a published port, a LAN name), list it in `CORS_ORIGINS`.
 
 ### Deploy a build
 

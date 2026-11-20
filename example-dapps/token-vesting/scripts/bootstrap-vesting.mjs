@@ -32,7 +32,7 @@ const INSTRUMENT = {
   maxPerTap: '1000.0',
 }
 
-export const REGISTRY_PORT = 3013
+const REGISTRY_PORT = process.env.REGISTRY_PORT || '3013'
 
 // Spelled out rather than built from a helper, so these read the same here, in
 // the registry's own .env.example, and in a grep.

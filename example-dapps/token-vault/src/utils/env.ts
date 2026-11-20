@@ -4,11 +4,11 @@ export interface Env {
   VITE_WALLET_GATEWAY_URL: string
 }
 
-const DEFAULTS: Env = {
+const defaults = (values: Record<string, unknown>): Env => ({
   VITE_NETWORK_ID: 'canton:local',
   VITE_WALLET_CONNECT_PROJECT_ID: '',
-  VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
-}
+  VITE_WALLET_GATEWAY_URL: `http://localhost:${values.WALLET_GATEWAY_PORT || 3030}/api/v0/dapp`,
+})
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -28,9 +28,10 @@ const read = (
   accepts: (value: string) => boolean,
   expected: string,
 ): string => {
-  const value = values[key] ?? DEFAULTS[key]
+  const fallback = defaults(values)[key]
+  const value = values[key] ?? fallback
   if (typeof value !== 'string' || !accepts(value)) {
-    throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
+    throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${fallback}`)
   }
   return value
 }

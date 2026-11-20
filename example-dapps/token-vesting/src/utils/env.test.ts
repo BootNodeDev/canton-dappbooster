@@ -22,6 +22,29 @@ describe('parseEnv', () => {
     expect(parseEnv({})).toEqual(DEFAULTS)
   })
 
+  it('builds the gateway url from WALLET_GATEWAY_PORT when the url is absent', () => {
+    expect(parseEnv({ WALLET_GATEWAY_PORT: '3031' }).VITE_WALLET_GATEWAY_URL).toBe(
+      'http://localhost:3031/api/v0/dapp',
+    )
+  })
+
+  it('keeps a gateway url set explicitly over WALLET_GATEWAY_PORT', () => {
+    const VITE_WALLET_GATEWAY_URL = 'https://gateway.example/api/v0/dapp'
+    expect(
+      parseEnv({ VITE_WALLET_GATEWAY_URL, WALLET_GATEWAY_PORT: '3031' }).VITE_WALLET_GATEWAY_URL,
+    ).toBe(VITE_WALLET_GATEWAY_URL)
+  })
+
+  it('builds the registry url from REGISTRY_PORT when the url is absent', () => {
+    expect(parseEnv({ REGISTRY_PORT: '3113' }).VITE_REGISTRY_URL).toBe('http://localhost:3113')
+  })
+
+  it('requires the urls on a deployed build, whatever the ports say', () => {
+    expect(() =>
+      parseEnv({ ...DEFAULTS, REGISTRY_PORT: '3113', VITE_REGISTRY_URL: undefined }, false),
+    ).toThrow(/VITE_REGISTRY_URL must be set explicitly/)
+  })
+
   // An unset var in a .env file reaches Vite as an empty string, not as a missing key, so it is a
   // mistake to report rather than a request for the default.
   it.each(['VITE_EXPLORER_URL', 'VITE_REGISTRY_URL', 'VITE_WALLET_GATEWAY_URL'])(

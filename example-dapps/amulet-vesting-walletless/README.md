@@ -109,6 +109,21 @@ Point `.env` at your network: `CANTON_JSON_API_URL`, `SPLICE_SCAN_API_URL`, `CAN
 
 A hosted validator issues its own tokens. Set the `EXTERNAL_OAUTH_*` keys and the server fetches one by client-credentials grant instead of minting it. `bootstrap` does not read those keys: run it with `CANTON_BACKEND_TOKEN` set to a token for that same client, so the operator it creates is one the server can act as.
 
+### Change the ports
+
+When something else holds a port, set its variable in `.env`. Run `pnpm stack down` before the change and `pnpm stack up` after it, so `down` still finds what `up` started.
+
+| Variable | Port | Default |
+| --- | --- | --- |
+| `DAPP_PORT` | the dApp dev server | 3012 |
+| `WL_SERVER_PORT` | the server, which the dev server proxies `/api` to | 3040 |
+| `WL_POSTGRES_PORT` | the Postgres `pnpm stack:up` starts | 5433 |
+| `WALLET_GATEWAY_PORT` | Wallet Gateway, which `pnpm stack up` starts and this app never calls | 3030 |
+
+The server finds Postgres on `WL_POSTGRES_PORT` while `DATABASE_URL` is empty. Set the URL only for a database somewhere else.
+
+The local network's own ports do not move.
+
 ### Accounts
 
 - Accounts live in the Postgres `server/compose.yaml` starts. Set `DATABASE_URL` to use another one, and the server applies the schema there as it starts.

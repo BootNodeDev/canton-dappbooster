@@ -6,13 +6,13 @@ export interface Env {
   VITE_WALLET_GATEWAY_URL: string
 }
 
-const DEFAULTS: Env = {
+const defaults = (values: Record<string, unknown>): Env => ({
   VITE_EXPLORER_URL: 'http://scan.localhost:4000',
   VITE_NETWORK_ID: 'canton:local',
-  VITE_REGISTRY_URL: 'http://localhost:3013',
+  VITE_REGISTRY_URL: `http://localhost:${values.REGISTRY_PORT || 3013}`,
   VITE_WALLET_CONNECT_PROJECT_ID: '',
-  VITE_WALLET_GATEWAY_URL: 'http://localhost:3030/api/v0/dapp',
-}
+  VITE_WALLET_GATEWAY_URL: `http://localhost:${values.WALLET_GATEWAY_PORT || 3030}/api/v0/dapp`,
+})
 
 const isHttpUrl = (value: string): boolean => {
   try {
@@ -46,13 +46,14 @@ const read = (
   localDefaults: boolean,
   normalize: (value: string) => string = (value) => value,
 ): string => {
-  const raw = values[key] ?? (localDefaults ? DEFAULTS[key] : undefined)
+  const fallback = defaults(values)[key]
+  const raw = values[key] ?? (localDefaults ? fallback : undefined)
   if (raw === undefined) {
-    throw new Error(`Invalid environment: ${key} must be set explicitly, e.g. ${DEFAULTS[key]}`)
+    throw new Error(`Invalid environment: ${key} must be set explicitly, e.g. ${fallback}`)
   }
   const value = typeof raw === 'string' ? normalize(raw) : raw
   if (typeof value !== 'string' || !accepts(value)) {
-    throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${DEFAULTS[key]}`)
+    throw new Error(`Invalid environment: ${key} must be ${expected}, e.g. ${fallback}`)
   }
   return value
 }

@@ -10,7 +10,8 @@ import { parseEnv } from './src/utils/env.ts'
 export default defineConfig(({ mode }) => {
   const envDir = fileURLToPath(new URL('.', import.meta.url))
   // The empty prefix loads every key in `.env`, so only what `parseEnv` returns is defined back.
-  const env = parseEnv(loadEnv(mode, envDir, ''))
+  const loaded = loadEnv(mode, envDir, '')
+  const env = parseEnv(loaded)
 
   return {
     define: Object.fromEntries(
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: 'localhost',
-      port: 3012,
+      port: Number(loaded.DAPP_PORT || 3012),
       strictPort: true,
     },
     // jsdom despite no DOM assertions: the wallet SDK touches DOM globals on import.
