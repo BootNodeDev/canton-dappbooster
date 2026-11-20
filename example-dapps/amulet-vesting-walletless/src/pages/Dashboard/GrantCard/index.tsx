@@ -1,15 +1,15 @@
 import { Eye, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
-import { Card } from '@/components/Card'
+import { CompactAmount } from '@/components/CompactAmount'
 import { CounterpartyId } from '@/components/CounterpartyId'
 import { CurvePill } from '@/components/CurvePill'
 import { GrantLock } from '@/components/GrantLock'
+import { GrantRow } from '@/components/GrantRow'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { Legend } from '@/pages/Dashboard/GrantCard/Legend'
+import { Legend } from '@/pages/Dashboard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { BusyKind, GrantDerived } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -67,116 +67,105 @@ export const GrantCard = ({
   const milestones = curve.kind === 'milestone' ? curve.points.map((p) => p.fraction) : undefined
   const counterparty = role === 'receiver' ? grant.creator : grant.receiver
   const meta = scheduleMeta(grant, derived, nowMs)
+  const claimable = role === 'receiver' && derived.canClaim
 
   return (
-    <Card
-      className={cn(
-        'grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7',
-        className,
-      )}
-    >
-      <div className="min-w-0">
-        <h2>
-          <Link
-            to={`/grants/${grant.id}`}
-            className="inline-block max-w-full truncate align-bottom text-base font-bold tracking-tight text-fg transition-colors hover:text-primary-strong"
-          >
-            {grant.title}
-          </Link>
-        </h2>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+    <GrantRow
+      className={cn(claimable && '[--card-edge:var(--claimable-edge)]', className)}
+      title={
+        <Link to={`/grants/${grant.id}`} className="transition-colors hover:text-primary-strong">
+          {grant.title}
+        </Link>
+      }
+      badges={
+        <>
           <CurvePill curve={curve} />
           <GrantStatusPill status={derived.status} />
-        </div>
-        <div className="mt-2.5 font-mono text-xs text-fg-soft">
+        </>
+      }
+      detail={
+        <span className="font-mono">
           <CounterpartyId party={counterparty} incoming={role === 'receiver'} />
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="mb-2 flex items-center justify-between text-xs text-fg-muted">
-          <span>Vested {formatPct(derived.fraction)}</span>
-          <span className="flex items-center gap-1">
-            {meta.prefix !== undefined && <span>{meta.prefix}</span>}
-            {meta.date === undefined ? (
-              meta.value
-            ) : (
-              <InfoTip label={meta.date}>{meta.value}</InfoTip>
-            )}
-          </span>
-        </div>
-        <ScheduleBar
-          vestedFraction={derived.fraction}
-          claimedFraction={derived.claimedFraction}
-          milestones={milestones}
-        />
-        <Legend
-          className="mt-3"
-          items={[
-            { label: 'Vested', value: derived.vested, swatch: 'bg-[image:var(--gradient-brand)]' },
-            { label: 'Claimable', value: derived.claimable, swatch: 'bg-success' },
-            { label: 'Claimed', value: derived.claimed, swatch: 'bg-surface-2' },
-          ]}
-        />
-      </div>
-
-      <div className="flex flex-col items-stretch gap-2.5 md:items-end">
-        {role === 'receiver' ? (
-          <>
-            <div className="md:text-right">
-              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
-                Claimable
-              </div>
-              <AmountDisplay
-                value={derived.claimable}
-                className="text-xl font-semibold text-success"
-              />
-            </div>
-            {derived.locked ? (
-              <GrantLock className="justify-center" />
-            ) : (
-              <Button
-                size="sm"
-                disabled={!derived.canClaim}
-                pending={busy !== undefined}
-                onClick={() => onClaim(grant)}
-                className="md:w-auto"
-              >
-                Claim
-              </Button>
-            )}
-          </>
+        </span>
+      }
+      progress={
+        <>
+          <div className="mb-2 flex items-center justify-between gap-3 text-[0.8rem] text-fg-muted">
+            <span>
+              <b className="font-num font-semibold text-fg tabular-nums">
+                {formatPct(derived.fraction)}
+              </b>{' '}
+              of{' '}
+              <b className="font-num font-semibold text-fg tabular-nums">
+                <CompactAmount value={grant.totalAmount} />
+              </b>{' '}
+              vested
+            </span>
+            <span className="flex items-center gap-1 text-right">
+              {meta.prefix !== undefined && <span>{meta.prefix}</span>}
+              {meta.date === undefined ? (
+                meta.value
+              ) : (
+                <InfoTip label={meta.date}>{meta.value}</InfoTip>
+              )}
+            </span>
+          </div>
+          <ScheduleBar
+            vestedFraction={derived.fraction}
+            claimedFraction={derived.claimedFraction}
+            milestones={milestones}
+          />
+          <Legend
+            className="mt-3"
+            items={[
+              { label: 'Claimed', value: derived.claimed, swatch: 'var(--bar-claimed)' },
+              { label: 'Claimable', value: derived.claimable, swatch: 'var(--bar-claimable)' },
+            ]}
+          />
+        </>
+      }
+      figure={
+        role === 'receiver'
+          ? { label: 'Claimable', amount: derived.claimable, dim: !claimable }
+          : { label: 'Unvested', amount: derived.unvested }
+      }
+      action={
+        role === 'receiver' ? (
+          derived.locked ? (
+            <GrantLock />
+          ) : (
+            <Button
+              size="sm"
+              disabled={!derived.canClaim}
+              pending={busy !== undefined}
+              onClick={() => onClaim(grant)}
+            >
+              Claim
+            </Button>
+          )
         ) : (
-          <>
-            <div className="md:text-right">
-              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
-                Unvested
-              </div>
-              <AmountDisplay value={derived.unvested} className="text-xl font-semibold text-fg" />
-            </div>
-            <div className="flex gap-1">
-              <Button
-                aria-label="Grant details"
-                size="icon"
-                variant="ghost"
-                asLink
-                to={`/grants/${grant.id}`}
-              >
-                <Eye size={16} />
-              </Button>
-              <Button
-                aria-label="Cancel grant"
-                size="icon"
-                variant="danger-ghost"
-                disabled={busy !== undefined}
-                onClick={() => onCancel(grant)}
-              >
-                <Trash2 size={16} />
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
-    </Card>
+          <div className="flex gap-1">
+            <Button
+              aria-label="Grant details"
+              size="icon"
+              variant="ghost"
+              asLink
+              to={`/grants/${grant.id}`}
+            >
+              <Eye size={16} />
+            </Button>
+            <Button
+              aria-label="Cancel grant"
+              size="icon"
+              variant="danger-ghost"
+              disabled={busy !== undefined}
+              onClick={() => onCancel(grant)}
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
+        )
+      }
+    />
   )
 }

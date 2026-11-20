@@ -49,8 +49,16 @@ export const PendingGrants = (): React.JSX.Element => {
   }
 
   return (
-    <div className="flex flex-col gap-7">
-      <PageTitle title="Pending Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
+    <div className="flex flex-col gap-8">
+      <PageTitle
+        title="Pending grants"
+        description={
+          role === 'receiver'
+            ? 'Grants offered to you that wait for your acceptance.'
+            : 'Grants you offered that wait for the receiver to accept.'
+        }
+        action={<RoleSelect value={role} onChange={setRole} />}
+      />
 
       {loading && pendingGrants.length === 0 ? (
         <Loading />
@@ -66,7 +74,7 @@ export const PendingGrants = (): React.JSX.Element => {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           {visible.map((pendingGrant) => (
             <PendingGrantCard
               key={pendingGrant.id}

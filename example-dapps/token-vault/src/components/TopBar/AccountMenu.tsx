@@ -23,9 +23,11 @@ const fingerprintOf = (partyId: string): string =>
   partyId.includes('::') ? partyId.slice(partyId.indexOf('::') + 2) : partyId
 
 const triggerClass =
-  'inline-flex h-11 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]'
+  'inline-flex items-center gap-2 rounded-chip text-sm font-semibold text-fg transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] md:h-10 md:border md:border-border md:bg-surface md:pr-3 md:pl-1.5 md:hover:border-border-strong md:hover:bg-muted'
 
 const ruleClass = '-mx-4 border-border'
+
+export const accountLabel = (account: Account): string => account.hint || partyHint(account.partyId)
 
 interface AccountMenuProps {
   account: Account
@@ -50,19 +52,21 @@ export const AccountMenu = ({ account }: AccountMenuProps): React.JSX.Element =>
 
   return (
     <Menu.Root positioning={{ placement: 'bottom-end', gutter: 6 }}>
-      <Menu.Trigger className={cn(triggerClass, 'hover:border-border-strong hover:bg-muted')}>
-        <PartyAvatar partyId={account.partyId} />
-        {truncateIdentifier(account.partyId, TRUNCATE)}
-        <ChevronDown size={14} />
+      <Menu.Trigger className={triggerClass}>
+        <PartyAvatar partyId={account.partyId} size={30} />
+        <span className="font-mono text-[0.8rem] max-md:sr-only">
+          {truncateIdentifier(account.partyId, TRUNCATE)}
+        </span>
+        <ChevronDown className="max-md:hidden" size={14} />
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
-          <Menu.Content className={cn(popoverClass, 'flex w-72 flex-col gap-4 rounded-xl p-4')}>
+          <Menu.Content className={cn(popoverClass, 'flex w-72 flex-col gap-4 rounded-card p-4')}>
             <Menu.ItemGroup className="flex items-center gap-3">
               <PartyAvatar partyId={account.partyId} size={40} />
               <div className="flex min-w-0 flex-col gap-0.5">
                 <Menu.ItemGroupLabel className="truncate text-sm font-semibold text-fg">
-                  {account.hint || partyHint(account.partyId)}
+                  {accountLabel(account)}
                 </Menu.ItemGroupLabel>
                 <p className="flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
                   <code className="truncate font-mono">

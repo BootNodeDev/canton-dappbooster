@@ -513,10 +513,10 @@ importers:
       '@bootnodedev/canton-theme':
         specifier: ^0.8.0
         version: link:../../canton-theme
-      '@fontsource-variable/jetbrains-mono':
-        specifier: ^5.2.8
+      '@fontsource-variable/figtree':
+        specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource-variable/manrope':
+      '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.3.0
       '@hono/node-server':
@@ -604,9 +604,9 @@ importers:
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.3.0
-      '@fontsource-variable/manrope':
-        specifier: ^5.2.8
-        version: 5.3.0
+      '@fontsource-variable/onest':
+        specifier: ^5.3.1
+        version: 5.3.1
       '@walletconnect/sign-client':
         specifier: ^2.23.9
         version: 2.26.0(typescript@5.9.3)(zod@4.6.7)
@@ -674,10 +674,10 @@ importers:
       '@canton-network/dapp-sdk':
         specifier: 1.10.0
         version: 1.10.0(@popperjs/core@2.11.8)(@types/react@19.3.0)(@walletconnect/sign-client@2.26.0(typescript@5.9.3)(zod@4.6.7))(@walletconnect/types@2.26.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)
-      '@fontsource-variable/jetbrains-mono':
-        specifier: ^5.2.8
+      '@fontsource-variable/archivo':
+        specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource-variable/manrope':
+      '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.3.0
       '@walletconnect/sign-client':
@@ -1409,11 +1409,20 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
+  '@fontsource-variable/archivo@5.3.0':
+    resolution: {integrity: sha512-HogK8FJelrD1o7TlZlkIVtHgc20bO5PZRWE7mUeUTdMN055alznQV6/00J00IBeu8FQAH4s3zW9UJNvKExXf+g==}
+
+  '@fontsource-variable/figtree@5.3.0':
+    resolution: {integrity: sha512-VRVodD7OiG7apQwE8/2fMjaqpY/a0qRJqL5HtYj8CKIVps+9amaFcdfKmDIf7iqYQx6iPLlArVXAfKeIZmVcNQ==}
+
   '@fontsource-variable/jetbrains-mono@5.3.0':
     resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
 
   '@fontsource-variable/manrope@5.3.0':
     resolution: {integrity: sha512-6D5dgokHsWDDMtmXHznKa0hK229NN+1a4BLPmUCLqcO1Pw5EEhWY5RFt0AcXnVRAljFFPfRtLkJePQj6LSsV6g==}
+
+  '@fontsource-variable/onest@5.3.1':
+    resolution: {integrity: sha512-xaaw6G4HDB2/RczsWLD/2bnib4ykmQlTlBUN3GOEOiyErilZukQWVJG95h9zwAy0i8KY+QzDa+COPfqhI72Acw==}
 
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
@@ -6302,9 +6311,15 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@fontsource-variable/archivo@5.3.0': {}
+
+  '@fontsource-variable/figtree@5.3.0': {}
+
   '@fontsource-variable/jetbrains-mono@5.3.0': {}
 
   '@fontsource-variable/manrope@5.3.0': {}
+
+  '@fontsource-variable/onest@5.3.1': {}
 
   '@gerrit0/mini-shiki@3.23.0':
     dependencies:

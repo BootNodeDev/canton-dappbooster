@@ -27,19 +27,21 @@ export const ScheduleBar = ({
       translations={translations}
       value={clamp(vestedFraction) * 100}
     >
-      <Progress.Track className="relative h-2.5 overflow-hidden rounded-full border border-border bg-surface-2">
-        <Progress.Range className="absolute inset-y-0 left-0 rounded-full bg-[image:var(--gradient-brand)]" />
+      <Progress.Track className="relative h-2.5 overflow-hidden rounded-full bg-[var(--bar-track)]">
+        <Progress.Range className="absolute inset-y-0 left-0 bg-[var(--bar-claimed)]" />
         <span
-          className="absolute inset-y-0 rounded-full bg-success"
+          className="absolute inset-y-0 [background:var(--bar-claimable)]"
           style={{ left: pct(claimedFraction), width: pct(claimableWidth) }}
         />
-        {milestones?.map((m) => (
-          <span
-            key={m}
-            className="absolute top-[-2px] h-[14px] w-0.5 bg-fg/45"
-            style={{ left: pct(m) }}
-          />
-        ))}
+        {milestones
+          ?.filter((m) => m < 1)
+          .map((m) => (
+            <span
+              key={m}
+              className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-surface"
+              style={{ left: pct(m) }}
+            />
+          ))}
       </Progress.Track>
     </Progress.Root>
   )

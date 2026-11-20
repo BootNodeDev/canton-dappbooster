@@ -220,8 +220,9 @@ sets no variables: the server's `.env` on the validator host holds them all, wit
   funder's free Amulet, read from `GET /api/balance` when the form opens.
 - The receiver field shows a format error only once it loses focus, but "No user named …" as soon as
   the delayed lookup answers.
-- `AmountDisplay` scales the token mark with its figure, except on `KpiCard`, which passes
-  `fixedMark` so the marks stay one size.
+- `AmountDisplay` scales the token mark with its figure. `markSize` takes `small` beside a headline
+  figure, where a full-size mark would outweigh the digits, and `fixed` where figures of different
+  sizes should share one mark size.
 
 ## Custody
 

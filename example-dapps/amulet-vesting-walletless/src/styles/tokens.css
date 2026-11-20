@@ -1,4 +1,24 @@
 :root {
+  /* palette */
+  --cnc-bg: #f4f6fb;
+  --cnc-surface: #ffffff;
+  --cnc-surface-muted: #eef1f8;
+  --cnc-text: #121a33;
+  --cnc-text-muted: #4a5574;
+  --cnc-border: #e0e5ef;
+  --cnc-border-strong: #c8d0e0;
+  --cnc-accent: #2f4fe0;
+  --cnc-accent-hover: #2441c4;
+  --cnc-accent-subtle: #e6ebff;
+  --cnc-accent-fg: #ffffff;
+  --cnc-success: #0b7a55;
+  --cnc-success-subtle: #dcf3ea;
+  --cnc-warning: #8f5b00;
+  --cnc-warning-subtle: #fcefd3;
+  --cnc-danger: #b42335;
+  --cnc-danger-subtle: #fbe3e6;
+  --cnc-overlay: rgb(18 26 51 / 0.4);
+
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
   --surface-2: var(--cnc-surface-muted);
@@ -9,13 +29,13 @@
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
-  --fg-soft: #6b6d80;
+  --fg-soft: #5a6683;
 
   --primary: var(--cnc-accent);
   --primary-hover: var(--cnc-accent-hover);
   --primary-soft: var(--cnc-accent-subtle);
   --primary-fg: var(--cnc-accent-fg);
-  --primary-strong: var(--primary);
+  --primary-strong: #2944c8;
 
   --success: var(--cnc-success);
   --success-soft: var(--cnc-success-subtle);
@@ -25,41 +45,91 @@
   --danger-soft: var(--cnc-danger-subtle);
 
   /* brand */
-  --accent: #c670e5;
-  --accent-strong: #a13cc0;
-  --pink: #e71d73;
-  --pink-strong: #d4185f;
-  --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
+  --accent: var(--primary);
+  --accent-strong: var(--primary-strong);
+  --gradient-brand: linear-gradient(135deg, #3a5cf0, #2441c4);
 
   /* effects */
-  --gradient-text: linear-gradient(120deg, #692581, #c670e5 55%, #e71d73);
-  --glow: 0 10px 26px rgba(198, 112, 229, 0.35);
-  --shadow-card: 0 12px 28px -16px rgba(28, 29, 46, 0.18);
-  --shadow-popover: 0 18px 36px -12px rgba(28, 29, 46, 0.22);
+  --glow: 0 10px 26px rgba(47, 79, 224, 0.35);
+  --shadow-card: 0 0 #0000;
+  --shadow-popover: 0 18px 36px -12px rgba(18, 26, 51, 0.25);
   --ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-strong);
+  --page-radial: linear-gradient(180deg, #e7ecfb 0, rgb(231 236 251 / 0) 360px);
 
-  --page-radial:
-    radial-gradient(55% 50% at 80% -5%, rgba(231, 29, 115, 0.08), transparent 60%),
-    radial-gradient(50% 50% at 5% 5%, rgba(198, 112, 229, 0.1), transparent 55%);
+  /* chrome */
+  --header-bg: rgb(255 255 255 / 0.85);
+  --badge: var(--primary);
+  --badge-fg: var(--primary-fg);
+  --sheet-bg: rgb(255 255 255 / 0.95);
+  --sheet-highlight: rgb(255 255 255 / 0.6);
+  --logo-from: #36c9c1;
+  --logo-to: #2f4fe0;
+  --heading-tracking: -0.03em;
+
+  --filter-on-bg: var(--fg);
+  --filter-on-fg: var(--bg);
+  --filter-on-border: var(--fg);
+  --claimable-edge: inset 0 0 0 1px color-mix(in oklab, var(--primary) 45%, var(--border));
+
+  /* hero */
+  --hero-bg: linear-gradient(#e6ebff, #e6ebff);
+  --hero-border: #cfd8ff;
+  --hero-fg: var(--fg);
+  --hero-muted: var(--fg-muted);
+  --hero-figure: var(--primary-strong);
+  --hero-dot: var(--success);
+  --hero-shadow: 0 0 #0000;
+
+  /* schedule */
+  --bar-track: #e5e9f2;
+  --bar-claimed: #aebbf0;
+  --bar-claimable: var(--primary);
+  --chart-line: var(--primary);
+  --chart-fill: var(--primary);
 }
 
 [data-theme="dark"] {
-  --fg-soft: #e2e0e7;
+  --cnc-bg: #0b1020;
+  --cnc-surface: #121a30;
+  --cnc-surface-muted: #19223b;
+  --cnc-text: #eef2fb;
+  --cnc-text-muted: #b4bdd4;
+  --cnc-border: #232f50;
+  --cnc-border-strong: #34416a;
+  --cnc-accent: #5b78ff;
+  --cnc-accent-hover: #7189ff;
+  --cnc-accent-subtle: #1a2555;
+  --cnc-accent-fg: #ffffff;
+  --cnc-success: #4fd1a1;
+  --cnc-success-subtle: #0f2a22;
+  --cnc-warning: #f0b252;
+  --cnc-warning-subtle: #2e2412;
+  --cnc-danger: #ff7a8a;
+  --cnc-danger-subtle: #34151b;
+  --cnc-overlay: rgb(4 7 18 / 0.62);
 
-  --primary-strong: #c08cd8;
-  --accent-strong: var(--accent);
+  --fg-soft: #8590ad;
+  --primary-strong: #a3b4ff;
 
-  --gradient-text: linear-gradient(120deg, #c670e5, #e71d73 60%, #ff6b9d);
-  --glow: 0 10px 26px rgba(231, 29, 115, 0.4);
-  --shadow-card: 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+  --glow: 0 10px 26px rgba(91, 120, 255, 0.4);
   --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.7);
+  --page-radial: linear-gradient(180deg, #121b3d 0, rgb(18 27 61 / 0) 380px);
 
-  --page-radial:
-    radial-gradient(60% 50% at 80% -5%, rgba(231, 29, 115, 0.16), transparent 60%),
-    radial-gradient(55% 55% at 4% 4%, rgba(198, 112, 229, 0.18), transparent 55%);
+  --header-bg: rgb(11 16 32 / 0.82);
+  --sheet-bg: rgb(18 26 48 / 0.95);
+  --sheet-highlight: rgb(111 140 255 / 0.25);
+  --logo-from: #4fe0d6;
+  --logo-to: #6f8cff;
+
+  --hero-bg: linear-gradient(#16214f, #16214f);
+  --hero-border: #2c3d8a;
+
+  --bar-track: #222c49;
+  --bar-claimed: #3a4a8c;
+  --chart-line: #8aa0ff;
 }
 
 :root {
   --cnc-font-mono: var(--font-mono);
-  --cnc-radius: var(--radius-lg);
+  --cnc-radius: var(--radius-control);
 }

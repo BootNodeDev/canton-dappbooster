@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 
-type Tone = 'linear' | 'milestone' | 'neutral' | 'success' | 'warning' | 'danger'
+type Tone = 'curve' | 'neutral' | 'success' | 'warning' | 'danger'
+
+const dot = 'before:size-1.5 before:rounded-full before:bg-current before:content-[""]'
 
 const tones: Record<Tone, string> = {
-  linear: 'text-accent-strong bg-accent/12 border-accent/30',
-  milestone: 'text-warning bg-warning-soft border-warning/40',
-  neutral: 'text-fg-muted bg-muted border-border',
-  success: 'text-success bg-success-soft border-success/30',
-  warning: 'text-warning bg-warning-soft border-warning/40',
-  danger: 'text-danger bg-danger-soft border-danger/30',
+  curve: 'bg-primary-soft text-primary-strong',
+  neutral: 'bg-muted text-fg-muted',
+  success: cn('bg-success-soft text-success', dot),
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger',
 }
 
 interface StatusPillProps {
@@ -25,7 +26,7 @@ export const StatusPill = ({
 }: StatusPillProps): React.JSX.Element => (
   <span
     className={cn(
-      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.04em]',
+      'inline-flex h-[1.375rem] items-center gap-1.5 whitespace-nowrap rounded-chip px-2.5 text-xs font-semibold',
       tones[tone],
       className,
     )}

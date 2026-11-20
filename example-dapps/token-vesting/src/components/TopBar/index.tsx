@@ -1,81 +1,122 @@
 import { useAccount } from '@bootnodedev/canton-connect'
-import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
+import { DisconnectButton } from '@bootnodedev/canton-dappbooster/connect'
+import { CircleHelp, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { buttonClass } from '@/components/Button'
 import { ConnectFace } from '@/components/ConnectFace'
 import { Spinner } from '@/components/Spinner'
-import { AccountMenu } from '@/components/TopBar/AccountMenu'
-import { ConnectGuide } from '@/components/TopBar/ConnectGuide'
+import { AccountMenu, accountLabel } from '@/components/TopBar/AccountMenu'
+import { ConnectGuide, hasSeenGuide } from '@/components/TopBar/ConnectGuide'
 import { Logo } from '@/components/TopBar/Logo'
-import { ThemeToggle } from '@/components/TopBar/ThemeToggle'
+import { type MenuLink, MobileMenu } from '@/components/TopBar/MobileMenu'
+import { NavCount } from '@/components/TopBar/NavCount'
+import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
+import { roundButtonClass, ThemeToggle } from '@/components/TopBar/ThemeToggle'
+import { useCreateGrant } from '@/hooks/useCreateGrant'
+import { useRoleLens } from '@/hooks/useRoleLens'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
 
-const items = [
-  { to: '/', label: 'Grants' },
-  { to: '/pending', label: 'Pending' },
-]
+const HELP = 'How to connect a wallet'
 
 export const TopBar = (): React.JSX.Element => {
   const { account } = useAccount()
   const { sessionPending } = useBackend()
-  const wallet = account !== undefined ? <AccountMenu account={account} /> : <ConnectFace />
+  const [role] = useRoleLens()
+  const [, setCreating] = useCreateGrant()
+  const [guideOpen, setGuideOpen] = useState(() => !hasSeenGuide())
   const pendingGrants = useVestingStore((s) => s.pendingGrants)
   const incoming =
     account === undefined ? 0 : pendingGrants.filter((p) => p.receiver === account.partyId).length
 
+  // The lens rides along, so moving between the pages keeps the view the reader picked.
+  const search = role === 'funder' ? '?role=funder' : ''
+  const links: MenuLink[] = [
+    { to: { pathname: '/', search }, label: 'Grants' },
+    { to: { pathname: '/pending', search }, label: 'Pending', count: incoming },
+  ]
+
+  const wallet = sessionPending ? (
+    <span role="status" className="inline-flex size-9 items-center justify-center text-fg-muted">
+      <Spinner />
+      <span className="sr-only">Restoring wallet session</span>
+    </span>
+  ) : account !== undefined ? (
+    <AccountMenu account={account} />
+  ) : (
+    <ConnectFace />
+  )
+
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-surface/80 backdrop-blur-md">
-      <div className="flex items-center justify-between gap-3 px-5 py-3.5 sm:px-8">
+    <header className="sticky top-0 z-30 border-b border-border bg-[var(--header-bg)] backdrop-blur-md">
+      <div className="mx-auto grid h-16 max-w-6xl grid-cols-[1fr_auto] items-center gap-4 px-4 sm:px-8 md:grid-cols-[1fr_auto_1fr]">
         <Logo />
 
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <ConnectGuide />
-          {sessionPending ? (
-            <span
-              role="status"
-              className="inline-flex size-9 items-center justify-center text-fg-muted"
-            >
-              <Spinner />
-              <span className="sr-only">Restoring wallet session</span>
-            </span>
-          ) : (
-            wallet
-          )}
-        </div>
-      </div>
+        <nav aria-label="Primary" className="nav hidden items-center md:flex">
+          {links.map(({ to, label, count }) => (
+            <NavLink className="nav-link" end key={label} to={to}>
+              {label}
+              <NavCount count={count} />
+            </NavLink>
+          ))}
+        </nav>
 
-      <nav
-        aria-label="Primary"
-        className="flex items-center gap-1 border-t border-border px-5 py-2 sm:px-8 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:border-0 md:p-0"
-      >
-        {items.map(({ to, label }) => (
-          <NavLink
-            end
-            key={to}
-            to={to}
-            className={({ isActive }: NavLinkRenderProps) =>
-              cn(
-                'flex items-center gap-2 rounded-[8px] px-3 py-1.5 text-sm font-semibold transition-colors',
-                isActive ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
+        <div className="flex items-center justify-self-end gap-2">
+          <ThemeToggle className="max-md:hidden" />
+          <button
+            type="button"
+            aria-label={HELP}
+            onClick={() => setGuideOpen(true)}
+            className={cn(roundButtonClass, 'max-md:hidden')}
+          >
+            <CircleHelp size={17} />
+          </button>
+          {wallet}
+          <MobileMenu
+            account={(close) =>
+              account !== undefined && (
+                <div className="mb-2 flex items-center gap-3 rounded-control bg-surface-2 p-3">
+                  <PartyAvatar partyId={account.partyId} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-fg">
+                      {accountLabel(account)}
+                    </p>
+                    <p className="truncate text-xs text-fg-muted">{account.networkId}</p>
+                  </div>
+                  <DisconnectButton className={buttonClass('secondary', 'sm')} onClick={close}>
+                    Disconnect
+                  </DisconnectButton>
+                </div>
               )
             }
-          >
-            {label}
-            {to === '/pending' && incoming > 0 && (
-              <>
-                <span
-                  aria-hidden="true"
-                  className="rounded-full bg-pink-strong px-2 py-0.5 font-mono text-[0.65rem] font-bold text-white"
+            action={(close) =>
+              account !== undefined ? (
+                <button
+                  type="button"
+                  className={buttonClass('primary', 'lg', 'w-full rounded-full')}
+                  onClick={() => {
+                    close()
+                    setCreating(true)
+                  }}
                 >
-                  {incoming}
-                </span>
-                <span className="sr-only">({incoming} awaiting you)</span>
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
+                  <Plus size={18} />
+                  Create grant
+                </button>
+              ) : (
+                <ConnectFace
+                  className={buttonClass('primary', 'lg', 'w-full rounded-full')}
+                  cancelClassName={buttonClass('secondary', 'lg', 'w-full rounded-full')}
+                />
+              )
+            }
+            help={{ label: 'How to connect', open: () => setGuideOpen(true) }}
+            links={links}
+          />
+        </div>
+      </div>
+      {guideOpen && <ConnectGuide onClose={() => setGuideOpen(false)} />}
     </header>
   )
 }

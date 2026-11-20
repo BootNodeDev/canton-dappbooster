@@ -1,6 +1,27 @@
 :root {
+  /* palette */
+  --cnc-bg: #f1f5f3;
+  --cnc-surface: #ffffff;
+  --cnc-surface-muted: #ebf1ee;
+  --cnc-text: #0f1f1a;
+  --cnc-text-muted: #46605a;
+  --cnc-border: #dae4df;
+  --cnc-border-strong: #bfcdc6;
+  --cnc-accent: #0e7a5f;
+  --cnc-accent-hover: #0b6a52;
+  --cnc-accent-subtle: #dcf1e9;
+  --cnc-accent-fg: #ffffff;
+  --cnc-success: #0e7a5f;
+  --cnc-success-subtle: #dcf1e9;
+  --cnc-warning: #8a5a00;
+  --cnc-warning-subtle: #fbeed2;
+  --cnc-danger: #b42335;
+  --cnc-danger-subtle: #fbe3e6;
+  --cnc-overlay: rgb(15 31 26 / 0.45);
+
   --bg: var(--cnc-bg);
   --surface: var(--cnc-surface);
+  --surface-2: var(--cnc-surface-muted);
   --muted: var(--cnc-surface-muted);
   --border: var(--cnc-border);
   --border-strong: var(--cnc-border-strong);
@@ -8,49 +29,109 @@
 
   --fg: var(--cnc-text);
   --fg-muted: var(--cnc-text-muted);
-  --fg-soft: #6b6d80;
+  --fg-soft: #566d66;
 
   --primary: var(--cnc-accent);
+  --primary-hover: var(--cnc-accent-hover);
+  --primary-soft: var(--cnc-accent-subtle);
   --primary-fg: var(--cnc-accent-fg);
-  --primary-strong: var(--primary);
+  --primary-strong: #0b6e55;
 
   --success: var(--cnc-success);
+  --success-soft: var(--cnc-success-subtle);
+  --warning: var(--cnc-warning);
+  --warning-soft: var(--cnc-warning-subtle);
   --danger: var(--cnc-danger);
+  --danger-soft: var(--cnc-danger-subtle);
+  --info: #3f4bc4;
+  --info-soft: #e5e7fb;
+
+  /* tokens */
+  --usdx: #12a07a;
+  --vsh: #4f5bd5;
 
   /* brand */
-  --accent: #c670e5;
-  --accent-strong: #a13cc0;
-  --pink: #e71d73;
-  --pink-strong: #d4185f;
-  --gradient-brand: linear-gradient(135deg, #c670e5, #e71d73);
+  --accent: var(--usdx);
+  --accent-strong: var(--primary-strong);
+  --gradient-brand: linear-gradient(135deg, #12a07a, #0b6a52);
 
   /* effects */
-  --glow: 0 10px 26px rgba(198, 112, 229, 0.35);
-  --shadow-card: 0 12px 28px -16px rgba(28, 29, 46, 0.18);
-  --shadow-popover: 0 18px 36px -12px rgba(28, 29, 46, 0.22);
+  --glow: 0 10px 26px rgba(14, 122, 95, 0.35);
+  --shadow-card: 0 1px 2px rgba(15, 31, 26, 0.04), 0 18px 36px -28px rgba(15, 31, 26, 0.3);
+  --shadow-popover: 0 18px 36px -12px rgba(15, 31, 26, 0.25);
   --ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-strong);
+  --page-radial: radial-gradient(70% 45% at 50% -12%, rgba(14, 122, 95, 0.12), transparent 70%);
 
-  --page-radial:
-    radial-gradient(55% 50% at 80% -5%, rgba(231, 29, 115, 0.08), transparent 60%),
-    radial-gradient(50% 50% at 5% 5%, rgba(198, 112, 229, 0.1), transparent 55%);
+  /* chrome */
+  --header-bg: rgb(255 255 255 / 0.82);
+  --badge: var(--primary);
+  --badge-fg: var(--primary-fg);
+  --sheet-bg: rgb(255 255 255 / 0.95);
+  --sheet-highlight: rgb(255 255 255 / 0.6);
+  --logo-from: #3fd1a4;
+  --logo-to: #0e7a5f;
+  --heading-tracking: -0.03em;
+
+  /* hero */
+  --hero-bg:
+    radial-gradient(80% 120% at 100% 0%, rgb(79 91 213 / 0.55), transparent 60%),
+    linear-gradient(150deg, #0c3f33, #0e7a5f);
+  --hero-border: transparent;
+  --hero-fg: #ffffff;
+  --hero-muted: rgb(255 255 255 / 0.76);
+  --hero-figure: #ffffff;
+  --hero-shadow: 0 24px 48px -26px rgba(14, 122, 95, 0.8);
+
+  --bar-track: #e2e9e5;
 }
 
 [data-theme="dark"] {
-  --fg-soft: #e2e0e7;
+  --cnc-bg: #08130f;
+  --cnc-surface: #0f1d18;
+  --cnc-surface-muted: #152620;
+  --cnc-text: #e8f2ee;
+  --cnc-text-muted: #a7bdb5;
+  --cnc-border: #1f3530;
+  --cnc-border-strong: #2f4a43;
+  --cnc-accent: #2fbf8f;
+  --cnc-accent-hover: #45d3a3;
+  --cnc-accent-subtle: #0f2e24;
+  --cnc-accent-fg: #04120d;
+  --cnc-success: #5fe0b2;
+  --cnc-success-subtle: #0f2e24;
+  --cnc-warning: #f0b252;
+  --cnc-warning-subtle: #2e2412;
+  --cnc-danger: #ff7a8a;
+  --cnc-danger-subtle: #34151b;
+  --cnc-overlay: rgb(2 8 6 / 0.65);
 
-  --primary-strong: #c08cd8;
-  --accent-strong: var(--accent);
+  --fg-soft: #7a928a;
+  --primary-strong: #5fe0b2;
+  --info: #a3abff;
+  --info-soft: #1c2050;
 
-  --glow: 0 10px 26px rgba(231, 29, 115, 0.4);
-  --shadow-card: 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+  --usdx: #1fb889;
+  --vsh: #6b76f0;
+
+  --glow: 0 10px 26px rgba(47, 191, 143, 0.35);
+  --shadow-card: 0 18px 40px -28px rgba(0, 0, 0, 0.8);
   --shadow-popover: 0 22px 44px -16px rgba(0, 0, 0, 0.7);
+  --page-radial: radial-gradient(70% 45% at 50% -12%, rgba(47, 191, 143, 0.14), transparent 70%);
 
-  --page-radial:
-    radial-gradient(60% 50% at 80% -5%, rgba(231, 29, 115, 0.16), transparent 60%),
-    radial-gradient(55% 55% at 4% 4%, rgba(198, 112, 229, 0.18), transparent 55%);
+  --header-bg: rgb(8 19 15 / 0.82);
+  --sheet-bg: rgb(15 29 24 / 0.95);
+  --sheet-highlight: rgb(95 224 178 / 0.2);
+
+  --hero-bg:
+    radial-gradient(80% 120% at 100% 0%, rgb(107 118 240 / 0.42), transparent 60%),
+    linear-gradient(150deg, #0b2e25, #0f5a46);
+  --hero-border: rgb(95 224 178 / 0.25);
+  --hero-shadow: 0 24px 50px -26px rgba(47, 191, 143, 0.45);
+
+  --bar-track: #1d302a;
 }
 
 :root {
   --cnc-font-mono: var(--font-mono);
-  --cnc-radius: var(--radius-lg);
+  --cnc-radius: var(--radius-control);
 }

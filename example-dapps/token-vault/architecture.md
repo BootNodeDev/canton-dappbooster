@@ -24,8 +24,8 @@ browser and the operator.
 | `src/providers/` | `Backend` waits for a wallet party, loads the deployment and builds the backend from it. It offers a retry, and only the newest load lands. `Tokens` sits inside it and builds the token list from the deployment's two tokens and the party's holdings, for the kit's `TokenListProvider`. It also reads the vault's own `USDX` balance through the kit's `readHoldings`. |
 | `src/store/useVaultStore.ts` | The queue as zustand state, plus `useVault`, which ties it to the backend and the party and reads it every five seconds. Every write submits, then reads again. |
 | `src/utils/requestState.ts` | Turns a proposal or a request into the state its row shows and the action it offers. |
-| `src/components/` | The shell from token-vesting, renamed to Canton Vault. It holds the top bar with its account menu, the footer, the toaster, and the parts more than one place renders. The account menu's Tap item is the faucet. |
-| `src/pages/Vault/` | The one page. `index.tsx` composes the balances, the two proposal forms, the queue and the ledger facts; its siblings are what only it renders. |
+| `src/components/` | The shell from token-vesting, renamed to Canton Vault. It holds the top bar with its account menu and its mobile menu, the footer, the toaster, and the parts more than one place renders. The account menu's Tap item is the faucet. |
+| `src/pages/Vault/` | The one page. `index.tsx` composes the balances, the proposal form (one panel that switches between a deposit and a withdraw), the queue with each request's stage, the ledger facts and the connect prompt; its siblings are what only it renders. |
 | `scripts/` | `bootstrap-vault.mjs` and `vault-operator.mjs`, the JSON Ledger API client both share in `ledger-api.mjs`, the operator's decisions in `vault-decisions.mjs`, and `operator.sh`, which `stack:up` and `stack:down` run. |
 | `vendor/` | The two DARs. Nothing here compiles them. |
 

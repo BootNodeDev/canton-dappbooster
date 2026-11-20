@@ -1,18 +1,27 @@
 import type { ReactNode } from 'react'
 
-// The row's gap sets the title-to-lens distance only: `action` is pushed away by its own ml-auto.
 export const PageTitle = ({
-  title,
-  lens,
   action,
+  description,
+  title,
 }: {
   action?: ReactNode
-  lens?: ReactNode
+  description?: string
   title: string
 }): React.JSX.Element => (
-  <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
-    <h1 className="text-xl font-extrabold tracking-tight text-fg">{title}</h1>
-    {lens}
-    <div className="ml-auto">{action}</div>
+  <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+    <div className="min-w-0">
+      <h1 className="font-heading text-[1.75rem] font-extrabold leading-tight text-fg sm:text-[1.9rem]">
+        {title}
+      </h1>
+      {description !== undefined && (
+        <p className="mt-1.5 max-w-[56ch] text-fg-muted">{description}</p>
+      )}
+    </div>
+    {action !== undefined && (
+      <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+        {action}
+      </div>
+    )}
   </div>
 )

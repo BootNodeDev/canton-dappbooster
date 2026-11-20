@@ -40,6 +40,9 @@ export const requestState = (request: VaultRequest, nowMs: number): QueueState =
   return passed(request.allocateBefore, nowMs) ? 'expired' : 'awaiting_allocation'
 }
 
+export const countToFund = (requests: readonly VaultRequest[], nowMs: number): number =>
+  requests.filter((request) => requestState(request, nowMs) === 'awaiting_allocation').length
+
 const requestRow = (request: VaultRequest, nowMs: number): QueueRow => {
   const state = requestState(request, nowMs)
   return {
