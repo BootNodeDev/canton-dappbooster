@@ -3,6 +3,7 @@ import { cn } from '@/utils/cn'
 
 interface PillsProps<T extends string> {
   className?: string
+  disabled?: boolean
   label: string
   onChange: (value: T) => void
   options: readonly { label: string; value: T }[]
@@ -13,6 +14,7 @@ interface PillsProps<T extends string> {
 // Segmented only: no list here to filter, so the vesting apps' outline look was left out.
 export const Pills = <T extends string>({
   className,
+  disabled,
   label,
   onChange,
   options,
@@ -25,12 +27,13 @@ export const Pills = <T extends string>({
       className,
     )}
     deselectable={false}
+    disabled={disabled}
     onValueChange={(details) => onChange(details.value[0] as T)}
     value={[value]}
   >
     {options.map((option) => (
       <ToggleGroup.Item
-        className="h-9 flex-1 whitespace-nowrap rounded-[calc(var(--radius-control)-3px)] px-3.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg data-[state=on]:bg-surface data-[state=on]:text-fg data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.12)]"
+        className="h-9 flex-1 whitespace-nowrap rounded-[calc(var(--radius-control)-3px)] px-3.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg disabled:cursor-not-allowed disabled:opacity-45 data-[state=on]:bg-surface data-[state=on]:text-fg data-[state=on]:shadow-[0_1px_2px_rgb(0_0_0/0.12)]"
         key={option.value}
         value={option.value}
       >

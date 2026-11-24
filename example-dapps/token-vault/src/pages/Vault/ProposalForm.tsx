@@ -71,6 +71,7 @@ export const ProposalForm = ({
     <Card className="p-4 sm:p-5">
       <Pills
         className="flex w-full"
+        disabled={pending}
         label="Deposit or withdraw"
         onChange={switchKind}
         options={KINDS}
