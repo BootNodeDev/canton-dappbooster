@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type PointerEvent,
   type ReactNode,
-  useEffect,
+  useCallback,
   useRef,
   useState,
 } from 'react'
@@ -34,9 +34,12 @@ const THEMES = [
   { value: 'system', label: 'System' },
 ] as const
 
-// Past this drag distance (px) or speed (px/s) downward, letting go closes the sheet.
+// Past this drag distance (px), or this speed (px/s) in the last FLING_MS, letting go closes the sheet.
 const CLOSE_AT = 80
 const CLOSE_SPEED = 500
+const FLING_MS = 100
+// A finger drifts this far (px) on a plain tap, and the control under it still owes the click.
+const TAP_SLOP = 10
 
 interface Drag {
   last: number
@@ -50,10 +53,7 @@ const rowClass =
   'flex items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-sm font-semibold text-fg-muted'
 
 // A sheet taller than the screen scrolls, so only its grip drags it; `touch-action` follows.
-const watchOverflow = (sheet: HTMLDivElement | null): (() => void) | undefined => {
-  if (sheet === null) {
-    return undefined
-  }
+const watchOverflow = (sheet: HTMLDivElement): (() => void) => {
   const measure = (): void => {
     sheet.dataset.scrollable = String(sheet.scrollHeight > sheet.clientHeight)
   }
@@ -70,9 +70,13 @@ export const MobileMenu = ({
 }: MobileMenuProps): React.JSX.Element => {
   const [open, setOpen] = useState(false)
   const { mode, setMode } = useTheme()
-  const sheetRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement | null>(null)
   const drag = useRef<Drag | null>(null)
-  useEffect(() => (open ? watchOverflow(sheetRef.current) : undefined), [open])
+  // `lazyMount` mounts the sheet after `open` commits, so an effect on `open` would find no node.
+  const attachSheet = useCallback((sheet: HTMLDivElement | null) => {
+    sheetRef.current = sheet
+    return sheet === null ? undefined : watchOverflow(sheet)
+  }, [])
 
   // A drag leaves `animation: none` inline, which would otherwise outrank the leave animation.
   const close = (): void => {
@@ -112,7 +116,7 @@ export const MobileMenu = ({
     const sheet = event.currentTarget
     const offset = event.clientY - current.y
     if (!current.moved) {
-      if (Math.abs(offset) < 4) {
+      if (Math.abs(offset) < TAP_SLOP) {
         return
       }
       current.moved = true
@@ -135,7 +139,8 @@ export const MobileMenu = ({
     if (current === null || !current.moved) {
       return
     }
-    if (event.clientY - current.y > CLOSE_AT || current.speed > CLOSE_SPEED) {
+    const flung = current.speed > CLOSE_SPEED && event.timeStamp - current.time < FLING_MS
+    if (event.clientY - current.y > CLOSE_AT || flung) {
       close()
       return
     }
@@ -173,7 +178,7 @@ export const MobileMenu = ({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            ref={sheetRef}
+            ref={attachSheet}
           >
             <Dialog.Title className="sr-only">Menu</Dialog.Title>
             <div className="pt-2 pb-2" data-grip>
