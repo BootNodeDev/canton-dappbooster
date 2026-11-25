@@ -8,8 +8,8 @@ import { GrantLock } from '@/components/GrantLock'
 import { GrantRow } from '@/components/GrantRow'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
+import { Legend } from '@/components/Legend'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { Legend } from '@/pages/Dashboard/Legend'
 import type { Grant, Role } from '@/store/types'
 import type { BusyKind, GrantDerived } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -132,7 +132,7 @@ export const GrantCard = ({
       action={
         role === 'receiver' ? (
           derived.locked ? (
-            <GrantLock />
+            <GrantLock nowMs={nowMs} schedule={grant.schedule} />
           ) : (
             <Button
               size="sm"

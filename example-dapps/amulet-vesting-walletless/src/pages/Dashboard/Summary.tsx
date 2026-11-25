@@ -1,7 +1,7 @@
 import { AmountDisplay } from '@/components/AmountDisplay'
 import { Card } from '@/components/Card'
+import { Legend } from '@/components/Legend'
 import { ScheduleBar } from '@/components/ScheduleBar'
-import { Legend } from '@/pages/Dashboard/Legend'
 import type { Role } from '@/store/types'
 import { toNumber } from '@/utils/amount'
 import { formatPct } from '@/utils/format'
@@ -18,6 +18,7 @@ interface SummaryProps {
   claimableCount: number
   grantCount: number
   role: Role
+  symbol: string
   totals: Totals
 }
 
@@ -54,6 +55,7 @@ export const Summary = ({
   claimableCount,
   grantCount,
   role,
+  symbol,
   totals,
 }: SummaryProps): React.JSX.Element => {
   const receiving = role === 'receiver'
@@ -69,11 +71,19 @@ export const Summary = ({
             <span className="size-2 rounded-full bg-[var(--hero-dot)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--hero-dot)_22%,transparent)]" />
             {receiving ? 'Claimable now' : 'Total committed'}
           </div>
-          <AmountDisplay
-            value={receiving ? totals.claimable : totals.total}
-            markSize="small"
-            className="mt-3 text-[2.4rem] leading-none font-semibold tracking-tight text-[var(--hero-figure)] sm:text-[3rem]"
-          />
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-3">
+            <AmountDisplay
+              value={receiving ? totals.claimable : totals.total}
+              markSize="small"
+              className="text-[2.4rem] leading-none font-semibold tracking-tight text-[var(--hero-figure)] sm:text-[3rem]"
+            />
+            <span
+              aria-hidden="true"
+              className="text-[1.6rem] font-semibold text-[var(--hero-muted)] sm:text-[2rem]"
+            >
+              {symbol}
+            </span>
+          </div>
         </div>
         <p className="text-sm text-[var(--hero-muted)]">
           {receiving ? (

@@ -1,4 +1,4 @@
-import { partyHint } from '@bootnodedev/canton-dappbooster'
+import { truncateIdentifier } from '@bootnodedev/canton-dappbooster'
 import { Plus } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { buttonClass } from '@/components/Button'
@@ -65,8 +65,8 @@ export const TopBar = (): React.JSX.Element => {
                   <PartyAvatar partyId={session.partyId} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-fg">{session.username}</p>
-                    <p className="truncate font-mono text-xs text-fg-muted">
-                      {partyHint(session.partyId)}
+                    <p className="font-mono text-xs break-words text-fg-muted">
+                      Party {truncateIdentifier(session.partyId, { head: 6, hint: 12, tail: 6 })}
                     </p>
                   </div>
                   <button

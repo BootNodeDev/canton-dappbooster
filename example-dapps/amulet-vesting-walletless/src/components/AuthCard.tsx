@@ -114,11 +114,15 @@ export const AuthCard = (): React.JSX.Element => {
         <Button type="submit" size="lg" disabled={!valid} pending={submitting}>
           {signingUp ? 'Create account' : 'Sign in'}
         </Button>
-        {signingUp && (
+        {signingUp ? (
           <p className="text-xs text-fg-muted">
             {ttlHours !== undefined && ttlHours > 0
               ? `Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`
               : 'Creating an account also creates your Canton party. No wallet needed.'}
+          </p>
+        ) : (
+          <p className="text-center text-xs text-fg-muted">
+            New here? Creating an account also creates your Canton party.
           </p>
         )}
       </form>
