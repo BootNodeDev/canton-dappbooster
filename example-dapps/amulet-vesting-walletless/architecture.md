@@ -35,7 +35,8 @@ and `SameSite=Lax`, valid for seven days. Postgres keeps the id and its user, an
 purges the expired ones, so nothing runs on a timer. The password never leaves the server, and the
 browser never sees a ledger token.
 
-`Session` asks `GET /api/session` once on load, so a reload keeps the session. Any later
+`Session` asks `GET /api/session` once on load, so a reload keeps the session. It answers `null`
+rather than 401 when nobody is signed in, so a signed-out load logs no failed request. Any later
 call that comes back 401 tells it the session is gone, through `onSessionExpired` in
 `backend/api.ts`, and every page falls back to the sign-in card. `Backend` only asks
 `GET /api/status` once someone is signed in, and asks again every five seconds while the deployment
@@ -75,10 +76,10 @@ signed-in account can look a name up.
 
 ## The HTTP API
 
-Every route but auth and `GET /api/status` sits behind the session middleware, which turns the
-cookie into a user and refuses the request with 401 otherwise. A route then acts as that user's
-party and takes no party from the request: the receiver of a new grant is the only party a body
-carries, and it is the counterparty, never the actor.
+Every route but auth, `GET /api/status` and `GET /api/session` sits behind the session
+middleware, which turns the cookie into a user and refuses the request with 401 otherwise. A route
+then acts as that user's party and takes no party from the request: the receiver of a new grant is
+the only party a body carries, and it is the counterparty, never the actor.
 
 Every write must be `content-type: application/json`, or it gets 415. A cross-site form can post
 urlencoded, multipart or text, but not JSON without a preflight, so this is the CSRF check on top of
@@ -220,8 +221,9 @@ sets no variables: the server's `.env` on the validator host holds them all, wit
   funder's free Amulet, read from `GET /api/balance` when the form opens.
 - The receiver field shows a format error only once it loses focus, but "No user named …" as soon as
   the delayed lookup answers.
-- `AmountDisplay` scales the token mark with its figure, except on `KpiCard`, which passes
-  `fixedMark` so the marks stay one size.
+- `AmountDisplay` scales the token mark with its figure. `markSize` takes `small` beside a headline
+  figure, where a full-size mark would outweigh the digits, and `fixed` where figures of different
+  sizes should share one mark size.
 
 ## Custody
 

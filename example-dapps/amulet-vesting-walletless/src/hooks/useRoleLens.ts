@@ -16,3 +16,5 @@ export const useRoleLens = (): [Role, (role: Role) => void] => {
 
   return [params.get('role') === 'funder' ? 'funder' : 'receiver', setRole]
 }
+
+export const lensSearch = (role: Role): string => (role === 'funder' ? '?role=funder' : '')

@@ -1,8 +1,7 @@
-import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
-import { Card } from '@/components/Card'
 import { CounterpartyId } from '@/components/CounterpartyId'
 import { CurvePill } from '@/components/CurvePill'
+import { GrantRow } from '@/components/GrantRow'
 import { InfoTip } from '@/components/InfoTip'
 import { ScheduleBar } from '@/components/ScheduleBar'
 import { StatusPill } from '@/components/StatusPill'
@@ -23,6 +22,14 @@ interface PendingGrantCardProps {
   pendingGrant: PendingGrant
 }
 
+const scheduleText = ({ curve }: PendingGrant['schedule']): string => {
+  if (curve.kind === 'linear') {
+    return `Linear from ${formatDate(curve.start)} to ${formatDate(curve.end)}`
+  }
+  const count = curve.points.length
+  return `${count} milestone${count === 1 ? '' : 's'}, first on ${formatDate(curve.points[0].time)}`
+}
+
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
@@ -37,53 +44,45 @@ export const PendingGrantCard = ({
   const counterparty = direction === 'incoming' ? pendingGrant.proposer : pendingGrant.receiver
 
   return (
-    <Card className="grid gap-5 p-5 md:grid-cols-[1.5fr_2.2fr_auto] md:items-center md:gap-7">
-      <div className="min-w-0">
-        <h2 className="inline-block max-w-full truncate align-bottom text-base font-bold tracking-tight text-fg">
-          {pendingGrant.title}
-        </h2>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+    <GrantRow
+      title={pendingGrant.title}
+      badges={
+        <>
           <CurvePill curve={curve} />
           <StatusPill tone={direction === 'incoming' ? 'warning' : 'neutral'}>
-            {direction === 'incoming' ? 'Action needed' : 'Awaiting acceptance'}
+            {direction === 'incoming' ? 'Waiting for you' : 'Awaiting acceptance'}
           </StatusPill>
-        </div>
-        <div className="mt-2.5 font-mono text-xs text-fg-soft">
+        </>
+      }
+      detail={
+        <span className="font-mono">
           <CounterpartyId party={counterparty} incoming={direction === 'incoming'} />
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="mb-2 flex items-center justify-between text-xs text-fg-muted">
-          <span className="flex items-center gap-1">
-            Cliff
-            <InfoTip label={formatDate(pendingGrant.schedule.cliff)}>
-              {startFraction > 0 ? 'passed' : relativeTime(pendingGrant.schedule.cliff, nowMs)}
-            </InfoTip>
-          </span>
-        </div>
-        <ScheduleBar vestedFraction={startFraction} claimedFraction={0} milestones={milestones} />
-        {pendingGrant.note !== undefined && (
-          <p className="mt-3 text-sm text-fg-muted">{pendingGrant.note}</p>
-        )}
-      </div>
-
-      <div className="flex flex-col items-stretch gap-2.5 md:items-end">
-        <div className="md:text-right">
-          <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
-            Total
+        </span>
+      }
+      progress={
+        <>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.8rem] text-fg-muted">
+            <span>{scheduleText(pendingGrant.schedule)}</span>
+            <span className="flex items-center gap-1 font-semibold text-fg">
+              Cliff
+              <InfoTip label={formatDate(pendingGrant.schedule.cliff)}>
+                {startFraction > 0 ? 'passed' : relativeTime(pendingGrant.schedule.cliff, nowMs)}
+              </InfoTip>
+            </span>
           </div>
-          <AmountDisplay
-            value={pendingGrant.totalAmount}
-            className="text-xl font-semibold text-fg"
-          />
-        </div>
-        {direction === 'incoming' ? (
+          <ScheduleBar vestedFraction={startFraction} claimedFraction={0} milestones={milestones} />
+          {pendingGrant.note !== undefined && (
+            <p className="mt-3 text-sm text-fg-muted">{pendingGrant.note}</p>
+          )}
+        </>
+      }
+      figure={{ label: 'Total', amount: pendingGrant.totalAmount }}
+      action={
+        direction === 'incoming' ? (
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="danger-ghost"
-              className="flex-1 md:flex-none"
               onClick={() => onEnd(pendingGrant)}
               pending={busy === 'end'}
               disabled={busy !== undefined}
@@ -93,7 +92,6 @@ export const PendingGrantCard = ({
             </Button>
             <Button
               size="sm"
-              className="flex-1 md:flex-none"
               onClick={() => onAccept(pendingGrant)}
               pending={busy === 'accept'}
               disabled={busy !== undefined}
@@ -113,8 +111,8 @@ export const PendingGrantCard = ({
           >
             Cancel
           </Button>
-        )}
-      </div>
-    </Card>
+        )
+      }
+    />
   )
 }

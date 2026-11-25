@@ -26,12 +26,12 @@ export const Session = ({ children }: { children: ReactNode }): React.JSX.Elemen
 
   useEffect(() => {
     let live = true
-    api<Account>('/session')
+    api<Account | null>('/session')
       .then(
         (found) => {
-          if (live) setSession(found)
+          if (live) setSession(found ?? undefined)
         },
-        // A 401 or any other failure leaves the sign-in form to try, so neither is an error here
+        // A failure leaves the sign-in form to try, so it is not an error here
         () => undefined,
       )
       .finally(() => {

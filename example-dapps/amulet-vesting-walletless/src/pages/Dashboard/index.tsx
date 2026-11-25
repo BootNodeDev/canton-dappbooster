@@ -1,14 +1,12 @@
 import { partyHint } from '@bootnodedev/canton-dappbooster'
 import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { AmountDisplay } from '@/components/AmountDisplay'
 import { Button } from '@/components/Button'
 import { CancelGrant } from '@/components/CancelGrant'
-import { Card } from '@/components/Card'
 import { Claim } from '@/components/Claim'
 import { CompactAmount } from '@/components/CompactAmount'
 import { EmptyState } from '@/components/EmptyState'
-import { KpiCard } from '@/components/KpiCard'
+import { GrantRow } from '@/components/GrantRow'
 import { Loading } from '@/components/Loading'
 import { PageTitle } from '@/components/PageTitle'
 import { Pills } from '@/components/Pills'
@@ -18,6 +16,7 @@ import { useCreateGrant } from '@/hooks/useCreateGrant'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useRoleLens } from '@/hooks/useRoleLens'
 import { GrantCard } from '@/pages/Dashboard/GrantCard'
+import { Summary, type Totals } from '@/pages/Dashboard/Summary'
 import type { Grant, VestedClaim } from '@/store/types'
 import {
   claimAvailable,
@@ -32,14 +31,14 @@ import { now, useNow } from '@/utils/clock'
 import { cn } from '@/utils/cn'
 import { AMT } from '@/utils/tokens'
 
-interface GrantRow {
+interface Row {
   derived: GrantDerived
   grant: Grant
 }
 
 const FILTERS = [
   { value: 'all', label: 'All', match: () => true },
-  { value: 'claimable', label: 'Claimable', match: ({ derived }) => isPositive(derived.claimable) },
+  { value: 'claimable', label: 'Claimable', match: ({ derived }) => derived.canClaim },
   { value: 'in_cliff', label: 'In cliff', match: ({ derived }) => derived.status === 'in_cliff' },
   {
     value: 'not_started',
@@ -56,7 +55,7 @@ const FILTERS = [
     label: 'Milestone',
     match: ({ grant }) => grant.schedule.curve.kind === 'milestone',
   },
-] as const satisfies readonly { label: string; match: (row: GrantRow) => boolean; value: string }[]
+] as const satisfies readonly { label: string; match: (row: Row) => boolean; value: string }[]
 
 type Filter = (typeof FILTERS)[number]['value']
 
@@ -89,7 +88,7 @@ export const Dashboard = (): React.JSX.Element => {
   const [cancelTarget, setCancelTarget] = useState<Grant | null>(null)
   const [justClaimed, setJustClaimed] = useState<string | null>(null)
 
-  const rows = useMemo<GrantRow[]>(() => {
+  const rows = useMemo<Row[]>(() => {
     const mine = grants.filter((g) =>
       role === 'receiver' ? g.receiver === partyId : g.creator === partyId,
     )
@@ -110,7 +109,7 @@ export const Dashboard = (): React.JSX.Element => {
   }, [claims, role, partyId])
 
   const totals = useMemo(() => {
-    const acc = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
+    const acc: Totals = { total: '0', vested: '0', claimable: '0', claimed: '0', unvested: '0' }
     for (const { grant, derived } of rows) {
       acc.total = addAmounts(acc.total, grant.totalAmount)
       acc.vested = addAmounts(acc.vested, derived.vested)
@@ -122,7 +121,8 @@ export const Dashboard = (): React.JSX.Element => {
   }, [rows])
 
   const firstRead = loading && grants.length === 0
-  const grantCount = `${rows.length} ${rows.length === 1 ? 'grant' : 'grants'}`
+  const filters = FILTERS.map((entry) => ({ ...entry, count: rows.filter(entry.match).length }))
+  const claimableCount = filters.find((entry) => entry.value === 'claimable')?.count ?? 0
 
   if (!ready) {
     return sessionPending ? <Loading /> : <SignInPrompt />
@@ -154,73 +154,69 @@ export const Dashboard = (): React.JSX.Element => {
   }
 
   return (
-    <div className="flex flex-col gap-7">
-      <PageTitle title="Grants" lens={<RoleSelect value={role} onChange={setRole} />} />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Pills label="Filter grants" onChange={setFilter} options={FILTERS} value={filter} />
-        <Button size="sm" className="ml-auto pl-3" onClick={() => setCreating(true)}>
-          <Plus />
-          Create
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {role === 'receiver' ? (
+    <div className="flex flex-col gap-8">
+      <PageTitle
+        title="Grants"
+        description={
+          role === 'receiver'
+            ? 'Canton Coin that vests to your account. Claim it as it vests.'
+            : 'Grants you funded, and what is still to vest.'
+        }
+        action={
           <>
-            <KpiCard
-              hero
-              label="Claimable now"
-              amount={totals.claimable}
-              sub={`Across ${grantCount}`}
-              subTone="success"
-            />
-            <KpiCard label="Total granted" amount={totals.total} sub={`${rows.length} active`} />
-            <KpiCard label="Vested to date" amount={totals.vested} />
-            <KpiCard label="Already claimed" amount={totals.claimed} />
+            <RoleSelect value={role} onChange={setRole} />
+            <Button onClick={() => setCreating(true)}>
+              <Plus />
+              Create grant
+            </Button>
           </>
+        }
+      />
+
+      <Summary
+        claimableCount={claimableCount}
+        grantCount={rows.length}
+        role={role}
+        symbol={AMT.symbol}
+        totals={totals}
+      />
+
+      <div className="flex flex-col gap-3.5">
+        <Pills
+          className="max-sm:-mx-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4"
+          label="Filter grants"
+          onChange={setFilter}
+          options={filters}
+          value={filter}
+        />
+        {firstRead ? (
+          <Loading />
+        ) : filtered.length === 0 ? (
+          <EmptyState title={rows.length === 0 ? 'No grants' : 'No grants match this filter'} />
         ) : (
-          <>
-            <KpiCard
-              hero
-              label="Total committed"
-              amount={totals.total}
-              sub={`${grantCount} funded`}
-            />
-            <KpiCard label="Vested to date" amount={totals.vested} />
-            <KpiCard label="Unvested (clawbackable)" amount={totals.unvested} />
-            <KpiCard label="Active grants" amount={String(rows.length)} count />
-          </>
+          <div className="flex flex-col gap-2.5">
+            {filtered.map(({ grant, derived }) => (
+              <GrantCard
+                key={grant.id}
+                grant={grant}
+                derived={derived}
+                role={role}
+                nowMs={nowMs}
+                className={cn(grant.id === justClaimed && HIGHLIGHT)}
+                onClaim={openClaim}
+                onCancel={setCancelTarget}
+                busy={busy.get(grant.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
-
-      {firstRead ? (
-        <Loading />
-      ) : filtered.length === 0 ? (
-        <EmptyState title={rows.length === 0 ? 'No grants' : 'No grants match this filter'} />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {filtered.map(({ grant, derived }) => (
-            <GrantCard
-              key={grant.id}
-              grant={grant}
-              derived={derived}
-              role={role}
-              nowMs={nowMs}
-              className={cn(grant.id === justClaimed && HIGHLIGHT)}
-              onClaim={openClaim}
-              onCancel={setCancelTarget}
-              busy={busy.get(grant.id)}
-            />
-          ))}
-        </div>
-      )}
 
       {role === 'receiver' && myClaims.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-fg">Residual claims</h2>
-            <span className="font-mono text-xs text-fg-muted">
+            <h2 className="font-heading text-base font-bold text-fg">Residual claims</h2>
+            <span className="font-num text-xs text-fg-muted">
               {isPositive(residualClaimable) && (
                 <>
                   <CompactAmount value={residualClaimable} /> {AMT.symbol} claimable
@@ -229,27 +225,14 @@ export const Dashboard = (): React.JSX.Element => {
             </span>
           </div>
           {myClaims.map((claim) => (
-            <Card
+            <GrantRow
               key={claim.id}
-              className={cn(
-                'flex items-center justify-between gap-4 p-5',
-                claim.id === justClaimed && HIGHLIGHT,
-              )}
-            >
-              <div>
-                <div className="text-base font-bold text-fg">{claim.title}</div>
-                <p className="mt-1 text-sm text-fg-muted">{claim.note}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-fg-muted">
-                    Claimable
-                  </div>
-                  <AmountDisplay
-                    value={claimAvailable(claim)}
-                    className="text-lg font-semibold text-success"
-                  />
-                </div>
+              className={cn(claim.id === justClaimed && HIGHLIGHT)}
+              heading="h3"
+              title={claim.title}
+              detail={<span className="text-sm text-fg-muted">{claim.note}</span>}
+              figure={{ label: 'Claimable', amount: claimAvailable(claim) }}
+              action={
                 <Button
                   size="sm"
                   onClick={() => openResidual(claim)}
@@ -257,8 +240,8 @@ export const Dashboard = (): React.JSX.Element => {
                 >
                   Claim
                 </Button>
-              </div>
-            </Card>
+              }
+            />
           ))}
         </section>
       )}

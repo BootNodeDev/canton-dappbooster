@@ -5,20 +5,18 @@ import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { inputClass, labelClass } from '@/components/CreateGrant/fields'
 import { FieldError } from '@/components/FieldError'
+import { Pills } from '@/components/Pills'
 import { useSession } from '@/providers/Session'
-import { cn } from '@/utils/cn'
 import { errorText } from '@/utils/errorText'
 
 type Mode = 'login' | 'signup'
 
 const MIN_PASSWORD = 8
 
-const tabClass = (active: boolean): string =>
-  cn(
-    'flex-1 rounded-[8px] px-3 py-1.5 text-sm font-semibold transition-colors',
-    'focus-visible:outline-none focus-visible:shadow-[var(--ring)]',
-    active ? 'bg-primary-soft text-fg' : 'text-fg-muted hover:text-fg',
-  )
+const MODES = [
+  { value: 'login', label: 'Sign in' },
+  { value: 'signup', label: 'Create account' },
+] as const satisfies readonly { label: string; value: Mode }[]
 
 export const AuthCard = (): React.JSX.Element => {
   const { login, signup } = useSession()
@@ -61,27 +59,15 @@ export const AuthCard = (): React.JSX.Element => {
   }
 
   return (
-    <Card className="w-[22rem] max-w-full p-6 text-left">
-      <div role="tablist" aria-label="Account" className="flex gap-1 rounded-[10px] bg-muted p-1">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!signingUp}
-          className={tabClass(!signingUp)}
-          onClick={() => switchTo('login')}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={signingUp}
-          className={tabClass(signingUp)}
-          onClick={() => switchTo('signup')}
-        >
-          Create account
-        </button>
-      </div>
+    <Card className="w-full p-6 text-left sm:p-7">
+      <Pills
+        className="flex w-full"
+        label="Account"
+        onChange={switchTo}
+        options={MODES}
+        value={mode}
+        variant="segmented"
+      />
 
       <form
         className="mt-5 flex flex-col gap-4"
@@ -125,14 +111,18 @@ export const AuthCard = (): React.JSX.Element => {
           )}
         </div>
         {error !== undefined && <FieldError id={`${id}-error`} message={error} />}
-        <Button type="submit" size="md" disabled={!valid} pending={submitting}>
+        <Button type="submit" size="lg" disabled={!valid} pending={submitting}>
           {signingUp ? 'Create account' : 'Sign in'}
         </Button>
-        {signingUp && (
+        {signingUp ? (
           <p className="text-xs text-fg-muted">
             {ttlHours !== undefined && ttlHours > 0
               ? `Accounts are deleted ${ttlHours} hour${ttlHours === 1 ? '' : 's'} after sign-up.`
               : 'Creating an account also creates your Canton party. No wallet needed.'}
+          </p>
+        ) : (
+          <p className="text-center text-xs text-fg-muted">
+            New here? Creating an account also creates your Canton party.
           </p>
         )}
       </form>

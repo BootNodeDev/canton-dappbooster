@@ -1,13 +1,12 @@
 import { Steps } from '@ark-ui/react/steps'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import gatewayLogin from '@/assets/gateway-login.png'
 import gatewayParties from '@/assets/gateway-parties.png'
 import walletPicker from '@/assets/wallet-picker.png'
 import { CopyButton } from '@/components/CopyButton'
 import { Modal } from '@/components/Modal'
 import { StepBar } from '@/components/StepBar'
-import { roundButtonClass } from '@/components/TopBar/ThemeToggle'
 import { cn } from '@/utils/cn'
 import { WALLET_GATEWAY_UI_URL } from '@/utils/config'
 
@@ -48,82 +47,67 @@ const steps = [
     name: 'Connected',
     text: (
       <>
-        You're connected now. You can change the primary party to try different views in the dApp.
-        Direct access to Wallet Gateway available{' '}
+        You're connected now. Change the primary party in{' '}
         <a
-          aria-label="Open Wallet Gateway"
           className="font-semibold text-primary-strong underline underline-offset-3"
           href={WALLET_GATEWAY_UI_URL}
           rel="noreferrer"
           target="_blank"
         >
-          here
-        </a>
-        .
+          Wallet Gateway
+        </a>{' '}
+        to try different views in the dApp.
       </>
     ),
   },
 ]
 
-export const ConnectGuide = (): React.JSX.Element => {
-  const [open, setOpen] = useState(false)
+export const ConnectGuide = ({ onClose }: { onClose: () => void }): React.JSX.Element => {
   const stepsRef = useRef<HTMLDivElement>(null)
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="How to connect a wallet"
-        onClick={() => setOpen(true)}
-        className={cn(roundButtonClass, 'text-[0.95rem] font-bold')}
-      >
-        ?
-      </button>
-      {open && (
-        <Modal
-          className="sm:max-w-lg"
-          initialFocusEl={() => stepsRef.current}
-          onClose={() => setOpen(false)}
-          title="Welcome"
-        >
-          <Steps.Root className="outline-none" count={steps.length} ref={stepsRef} tabIndex={-1}>
-            <StepBar navigable steps={steps.map(({ name }) => name)} />
-            <Steps.Context>
-              {(api) => (
-                <div className="flex items-center gap-2">
-                  <Steps.PrevTrigger aria-label="Previous step" className={chevronClass}>
-                    <ChevronLeft size={28} strokeWidth={2.5} />
-                  </Steps.PrevTrigger>
-                  <div className="min-w-0 flex-1">
-                    {steps.map(({ alt, image, name }, index) => (
-                      <img
-                        alt={alt}
-                        className="block w-full rounded-xl border border-border"
-                        height={232}
-                        hidden={index !== api.value}
-                        key={name}
-                        src={image}
-                        width={400}
-                      />
-                    ))}
-                  </div>
-                  <Steps.NextTrigger
-                    aria-label="Next step"
-                    className={cn(chevronClass, api.value === api.count - 1 && 'invisible')}
-                  >
-                    <ChevronRight size={28} strokeWidth={2.5} />
-                  </Steps.NextTrigger>
-                </div>
-              )}
-            </Steps.Context>
-            {steps.map(({ name, text }, index) => (
-              <Steps.Content className="focus-visible:outline-none" index={index} key={name}>
-                <p className="mt-4 text-[0.95rem] leading-6">{text}</p>
-              </Steps.Content>
-            ))}
-          </Steps.Root>
-        </Modal>
-      )}
-    </>
+    <Modal
+      className="sm:max-w-lg"
+      initialFocusEl={() => stepsRef.current}
+      onClose={onClose}
+      title="Welcome"
+    >
+      <Steps.Root className="outline-none" count={steps.length} ref={stepsRef} tabIndex={-1}>
+        <StepBar navigable steps={steps.map(({ name }) => name)} />
+        <Steps.Context>
+          {(api) => (
+            <div className="flex items-center gap-2">
+              <Steps.PrevTrigger aria-label="Previous step" className={chevronClass}>
+                <ChevronLeft size={28} strokeWidth={2.5} />
+              </Steps.PrevTrigger>
+              <div className="min-w-0 flex-1">
+                {steps.map(({ alt, image, name }, index) => (
+                  <img
+                    alt={alt}
+                    className="block w-full rounded-xl border border-border"
+                    height={232}
+                    hidden={index !== api.value}
+                    key={name}
+                    src={image}
+                    width={400}
+                  />
+                ))}
+              </div>
+              <Steps.NextTrigger
+                aria-label="Next step"
+                className={cn(chevronClass, api.value === api.count - 1 && 'invisible')}
+              >
+                <ChevronRight size={28} strokeWidth={2.5} />
+              </Steps.NextTrigger>
+            </div>
+          )}
+        </Steps.Context>
+        {steps.map(({ name, text }, index) => (
+          <Steps.Content className="focus-visible:outline-none" index={index} key={name}>
+            <p className="mt-4 text-[0.95rem] leading-6">{text}</p>
+          </Steps.Content>
+        ))}
+      </Steps.Root>
+    </Modal>
   )
 }

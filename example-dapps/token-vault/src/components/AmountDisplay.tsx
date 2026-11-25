@@ -5,17 +5,19 @@ import type { VaultToken } from '@/utils/tokens'
 
 export const AmountDisplay = ({
   className,
+  markSize = 'relative',
   token,
   value,
 }: {
   className?: string
+  markSize?: 'relative' | 'small'
   token: VaultToken
   value: string
 }): React.JSX.Element => {
   const unit = `${token.name} (${token.symbol})`
 
   return (
-    <span className={cn('inline-flex items-center gap-2 font-mono tabular-nums', className)}>
+    <span className={cn('inline-flex items-center gap-[0.3em] font-num tabular-nums', className)}>
       {formatFigure(value) ?? 'N/A'}
       {/* InfoTip names no element child, so the mark carries its own name and drops aria-hidden. */}
       <InfoTip label={unit}>
@@ -23,7 +25,7 @@ export const AmountDisplay = ({
           role="img"
           aria-label={unit}
           aria-hidden={undefined}
-          className="size-[0.92em]"
+          className={markSize === 'small' ? 'size-[0.7em]' : 'size-[0.92em]'}
         />
       </InfoTip>
     </span>

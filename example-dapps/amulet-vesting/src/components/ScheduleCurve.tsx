@@ -1,8 +1,10 @@
-import { useId, useMemo } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
+import { cn } from '@/utils/cn'
 import { formatDate, formatPct } from '@/utils/format'
 import { toMs, type VestingSchedule, vestedFraction } from '@/utils/schedule'
 
 interface ScheduleCurveProps {
+  compact?: boolean
   nowMs: number
   schedule: VestingSchedule
 }
@@ -16,112 +18,191 @@ const domain = (schedule: VestingSchedule): [number, number] => {
   return [Math.min(cliff, toMs(points[0].time)), toMs(points[points.length - 1].time)]
 }
 
-const W = 100
-const H = 56
-const PAD = 2
+const tickDates = (schedule: VestingSchedule): string[] =>
+  schedule.curve.kind === 'linear'
+    ? [schedule.curve.start, schedule.cliff, schedule.curve.end]
+    : schedule.curve.points.map((point) => point.time)
 
-// Vested-fraction-over-time plot. Samples vestedFraction so the cliff jump and
-// milestone steps render exactly. A "now" marker tracks the live clock.
-export const ScheduleCurve = ({ schedule, nowMs }: ScheduleCurveProps): React.JSX.Element => {
+// A date label is about this wide (px); one closer than that to the next gives way.
+const TICK_WIDTH = 76
+
+const clamp = (value: number): number => Math.min(100, Math.max(0, value))
+
+// Strokes stay in pixels and every label is HTML, so the stretched 100 by 100 plot distorts neither.
+export const ScheduleCurve = ({
+  compact = false,
+  nowMs,
+  schedule,
+}: ScheduleCurveProps): React.JSX.Element => {
   const gradId = useId()
+  const clipId = useId()
   const titleId = useId()
 
-  // The curve geometry depends only on the schedule, so memoize it; the live
-  // "now" marker below recomputes every tick and must stay out of the memo.
-  const { x, y, start, end, d, area, cliffX, milestonePoints } = useMemo(() => {
+  // The geometry depends only on the schedule; the marker below recomputes every tick of the clock.
+  const { area, d, end, start, ticks } = useMemo(() => {
     const [s, e] = domain(schedule)
     const span = Math.max(1, e - s)
-    const px = (t: number): number => PAD + ((t - s) / span) * (W - 2 * PAD)
-    const py = (f: number): number => H - PAD - f * (H - 2 * PAD)
+    const px = (t: number): number => ((t - s) / span) * 100
 
-    const samples = 160
-    let path = ''
-    for (let i = 0; i <= samples; i += 1) {
-      const t = s + (span * i) / samples
-      const f = vestedFraction(schedule, t)
-      path += `${i === 0 ? 'M' : 'L'}${px(t).toFixed(2)} ${py(f).toFixed(2)} `
-    }
-    const fill = `${path}L${px(e).toFixed(2)} ${py(0)} L${px(s).toFixed(2)} ${py(0)} Z`
-    const points =
-      schedule.curve.kind === 'milestone'
-        ? schedule.curve.points.map((p) => ({ x: px(toMs(p.time)), y: py(p.fraction) }))
-        : []
-    return {
-      x: px,
-      y: py,
-      start: s,
-      end: e,
-      d: path,
-      area: fill,
-      cliffX: px(toMs(schedule.cliff)),
-      milestonePoints: points,
-    }
+    const py = (t: number): string => (100 - vestedFraction(schedule, t) * 100).toFixed(2)
+    // The fraction is straight between these instants and jumps only at them, so they draw it exactly.
+    const breaks = [...new Set([s, ...tickDates(schedule).map(toMs), toMs(schedule.cliff), e])]
+      .filter((t) => t >= s && t <= e)
+      .sort((a, b) => a - b)
+    const path = breaks
+      .map(
+        (t, i) =>
+          `${i === 0 ? 'M' : 'L'}${px(t).toFixed(2)} ${py(t - 1)} L${px(t).toFixed(2)} ${py(t)}`,
+      )
+      .join(' ')
+
+    const ticks = tickDates(schedule).map((iso) => ({ iso, x: clamp(px(toMs(iso))) }))
+
+    return { area: `${path}L100 100 L0 100 Z`, d: path, end: e, start: s, ticks }
   }, [schedule])
 
-  const nowClamped = Math.min(Math.max(nowMs, start), end)
-  const nowX = x(nowClamped)
+  const [width, setWidth] = useState(0)
+  const measure = useCallback((row: HTMLDivElement | null) => {
+    if (row === null) {
+      return undefined
+    }
+    const observer = new ResizeObserver(() => setWidth(row.clientWidth))
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [])
+  const gap = width > 0 ? (TICK_WIDTH / width) * 100 : 100
+  let last = Number.POSITIVE_INFINITY
+  const kept = [...ticks]
+    .reverse()
+    .filter(({ x }) => {
+      const fits = last - x >= gap
+      if (fits) {
+        last = x
+      }
+      return fits
+    })
+    .reverse()
+
+  const nowX = clamp(((nowMs - start) / Math.max(1, end - start)) * 100)
   const nowF = vestedFraction(schedule, nowMs)
+  const reach = compact ? 100 : nowX
 
   return (
-    <div>
-      {/* `role` and `aria-labelledby` both, because a bare <title> is exposed inconsistently: some
-          readers announce the element as a graphic with no name without them. */}
-      <svg
-        aria-labelledby={titleId}
-        role="img"
-        viewBox={`0 0 ${W} ${H}`}
-        className="h-40 w-full"
-        preserveAspectRatio="none"
-      >
-        <title id={titleId}>
-          Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
-          {formatDate(new Date(end).toISOString())}, {formatPct(nowF)} vested now
-        </title>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--pink)" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {[0, 0.5, 1].map((f) => (
-          <line
-            key={f}
-            x1={PAD}
-            x2={W - PAD}
-            y1={y(f)}
-            y2={y(f)}
-            stroke="var(--border)"
-            strokeWidth="0.3"
+    <div
+      className={cn(
+        'grid gap-x-3 gap-y-2',
+        compact ? 'grid-cols-1' : 'mt-7 grid-cols-[2.25rem_minmax(0,1fr)]',
+      )}
+    >
+      {!compact && (
+        <div
+          aria-hidden="true"
+          className="-my-2 flex flex-col justify-between text-right text-[0.7rem] text-fg-soft"
+        >
+          <span>100%</span>
+          <span>50%</span>
+          <span>0%</span>
+        </div>
+      )}
+      <div className={cn('relative', compact ? 'h-32' : 'h-52 sm:h-60')}>
+        {/* A bare <title> is announced inconsistently, so role and aria-labelledby name it too. */}
+        <svg
+          aria-labelledby={titleId}
+          className="absolute inset-0 size-full overflow-visible"
+          preserveAspectRatio="none"
+          role="img"
+          viewBox="0 0 100 100"
+        >
+          <title id={titleId}>
+            Vested fraction from {formatDate(new Date(start).toISOString())} to{' '}
+            {formatDate(new Date(end).toISOString())}
+            {compact ? '' : `, ${formatPct(nowF)} vested now`}
+          </title>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-fill)" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="var(--chart-fill)" stopOpacity="0.02" />
+            </linearGradient>
+            <clipPath id={clipId}>
+              <rect x="-1" y="-5" width={reach + 1} height="110" />
+            </clipPath>
+          </defs>
+          {[0, 50, 100].map((y) => (
+            <line
+              key={y}
+              stroke="var(--border)"
+              strokeDasharray={y === 100 ? undefined : '3 4'}
+              vectorEffect="non-scaling-stroke"
+              x1="0"
+              x2="100"
+              y1={y}
+              y2={y}
+            />
+          ))}
+          <path clipPath={`url(#${clipId})`} d={area} fill={`url(#${gradId})`} />
+          {!compact && (
+            <path
+              d={d}
+              fill="none"
+              opacity="0.55"
+              stroke="var(--chart-line)"
+              strokeDasharray="5 5"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          <path
+            clipPath={`url(#${clipId})`}
+            d={d}
+            fill="none"
+            stroke="var(--chart-line)"
+            strokeLinejoin="round"
+            strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke"
           />
+          {!compact && (
+            <line
+              stroke="var(--fg-soft)"
+              strokeDasharray="2 3"
+              vectorEffect="non-scaling-stroke"
+              x1={nowX}
+              x2={nowX}
+              y1="0"
+              y2="100"
+            />
+          )}
+        </svg>
+        {!compact && (
+          <>
+            <span
+              aria-hidden="true"
+              className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-[var(--chart-line)] bg-surface"
+              style={{ left: `${nowX}%`, top: `${100 - nowF * 100}%` }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute top-0 -translate-x-1/2 -translate-y-[calc(100%+6px)] rounded-full bg-fg px-2 py-0.5 text-[0.65rem] font-bold text-bg"
+              style={{ left: `${nowX}%` }}
+            >
+              Today
+            </span>
+          </>
+        )}
+      </div>
+      {!compact && <span />}
+      <div aria-hidden="true" className="relative h-4 text-[0.7rem] text-fg-soft" ref={measure}>
+        {kept.map(({ iso, x }) => (
+          <span
+            className="absolute whitespace-nowrap"
+            key={iso}
+            style={{
+              left: `${x}%`,
+              transform: `translateX(${x < 8 ? '0' : x > 92 ? '-100%' : '-50%'})`,
+            }}
+          >
+            {formatDate(iso)}
+          </span>
         ))}
-        <line
-          x1={cliffX}
-          x2={cliffX}
-          y1={PAD}
-          y2={H - PAD}
-          stroke="var(--fg-soft)"
-          strokeWidth="0.4"
-          strokeDasharray="1.4 1.4"
-        />
-        <path d={area} fill={`url(#${gradId})`} />
-        <path d={d} fill="none" stroke="var(--accent)" strokeWidth="0.9" />
-        {milestonePoints.map((p) => (
-          <circle key={`${p.x}-${p.y}`} cx={p.x} cy={p.y} r="1.1" fill="var(--pink)" />
-        ))}
-        <line x1={nowX} x2={nowX} y1={PAD} y2={H - PAD} stroke="var(--primary)" strokeWidth="0.5" />
-        <circle
-          cx={nowX}
-          cy={y(nowF)}
-          r="1.5"
-          fill="var(--primary)"
-          stroke="var(--surface)"
-          strokeWidth="0.5"
-        />
-      </svg>
-      <div className="mt-1.5 flex justify-between font-mono text-[0.7rem] text-fg-muted">
-        <span>{formatDate(new Date(start).toISOString())}</span>
-        <span className="text-fg-soft">cliff {formatDate(schedule.cliff)}</span>
-        <span>{formatDate(new Date(end).toISOString())}</span>
       </div>
     </div>
   )
