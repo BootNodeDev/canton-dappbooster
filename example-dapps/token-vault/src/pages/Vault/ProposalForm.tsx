@@ -69,6 +69,7 @@ export const ProposalForm = ({
 
   return (
     <Card className="p-4 sm:p-5">
+      <h2 className="sr-only">{KIND_TEXT[kind]}</h2>
       <Pills
         className="flex w-full"
         disabled={pending}
