@@ -15,6 +15,7 @@ import { CurvePill } from '@/components/CurvePill'
 import { EmptyState } from '@/components/EmptyState'
 import { GrantLock } from '@/components/GrantLock'
 import { GrantStatusPill } from '@/components/GrantStatusPill'
+import { Legend, type LegendItem } from '@/components/Legend'
 import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { Spinner } from '@/components/Spinner'
@@ -27,6 +28,11 @@ import { formatDate } from '@/utils/format'
 
 const titleClass = 'font-heading text-base font-bold text-fg'
 const rowClass = 'flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0'
+
+const CURVE_LEGEND: LegendItem[] = [
+  { label: 'Vested', swatch: 'var(--chart-line)' },
+  { label: 'Still to vest', swatch: 'color-mix(in oklab, var(--chart-line) 55%, transparent)' },
+]
 
 export const GrantDetail = (): React.JSX.Element => {
   const nowMs = useNow()
@@ -101,10 +107,11 @@ export const GrantDetail = (): React.JSX.Element => {
     <div className="flex flex-col gap-5">
       <button
         type="button"
+        aria-label="Back to grants"
         onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg"
       >
-        <ArrowLeft size={16} /> Back
+        <ArrowLeft size={16} /> Grants
       </button>
 
       <div className="mb-3 flex flex-wrap items-start justify-between gap-5">
@@ -126,7 +133,7 @@ export const GrantDetail = (): React.JSX.Element => {
         <div className="flex gap-2.5">
           {isReceiver &&
             (derived.locked ? (
-              <GrantLock className="self-center" />
+              <GrantLock className="self-center" nowMs={nowMs} schedule={grant.schedule} />
             ) : (
               <Button
                 size="lg"
@@ -160,7 +167,10 @@ export const GrantDetail = (): React.JSX.Element => {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         <Card className="p-6">
-          <h2 className={titleClass}>Vesting curve</h2>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2 className={titleClass}>Vesting curve</h2>
+            <Legend items={CURVE_LEGEND} />
+          </div>
           <div className="mt-5">
             <ScheduleCurve schedule={grant.schedule} nowMs={nowMs} />
           </div>
@@ -229,7 +239,14 @@ export const GrantDetail = (): React.JSX.Element => {
         </Card>
 
         <Card className="p-6">
-          <h2 className={titleClass}>Claim history</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className={titleClass}>Claim history</h2>
+            {claims !== undefined && claims.length > 0 && (
+              <span className="text-sm text-fg-muted">
+                {claims.length} {claims.length === 1 ? 'claim' : 'claims'}
+              </span>
+            )}
+          </div>
           <div className="mt-4 h-40 overflow-y-auto">
             {claims === undefined ? (
               <div role="status" className="flex h-full items-center justify-center text-fg-muted">

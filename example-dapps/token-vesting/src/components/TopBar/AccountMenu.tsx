@@ -27,7 +27,9 @@ const triggerClass =
 
 const ruleClass = '-mx-4 border-border'
 
-export const accountLabel = (account: Account): string => account.hint || partyHint(account.partyId)
+export const shortParty = (partyId: string): string => truncateIdentifier(partyId, TRUNCATE)
+
+const accountLabel = (account: Account): string => account.hint || partyHint(account.partyId)
 
 interface AccountMenuProps {
   account: Account
@@ -49,7 +51,7 @@ export const AccountMenu = ({ account }: AccountMenuProps): React.JSX.Element =>
       <Menu.Trigger className={triggerClass}>
         <PartyAvatar partyId={account.partyId} size={30} />
         <span className="font-mono text-[0.8rem] max-md:sr-only">
-          {truncateIdentifier(account.partyId, TRUNCATE)}
+          {shortParty(account.partyId)}
         </span>
         <ChevronDown className="max-md:hidden" size={14} />
       </Menu.Trigger>

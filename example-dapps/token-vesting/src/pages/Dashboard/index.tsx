@@ -177,6 +177,7 @@ export const Dashboard = (): React.JSX.Element => {
         claimableCount={claimableCount}
         grantCount={rows.length}
         role={role}
+        symbol={DBT.symbol}
         totals={totals}
       />
 

@@ -7,7 +7,7 @@ export interface LegendItem {
   value?: string
 }
 
-// Compact figure legend under a schedule bar. `swatch` is a CSS background value.
+// A swatch per series, with its figure when one is given. `swatch` is a CSS background value.
 export const Legend = ({
   items,
   className,

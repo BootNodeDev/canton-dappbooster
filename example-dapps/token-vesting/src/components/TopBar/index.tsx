@@ -6,7 +6,7 @@ import { NavLink } from 'react-router-dom'
 import { buttonClass } from '@/components/Button'
 import { ConnectFace } from '@/components/ConnectFace'
 import { Spinner } from '@/components/Spinner'
-import { AccountMenu, accountLabel } from '@/components/TopBar/AccountMenu'
+import { AccountMenu, shortParty } from '@/components/TopBar/AccountMenu'
 import { ConnectGuide, hasSeenGuide } from '@/components/TopBar/ConnectGuide'
 import { Logo } from '@/components/TopBar/Logo'
 import { type MenuLink, MobileMenu } from '@/components/TopBar/MobileMenu'
@@ -80,10 +80,12 @@ export const TopBar = (): React.JSX.Element => {
                 <div className="mb-2 flex items-center gap-3 rounded-control bg-surface-2 p-3">
                   <PartyAvatar partyId={account.partyId} size={36} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-fg">
-                      {accountLabel(account)}
+                    <p className="truncate font-mono text-sm font-semibold text-fg">
+                      {shortParty(account.partyId)}
                     </p>
-                    <p className="truncate text-xs text-fg-muted">{account.networkId}</p>
+                    <p className="text-xs break-words text-fg-muted">
+                      Connected to {account.networkId}
+                    </p>
                   </div>
                   <DisconnectButton className={buttonClass('secondary', 'sm')} onClick={close}>
                     Disconnect
