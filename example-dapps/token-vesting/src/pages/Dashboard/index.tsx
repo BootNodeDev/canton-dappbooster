@@ -227,6 +227,7 @@ export const Dashboard = (): React.JSX.Element => {
             <GrantRow
               key={claim.id}
               className={cn(claim.id === justClaimed && HIGHLIGHT)}
+              heading="h3"
               title={claim.title}
               detail={<span className="text-sm text-fg-muted">{claim.note}</span>}
               figure={{ label: 'Claimable', amount: claimAvailable(claim) }}
