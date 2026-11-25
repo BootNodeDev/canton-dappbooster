@@ -64,12 +64,20 @@ export const Balances = ({ deployment }: { deployment: Deployment }): React.JSX.
               {failed ? 'N/A' : '…'}
             </span>
           ) : (
-            <AmountDisplay
-              className="mt-3 text-[2.4rem] leading-none font-semibold tracking-tight text-[var(--hero-figure)] sm:text-[3rem]"
-              markSize="small"
-              token={VSH}
-              value={shares}
-            />
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-3">
+              <AmountDisplay
+                className="text-[2.4rem] leading-none font-semibold tracking-tight text-[var(--hero-figure)] sm:text-[3rem]"
+                markSize="small"
+                token={VSH}
+                value={shares}
+              />
+              <span
+                aria-hidden="true"
+                className="text-[1.6rem] font-semibold text-[var(--hero-muted)] sm:text-[2rem]"
+              >
+                {VSH.symbol}
+              </span>
+            </div>
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-[var(--hero-muted)]">
