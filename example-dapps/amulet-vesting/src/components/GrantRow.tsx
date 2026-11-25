@@ -9,6 +9,7 @@ interface GrantRowProps {
   className?: string
   detail?: ReactNode
   figure: { amount: string; dim?: boolean; label: string }
+  heading?: 'h2' | 'h3'
   progress?: ReactNode
   title: ReactNode
 }
@@ -19,6 +20,7 @@ export const GrantRow = ({
   className,
   detail,
   figure,
+  heading: Heading = 'h2',
   progress,
   title,
 }: GrantRowProps): React.JSX.Element => (
@@ -31,7 +33,7 @@ export const GrantRow = ({
     )}
   >
     <div className="min-w-0 self-center [grid-area:head]">
-      <h2 className="truncate font-heading text-base font-bold text-fg">{title}</h2>
+      <Heading className="truncate font-heading text-base font-bold text-fg">{title}</Heading>
       {badges !== undefined && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">{badges}</div>
       )}
