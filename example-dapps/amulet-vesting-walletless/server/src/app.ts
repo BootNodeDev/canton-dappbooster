@@ -221,19 +221,27 @@ export const createApp = ({
     return c.json({ accountTtlHours, error, ready: error === undefined } satisfies ServerStatus)
   })
 
+  const sessionUser = async (c: Context): Promise<User | undefined> => {
+    const id = getCookie(c, SESSION_COOKIE)
+    return id === undefined ? undefined : await db.sessionUser(id, now(), expiredBefore())
+  }
+
+  // Signed out is an answer here rather than a 401, so a signed-out page load logs no failed request.
+  app.get('/api/session', async (c) => {
+    const user = await sessionUser(c)
+    return c.json(user === undefined ? null : publicUser(user))
+  })
+
   // ── Everything below needs a session ───────────────────────────────────────
 
   app.use('/api/*', async (c, next) => {
-    const id = getCookie(c, SESSION_COOKIE)
-    const user = id === undefined ? undefined : await db.sessionUser(id, now(), expiredBefore())
+    const user = await sessionUser(c)
     if (user === undefined) {
       return c.json({ error: 'not signed in' }, 401)
     }
     c.set('user', user)
     await next()
   })
-
-  app.get('/api/session', (c) => c.json(publicUser(c.var.user)))
 
   app.get('/api/users/:username', async (c) => {
     const found = await db.userByUsername(c.req.param('username').toLowerCase(), expiredBefore())

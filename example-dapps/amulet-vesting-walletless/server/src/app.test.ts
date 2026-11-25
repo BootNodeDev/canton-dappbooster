@@ -142,7 +142,7 @@ describe('auth', () => {
     expect(right.status).toBe(200)
     const cookie = cookieOf(right)
     await env.app.request(post('/api/auth/logout', {}, cookie))
-    expect((await env.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+    expect(await (await env.app.request('/api/session', { headers: { cookie } })).json()).toBeNull()
   })
 
   it('stops answering login guesses after a handful', async () => {
@@ -220,7 +220,9 @@ describe('auth', () => {
     clock += 25 * HOUR_MS
     await signup(expiring.app, 'alice')
     expect(expiring.released).toEqual([['wl-alice::fp']])
-    expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+    expect(
+      await (await expiring.app.request('/api/session', { headers: { cookie } })).json(),
+    ).toBeNull()
   })
 
   it('ends an expired account at once, with no signup to run the cleanup', async () => {
@@ -228,7 +230,9 @@ describe('auth', () => {
     const expiring = await setup(undefined, { accountTtlHours: 24, now: () => clock })
     const cookie = await signup(expiring.app, 'alice')
     clock += 25 * HOUR_MS
-    expect((await expiring.app.request('/api/session', { headers: { cookie } })).status).toBe(401)
+    expect(
+      await (await expiring.app.request('/api/session', { headers: { cookie } })).json(),
+    ).toBeNull()
     const login = await expiring.app.request(
       post('/api/auth/login', { username: 'alice', password: 'hunter22!' }),
     )
@@ -242,8 +246,14 @@ describe('auth', () => {
     expect(status).toEqual({ accountTtlHours: 24, ready: true })
   })
 
+  it('answers a session check without a session with null, not 401', async () => {
+    const response = await env.app.request('/api/session')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toBeNull()
+  })
+
   it('answers 401 to every ledger route without a session', async () => {
-    for (const path of ['/api/vesting', '/api/balance', '/api/session']) {
+    for (const path of ['/api/vesting', '/api/balance']) {
       expect((await env.app.request(path)).status).toBe(401)
     }
     expect((await env.app.request(post('/api/tap', {}))).status).toBe(401)
