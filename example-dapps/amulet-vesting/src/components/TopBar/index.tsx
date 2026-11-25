@@ -14,7 +14,7 @@ import { NavCount } from '@/components/TopBar/NavCount'
 import { PartyAvatar } from '@/components/TopBar/PartyAvatar'
 import { roundButtonClass, ThemeToggle } from '@/components/TopBar/ThemeToggle'
 import { useCreateGrant } from '@/hooks/useCreateGrant'
-import { useRoleLens } from '@/hooks/useRoleLens'
+import { lensSearch, useRoleLens } from '@/hooks/useRoleLens'
 import { useBackend } from '@/providers/Backend'
 import { useVestingStore } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -32,7 +32,7 @@ export const TopBar = (): React.JSX.Element => {
     account === undefined ? 0 : pendingGrants.filter((p) => p.receiver === account.partyId).length
 
   // The lens rides along, so moving between the pages keeps the view the reader picked.
-  const search = role === 'funder' ? '?role=funder' : ''
+  const search = lensSearch(role)
   const links: MenuLink[] = [
     { to: { pathname: '/', search }, label: 'Grants' },
     { to: { pathname: '/pending', search }, label: 'Pending', count: incoming },
@@ -52,7 +52,7 @@ export const TopBar = (): React.JSX.Element => {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-[var(--header-bg)] backdrop-blur-md">
       <div className="mx-auto grid h-16 max-w-6xl grid-cols-[1fr_auto] items-center gap-4 px-4 sm:px-8 md:grid-cols-[1fr_auto_1fr]">
-        <Logo />
+        <Logo search={search} />
 
         <nav aria-label="Primary" className="nav hidden items-center md:flex">
           {links.map(({ to, label, count }) => (
