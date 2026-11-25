@@ -18,6 +18,14 @@ interface PendingGrantCardProps {
   pendingGrant: PendingGrant
 }
 
+const scheduleText = ({ curve }: PendingGrant['schedule']): string => {
+  if (curve.kind === 'linear') {
+    return `Linear from ${formatDate(curve.start)} to ${formatDate(curve.end)}`
+  }
+  const count = curve.points.length
+  return `${count} milestone${count === 1 ? '' : 's'}, first on ${formatDate(curve.points[0].time)}`
+}
+
 export const PendingGrantCard = ({
   pendingGrant,
   direction,
@@ -47,8 +55,9 @@ export const PendingGrantCard = ({
       }
       progress={
         <>
-          <div className="mb-2 flex items-center justify-between text-[0.8rem] text-fg-muted">
-            <span className="flex items-center gap-1">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.8rem] text-fg-muted">
+            <span>{scheduleText(pendingGrant.schedule)}</span>
+            <span className="flex items-center gap-1 font-semibold text-fg">
               Cliff
               <InfoTip label={formatDate(pendingGrant.schedule.cliff)}>
                 {startFraction > 0 ? 'passed' : relativeTime(pendingGrant.schedule.cliff, nowMs)}
