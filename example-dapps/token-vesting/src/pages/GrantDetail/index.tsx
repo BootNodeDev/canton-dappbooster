@@ -20,6 +20,7 @@ import { Loading } from '@/components/Loading'
 import { ScheduleCurve } from '@/components/ScheduleCurve'
 import { Spinner } from '@/components/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { lensSearch, useRoleLens } from '@/hooks/useRoleLens'
 import { KpiCard } from '@/pages/GrantDetail/KpiCard'
 import { MilestoneTimeline } from '@/pages/GrantDetail/MilestoneTimeline'
 import { deriveGrant, grantBacking, useVesting, useVestingStore } from '@/store/useVestingStore'
@@ -37,6 +38,8 @@ const CURVE_LEGEND: LegendItem[] = [
 export const GrantDetail = (): React.JSX.Element => {
   const nowMs = useNow()
   const navigate = useNavigate()
+  const [role] = useRoleLens()
+  const search = lensSearch(role)
   const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const { backend, partyId, sessionPending } = useVesting()
@@ -87,7 +90,7 @@ export const GrantDetail = (): React.JSX.Element => {
         title="Grant not found"
         description="It may have been fully claimed or cancelled."
         action={
-          <Button asLink to="/" size="sm">
+          <Button asLink to={`/${search}`} size="sm">
             Back to grants
           </Button>
         }
@@ -108,7 +111,7 @@ export const GrantDetail = (): React.JSX.Element => {
       <button
         type="button"
         aria-label="Back to grants"
-        onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
+        onClick={() => (location.key === 'default' ? navigate(`/${search}`) : navigate(-1))}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-fg-muted transition-colors hover:text-fg"
       >
         <ArrowLeft size={16} /> Grants
@@ -285,9 +288,9 @@ export const GrantDetail = (): React.JSX.Element => {
           onConfirm={async (amount) => {
             const next = await withdraw(backend, partyId, grant.id, amount)
             if (next === undefined) {
-              navigate('/', { replace: true })
+              navigate(`/${search}`, { replace: true })
             } else if (next !== grant.id) {
-              navigate(`/grants/${next}`, { replace: true })
+              navigate(`/grants/${next}${search}`, { replace: true })
             }
           }}
         />
@@ -302,7 +305,7 @@ export const GrantDetail = (): React.JSX.Element => {
           successMessage="Grant cancelled"
           onConfirm={async () => {
             await cancel(backend, partyId, grant.id)
-            navigate('/', { replace: true })
+            navigate(`/${search}`, { replace: true })
           }}
         />
       )}
