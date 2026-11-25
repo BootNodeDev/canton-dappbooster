@@ -1,5 +1,14 @@
-export const dateOf = (iso: string): string => iso.slice(0, 10)
-export const atMidnight = (date: string): string => `${date}T00:00:00.000Z`
+const pad = (n: number): string => String(n).padStart(2, '0')
+
+// A date input holds a local calendar day, the one formatDate shows back, so both ends stay local.
+export const dateOf = (iso: string): string => {
+  const day = new Date(iso)
+  return Number.isNaN(day.getTime())
+    ? ''
+    : `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`
+}
+export const atMidnight = (date: string): string =>
+  date === '' ? '' : new Date(`${date}T00:00`).toISOString()
 
 export const headingClass = 'font-heading text-base font-bold text-fg'
 export const labelClass = 'block text-[0.8rem] font-semibold text-fg-muted'
