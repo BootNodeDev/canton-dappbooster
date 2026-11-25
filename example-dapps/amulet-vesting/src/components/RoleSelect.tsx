@@ -13,10 +13,5 @@ export const RoleSelect = ({
   onChange: (role: Role) => void
   value: Role
 }): React.JSX.Element => (
-  <div className="flex items-center gap-2.5 text-sm font-semibold text-fg-muted">
-    <span aria-hidden="true" className="max-sm:hidden">
-      View as
-    </span>
-    <Pills label="View as" onChange={onChange} options={roles} value={value} variant="segmented" />
-  </div>
+  <Pills label="View as" onChange={onChange} options={roles} value={value} variant="segmented" />
 )
