@@ -10,6 +10,7 @@ import { GrantStatusPill } from '@/components/GrantStatusPill'
 import { InfoTip } from '@/components/InfoTip'
 import { Legend } from '@/components/Legend'
 import { ScheduleBar } from '@/components/ScheduleBar'
+import { lensSearch } from '@/hooks/useRoleLens'
 import type { Grant, Role } from '@/store/types'
 import type { BusyKind, GrantDerived } from '@/store/useVestingStore'
 import { cn } from '@/utils/cn'
@@ -73,7 +74,10 @@ export const GrantCard = ({
     <GrantRow
       className={cn(claimable && '[--card-edge:var(--claimable-edge)]', className)}
       title={
-        <Link to={`/grants/${grant.id}`} className="transition-colors hover:text-primary-strong">
+        <Link
+          to={`/grants/${grant.id}${lensSearch(role)}`}
+          className="transition-colors hover:text-primary-strong"
+        >
           {grant.title}
         </Link>
       }
@@ -150,7 +154,7 @@ export const GrantCard = ({
               size="icon"
               variant="ghost"
               asLink
-              to={`/grants/${grant.id}`}
+              to={`/grants/${grant.id}${lensSearch(role)}`}
             >
               <Eye size={16} />
             </Button>
