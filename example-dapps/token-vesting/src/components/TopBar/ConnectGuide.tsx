@@ -57,18 +57,16 @@ const steps = [
     name: 'Connected',
     text: (
       <>
-        You're connected now. You can change the primary party to try different views in the dApp.
-        Direct access to Wallet Gateway available{' '}
+        You're connected now. Change the primary party in{' '}
         <a
-          aria-label="Open Wallet Gateway"
           className="font-semibold text-primary-strong underline underline-offset-3"
           href={WALLET_GATEWAY_UI_URL}
           rel="noreferrer"
           target="_blank"
         >
-          here
-        </a>
-        .
+          Wallet Gateway
+        </a>{' '}
+        to try different views in the dApp.
       </>
     ),
   },
